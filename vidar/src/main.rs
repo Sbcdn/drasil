@@ -1,10 +1,10 @@
 /*
-######################################################################
-# See LICENSE.md for full license information.                       #
-# Software: Drasil Blockchain Application Framework                  #
-# License: “Commons Clause” License Condition v1.0 & Apache 2.0      #
-# Licensor: Torben Poguntke (torben@drasil.io)                       #
-######################################################################
+#################################################################################
+# See LICENSE.md for full license information.                                  #
+# Software: Drasil Blockchain Application Framework                             #
+# License: Drasil Source Available License v1.0                                 #
+# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
+#################################################################################
 */
 extern crate pretty_env_logger;
 
