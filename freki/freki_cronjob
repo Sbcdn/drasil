@@ -1,0 +1,2 @@
+# must be ended with a new line "LF" (Unix) and not "CRLF" (Windows)
+1 * * * * root echo "Hello World" >/proc/1/fd/1 2>/proc/1/fd/2

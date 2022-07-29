@@ -1,0 +1,28 @@
+REGISTRY=europe-west6-docker.pkg.dev
+PROJECT=maestro-org-development
+REPOSITORY=dapp-developer-platform-core
+IMAGE=odin
+VERSION=0.1
+
+configure-gcp:
+	gcloud auth login
+	gcloud config set project $(PROJECT)
+	gcloud auth configure-docker $(REGISTRY)
+
+update:
+	cargo update
+
+build:
+	cargo update
+	cargo fetch
+	rm -rf .cargo
+	mkdir .cargo
+	echo "git-fetch-with-cli = true" > .cargo/config
+	cp -R ~/.cargo/git .cargo/git
+	docker build -t $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
+	
+run:
+	docker run -t $(IMAGE):$(VERSION) $(IMAGE)
+
+push:
+	docker push $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION)

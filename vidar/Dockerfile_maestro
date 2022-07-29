@@ -1,0 +1,19 @@
+FROM europe-west6-docker.pkg.dev/maestro-org-development/dapp-developer-platform-base/rust:1.61.0 as maestro-rust-base
+
+FROM maestro-rust-base as builder
+WORKDIR /vidar-build
+ENV CARGO_HOME=/vidar-build/.cargo
+COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./.cargo/config $CARGO_HOME/config
+COPY ./.cargo/git $CARGO_HOME/git
+COPY ./src ./src
+RUN cargo build --release --target x86_64-unknown-linux-gnu
+
+FROM maestro-rust-base as vidar
+COPY --from=builder /vidar-build/target/x86_64-unknown-linux-gnu/release/vidar /usr/bin
+
+ENV DRASIL_REWARD_DB=
+
+EXPOSE 4101
+
+CMD ["vidar"]
