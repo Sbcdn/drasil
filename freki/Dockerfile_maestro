@@ -1,0 +1,19 @@
+FROM europe-west6-docker.pkg.dev/maestro-org-development/dapp-developer-platform-base/rust:1.61.0 as maestro-rust-base
+
+FROM maestro-rust-base as builder
+WORKDIR /freki-build
+ENV CARGO_HOME=/freki-build/.cargo
+COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./.cargo/config $CARGO_HOME/config
+COPY ./.cargo/git $CARGO_HOME/git
+COPY ./src ./src
+RUN cargo build --release --target x86_64-unknown-linux-gnu
+
+FROM maestro-rust-base as freki
+COPY --from=builder /freki-build/target/x86_64-unknown-linux-gnu/release/freki /usr/bin
+
+ENV REWARD_DB_URL=postgres://userN8T-testnet:BQoeFzhRR5nd2rLyyyTNpuWSH9sR@10.241.176.5/rewards-testnet
+ENV DBSYNC_DB_URL=postgres://maestro_tx_monitor_ro:IjWiRW2XQeKIInKcN2dNazdepjI5@10.10.0.45/cexplorer
+ENV PLATFORM_DB_URL=postgres://userD5O-testnet:YzBgKangO51AJOgtXjpZAeSNhCG@10.241.176.5/platform-testnet
+
+CMD ["freki"]

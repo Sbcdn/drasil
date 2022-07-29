@@ -1,0 +1,15 @@
+[workspace]
+
+members = [
+    "freki",
+    "frigg",
+    "geri",
+    "gungnir",
+    "heimdallr",
+    "hugin",
+    "mimir",
+    "murin",
+    "odin",
+    "sleipnir",
+    "vidar"
+]

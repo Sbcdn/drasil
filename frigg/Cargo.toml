@@ -1,0 +1,49 @@
+#################################################################################
+# See LICENSE.md for full license information.                                  #
+# Software: Drasil Blockchain Application Framework                             #
+# License: Drasil Source Available License v1.0                                 #
+# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
+#################################################################################
+
+[package]
+name = "frigg"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - Client Portal API"
+repository = "https://github.com/Sbcdn/frigg.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+[dependencies]
+jsonwebtoken = { version="8.1.0", features=["use_pem"]}
+tokio = { version = "1", features = ["full"] }
+warp = { version="0.3", features=["tls"]}
+serde_json = { version = "1.0.79", features = ["preserve_order"]}
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+chrono = "0.4"
+#diesel = { version = "1.4.4", features = ["postgres","r2d2"] }
+dotenv = "0.15.0"
+structopt = "0.3.26"
+lazy_static = "1.4.0"
+
+hex = "0.4"
+reqwest = { version="0.11.9", default-features = false, features = ["json", "rustls-tls"] }
+pretty_env_logger = "0.4.0"
+log = "0.4"
+
+lettre = { version = "0.10.0-beta.2", default-features = false, features = ["builder"] }
+rusoto_core = { version = "0.48.0", default-features = false, features = ["rustls"] }
+rusoto_ses = { version = "0.48.0", default-features = false, features = ["rustls"] }
+base64 = "0.13"
+
+hugin = { path = "../hugin", version="0.1.0" }
+murin = { path = "../murin", version="0.1.0" }
+sleipnir = { path = "../sleipnir", version="0.1.0" }
+
+#hugin = { git = "ssh://git@github.com/sbcdn/hugin.git", branch="main" }
+#murin = { git = "ssh://git@github.com/sbcdn/murin.git", branch="main" }
+#sleipnir = { git = "ssh://git@github.com/sbcdn/sleipnir.git", branch="main" }

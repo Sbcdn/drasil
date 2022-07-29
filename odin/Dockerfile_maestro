@@ -1,0 +1,16 @@
+FROM europe-west6-docker.pkg.dev/maestro-org-development/dapp-developer-platform-base/rust:1.61.0 as maestro-rust-base
+
+FROM maestro-rust-base as builder
+
+WORKDIR /odin-build
+ENV CARGO_HOME=/odin-build/.cargo
+COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./.cargo/config $CARGO_HOME/config
+COPY ./.cargo/git $CARGO_HOME/git
+COPY ./src ./src
+RUN cargo build --release --target x86_64-unknown-linux-gnu
+
+FROM maestro-rust-base as odin
+COPY --from=builder /odin-build/target/x86_64-unknown-linux-gnu/release/odin /usr/bin
+
+CMD ["odin"]
