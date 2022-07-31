@@ -3,6 +3,10 @@
 ## Summary
 Hugin is the system library of Drasil.
 
+More details follow soon....
+
+* [License]( https://www.drasil.io/licenses/LICENSE-1.0)
+
 
 ## Mythology
 In Norse mythology, Huginn (Old Norse: "thought"[1]) and Muninn (Old Norse "memory"[2] or "mind"[3]) are a pair of ravens that fly all over the world, Midgard, and bring information to the god Odin. Huginn and Muninn are attested in the Poetic Edda, compiled in the 13th century from earlier traditional sources: the Prose Edda and Heimskringla; in the Third Grammatical Treatise, compiled in the 13th century by Óláfr Þórðarson; and in the poetry of skalds. The names of the ravens are sometimes modernly anglicized as Hugin and Munin.
