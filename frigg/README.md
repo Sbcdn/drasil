@@ -59,7 +59,7 @@ The docker image path and name can be defined in the Makefile using the followin
 
 
 ### Environment 
-Vidar needs the following environment variables set to run properly:
+Frigg needs the following environment variables set to run properly:
 
 Reward Database: 
 
