@@ -1,9 +1,11 @@
 # Drasil
 
-The Drasil Application Framework is a collection of microservices which act together as scalabe blockchain framework for the Cardano blockchain to run dApps. Its several applications and libraries are explained below.
+The Drasil Application Framework is a collection of microservices which act together as scalabe blockchain framework for the Cardano blockchain to run dApps. Its architecture, services and libraries are written in Rust.
 
-Drasil was invented and formed by Torben and Zak but it also uses several tools developed by the Cardano community and to run a full "Drasil System" it needs more than the applications and libraries you can find in this repository. Torben and Zak can support and advise how to utillize this framework for your application and consult you on what it needs to run it, just contact us. 
-Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. We constantly develop Drasil further and features and contracts and also maintain a testnet and mainnet version. It is also possible to book single services or applications directly without running your own Drasil System.  
+Drasil was created by Torben and Zak but it also uses several tools developed by the Cardano community (many thanks to all of you) and to run a full "Drasil System" it needs more than the applications and libraries you can find in this repository. Torben and Zak can support and advise how to utillize this framework for your application and consult you on what it needs to run it, just contact us. 
+Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. We constantly develop Drasil and add features, smart contracts and applications. We also maintain a testnet and mainnet version. It is also possible to book single services or applications directly without running your own Drasil System. 
+Visit us on [drasil.io](https://www.drasil.io)
+
 We also work closely together with [Maestro](https://www.gomaestro.org) for infrastructure and managed Drasil systems. 
 
 * [Documentation](https://docs.drasil.io/)
