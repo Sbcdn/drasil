@@ -49,34 +49,12 @@ or
 
 
 ### Docker
-
-#### Prerequisites
-* [Rust](https://www.rust-lang.org/tools/install/)
-* [Docker](https://docs.docker.com/engine/install/)
-* [Docker-Compose](https://docs.docker.com/compose/install/)
-
-
-
-#### Build image
-```
-make build
-```
-Will start building a docker image 
-
-#### Run container
-```
-make run
-```
-Will start the image as local docker container 
-
-#### Push image to Registry
-```
-make push
-```
-The docker image path and name can be defined in the Makefile using the following command will initiate a push. 
+Follow the Readme's in the single applications folders
 
 
 ### Environment 
-Drasils individual services need many settings which are passed via environment variables, the individual needed settings are described in the readme files for each service. 
+Drasils individual services need many settings which are passed via environment variables, the individual needed settings are described in the Readme file for each service. 
 
 ## Architecture
+
+...Follows soon...
