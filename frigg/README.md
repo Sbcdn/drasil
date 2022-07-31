@@ -1,7 +1,7 @@
 # Frigg
 
 ## Summary
-Frigg provides an Admnistrative API to operate a client portal to configure and manage client applications and contracts.
+Frigg provides an API to operate a client portal to configure and manage client applications and contracts.
 
 * [Documentation](https://docs.drasil.io/reward-and-distribution/drasil-rewards-api/reward-information)
 
