@@ -46,15 +46,15 @@ impl Connection {
 fn connect_cluster() -> Result<Connection> {
     log::debug!("Try to connect to redis cluster...");
 
-    let redis_cluster = std::env::var("CLUSTER")?.parse::<bool>()?;
+    let redis_cluster = std::env::var("REDIS_CLUSTER")?.parse::<bool>()?;
     
     if redis_cluster {
-        let redis_db = std::env::var("REDIS_DB_URL_TXMIND")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
+        let redis_db = std::env::var("REDIS_DB")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
         let con = redis::cluster::ClusterClient::open(vec![redis_db.clone()])?.get_connection()?;
 
         return Ok(Connection::Cluster(con))
     } else {
-        let redis_db = std::env::var("REDIS_DB_URL_TXMIND")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
+        let redis_db = std::env::var("REDIS_DB")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
         let con = redis::Client::open(redis_db.clone())?.get_connection()?;
 
         Ok(Connection::Single(con))
@@ -113,10 +113,20 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
         log::info!("ID:\n {:?} \n",id);
         let data = &data_vec.1;
         let txhash = data[0].clone();
-        let del = delete_used_utxo(&txhash)?;
-        log::info!("Delete: {:?}",del);
-        
         let tx_data : Event = serde_json::from_str(&data[1])?;
+        match tx_data.data {
+            EventData::Transaction(_) => {
+                let del = delete_used_utxo(&txhash)?;
+                log::info!("Delete: {:?}",del);
+            }
+            _ => {
+                log::info!("Event data is not a transaction");
+            }
+        }
+        
+        
+        
+        
         //log::info!("TxData Data :\n {:?} \n",tx_data);
         /*
         match tx_data.data {

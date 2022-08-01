@@ -496,19 +496,23 @@ pub fn delete_used_utxo(
     let mut con = redis_usedutxos_connection()?;
     info!("deleting pending utxo...");
     info!("TxHash: {:?}",txhash);
-    let members : Vec<String>;
+    let mut members = Vec::<String>::new();
     match con {
         (Some(ref mut c),None) => {
             let tx_map = redis::cmd("HGETALL").arg(txhash).query(c);
             debug!("Tx Hashmap Result: {:?}",tx_map);
             let tx_map : HashMap<String,String> = tx_map?;
-            members = utxostring_to_utxovec(&tx_map.get("utxos").expect("Could not retrieve utxos from hashmap").to_owned());
+            if tx_map.contains_key("utxos") {
+                members = utxostring_to_utxovec(&tx_map.get("utxos").expect("Could not retrieve utxos from hashmap").to_owned());
+            }
         },
         (None,Some(ref mut c)) => {
             let tx_map = redis::cmd("HGETALL").arg(txhash).query(c);
             debug!("Tx Hashmap Result: {:?}",tx_map);
             let tx_map : HashMap<String,String> = tx_map?;
-            members = utxostring_to_utxovec(&tx_map.get("utxos").expect("Could not retrieve utxos from hashmap").to_owned());
+            if tx_map.contains_key("utxos") {
+                members = utxostring_to_utxovec(&tx_map.get("utxos").expect("Could not retrieve utxos from hashmap").to_owned());
+            }
         }
         _ => {
             return Err(MurinError::new("Could not establish single nor cluster redis connection"));
