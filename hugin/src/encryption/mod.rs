@@ -6,20 +6,18 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use mimir::MurinError;
-use rand::{rngs::OsRng, RngCore};
 use chacha20poly1305::{
     aead::{stream, NewAead},
     XChaCha20Poly1305,
 };
+use mimir::MurinError;
+use rand::{rngs::OsRng, RngCore};
 
-use vaultrs::{api::AuthInfo, client::Client};
+use sha2::Digest;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
-use sha2::{Digest};
+use vaultrs::{api::AuthInfo, client::Client};
 
-use std::{
-    io::{Read, Write, BufWriter},
-};
+use std::io::{BufWriter, Read, Write};
 use zeroize::Zeroize;
 
 fn argon2_config<'a>() -> rargon2::Config<'a> {
@@ -33,20 +31,23 @@ fn argon2_config<'a>() -> rargon2::Config<'a> {
     };
 }
 
-fn get_secure_key_from_pwd(pwd : &String) -> (Vec<u8>,[u8; 32]) {
+fn get_secure_key_from_pwd(pwd: &String) -> (Vec<u8>, [u8; 32]) {
     let mut salt = [0u8; 32];
-    OsRng.fill_bytes(&mut salt); 
+    OsRng.fill_bytes(&mut salt);
     let argon2_config = argon2_config();
-    let key = rargon2::hash_raw(pwd.as_bytes(), &salt, &argon2_config).expect("Could not create encryption key");
+    let key = rargon2::hash_raw(pwd.as_bytes(), &salt, &argon2_config)
+        .expect("Could not create encryption key");
 
-    (key,salt)
+    (key, salt)
 }
 
-async fn vault_auth(client : &VaultClient) -> AuthInfo {
+async fn vault_auth(client: &VaultClient) -> AuthInfo {
     let secret_id = std::env::var("VSECRET_ID").unwrap();
     let role_id = std::env::var("V_ROLE_ID").unwrap();
     let mount = "secret";
-    vaultrs::auth::approle::login(client, mount, &role_id, &secret_id).await.unwrap()
+    vaultrs::auth::approle::login(client, mount, &role_id, &secret_id)
+        .await
+        .unwrap()
 }
 
 pub async fn vault_connect() -> VaultClient {
@@ -58,8 +59,9 @@ pub async fn vault_connect() -> VaultClient {
             .token("token")
             .timeout(Some(core::time::Duration::from_secs(30)))
             .build()
-            .unwrap()
-            ).unwrap();
+            .unwrap(),
+    )
+    .unwrap();
 
     let token = match std::env::var("VAULT_TOKEN") {
         Ok(o) => {
@@ -69,50 +71,40 @@ pub async fn vault_connect() -> VaultClient {
             } else {
                 vault_auth(&client).await.client_token
             }
-        },
-        Err(_) => {
-            vault_auth(&client).await.client_token
         }
+        Err(_) => vault_auth(&client).await.client_token,
     };
     client.set_token(&token);
 
     client
 }
 
-
-pub async fn encrypt_data(
-    source: &String,
-    ident: &String,
-) -> Result<String, MurinError> { 
+pub async fn encrypt_data(source: &String, ident: &String) -> Result<String, MurinError> {
     let mut password = [0u8; 1024];
     OsRng.fill_bytes(&mut password);
     let password = hex::encode(password);
-    log::debug!("RANDOM PASSWORD: {}",password);
+    log::debug!("RANDOM PASSWORD: {}", password);
     let mount = "secret";
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
     path.push_str(ident);
-    let _set = vaultrs::kv2::set(&vault, mount, &path, &password).await.unwrap();
+    let _set = vaultrs::kv2::set(&vault, mount, &path, &password)
+        .await
+        .unwrap();
     let cipher = encrypt(&source, &password)?;
     Ok(cipher)
 }
 
-
-
-
-pub fn encrypt(
-    source: &String,
-    password: &String,
-) -> Result<String, MurinError> {
+pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError> {
     let mut nonce = [0u8; 19];
     OsRng.fill_bytes(&mut nonce);
 
-    let(mut key,mut salt) = get_secure_key_from_pwd(password);
+    let (mut key, mut salt) = get_secure_key_from_pwd(password);
 
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_encryptor = stream::EncryptorBE32::from_aead(aead, nonce.as_ref().into());
 
-    let mut source_data =  source.as_bytes();
+    let mut source_data = source.as_bytes();
     let mut dist = BufWriter::new(Vec::new());
 
     dist.write(&salt)?;
@@ -147,26 +139,18 @@ pub fn encrypt(
     Ok(string)
 }
 
-
-pub async fn decrypt_data(
-    encrypted_source: &String,
-    ident: &String,
-) -> Result<String, MurinError> { 
+pub async fn decrypt_data(encrypted_source: &String, ident: &String) -> Result<String, MurinError> {
     let mount = "secret";
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
     path.push_str(ident);
     let p = vaultrs::kv2::read(&vault, mount, &path).await.unwrap();
     let clear = decrypt(&encrypted_source, &p)?;
-    
+
     Ok(clear)
 }
 
-
-pub fn decrypt(
-    encrypted_source: &String,
-    password: &String,
-) -> Result<String, MurinError> {
+pub fn decrypt(encrypted_source: &String, password: &String) -> Result<String, MurinError> {
     let mut salt = [0u8; 32];
     let mut nonce = [0u8; 19];
 
@@ -184,7 +168,8 @@ pub fn decrypt(
     }
 
     let argon2_config = argon2_config();
-    let mut key = rargon2::hash_raw(password.as_bytes(), &salt, &argon2_config).map_err(|err| murin::MurinError::new(&format!("{}",err)))?;
+    let mut key = rargon2::hash_raw(password.as_bytes(), &salt, &argon2_config)
+        .map_err(|err| murin::MurinError::new(&format!("{}", err)))?;
 
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_decryptor = stream::DecryptorBE32::from_aead(aead, nonce.as_ref().into());
@@ -215,13 +200,15 @@ pub fn decrypt(
     nonce.zeroize();
     key.zeroize();
 
-    let bytes = dist.into_inner().map_err(|err| murin::MurinError::new(&format!("{}",err)))?;
+    let bytes = dist
+        .into_inner()
+        .map_err(|err| murin::MurinError::new(&format!("{}", err)))?;
     let string = String::from_utf8(bytes)?;
 
     Ok(string)
 }
 
-pub async fn decrypt_pkvs(vec : Vec::<String>, ident: &String) ->Result<Vec::<String>, MurinError> {
+pub async fn decrypt_pkvs(vec: Vec<String>, ident: &String) -> Result<Vec<String>, MurinError> {
     let mut epvks = Vec::<String>::new();
     for pv in vec {
         epvks.push(crate::encryption::decrypt_data(&pv, ident).await?)
@@ -229,12 +216,7 @@ pub async fn decrypt_pkvs(vec : Vec::<String>, ident: &String) ->Result<Vec::<St
     Ok(epvks)
 }
 
-pub fn mident(
-    u     : &i64,
-    ci    : &i64,
-    v     : &f32,
-    ca    : &String,
-) -> String {
+pub fn mident(u: &i64, ci: &i64, v: &f32, ca: &String) -> String {
     let mut hasher = sha2::Sha224::new();
     hasher.update((*u).to_ne_bytes());
     hasher.update((*ci).to_ne_bytes());

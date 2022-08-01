@@ -11,18 +11,20 @@ use std::fmt::{self};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SleipnirError {
-    details: String
+    details: String,
 }
 
 impl SleipnirError {
     pub fn new(msg: &str) -> SleipnirError {
-        SleipnirError {details : msg.to_string() }
+        SleipnirError {
+            details: msg.to_string(),
+        }
     }
 }
 
 impl fmt::Display for SleipnirError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.details)
+        write!(f, "{}", self.details)
     }
 }
 
@@ -34,7 +36,6 @@ impl Error for SleipnirError {
 
 unsafe impl Send for SleipnirError {}
 unsafe impl Sync for SleipnirError {}
-
 
 impl From<hex::FromHexError> for SleipnirError {
     fn from(err: hex::FromHexError) -> Self {
@@ -54,13 +55,11 @@ impl From<std::io::Error> for SleipnirError {
     }
 }
 
-
 impl From<std::env::VarError> for SleipnirError {
     fn from(err: std::env::VarError) -> Self {
         SleipnirError::new(&err.to_string())
     }
 }
-
 
 impl From<chrono::ParseError> for SleipnirError {
     fn from(err: chrono::ParseError) -> Self {
@@ -98,7 +97,6 @@ impl From<gungnir::RWDError> for SleipnirError {
         SleipnirError::new(&err.to_string())
     }
 }
-
 
 impl From<std::num::ParseIntError> for SleipnirError {
     fn from(err: std::num::ParseIntError) -> Self {

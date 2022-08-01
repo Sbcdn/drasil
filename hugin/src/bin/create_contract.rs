@@ -8,10 +8,10 @@
 */
 use hugin::database::drasildb::*;
 
-extern crate  diesel;
-use std::io::{stdin};
+extern crate diesel;
+use std::io::stdin;
 
-fn main() -> Result<(),murin::MurinError> {
+fn main() -> Result<(), murin::MurinError> {
     println!("Please provide user-id (i64):");
     let mut user_id = String::new();
     stdin().read_line(&mut user_id).unwrap();
@@ -33,7 +33,7 @@ fn main() -> Result<(),murin::MurinError> {
     let mut description_ = String::new();
     stdin().read_line(&mut description_).unwrap();
     let description_ = &description_[..(description_.len() - 1)];
-    let mut description : Option<&str> = None;
+    let mut description: Option<&str> = None;
     if description_ != "" {
         description = Some(&description_)
     }
@@ -55,9 +55,17 @@ fn main() -> Result<(),murin::MurinError> {
     let address = &address[..(address.len() - 1)];
 
     let contract = TBContracts::create_contract(
-        &user_id, &contract_id, &contract_type, description, &version, plutus, address, None ,&false)?;
+        &user_id,
+        &contract_id,
+        &contract_type,
+        description,
+        &version,
+        plutus,
+        address,
+        None,
+        &false,
+    )?;
 
-
-    println!("Success! added: \n {:?}",contract);
+    println!("Success! added: \n {:?}", contract);
     Ok(())
 }

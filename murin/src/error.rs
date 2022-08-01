@@ -10,18 +10,20 @@ use std::error::Error;
 use std::fmt::{self};
 #[derive(Debug, Clone, PartialEq)]
 pub struct MurinError {
-    details: String
+    details: String,
 }
 
 impl MurinError {
     pub fn new(msg: &str) -> MurinError {
-        MurinError {details : msg.to_string() }
+        MurinError {
+            details: msg.to_string(),
+        }
     }
 }
 
 impl fmt::Display for MurinError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.details)
+        write!(f, "{}", self.details)
     }
 }
 
@@ -52,7 +54,6 @@ impl From<std::io::Error> for MurinError {
     }
 }
 
-
 impl From<std::env::VarError> for MurinError {
     fn from(err: std::env::VarError) -> Self {
         MurinError::new(&err.to_string())
@@ -71,7 +72,6 @@ impl From<diesel::result::Error> for MurinError {
     }
 }
 
-
 impl From<std::num::ParseIntError> for MurinError {
     fn from(err: std::num::ParseIntError) -> Self {
         MurinError::new(&err.to_string())
@@ -83,7 +83,6 @@ impl From<std::num::ParseFloatError> for MurinError {
         MurinError::new(&err.to_string())
     }
 }
-
 
 impl From<std::str::ParseBoolError> for MurinError {
     fn from(err: std::str::ParseBoolError) -> Self {
@@ -102,7 +101,6 @@ impl From<redis::RedisError> for MurinError {
         MurinError::new(&err.to_string())
     }
 }
-
 
 impl From<cbor_event::Error> for MurinError {
     fn from(err: cbor_event::Error) -> Self {

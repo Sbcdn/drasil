@@ -6,33 +6,39 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::{Parse, CmdError};
-use crate::{Connection,Frame,IntoFrame};
-use crate::datamodel::{ContractType,ContractAction,TransactionPattern,ScriptSpecParams,MarketplaceActions};
+use crate::datamodel::{
+    ContractAction, ContractType, MarketplaceActions, ScriptSpecParams, TransactionPattern,
+};
+use crate::{CmdError, Parse};
+use crate::{Connection, Frame, IntoFrame};
 
-use murin::{MIN_ADA};
+use bc::Options;
+use bincode as bc;
 use bytes::Bytes;
+use murin::MIN_ADA;
 use std::str::FromStr;
 use tracing::{debug, instrument};
-use bincode as bc;
-use bc::Options;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct BuildContract {
-    customer_id : u64,
-    ctype       : ContractType,
-    action      : ContractAction,
-    txpattern   : TransactionPattern, 
+    customer_id: u64,
+    ctype: ContractType,
+    action: ContractAction,
+    txpattern: TransactionPattern,
 }
 
 impl BuildContract {
-
-    pub fn new(cid : u64, ctype: ContractType, action : ContractAction, txpattern : TransactionPattern) -> BuildContract {
+    pub fn new(
+        cid: u64,
+        ctype: ContractType,
+        action: ContractAction,
+        txpattern: TransactionPattern,
+    ) -> BuildContract {
         BuildContract {
-            customer_id : cid, 
-            ctype : ctype,
-            action : action,
-            txpattern : txpattern,
+            customer_id: cid,
+            ctype: ctype,
+            action: action,
+            txpattern: txpattern,
         }
     }
 
@@ -52,124 +58,141 @@ impl BuildContract {
         self.txpattern.clone()
     }
 
-
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildContract> {
         let customer_id = parse.next_int()?;
 
         let ctype = parse.next_bytes()?;
-        let ctype : ContractType = bc::DefaultOptions::new().with_varint_encoding().deserialize(&ctype)?;
-        
+        let ctype: ContractType = bc::DefaultOptions::new()
+            .with_varint_encoding()
+            .deserialize(&ctype)?;
+
         let action = parse.next_string()?;
         let action = ContractAction::from_str(&action)?;
 
         let txpattern = parse.next_bytes()?;
-        let txpattern : TransactionPattern = bc::DefaultOptions::new().with_varint_encoding().deserialize(&txpattern)?;
+        let txpattern: TransactionPattern = bc::DefaultOptions::new()
+            .with_varint_encoding()
+            .deserialize(&txpattern)?;
 
-
-        Ok (
-            BuildContract {
-                customer_id : customer_id,
-                ctype :ctype,
-                action : action,
-                txpattern : txpattern,
-            }
-        )
+        Ok(BuildContract {
+            customer_id: customer_id,
+            ctype: ctype,
+            action: action,
+            txpattern: txpattern,
+        })
     }
 
     #[instrument(skip(self, dst))]
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-            
         let mut response = Frame::Simple("OK".to_string());
 
         if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
             debug!(?response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
-            ()        
+            ()
         }
-        
+
         let mut ret = String::new();
         match self.ctype {
             ContractType::MarketPlace => {
                 ret = match self.handle_marketplace().await {
-                    Ok(s)  => s,
+                    Ok(s) => s,
                     Err(e) => e.to_string(),
                 }
-                
-            },
-
-            ContractType::NftShop => {
-
-            },
-
-            ContractType::NftMinter => {
-
-            },
-
-            ContractType::TokenMinter => {
-
-            },
-
-            _ => {
-                return Err(CmdError::Custom{str:format!("ERROR his ccontract Type does not exists {:?}'",self.ctype)}.into());
             }
 
+            ContractType::NftShop => {}
+
+            ContractType::NftMinter => {}
+
+            ContractType::TokenMinter => {}
+
+            _ => {
+                return Err(CmdError::Custom {
+                    str: format!("ERROR his ccontract Type does not exists {:?}'", self.ctype),
+                }
+                .into());
+            }
         }
 
-        response = Frame::Bulk(Bytes::from(bc::DefaultOptions::new().with_varint_encoding().serialize(&ret.to_string())?));
+        response = Frame::Bulk(Bytes::from(
+            bc::DefaultOptions::new()
+                .with_varint_encoding()
+                .serialize(&ret.to_string())?,
+        ));
         debug!(?response);
         dst.write_frame(&response).await?;
         Ok(())
     }
 
     async fn handle_marketplace(&self) -> crate::Result<String> {
-              
-        match self.transaction_pattern().script().ok_or("ERROR: No specific contract data supplied")? {
-            ScriptSpecParams::Marketplace{ 
-                tokens, 
+        match self
+            .transaction_pattern()
+            .script()
+            .ok_or("ERROR: No specific contract data supplied")?
+        {
+            ScriptSpecParams::Marketplace {
+                tokens,
                 metadata,
-                selling_price, 
+                selling_price,
                 ..
-                } => {
-    
-                if 
-                        tokens.is_empty()
-                    || (metadata.is_empty() && !(self.action() == ContractAction::MarketplaceActions(MarketplaceActions::List)))
-                    || (selling_price <= MIN_ADA*3 && (
-                                self.action() == ContractAction::MarketplaceActions(MarketplaceActions::List)
-                            || self.action() == ContractAction::MarketplaceActions(MarketplaceActions::Update)
-                            )
-                        )
+            } => {
+                if tokens.is_empty()
+                    || (metadata.is_empty()
+                        && !(self.action()
+                            == ContractAction::MarketplaceActions(MarketplaceActions::List)))
+                    || (selling_price <= MIN_ADA * 3
+                        && (self.action()
+                            == ContractAction::MarketplaceActions(MarketplaceActions::List)
+                            || self.action()
+                                == ContractAction::MarketplaceActions(MarketplaceActions::Update)))
                 {
-                    return Err(CmdError::Custom{str:format!("ERROR wrong data provided for script specific parameters: '{:?}'",self.transaction_pattern().script())}.into());
+                    return Err(CmdError::Custom {
+                        str: format!(
+                            "ERROR wrong data provided for script specific parameters: '{:?}'",
+                            self.transaction_pattern().script()
+                        ),
+                    }
+                    .into());
                 }
-            },
+            }
             _ => {
-                return Err(CmdError::Custom{str:format!("ERROR wrong data provided for '{:?}'",self.contract_type())}.into());
+                return Err(CmdError::Custom {
+                    str: format!("ERROR wrong data provided for '{:?}'", self.contract_type()),
+                }
+                .into());
             }
         }
-        
+
         let mut gtxd = self.transaction_pattern().into_txdata().await?;
-        let mptxd = self.transaction_pattern().script().unwrap().into_mp(gtxd.clone().get_inputs()).await?;
+        let mptxd = self
+            .transaction_pattern()
+            .script()
+            .unwrap()
+            .into_mp(gtxd.clone().get_inputs())
+            .await?;
         gtxd.set_user_id(self.customer_id as u64);
         let dbsync = mimir::establish_connection()?;
         let slot = mimir::get_slot(&dbsync)?;
         gtxd.set_current_slot(slot as u64);
 
         let mut ret = String::new();
-        match self.action(){
+        match self.action() {
             ContractAction::MarketplaceActions(mpa) => {
                 match mpa {
                     MarketplaceActions::List => {
-                        use murin::txbuilders::marketplace::list::*;
                         use crate::database::drasildb::*;
+                        use murin::txbuilders::marketplace::list::*;
                         //build a listing and send the repsonse to the sender
                         let drasildbcon = establish_connection()?;
                         let contract = TBContracts::get_active_contract_for_user(
-                            &drasildbcon, self.customer_id as i64, self.ctype.to_string(), None)?;
-                        
-                        
-                
+                            &drasildbcon,
+                            self.customer_id as i64,
+                            self.ctype.to_string(),
+                            None,
+                        )?;
+
                         let sc_addr = contract.address.to_string();
                         let sc_version = contract.version.to_string();
 
@@ -178,53 +201,48 @@ impl BuildContract {
                         gtxd.set_current_slot(slot as u64);
 
                         let res = build_mp_listing(&gtxd, &mptxd, &sc_addr, &sc_version).await?;
-                        
+
                         let tx = murin::utxomngr::RawTx::new(
-                            &res.get_tx_body(), 
-                            &res.get_txwitness(), 
+                            &res.get_tx_body(),
+                            &res.get_txwitness(),
                             &res.get_tx_unsigned(),
                             &res.get_metadata(),
-                            &gtxd.to_string(), 
+                            &gtxd.to_string(),
                             &mptxd.to_string(),
                             &res.get_used_utxos(),
                             &hex::encode(gtxd.get_stake_address().to_bytes()),
                             &(self.customer_id as i64),
                             &contract.contract_id,
                             &contract.version,
-
                         );
 
-                        ret = super::create_response(&res, &tx, self.transaction_pattern().wallet_type().as_ref())?.to_string();
-                        
-                    
-                    },
+                        ret = super::create_response(
+                            &res,
+                            &tx,
+                            self.transaction_pattern().wallet_type().as_ref(),
+                        )?
+                        .to_string();
+                    }
                     MarketplaceActions::Buy => {
                         use murin::txbuilders::marketplace::buy::*;
-                        
-
 
                         ret = "Got MP Buy Transaction".to_string();
-                    },
+                    }
                     MarketplaceActions::Cancel => {
                         use murin::txbuilders::marketplace::cancel::*;
 
-
-        
                         ret = "Got MP Cancel Transaction".to_string();
-                    },
+                    }
                     MarketplaceActions::Update => {
                         use murin::txbuilders::marketplace::update::*;
 
-
-        
                         ret = "Got MP Update Transaction".to_string();
-                    },
+                    }
                 }
             }
         }
-        Ok(ret) 
+        Ok(ret)
     }
-    
 }
 
 impl IntoFrame for BuildContract {
@@ -233,17 +251,21 @@ impl IntoFrame for BuildContract {
         frame.push_bulk(Bytes::from("bct".as_bytes()));
 
         frame.push_int(self.customer_id);
-        
-        let ctype_b = bc::DefaultOptions::new().with_varint_encoding().serialize(&self.ctype).unwrap();
+
+        let ctype_b = bc::DefaultOptions::new()
+            .with_varint_encoding()
+            .serialize(&self.ctype)
+            .unwrap();
         frame.push_bulk(Bytes::from(ctype_b));
 
         frame.push_bulk(Bytes::from(self.action().to_string().into_bytes()));
 
-        let txpattern_b = bc::DefaultOptions::new().with_varint_encoding().serialize(&self.txpattern).unwrap();
+        let txpattern_b = bc::DefaultOptions::new()
+            .with_varint_encoding()
+            .serialize(&self.txpattern)
+            .unwrap();
         frame.push_bulk(Bytes::from(txpattern_b));
 
         frame
-
     }
 }
-

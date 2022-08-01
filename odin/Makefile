@@ -11,6 +11,10 @@ build:
 	mkdir .cargo
 	echo "git-fetch-with-cli = true" > .cargo/config
 	cp -R ~/.cargo/git .cargo/git
+	cp -R ../hugin .cargo/hugin
+	cp -R ../murin .cargo/murin
+	cp -R ../mimir .cargo/mimir
+	cp -R ../gungnir .cargo/gungnir
 	docker build -t $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
 
 run:

@@ -7,6 +7,4 @@
 #################################################################################
 */
 
-
-
-// Functions to create Rewards for different calcualtion / distribution models 
+// Functions to create Rewards for different calcualtion / distribution models

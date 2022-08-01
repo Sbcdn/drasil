@@ -9,13 +9,11 @@
 #![warn(unused_assignments)]
 use hugin::database::drasildb::*;
 
-extern crate  diesel;
-use std::io::{stdin};
+extern crate diesel;
+use std::io::stdin;
 
-fn main() -> Result<(),murin::MurinError> {
+fn main() -> Result<(), murin::MurinError> {
     let connection = establish_connection()?;
-
-    
 
     println!("Please provide id (i64):");
     let mut db_id = String::new();
@@ -33,21 +31,21 @@ fn main() -> Result<(),murin::MurinError> {
     let mut contract_id = contract_org.contract_id;
     if contract_id_ != "" {
         contract_id = contract_id_.parse::<i64>()?;
-    } 
+    }
 
     println!("Please provide a description (optional):");
     println!("Leave empty to keep current value.");
     let mut description_ = String::new();
     stdin().read_line(&mut description_).unwrap();
     let description_ = &description_[..(description_.len() - 1)];
-    
-    let mut description  : Option<&str> = None;
+
+    let mut description: Option<&str> = None;
     let mut k = String::new();
     if let Some(org_description) = contract_org.description {
         k = org_description;
         description = Some(&k);
     };
-    
+
     if description_ != "" {
         description = Some(&description_)
     }
@@ -61,10 +59,9 @@ fn main() -> Result<(),murin::MurinError> {
     if depri_ != "" {
         depri = depri_.parse::<bool>()?;
     }
-    let contract = TBContracts::update_contract(
-        &connection, &db_id, &contract_id, description, &depri)?;
+    let contract =
+        TBContracts::update_contract(&connection, &db_id, &contract_id, description, &depri)?;
 
-
-    println!("\n\n Success! updated: \n {:?}",contract.id);
+    println!("\n\n Success! updated: \n {:?}", contract.id);
     Ok(())
 }

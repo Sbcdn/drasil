@@ -6,11 +6,11 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use serde::{Serialize,Deserialize};
-use std::fmt;
-use chrono::prelude::*;
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header };
 use crate::error::SleipnirError;
+use chrono::prelude::*;
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Permissions {
@@ -18,7 +18,7 @@ pub enum Permissions {
     RewardClaimCreateContract,
     StandardTransactionsDeleigate,
     Marketplace,
-    Standard
+    Standard,
 }
 
 impl Permissions {
@@ -51,14 +51,14 @@ pub struct ApiClaims {
     exp: usize,
 }
 
-pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String,SleipnirError> {
+pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String, SleipnirError> {
     let dconn = hugin::establish_connection()?;
-    let user = hugin::database::TBDrasilUser::get_user_by_user_id(&dconn,&uid)?;
+    let user = hugin::database::TBDrasilUser::get_user_by_user_id(&dconn, &uid)?;
 
-    if  user.email_verified != true  
-        //&& check_identification(u.identification) 
+    if user.email_verified != true
+    //&& check_identification(u.identification)
     {
-        return Err(SleipnirError::new("invalid user"))
+        return Err(SleipnirError::new("invalid user"));
     }
 
     let mut dur = 317125598072; // 15552000;
@@ -82,6 +82,6 @@ pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String,SleipnirErr
         .map_err(|_| SleipnirError::new("JWT Token could not been created"))?;
 
     hugin::database::TBDrasilUser::update_api_key(&user.id, &token)?;
-        
+
     Ok(token)
 }

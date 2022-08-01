@@ -6,7 +6,5 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-#[derive(Debug,Clone)]
-pub struct GetStakeKey {
-    
-}
+#[derive(Debug, Clone)]
+pub struct GetStakeKey {}

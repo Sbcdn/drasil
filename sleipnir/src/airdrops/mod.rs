@@ -6,27 +6,27 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+pub mod ad_params;
 pub mod ftairdrop;
 pub mod nftairdrop;
-pub mod ad_params;
 
-pub use ad_params::*;
 pub use crate::error::SleipnirError;
 pub use crate::rewards::*;
+pub use ad_params::*;
 
-use std::str::{FromStr};
-use chrono::{Utc, NaiveDateTime};
+use chrono::{NaiveDateTime, Utc};
+use std::str::FromStr;
 
-#[derive(PartialEq,Clone,Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum ADTokenType {
     FungibleToken,
-    NonFungibleToken
+    NonFungibleToken,
 }
 
 impl ToString for ADTokenType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::FungibleToken    => "FungibleToken".to_string(),
+            &Self::FungibleToken => "FungibleToken".to_string(),
             &Self::NonFungibleToken => "NonFungibleToken".to_string(),
         }
     }
@@ -34,67 +34,72 @@ impl ToString for ADTokenType {
 
 impl std::str::FromStr for ADTokenType {
     type Err = SleipnirError;
-    fn from_str(src: &str) -> Result<Self,Self::Err> {
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
-            "FungibleToken"      => Ok(ADTokenType::FungibleToken),
-            "NonFungibleToken"   => Ok(ADTokenType::NonFungibleToken),
-            _                    => Err(SleipnirError::new(&format!("Cannot parse '{}' into ADTokenType",src)))
+            "FungibleToken" => Ok(ADTokenType::FungibleToken),
+            "NonFungibleToken" => Ok(ADTokenType::NonFungibleToken),
+            _ => Err(SleipnirError::new(&format!(
+                "Cannot parse '{}' into ADTokenType",
+                src
+            ))),
         }
     }
 }
 
-#[derive(PartialEq,Clone,Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum ADSelType {
-    ScanForHolders, // Scan for Holder depending on token type
-    ScanForHoldersNFTMetaCond,  // Scan for NFTs with specific metadata conditions
+    ScanForHolders,            // Scan for Holder depending on token type
+    ScanForHoldersNFTMetaCond, // Scan for NFTs with specific metadata conditions
     //DiscordBotWhitelist, -> Custom
-    WalletWhitelist,    // -> take an existing wallet whitelist
+    WalletWhitelist, // -> take an existing wallet whitelist
     //MintingWhitelist, -> Scan for TokenHolders
-    Custom,     // -> Import from csv or sql
-    DeligatorsOfStakePoolInEpochX,  // Scan pool for addresses in epoch range
-    TokenPool,   // Every Wallet is eligable which did not already claimed       
+    Custom,                        // -> Import from csv or sql
+    DeligatorsOfStakePoolInEpochX, // Scan pool for addresses in epoch range
+    TokenPool,                     // Every Wallet is eligable which did not already claimed
     Combination(Vec<ADSelType>),
 }
 
 impl ToString for ADSelType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::ScanForHolders                   => "ScanForHolders".to_string(),
-            &Self::ScanForHoldersNFTMetaCond        => "ScanForHoldersNFTMetaCond".to_string(),
-            &Self::WalletWhitelist                  => "WalletWhitelist".to_string(),
-            &Self::Custom                           => "Custom".to_string(),
-            &Self::DeligatorsOfStakePoolInEpochX    => "DeligatorsOfStakePoolInEpochX".to_string(),
-            &Self::TokenPool                        => "TokenPool".to_string(),
-            &Self::Combination(comb)  => {
+            &Self::ScanForHolders => "ScanForHolders".to_string(),
+            &Self::ScanForHoldersNFTMetaCond => "ScanForHoldersNFTMetaCond".to_string(),
+            &Self::WalletWhitelist => "WalletWhitelist".to_string(),
+            &Self::Custom => "Custom".to_string(),
+            &Self::DeligatorsOfStakePoolInEpochX => "DeligatorsOfStakePoolInEpochX".to_string(),
+            &Self::TokenPool => "TokenPool".to_string(),
+            &Self::Combination(comb) => {
                 let mut ret = String::new();
                 for c in comb {
-                    ret = ret + &c.to_string()+"|";
+                    ret = ret + &c.to_string() + "|";
                 }
                 ret.pop();
                 ret
-            },
+            }
         }
     }
 }
 
 impl std::str::FromStr for ADSelType {
     type Err = SleipnirError;
-    fn from_str(src: &str) -> Result<Self,Self::Err> {
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
-            "ScanForHolders"                => Ok(ADSelType::ScanForHolders),
-            "ScanForHoldersNFTMetaCond"     => Ok(ADSelType::ScanForHoldersNFTMetaCond),
-            "WalletWhitelist"               => Ok(ADSelType::WalletWhitelist),
-            "Custom"                        => Ok(ADSelType::Custom),
+            "ScanForHolders" => Ok(ADSelType::ScanForHolders),
+            "ScanForHoldersNFTMetaCond" => Ok(ADSelType::ScanForHoldersNFTMetaCond),
+            "WalletWhitelist" => Ok(ADSelType::WalletWhitelist),
+            "Custom" => Ok(ADSelType::Custom),
             "DeligatorsOfStakePoolInEpochX" => Ok(ADSelType::DeligatorsOfStakePoolInEpochX),
-            "TokenPool"                     => Ok(ADSelType::TokenPool),
-            comb                       => {
+            "TokenPool" => Ok(ADSelType::TokenPool),
+            comb => {
                 if !comb.contains("|") {
-                    return Err(SleipnirError::new(&format!("Cannot parse '{}' into AdSelType",src)));
+                    return Err(SleipnirError::new(&format!(
+                        "Cannot parse '{}' into AdSelType",
+                        src
+                    )));
                 }
-                let csplit : Vec<&str> = comb.split("|").collect();
+                let csplit: Vec<&str> = comb.split("|").collect();
                 let mut combi = Vec::<ADSelType>::new();
                 for c in csplit {
-                    
                     combi.push(ADSelType::from_str(c)?);
                 }
 
@@ -104,7 +109,7 @@ impl std::str::FromStr for ADSelType {
     }
 }
 
-#[derive(PartialEq,Clone,Debug)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum ADDistType {
     StakeDependentOnPools,
     FixedAmoutPerDeligatorOnPools,
@@ -118,38 +123,40 @@ pub enum ADDistType {
 impl ToString for ADDistType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::StakeDependentOnPools            => "StakeDendentOnPools".to_string(),
-            &Self::FixedAmoutPerDeligatorOnPools    => "FixedAmoutPerDeligatorOnPools".to_string(),
-            &Self::Custom                           => "Custom".to_string(),
-            &Self::FixedAmoutPerToken               => "FixedAmoutPerToken".to_string(),
-            &Self::FixedAmountDevidedByWallets      => "FixedAmountDevidedByWallets".to_string(),
-            &Self::FixedAmountPerWallet             => "FixedAmountPerWallet".to_string(),
-            &Self::TokenPool                        => "TokenPool".to_string(),
+            &Self::StakeDependentOnPools => "StakeDendentOnPools".to_string(),
+            &Self::FixedAmoutPerDeligatorOnPools => "FixedAmoutPerDeligatorOnPools".to_string(),
+            &Self::Custom => "Custom".to_string(),
+            &Self::FixedAmoutPerToken => "FixedAmoutPerToken".to_string(),
+            &Self::FixedAmountDevidedByWallets => "FixedAmountDevidedByWallets".to_string(),
+            &Self::FixedAmountPerWallet => "FixedAmountPerWallet".to_string(),
+            &Self::TokenPool => "TokenPool".to_string(),
         }
     }
 }
 
 impl std::str::FromStr for ADDistType {
     type Err = SleipnirError;
-    fn from_str(src: &str) -> Result<Self,Self::Err> {
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
-            "StakeDependentOnPools"         => Ok(ADDistType::StakeDependentOnPools),
+            "StakeDependentOnPools" => Ok(ADDistType::StakeDependentOnPools),
             "FixedAmoutPerDeligatorOnPools" => Ok(ADDistType::FixedAmoutPerDeligatorOnPools),
-            "Custom"                        => Ok(ADDistType::Custom),
-            "FixedAmoutPerToken"            => Ok(ADDistType::FixedAmoutPerToken),
-            "FixedAmountDevidedByWallets"   => Ok(ADDistType::FixedAmountDevidedByWallets),
-            "FixedAmountPerWallet"          => Ok(ADDistType::FixedAmountPerWallet),
-            "TokenPool"                     => Ok(ADDistType::TokenPool),
-            _                               => Err(SleipnirError::new(&format!("Cannot parse '{}' into AdSelType",src)))
+            "Custom" => Ok(ADDistType::Custom),
+            "FixedAmoutPerToken" => Ok(ADDistType::FixedAmoutPerToken),
+            "FixedAmountDevidedByWallets" => Ok(ADDistType::FixedAmountDevidedByWallets),
+            "FixedAmountPerWallet" => Ok(ADDistType::FixedAmountPerWallet),
+            "TokenPool" => Ok(ADDistType::TokenPool),
+            _ => Err(SleipnirError::new(&format!(
+                "Cannot parse '{}' into AdSelType",
+                src
+            ))),
         }
     }
 }
 
-
 // Address Lookup Functions for Airdrops
 pub async fn create_airdrop(
-    network : murin::clib::NetworkIdKind, 
-    user_id: i64, 
+    network: murin::clib::NetworkIdKind,
+    user_id: i64,
     contract_id: Option<i64>,
     airdrop_token_type: ADTokenType,
     airdrop_dist_type: ADDistType,
@@ -158,28 +165,29 @@ pub async fn create_airdrop(
     policy_id: String,
     tokenname: Option<String>,
     pools: Option<Vec<String>>,
-    start_epoch:i64,
+    start_epoch: i64,
     end_epoch: Option<i64>,
     ad_dist_params: AirdropDistributionParameter,
     ad_sel_params: AirdropSelectionParameter,
     ad_timing_params: AirdropTimingParameter,
-) -> Result<(),SleipnirError> {
-
+) -> Result<(), SleipnirError> {
     let mut c_id = -1;
     match contract_id {
         Some(id) => {
             c_id = id;
-        },
+        }
         None => {
-            c_id = create_contract(network, user_id,  None).await?;
+            c_id = create_contract(network, user_id, None).await?;
         }
     }
-
 
     //create token whitelisting with type airdrop
     let mut vd = chrono::Utc::now();
     if let Some(date) = vesting_period {
-        vd = chrono::DateTime::<Utc>::from_utc(NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,Utc);
+        vd = chrono::DateTime::<Utc>::from_utc(
+            NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
+            Utc,
+        );
     }
 
     let mut tn = String::new();
@@ -190,8 +198,7 @@ pub async fn create_airdrop(
                 tn = name;
                 fingerprint = murin::make_fingerprint(&policy_id.clone(), &tn.clone())?;
             }
-
-        },
+        }
         ADTokenType::NonFungibleToken => {
             // We know the Policy ID already, maybe traits in metadata need to be analysed ?
         }
@@ -200,23 +207,32 @@ pub async fn create_airdrop(
     let mconn = mimir::establish_connection()?;
     let current_epoch = mimir::get_epoch(&mconn)? as i64;
     if start_epoch < current_epoch {
-        return Err(SleipnirError::new(&format!("Start epoch: {} cannot be smaller than the current epoch: : {:?}",start_epoch, current_epoch)))
+        return Err(SleipnirError::new(&format!(
+            "Start epoch: {} cannot be smaller than the current epoch: : {:?}",
+            start_epoch, current_epoch
+        )));
     }
     if let Some(endepoch) = end_epoch {
         if endepoch <= current_epoch || endepoch <= start_epoch {
-            return Err(SleipnirError::new(&format!("End epoch: {}, needs to be in future and after start epoch: {:?}",endepoch, start_epoch)))
+            return Err(SleipnirError::new(&format!(
+                "End epoch: {}, needs to be in future and after start epoch: {:?}",
+                endepoch, start_epoch
+            )));
         }
     }
 
-
     //pools is just containing pools if the distribution type is "share depending on stake" or "each deligator of pool" otherwise empty list
     let mut apools = Vec::<gungnir::GPools>::new();
-    if airdrop_dist_type == ADDistType::StakeDependentOnPools|| airdrop_dist_type == ADDistType::FixedAmoutPerDeligatorOnPools {
+    if airdrop_dist_type == ADDistType::StakeDependentOnPools
+        || airdrop_dist_type == ADDistType::FixedAmoutPerDeligatorOnPools
+    {
         if let Some(pool) = pools {
-            apools.extend(pool.iter().map(|p| gungnir::GPools{ pool_id :  p.clone(), first_valid_epoch:current_epoch })) ;
-        } 
-    }  
-   
+            apools.extend(pool.iter().map(|p| gungnir::GPools {
+                pool_id: p.clone(),
+                first_valid_epoch: current_epoch,
+            }));
+        }
+    }
 
     // Create Airdrop Parameters
     // equation contains a custom_id to airdrop parameters table -> Juse Database Primary Key 'ID'
@@ -224,10 +240,10 @@ pub async fn create_airdrop(
     // - Airdrop Type:          { FT,
     //                            NFT,
     //                          }
-    // - Distribution Type(FT): {   share depending on stake, 
-    //                          fixed amount for each deligator of a pool, 
-    //                          custom amounts (csv import), 
-    //                          for each token holder a certain amount, 
+    // - Distribution Type(FT): {   share depending on stake,
+    //                          fixed amount for each deligator of a pool,
+    //                          custom amounts (csv import),
+    //                          for each token holder a certain amount,
     //                          fixed amount devided by all receivers
     //                          for each whitelisted address a fixed amount,
     //                          testnet distro for one address
@@ -241,10 +257,9 @@ pub async fn create_airdrop(
     //                          FixedAmountPerAddress,
     //                          TestnetDistro,
 
-
     // - Address Selection Type: {  Scan for Holders of NFTs / FTs,
-    //                              Discord bot Whitelisting, 
-    //                              Wallet Whitelisting with message verification, 
+    //                              Discord bot Whitelisting,
+    //                              Wallet Whitelisting with message verification,
     //                              Minting - > Mint a Token to whitelist and burn it on claim,
     //                              custom (csv import),
     //                              deligators of a stake pool at a certain epoch,
@@ -262,9 +277,6 @@ pub async fn create_airdrop(
     //                            },
     let args1 = ad_dist_params.to_string_vec();
 
-    
-    
- 
     // - ARGS2:                   { Array of Text, Depending on Selection Type
     //                              ScanForHoldersFT : [(PolicyID),(TokenName),(fingerprint),(Min Amount to Hold)],
     //                              ScanForHoldersNFT : [(PolicyId)],
@@ -272,200 +284,207 @@ pub async fn create_airdrop(
     //                              DiscordBotWhitelist: [Database Connection Credentials and Tablenames for the Whitelist ; we will nto store to the reward database],
     //                              WalletWhitelisting: [WhitelistingContractId, Max Amount of Whitelistentries],
     //                              MintingWhitelist: [(PolicyId),(Tokenname),(MintingContractId),],
-    //                              Custom: (CSV Import as JSON Object see also ADDistType), 
+    //                              Custom: (CSV Import as JSON Object see also ADDistType),
     //                              DeligatorsOfStakePoolInEpochX: [PoolId, Epoch],
     //                              Testnet: [(ProvidedStakeAddr)],
     //                              Combination(Vec<ADSelType>): Comes Later,
     //                            },
     let args2 = ad_sel_params.to_string_vec();
 
-
     // - ARGS3:                   { Array of Text, Additional Information
-    //                                  Repeatable: True|False, 
-    //                                  Intervall: Weekly (Weekday) | Monthly (Day) | Quarterly(1.x | 15.x) | Each x. of a month, 
-    //                                  EndDate, 
-    //                                  StartDate, 
+    //                                  Repeatable: True|False,
+    //                                  Intervall: Weekly (Weekday) | Monthly (Day) | Quarterly(1.x | 15.x) | Each x. of a month,
+    //                                  EndDate,
+    //                                  StartDate,
     //                            },
     let args3 = ad_timing_params.to_string_vec();
 
-    
     let gconn = gungnir::establish_connection()?;
     let adparam = gungnir::AirDropParameter::create_airdrop_parameter(
-        &gconn, 
-        &c_id , 
-        &user_id, 
-        &airdrop_token_type.to_string(), 
-        &airdrop_dist_type.to_string(), 
-        &airdrop_sel_type.to_string(), 
-        &args1?, 
-        &args2?, 
+        &gconn,
+        &c_id,
+        &user_id,
+        &airdrop_token_type.to_string(),
+        &airdrop_dist_type.to_string(),
+        &airdrop_sel_type.to_string(),
+        &args1?,
+        &args2?,
         &args3?,
-        None
+        None,
     )?;
-
 
     //start epoch defines when the airdrop can happen / end epoch accordingly restricts the airdrop on epochs
-    
+
     let twl = gungnir::TokenWhitelist::create_twl_entry(
-        &gconn, 
-        &fingerprint, 
-        &policy_id, 
-        &tn, 
-        &c_id, 
-        &user_id, 
-        &vd, 
-        &apools, 
-        &gungnir::Calculationmode::AirDrop, 
-        &adparam.id.to_string(), 
-        &start_epoch, 
-        end_epoch.as_ref(), 
-        None
+        &gconn,
+        &fingerprint,
+        &policy_id,
+        &tn,
+        &c_id,
+        &user_id,
+        &vd,
+        &apools,
+        &gungnir::Calculationmode::AirDrop,
+        &adparam.id.to_string(),
+        &start_epoch,
+        end_epoch.as_ref(),
+        None,
     )?;
 
-    
     // Select whitelisting method for airdrop
-    let whitelist = airdrop_whitelist_selection(user_id, c_id, &airdrop_sel_type, &adparam, &ad_dist_params, &ad_sel_params)?;
-
+    let whitelist = airdrop_whitelist_selection(
+        user_id,
+        c_id,
+        &airdrop_sel_type,
+        &adparam,
+        &ad_dist_params,
+        &ad_sel_params,
+    )?;
 
     // If possible for selected method determine rewards for airdrop
     let rewards = determine_rewards(user_id, c_id, &airdrop_dist_type, &adparam)?;
 
-
     Ok(())
 }
 
-
 pub fn airdrop_whitelist_selection(
-    user_id: i64, 
-    contract_id: i64, 
-    airdrop_sel_type: &ADSelType, 
-    adp: &gungnir::AirDropParameter, 
-    args1 : &AirdropDistributionParameter,
-    args2 : &AirdropSelectionParameter, 
-) -> Result<(),SleipnirError> {
+    user_id: i64,
+    contract_id: i64,
+    airdrop_sel_type: &ADSelType,
+    adp: &gungnir::AirDropParameter,
+    args1: &AirdropDistributionParameter,
+    args2: &AirdropSelectionParameter,
+) -> Result<(), SleipnirError> {
     match airdrop_sel_type {
         ADSelType::ScanForHolders => {
             match ADTokenType::from_str(&adp.airdrop_token_type)? {
                 ADTokenType::FungibleToken => {
                     pub struct ParamScanForHoldersFT {
-                        policy_id   : murin::clib::PolicyID,
-                        tokenname   : murin::clib::AssetName,
-                        fingerprint : Option<String>, 
-                        min_holding : Option<i64>,
+                        policy_id: murin::clib::PolicyID,
+                        tokenname: murin::clib::AssetName,
+                        fingerprint: Option<String>,
+                        min_holding: Option<i64>,
                     }
                     let adparam = match args2 {
-                        AirdropSelectionParameter::ScanForHolders{param} => param,
-                        _ => return Err(SleipnirError::new("Wrong 'Airdrop Selection Arguments' supplied"))
+                        AirdropSelectionParameter::ScanForHolders { param } => param,
+                        _ => {
+                            return Err(SleipnirError::new(
+                                "Wrong 'Airdrop Selection Arguments' supplied",
+                            ))
+                        }
                     };
 
                     let fingerprint = if let Some(fp) = adparam.fingerprint.clone() {
                         fp
                     } else {
-                        murin::make_fingerprint(&hex::encode(adparam.policy_id.to_bytes()), &hex::encode(adparam.tokenname.as_ref().expect("No TokenName Provided").to_bytes()))?
+                        murin::make_fingerprint(
+                            &hex::encode(adparam.policy_id.to_bytes()),
+                            &hex::encode(
+                                adparam
+                                    .tokenname
+                                    .as_ref()
+                                    .expect("No TokenName Provided")
+                                    .to_bytes(),
+                            ),
+                        )?
                     };
 
-                    let whitelist = mimir::lookup_token_holders(&fingerprint,adparam.min_holding.as_ref())?;
-                },
+                    let whitelist =
+                        mimir::lookup_token_holders(&fingerprint, adparam.min_holding.as_ref())?;
+                }
                 ADTokenType::NonFungibleToken => {
                     let adparam = match args2 {
-                        AirdropSelectionParameter::ScanForHoldersNFT{param} => param,
-                        _ => return Err(SleipnirError::new("Wrong 'Airdrop Selection Arguments' supplied"))
+                        AirdropSelectionParameter::ScanForHoldersNFT { param } => param,
+                        _ => {
+                            return Err(SleipnirError::new(
+                                "Wrong 'Airdrop Selection Arguments' supplied",
+                            ))
+                        }
                     };
 
                     // ToDo: Traits
-                    
 
-                    let whitelist = mimir::lookup_nft_token_holders(&hex::encode(adparam.policy_id.to_bytes()))?;
-                    
-                },
-
+                    let whitelist = mimir::lookup_nft_token_holders(&hex::encode(
+                        adparam.policy_id.to_bytes(),
+                    ))?;
+                }
             }
-            
-
-        },
+        }
         ADSelType::ScanForHoldersNFTMetaCond => {
-            // Check for all "latests" mint transactions which contain a token with the given policy ID 
+            // Check for all "latests" mint transactions which contain a token with the given policy ID
             // where the metadata of the minting transaction contain the given trait
             // Return all matching NFTs (Tokens)
-            
-            // Second Step 
-            // Lookup current holders of those Tokens and return stake addresses
 
+            // Second Step
+            // Lookup current holders of those Tokens and return stake addresses
         }
         //ADSelType::MintingWhitelist => {
-            // Is same option as scan for Tokens (NFT or Token) but needs to pmint and distribute those first
+        // Is same option as scan for Tokens (NFT or Token) but needs to pmint and distribute those first
         //},
         //ADSelType::DiscordBotWhitelist => {
-            // Is Custom Import from .csv or sql
+        // Is Custom Import from .csv or sql
         //},
         ADSelType::DeligatorsOfStakePoolInEpochX => {
             // Scan all wallets of a specif epoch range and add to whitelist
-        },
+        }
         ADSelType::WalletWhitelist => {
-            // Select an already created whitelist id 
-        },
-        ADSelType::Custom => { 
-            // import csv file 
-
-        },
+            // Select an already created whitelist id
+        }
+        ADSelType::Custom => {
+            // import csv file
+        }
         ADSelType::TokenPool => {
-            // On A Tokenpool there is no whitelist, each wallet is whitelisted, by doing a claim the wallet gets added to 
-            // "blacklist" which is just for this specific contract and forbidds further claims. 
-            // TokenPool airdrops are blockchain wide airdrops and can just be handleded for themself and not claim tokens with 
+            // On A Tokenpool there is no whitelist, each wallet is whitelisted, by doing a claim the wallet gets added to
+            // "blacklist" which is just for this specific contract and forbidds further claims.
+            // TokenPool airdrops are blockchain wide airdrops and can just be handleded for themself and not claim tokens with
             // usual rewards together (depends maybe we can blacklist on token_whitelist level for a contract)
         }
-        
+
         ADSelType::Combination(combo) => {
             // Later or not needed
-        }
-        
-
-    } 
-    Ok(())
-}
-
-
-/// Creates the rewards for a given whitelist 
-pub fn determine_rewards(
-    user_id: i64, 
-    contract_id:i64, 
-    airdrop_dist_type : &ADDistType, 
-    adp:&gungnir::AirDropParameter,
-    //whitelist : Option<&Vec::<gungnir::WhitelistedWallet>>,
-) -> Result<(),SleipnirError> {
-    match airdrop_dist_type {
-        ADDistType::FixedAmountDevidedByWallets => {
-            // a fixed amount of total rewards is devided between all wallets
-        },
-        ADDistType::FixedAmountPerWallet => {
-            // each wallet in the whitelist gets a fixed amount of rewards
-
-        },  
-        ADDistType::FixedAmoutPerDeligatorOnPools => {
-            // For each delegiator on a set of pools (optional: above a certain stake limit)
-            // the wallets get a fixed amount of rewards
-        },
-        ADDistType::FixedAmoutPerToken => {
-            // For each Token the wallet is holding it gets a certain amount
-        },
-        ADDistType::StakeDependentOnPools => {
-            // Dependent on the Ada Stake in specific pools the stake amount is multiplied with a factor, 
-            // this specifies the reward for each wallet 
-
-        },
-        ADDistType::TokenPool => {
-            // On TOken Pools we distribute a fixed amount once to each wallet for a whitelisted token, 
-            // The TokenPool needs a special contract as the claim and the reward are created at the same time. 
-            // Is it possible to just create claim? As we need a special contract type we can check for existing claims 
-            // on transaction creation
-            // THe whole token pool system should be limited per day / epoch to make the system "fairer" after having a limited amount paid per / epoch / day 
-            // the same amount is available next epoch / day again
-        }
-        ADDistType::Custom => {
-            // Add csvfile same csv file as for token selection used 
-            // 
         }
     }
     Ok(())
 }
 
+/// Creates the rewards for a given whitelist
+pub fn determine_rewards(
+    user_id: i64,
+    contract_id: i64,
+    airdrop_dist_type: &ADDistType,
+    adp: &gungnir::AirDropParameter,
+    //whitelist : Option<&Vec::<gungnir::WhitelistedWallet>>,
+) -> Result<(), SleipnirError> {
+    match airdrop_dist_type {
+        ADDistType::FixedAmountDevidedByWallets => {
+            // a fixed amount of total rewards is devided between all wallets
+        }
+        ADDistType::FixedAmountPerWallet => {
+            // each wallet in the whitelist gets a fixed amount of rewards
+        }
+        ADDistType::FixedAmoutPerDeligatorOnPools => {
+            // For each delegiator on a set of pools (optional: above a certain stake limit)
+            // the wallets get a fixed amount of rewards
+        }
+        ADDistType::FixedAmoutPerToken => {
+            // For each Token the wallet is holding it gets a certain amount
+        }
+        ADDistType::StakeDependentOnPools => {
+            // Dependent on the Ada Stake in specific pools the stake amount is multiplied with a factor,
+            // this specifies the reward for each wallet
+        }
+        ADDistType::TokenPool => {
+            // On TOken Pools we distribute a fixed amount once to each wallet for a whitelisted token,
+            // The TokenPool needs a special contract as the claim and the reward are created at the same time.
+            // Is it possible to just create claim? As we need a special contract type we can check for existing claims
+            // on transaction creation
+            // THe whole token pool system should be limited per day / epoch to make the system "fairer" after having a limited amount paid per / epoch / day
+            // the same amount is available next epoch / day again
+        }
+        ADDistType::Custom => {
+            // Add csvfile same csv file as for token selection used
+            //
+        }
+    }
+    Ok(())
+}

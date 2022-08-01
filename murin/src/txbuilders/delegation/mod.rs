@@ -9,24 +9,25 @@
 pub mod build_deleg;
 pub use build_deleg::build_delegation_tx;
 
-use cardano_serialization_lib::{crypto as ccrypto};
+use cardano_serialization_lib::crypto as ccrypto;
 
 use crate::MurinError;
 
 #[derive(Debug, Clone)]
 pub struct DelegTxData {
-    poolhash               : String,
-    poolkeyhash            : ccrypto::Ed25519KeyHash,
+    poolhash: String,
+    poolkeyhash: ccrypto::Ed25519KeyHash,
 }
 
 impl DelegTxData {
-    pub fn new(
-        poolhash          : &String,
-    ) -> Result<DelegTxData,MurinError> {
+    pub fn new(poolhash: &String) -> Result<DelegTxData, MurinError> {
         let pool_keyhash = ccrypto::Ed25519KeyHash::from_bech32(poolhash)?;
-        Ok(DelegTxData { poolhash: poolhash.clone(), poolkeyhash: pool_keyhash})
+        Ok(DelegTxData {
+            poolhash: poolhash.clone(),
+            poolkeyhash: pool_keyhash,
+        })
     }
-    
+
     pub fn get_poolhash(&self) -> String {
         self.poolhash.clone()
     }
@@ -36,13 +37,11 @@ impl DelegTxData {
     }
 }
 
-
 impl ToString for DelegTxData {
     fn to_string(&self) -> String {
         self.poolhash.clone()
     }
 }
-
 
 impl core::str::FromStr for DelegTxData {
     type Err = MurinError;

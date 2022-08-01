@@ -8,8 +8,6 @@
 */
 // create Whitelist on Database
 
-
 // Update WHitelist
-
 
 // Delete Whitelist

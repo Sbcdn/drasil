@@ -8,8 +8,8 @@
 */
 
 mod api;
-pub use api::*;
 use crate::error::Error;
+pub use api::*;
 use serde::Serialize;
 
 use lettre::Message;
@@ -28,13 +28,19 @@ pub struct Contact {
 
 impl Contact {
     pub fn new<T: Into<String>>(email: T, name: T) -> Self {
-        Contact { email: email.into(), name: Some(name.into()) }
+        Contact {
+            email: email.into(),
+            name: Some(name.into()),
+        }
     }
 }
 
 impl<T: Into<String>> From<T> for Contact {
     fn from(email: T) -> Self {
-        Contact { email: email.into(), name: None }
+        Contact {
+            email: email.into(),
+            name: None,
+        }
     }
 }
 
@@ -43,7 +49,7 @@ pub struct Email {
     sender: Contact,
     recipient: Contact,
     subject: String,
-    html: String
+    html: String,
 }
 
 impl Email {
@@ -75,12 +81,15 @@ impl Email {
         let ses_client = SesClient::new(rusoto_core::Region::UsEast2);
         //let client = reqwest::Client::new();
         let mut rname = String::new();
-        if let Some (name) = self.recipient.name {
+        if let Some(name) = self.recipient.name {
             rname = name;
         }
         let email = Message::builder()
-        // Addresses can be specified by the tuple (email, alias)
-            .to((rname+"<"+&self.recipient.email+">").to_string().parse().unwrap())
+            // Addresses can be specified by the tuple (email, alias)
+            .to((rname + "<" + &self.recipient.email + ">")
+                .to_string()
+                .parse()
+                .unwrap())
             // ... or by an address only
             .from(std::env::var("FROM_EMAIL").unwrap().parse().unwrap())
             .subject(self.subject)
@@ -96,16 +105,15 @@ impl Email {
                 data: base64::encode(raw_email).into(),
             },
             //from_arn : Some("arn:aws:iam::942111480887:user/ses-smtp-user.20220426-214954".to_string()),
-            source_arn : Some(std::env::var("EMAIL_API_KEY").unwrap()),
+            source_arn: Some(std::env::var("EMAIL_API_KEY").unwrap()),
             ..Default::default()
         };
-    
+
         let mailer = ses_client.send_raw_email(ses_request).await;
-    
+
         match mailer {
             Ok(_) => Ok("Email sent successfully!".to_string()),
             Err(e) => Err(Error::Custom(format!("Could not send email: {:?}", e))),
         }
-    
     }
 }

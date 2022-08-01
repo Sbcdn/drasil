@@ -6,16 +6,15 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::protocol::{Frame,Connection,IntoFrame};
+use crate::protocol::{Connection, Frame, IntoFrame};
+use bc::Options;
+use bincode as bc;
 use std::io::{Error, ErrorKind};
 use tokio::net::{TcpStream, ToSocketAddrs};
-use tracing::{debug}; 
-use bincode as bc;
-use bc::Options;
-
+use tracing::debug;
 
 pub struct Client {
-    pub connection : Connection,
+    pub connection: Connection,
 }
 
 pub async fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<Client> {
@@ -32,9 +31,9 @@ impl Client {
 
         match self.read_response().await? {
             Frame::Simple(response) => Ok(response),
-            Frame::Bulk(data) => { 
-                Ok(bc::DefaultOptions::new().with_varint_encoding().deserialize::<String>(&data)?)
-            },
+            Frame::Bulk(data) => Ok(bc::DefaultOptions::new()
+                .with_varint_encoding()
+                .deserialize::<String>(&data)?),
             frame => Err(frame.to_error()),
         }
     }

@@ -9,14 +9,14 @@
 
 #[macro_use]
 extern crate diesel;
-pub mod rewards;
 pub mod error;
+pub mod rewards;
 pub mod schema;
 
-extern crate dotenv; 
+extern crate dotenv;
 extern crate pretty_env_logger;
 
-pub use rewards::*;
 pub use api::*;
+pub use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 pub use error::*;
-pub use bigdecimal::{BigDecimal,FromPrimitive,ToPrimitive};
+pub use rewards::*;

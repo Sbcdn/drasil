@@ -18,7 +18,6 @@ pub mod api;
 pub use api::*;
 pub use murin::error::MurinError;
 
-
 use diesel::prelude::*;
 //use diesel::sql_types::{BigInt};
 use diesel::pg::PgConnection;
@@ -26,7 +25,7 @@ use dotenv::dotenv;
 use std::env;
 
 //use chrono::{DateTime,Utc};
-extern crate dotenv; 
+extern crate dotenv;
 extern crate pretty_env_logger;
 //#[macro_use] extern crate log;
 
@@ -35,13 +34,13 @@ pub fn establish_connection() -> Result<PgConnection, murin::MurinError> {
 
     let database_url = env::var("DBSYNC_DB_URL")?;
     Ok(PgConnection::establish(&database_url)?)
-            //.expect(&format!("Error connecting to {}", database_url))
+    //.expect(&format!("Error connecting to {}", database_url))
 }
 
 /*
 // Wenn rerunning diesel-cli you need to copy this into the schema!!!!
 // Also add 'unspent_utxos' to : allow_tables_to_appear_in_same_query makro in schmea at the end of the file
-// The missing types are in module and a 'crate::' in front of them. 
+// The missing types are in module and a 'crate::' in front of them.
 // Diesel is not good here....
 
 table! {
@@ -70,7 +69,7 @@ mod tests {
 
         let database_url = env::var("DBSYNC_DB_URL").expect("Could not find env-var 'DBSYNC_DB_URL'");
         println!("Found Database URL {}",database_url);
-        
+
         let conn = PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url));
         println!("Connection established");
 
@@ -90,10 +89,10 @@ mod tests {
 
         let database_url = env::var("DBSYNC_DB_URL").expect("Could not find env-var 'DBSYNC_DB_URL'");
         println!("Found Database URL {}",database_url);
-        
+
         let conn = PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url));
         println!("Connection established");
-       
+
         let addr_utxos = api::get_address_utxos(&conn, &"addr_test1vrmvx0x0c0ymxqy3pkffjqc5ckrk2tyry0va4sah3h7q0mqlqvuc8".to_string());
         println!("Address Utxos: {:?}",addr_utxos);
         match addr_utxos {
@@ -110,7 +109,7 @@ mod tests {
 
         let database_url = env::var("DBSYNC_DB_URL").expect("Could not find env-var 'DBSYNC_DB_URL'");
         println!("Found Database URL {}",database_url);
-        
+
         let conn = PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url));
         println!("Connection established");
 
@@ -129,10 +128,10 @@ mod tests {
 
         let database_url = env::var("DBSYNC_DB_URL").expect("Could not find env-var 'DBSYNC_DB_URL'");
         println!("Found Database URL {}",database_url);
-        
+
         let conn = PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url));
         println!("Connection established");
-        
+
         match api::get_slot(&conn) {
             Ok(_) => assert!(true),
             Err(e) => assert!(false, "{}", e.to_string()),

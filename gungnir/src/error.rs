@@ -11,18 +11,20 @@ use std::fmt::{self};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RWDError {
-    details: String
+    details: String,
 }
 
 impl RWDError {
     pub fn new(msg: &str) -> RWDError {
-        RWDError {details : msg.to_string() }
+        RWDError {
+            details: msg.to_string(),
+        }
     }
 }
 
 impl fmt::Display for RWDError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,"{}",self.details)
+        write!(f, "{}", self.details)
     }
 }
 
@@ -34,7 +36,6 @@ impl Error for RWDError {
 
 unsafe impl Send for RWDError {}
 unsafe impl Sync for RWDError {}
-
 
 impl From<hex::FromHexError> for RWDError {
     fn from(err: hex::FromHexError) -> Self {
@@ -53,7 +54,6 @@ impl From<std::io::Error> for RWDError {
         RWDError::new(&err.to_string())
     }
 }
-
 
 impl From<std::env::VarError> for RWDError {
     fn from(err: std::env::VarError) -> Self {
