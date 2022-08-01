@@ -8,26 +8,26 @@
 */
 extern crate diesel;
 pub mod chelper;
-pub mod error;
 pub mod cip30;
+pub mod error;
 pub mod txbuilders;
 pub mod utxomngr;
 
-
-pub use cip30::*;
 pub use chelper::*;
+pub use cip30::*;
 pub use error::MurinError;
 pub use txbuilders::*;
 
-pub use utxomngr::*;
 pub use cardano_serialization_lib as clib;
 pub use clib::*;
+pub use utxomngr::*;
 
 pub use cryptoxide::*;
 
 extern crate dotenv;
 extern crate pretty_env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 macro_rules! pub_struct {
     ($name:ident {$($field:ident: $t:ty,)*}) => {
@@ -37,5 +37,3 @@ macro_rules! pub_struct {
         }
     }
 }
-
-

@@ -6,56 +6,60 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+use hugin::drasildb::{establish_connection, TBContracts, TBDrasilUser};
 use murin::chelper::*;
-use hugin::drasildb::{establish_connection,TBDrasilUser,TBContracts};
 
 use structopt::StructOpt;
 
-
-
-
 #[derive(Debug, StructOpt)]
-#[structopt(name = "fingerprint maker", about = "Creates Fingerprint from PolicyId and Tokenname")]
+#[structopt(
+    name = "fingerprint maker",
+    about = "Creates Fingerprint from PolicyId and Tokenname"
+)]
 struct Opt {
-    #[structopt(short, long, about="password")]
+    #[structopt(short, long, about = "password")]
     password: String,
-    #[structopt(short, long, about="user-id")]
+    #[structopt(short, long, about = "user-id")]
     user_id: i64,
-    #[structopt(short, long, about="email")]
+    #[structopt(short, long, about = "email")]
     email: String,
-    #[structopt(short, long, about="DrasilAdmin | Retailer | EnterpriseUser | StandardUser")]
+    #[structopt(
+        short,
+        long,
+        about = "DrasilAdmin | Retailer | EnterpriseUser | StandardUser"
+    )]
     role: String,
 }
 
-fn main() -> Result<(),MurinError> {
+fn main() -> Result<(), MurinError> {
     let opt = Opt::from_args();
-    
+
     let conn = establish_connection()?;
     let t = TBContracts::get_next_contract_id(opt.user_id)?;
-    println!("Established Connection Test: {:?}",t);
+    println!("Established Connection Test: {:?}", t);
 
     let user = TBDrasilUser::create_user(
-        &conn, 
-        None, 
-        &"dradmin".to_string(), 
-        &opt.email, 
-        &opt.password, 
-        &opt.role, 
-        &Vec::<String>::new(), 
-        None, 
-        None, 
-        None, 
+        &conn,
         None,
-        None, 
-        None, 
-        None, 
-        None, 
-        None, 
+        &"dradmin".to_string(),
+        &opt.email,
+        &opt.password,
+        &opt.role,
+        &Vec::<String>::new(),
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
         &Vec::<String>::new(),
         None,
     )?;
 
-    println!("Created user: {:?}",user);
+    println!("Created user: {:?}", user);
 
     Ok(())
 }

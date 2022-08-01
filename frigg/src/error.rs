@@ -7,12 +7,12 @@
 #################################################################################
 */
 
+use murin::MurinError;
 use serde::Serialize;
 use sleipnir::SleipnirError;
 use std::convert::Infallible;
 use thiserror::Error;
 use warp::{http::StatusCode, Rejection, Reply};
-use murin::MurinError;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -41,7 +41,6 @@ struct ErrorResponse {
 }
 
 impl warp::reject::Reject for Error {}
-
 
 pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Infallible> {
     let (code, message) = if err.is_not_found() {
@@ -106,4 +105,3 @@ impl From<core::num::ParseIntError> for Error {
         Error::Custom(err.to_string())
     }
 }
-

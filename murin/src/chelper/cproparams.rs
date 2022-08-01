@@ -6,9 +6,8 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use cardano_serialization_lib::{utils as cutils, fees};
 use crate::htypes::*;
-
+use cardano_serialization_lib::{fees, utils as cutils};
 
 pub async fn get_protocol_parameter() {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,12 +43,12 @@ pub async fn get_protocol_parameter() {
         None      => {panic!("ERROR: Cant read utxoCostPerWord from ProtocolParameters");}
     };
     let max_value_size : u32 = serde_json::from_value(pp["maxValueSize"].clone()).unwrap();
-    let max_tx_size : u32  = serde_json::from_value(pp["maxTxSize"].clone()).unwrap(); 
+    let max_tx_size : u32  = serde_json::from_value(pp["maxTxSize"].clone()).unwrap();
     let linfee = fees::LinearFee::new(&a.clone(),&b.clone());
 
     let ex_unit_price : ExUnitPrice = serde_json::from_value(pp["executionUnitPrices"].clone()).unwrap();
 
-    let mem = cutils::to_bignum(7000000u64);        //cutils::to_bignum(7000000u64);    
+    let mem = cutils::to_bignum(7000000u64);        //cutils::to_bignum(7000000u64);
     let steps = cutils::to_bignum(2500000000u64);   //cutils::to_bignum(3000000000u64);
     */
 }

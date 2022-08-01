@@ -7,18 +7,16 @@
 #################################################################################
 */
 
-pub mod rwd;
 pub mod dapi;
+pub mod rwd;
 
-use crate::Result;
 use crate::error::Error;
+use crate::Result;
 
-pub async fn get_user_from_string(us : &String) -> Result<i64> {
+pub async fn get_user_from_string(us: &String) -> Result<i64> {
     let user = match us.parse::<i64>() {
         Ok(u) => u,
-        Err(_) => {
-            return Err(Error::Custom("invalid user".to_string()))
-        }
+        Err(_) => return Err(Error::Custom("invalid user".to_string())),
     };
 
     Ok(user)

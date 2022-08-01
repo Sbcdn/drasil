@@ -1,12 +1,11 @@
 /// Hugin Connection
-use super::frame::{self,Frame};
-use bytes::{Buf, BytesMut};
-use tokio::net::TcpStream;
-use tokio::io::{self, AsyncWriteExt, AsyncReadExt};
-use tokio::io::{BufWriter};
+use super::frame::{self, Frame};
 use async_recursion::async_recursion;
+use bytes::{Buf, BytesMut};
 use std::io::Cursor;
-
+use tokio::io::BufWriter;
+use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 #[derive(Debug)]
 pub struct Connection {
@@ -15,11 +14,10 @@ pub struct Connection {
 }
 
 impl Connection {
-
     pub fn new(stream: TcpStream) -> Connection {
         Connection {
-            stream : BufWriter::new(stream),
-            buffer : BytesMut::with_capacity(50 * 1024),
+            stream: BufWriter::new(stream),
+            buffer: BytesMut::with_capacity(50 * 1024),
         }
     }
 
@@ -46,9 +44,8 @@ impl Connection {
         }
     }
 
-    
     async fn parse_frame(&mut self) -> crate::Result<Option<Frame>> {
-        use frame::Error::{Incomplete};
+        use frame::Error::Incomplete;
         let mut buf = Cursor::new(&self.buffer[..]);
 
         match Frame::check(&mut buf) {
@@ -60,22 +57,21 @@ impl Connection {
 
                 self.buffer.advance(len);
                 Ok(Some(frame))
-            },
-            Err (Incomplete) => (Ok(None)),
-            Err(e) => Err (e.into()),
+            }
+            Err(Incomplete) => (Ok(None)),
+            Err(e) => Err(e.into()),
         }
     }
 
     pub async fn write_frame(&mut self, frame: &Frame) -> io::Result<()> {
-        
         match frame {
-            Frame::Array(val) => {               
+            Frame::Array(val) => {
                 self.stream.write_u8(b'*').await?;
                 self.write_decimal(val.len() as u64).await?;
                 for entry in &**val {
                     self.write_value(entry).await?;
                 }
-            },
+            }
             _ => self.write_value(frame).await?,
         }
         self.stream.flush().await
@@ -83,22 +79,21 @@ impl Connection {
 
     #[async_recursion]
     async fn write_array(&mut self, val: &Vec<Frame>) -> io::Result<()> {
-                self.stream.write_u8(b'*').await?;
-                self.write_decimal(val.len() as u64).await?;
-                for entry in &**val {
-                    self.write_value(entry).await?;
-                }
+        self.stream.write_u8(b'*').await?;
+        self.write_decimal(val.len() as u64).await?;
+        for entry in &**val {
+            self.write_value(entry).await?;
+        }
         Ok(())
     }
 
-
     async fn write_value(&mut self, frame: &Frame) -> io::Result<()> {
-        match frame {        
-          //  Frame::Header{method, uri, version, token} => {
-          //      self.stream.write_u8(b'?').await?;
-          //      let header_in_byte = 5; //get_header_bytes(method,uri,version,token);
-          //      self.write_decimal(header_in_byte); //.len());  
-          //  },       
+        match frame {
+            //  Frame::Header{method, uri, version, token} => {
+            //      self.stream.write_u8(b'?').await?;
+            //      let header_in_byte = 5; //get_header_bytes(method,uri,version,token);
+            //      self.write_decimal(header_in_byte); //.len());
+            //  },
             Frame::Simple(val) => {
                 self.stream.write_u8(b'+').await?;
                 self.stream.write_all(val.as_bytes()).await?;
@@ -143,5 +138,4 @@ impl Connection {
 
         Ok(())
     }
-
 }

@@ -6,25 +6,25 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::{Parse,CmdError};
-use crate::{Connection,Frame,IntoFrame};
+use crate::{CmdError, Parse};
+use crate::{Connection, Frame, IntoFrame};
 
-use bytes::Bytes;
-use tracing::{instrument};
-use bincode as bc;
 use bc::Options;
+use bincode as bc;
+use bytes::Bytes;
+use tracing::instrument;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct VerifyUser {
-    user_id          : u64,
-    bearer_token     : String,
+    user_id: u64,
+    bearer_token: String,
 }
 
 impl VerifyUser {
     pub fn new(cid: u64, btoken: String) -> VerifyUser {
         VerifyUser {
-            user_id : cid,
-            bearer_token : btoken,
+            user_id: cid,
+            bearer_token: btoken,
         }
     }
 
@@ -37,16 +37,15 @@ impl VerifyUser {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<VerifyUser> {
-
         let customer_id = parse.next_int()?;
         let btoken = parse.next_bytes()?;
-        let btoken : String = bc::DefaultOptions::new().with_varint_encoding().deserialize(&btoken)?;
-        Ok (
-            VerifyUser {
-                user_id : customer_id,
-                bearer_token : btoken,
-            }
-        )
+        let btoken: String = bc::DefaultOptions::new()
+            .with_varint_encoding()
+            .deserialize(&btoken)?;
+        Ok(VerifyUser {
+            user_id: customer_id,
+            bearer_token: btoken,
+        })
     }
 
     /// Apply verify user
@@ -55,16 +54,24 @@ impl VerifyUser {
         dotenv::dotenv().ok();
 
         let dconn = crate::database::establish_connection()?;
-        let user = crate::database::TBDrasilUser::get_user_by_user_id(&dconn, &(self.user_id as i64))?;
-       
+        let user =
+            crate::database::TBDrasilUser::get_user_by_user_id(&dconn, &(self.user_id as i64))?;
+
         if let Some(token) = user.api_pubkey {
             if token == self.bearer_token {
-                let response = Frame::Bulk(Bytes::from(bc::DefaultOptions::new().with_varint_encoding().serialize(&"true".to_string())?));
+                let response = Frame::Bulk(Bytes::from(
+                    bc::DefaultOptions::new()
+                        .with_varint_encoding()
+                        .serialize(&"true".to_string())?,
+                ));
                 dst.write_frame(&response).await?;
             } else {
-                return Err(CmdError::Custom{str:format!("ERROR not authenticated")}.into());
+                return Err(CmdError::Custom {
+                    str: format!("ERROR not authenticated"),
+                }
+                .into());
             }
-        } 
+        }
         Ok(())
     }
 }
@@ -75,11 +82,13 @@ impl IntoFrame for VerifyUser {
         frame.push_bulk(Bytes::from("vus".as_bytes()));
 
         frame.push_int(self.user_id);
-        
-        let mtype_b = bc::DefaultOptions::new().with_varint_encoding().serialize(&self.bearer_token).unwrap();
+
+        let mtype_b = bc::DefaultOptions::new()
+            .with_varint_encoding()
+            .serialize(&self.bearer_token)
+            .unwrap();
         frame.push_bulk(Bytes::from(mtype_b));
 
         frame
-
     }
 }

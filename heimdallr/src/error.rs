@@ -40,7 +40,6 @@ struct ErrorResponse {
 
 impl warp::reject::Reject for Error {}
 
-
 pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Infallible> {
     let (code, message) = if err.is_not_found() {
         (StatusCode::NOT_FOUND, "Not Found".to_string())
@@ -106,4 +105,3 @@ impl From<core::num::ParseIntError> for Error {
         Error::Custom(err.to_string())
     }
 }
-

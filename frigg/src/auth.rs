@@ -75,14 +75,16 @@ pub fn create_jwt(uid: &str, role: &Role) -> Result<String> {
         exp: expiration as usize,
     };
     let header = Header::new(Algorithm::ES256);
-    let key = std::env::var("JWT_KEY").map_err(|_| Error::Custom("env jwt key path not existing".to_string()))?;
+    let key = std::env::var("JWT_KEY")
+        .map_err(|_| Error::Custom("env jwt key path not existing".to_string()))?;
     let key = key.into_bytes(); //std::fs::read(key).expect("Could not read jwt key file");
     encode(&header, &claims, &EncodingKey::from_ec_pem(&key).unwrap())
         .map_err(|_| Error::JWTTokenCreationError)
 }
 
 async fn authorize((role, headers): (Role, HeaderMap<HeaderValue>)) -> WebResult<String> {
-    let publ = std::env::var("JWT_PUB_KEY").map_err(|_| Error::Custom("env jwt pub not existing".to_string()))?;
+    let publ = std::env::var("JWT_PUB_KEY")
+        .map_err(|_| Error::Custom("env jwt pub not existing".to_string()))?;
     let publ = publ.into_bytes();
 
     match jwt_from_header(&headers) {
@@ -94,18 +96,23 @@ async fn authorize((role, headers): (Role, HeaderMap<HeaderValue>)) -> WebResult
             )
             .map_err(|_| reject::custom(Error::JWTTokenError))?;
 
-            if role == Role::DrasilAdmin && Role::from_str(&decoded.claims.rpm) != Role::DrasilAdmin {
+            if role == Role::DrasilAdmin && Role::from_str(&decoded.claims.rpm) != Role::DrasilAdmin
+            {
                 println!("No Admin permission");
                 return Err(reject::custom(Error::NoPermissionError));
             }
-            if role == Role::Retailer && (Role::from_str(&decoded.claims.rpm) != Role::Retailer 
-                                            && Role::from_str(&decoded.claims.rpm) != Role::DrasilAdmin) {
+            if role == Role::Retailer
+                && (Role::from_str(&decoded.claims.rpm) != Role::Retailer
+                    && Role::from_str(&decoded.claims.rpm) != Role::DrasilAdmin)
+            {
                 println!("No Retailer permission");
                 return Err(reject::custom(Error::NoPermissionError));
             }
-            if role == Role::EnterpriseUser && (Role::from_str(&decoded.claims.rpm) != Role::EnterpriseUser && 
-                                                    Role::from_str(&decoded.claims.rpm) != Role::Retailer &&
-                                                    Role::from_str(&decoded.claims.rpm) != Role::DrasilAdmin) {
+            if role == Role::EnterpriseUser
+                && (Role::from_str(&decoded.claims.rpm) != Role::EnterpriseUser
+                    && Role::from_str(&decoded.claims.rpm) != Role::Retailer
+                    && Role::from_str(&decoded.claims.rpm) != Role::DrasilAdmin)
+            {
                 println!("No Enterprise permission");
                 return Err(reject::custom(Error::NoPermissionError));
             }

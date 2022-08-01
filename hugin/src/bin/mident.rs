@@ -6,7 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use murin::chelper::*;
+use hugin::encryption::mident;
 
 use structopt::StructOpt;
 
@@ -16,22 +16,25 @@ use structopt::StructOpt;
     about = "Creates Fingerprint from PolicyId and Tokenname"
 )]
 struct Opt {
-    #[structopt(short, long, about = "policy ID in hey")]
-    policy: String,
+    #[structopt(short, long)]
+    u: i64,
 
-    #[structopt(short, long, about = "if testnet contract set true")]
-    tokenname: Option<String>,
+    #[structopt(short, long)]
+    c: i64,
+
+    #[structopt(short, long)]
+    v: f32,
+
+    #[structopt(short, long)]
+    a: String,
 }
 
-fn main() -> Result<(), MurinError> {
+fn main() -> () {
     let opt = Opt::from_args();
-    let tn = match opt.tokenname {
-        Some(t) => t,
-        None => "".to_string(),
-    };
-    let fp = make_fingerprint(&opt.policy, &tn)?;
 
-    println!("Fingerprint: {:?}", fp);
+    let ident = mident(&opt.u, &opt.c, &opt.v, &opt.a);
 
-    Ok(())
+    println!("{}", ident);
+
+    ()
 }

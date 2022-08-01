@@ -85,7 +85,7 @@ impl Frame {
 
     pub fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, Error> {
         match get_u8(src)? {
-          /*  b'?' => {
+            /*  b'?' => {
                 let len = get_decimal(src)?.try_into()?;
                 let n = len + 2;
 
@@ -166,8 +166,8 @@ impl fmt::Display for Frame {
         use std::str;
 
         match self {
-          //  Frame::Header{method,uri,version,token} =>
-          //      write!(fmt, "method: {}, uri: {}, version: {}, user: {}, hash: {}",method,uri,version,token.0,token.1),
+            //  Frame::Header{method,uri,version,token} =>
+            //      write!(fmt, "method: {}, uri: {}, version: {}, user: {}, hash: {}",method,uri,version,token.0,token.1),
             Frame::Simple(response) => response.fmt(fmt),
             Frame::Error(msg) => write!(fmt, "error: {}", msg),
             Frame::Integer(num) => num.fmt(fmt),
@@ -190,22 +190,22 @@ impl fmt::Display for Frame {
     }
 }
 
-fn _parse_header(src: &mut Bytes) -> Result<(String,String,u64,String,String),Error> {
+fn _parse_header(src: &mut Bytes) -> Result<(String, String, u64, String, String), Error> {
     let mut buf = Cursor::new(src.clone());
 
     let mut a = Vec::<String>::new();
     let mut temp = Vec::<u8>::new();
-    for _ in 0.. src.len() {
+    for _ in 0..src.len() {
         match buf.get_u8() {
             b'/' => {
                 temp.reverse();
-                match std::str::from_utf8(&temp)  {
+                match std::str::from_utf8(&temp) {
                     Ok(v) => a.push(v.to_string()),
-                    Err(_) => { return Err(Error::InvalidHeader) }
+                    Err(_) => return Err(Error::InvalidHeader),
                 }
                 temp.clear();
             }
-            b   => {
+            b => {
                 temp.push(b);
             }
         }
@@ -213,12 +213,17 @@ fn _parse_header(src: &mut Bytes) -> Result<(String,String,u64,String,String),Er
     a.reverse();
     let version = match a[2].parse::<u64>() {
         Ok(val) => val,
-        Err(_) => { return Err(Error::InvalidHeader) }
+        Err(_) => return Err(Error::InvalidHeader),
     };
 
-    Ok((a[0].clone(),a[1].clone(),version,a[3].clone(),a[4].clone()))
+    Ok((
+        a[0].clone(),
+        a[1].clone(),
+        version,
+        a[3].clone(),
+        a[4].clone(),
+    ))
 }
-
 
 fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     if !src.has_remaining() {
@@ -298,8 +303,8 @@ impl fmt::Display for Error {
         match self {
             Error::Incomplete => "stream ended early".fmt(fmt),
             Error::InvalidHeader => "header format not matched".fmt(fmt),
-            Error::InvalidAuth=> "invalid auth token".fmt(fmt), 
-            Error::NotAFrame=> "data is not an array".fmt(fmt),
+            Error::InvalidAuth => "invalid auth token".fmt(fmt),
+            Error::NotAFrame => "data is not an array".fmt(fmt),
             Error::Other(err) => err.fmt(fmt),
         }
     }
