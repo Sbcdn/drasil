@@ -31,6 +31,7 @@ ENV CARGO_HOME=/geri-build/.cargo
 COPY ./Cargo.toml ./Cargo.lock ./                       
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
+COPY ./.cargo/murin /murin
 COPY ./src ./src
 RUN cargo build --release --target x86_64-unknown-linux-gnu
 

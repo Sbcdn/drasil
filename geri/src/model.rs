@@ -1,26 +1,31 @@
+//Duplicate from Oura
 use std::fmt::Display;
 
+use merge::Merge;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+use strum_macros::Display;
 
-// We're duplicate the Era struct from Pallas for two reasons: a) we need it to
-// be serializable and we don't want to impose serde dependency on Pallas and b)
-// we prefer not to add dependencies to Pallas outside of the sources that
+// We're duplicating the Era struct from Pallas for two reasons: a) we need it
+// to be serializable and we don't want to impose serde dependency on Pallas and
+// b) we prefer not to add dependencies to Pallas outside of the sources that
 // actually use it on an attempt to make the pipeline agnostic of particular
 // implementation details.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Display)]
 pub enum Era {
     Undefined,
+    Unknown,
     Byron,
     Shelley,
     Allegra,
     Mary,
     Alonzo,
+    Babbage,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum MetadatumRendition {
     MapJson(JsonValue),
@@ -42,7 +47,7 @@ impl Display for MetadatumRendition {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct MetadataRecord {
     pub label: String,
 
@@ -74,7 +79,22 @@ impl From<CIP25AssetRecord> for EventData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct CIP15AssetRecord {
+    pub voting_key: String,
+    pub stake_pub: String,
+    pub reward_address: String,
+    pub nonce: i64,
+    pub raw_json: JsonValue,
+}
+
+impl From<CIP15AssetRecord> for EventData {
+    fn from(x: CIP15AssetRecord) -> Self {
+        EventData::CIP15Asset(x)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TxInputRecord {
     pub tx_id: String,
     pub index: u64,
@@ -86,10 +106,11 @@ impl From<TxInputRecord> for EventData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OutputAssetRecord {
     pub policy: String,
     pub asset: String,
+    pub asset_ascii: Option<String>,
     pub amount: u64,
 }
 
@@ -99,11 +120,12 @@ impl From<OutputAssetRecord> for EventData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TxOutputRecord {
     pub address: String,
     pub amount: u64,
     pub assets: Option<Vec<OutputAssetRecord>>,
+    pub datum_hash: Option<String>,
 }
 
 impl From<TxOutputRecord> for EventData {
@@ -112,7 +134,7 @@ impl From<TxOutputRecord> for EventData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct MintRecord {
     pub policy: String,
     pub asset: String,
@@ -125,7 +147,13 @@ impl From<MintRecord> for EventData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct WithdrawalRecord {
+    pub reward_account: String,
+    pub coin: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq)]
 pub struct TransactionRecord {
     pub hash: String,
     pub fee: u64,
@@ -142,6 +170,12 @@ pub struct TransactionRecord {
     pub inputs: Option<Vec<TxInputRecord>>,
     pub outputs: Option<Vec<TxOutputRecord>>,
     pub mint: Option<Vec<MintRecord>>,
+    pub vkey_witnesses: Option<Vec<VKeyWitnessRecord>>,
+    pub native_witnesses: Option<Vec<NativeWitnessRecord>>,
+    pub plutus_witnesses: Option<Vec<PlutusWitnessRecord>>,
+    pub plutus_redeemers: Option<Vec<PlutusRedeemerRecord>>,
+    pub plutus_data: Option<Vec<PlutusDatumRecord>>,
+    pub withdrawals: Option<Vec<WithdrawalRecord>>,
 }
 
 impl From<TransactionRecord> for EventData {
@@ -150,7 +184,7 @@ impl From<TransactionRecord> for EventData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Merge, Default)]
 pub struct EventContext {
     pub block_hash: Option<String>,
     pub block_number: Option<u64>,
@@ -170,7 +204,64 @@ pub enum StakeCredential {
     Scripthash(String),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct VKeyWitnessRecord {
+    pub vkey_hex: String,
+    pub signature_hex: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct NativeWitnessRecord {
+    pub policy_id: String,
+    pub script_json: JsonValue,
+}
+
+impl From<NativeWitnessRecord> for EventData {
+    fn from(x: NativeWitnessRecord) -> Self {
+        EventData::NativeWitness(x)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PlutusWitnessRecord {
+    pub script_hash: String,
+    pub script_hex: String,
+}
+
+impl From<PlutusWitnessRecord> for EventData {
+    fn from(x: PlutusWitnessRecord) -> Self {
+        EventData::PlutusWitness(x)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PlutusRedeemerRecord {
+    pub purpose: String,
+    pub ex_units_mem: u32,
+    pub ex_units_steps: u64,
+    pub input_idx: u32,
+    pub plutus_data: JsonValue,
+}
+
+impl From<PlutusRedeemerRecord> for EventData {
+    fn from(x: PlutusRedeemerRecord) -> Self {
+        EventData::PlutusRedeemer(x)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PlutusDatumRecord {
+    pub datum_hash: String,
+    pub plutus_data: JsonValue,
+}
+
+impl From<PlutusDatumRecord> for EventData {
+    fn from(x: PlutusDatumRecord) -> Self {
+        EventData::PlutusDatum(x)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BlockRecord {
     pub era: Era,
     pub epoch: Option<u64>,
@@ -183,6 +274,7 @@ pub struct BlockRecord {
     pub number: u64,
     pub previous_hash: String,
     pub cbor_hex: Option<String>,
+    pub transactions: Option<Vec<TransactionRecord>>,
 }
 
 impl From<BlockRecord> for EventData {
@@ -191,7 +283,7 @@ impl From<BlockRecord> for EventData {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Display, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum EventData {
     Block(BlockRecord),
@@ -203,16 +295,29 @@ pub enum EventData {
     OutputAsset(OutputAssetRecord),
     Metadata(MetadataRecord),
 
+    VKeyWitness(VKeyWitnessRecord),
+    NativeWitness(NativeWitnessRecord),
+    PlutusWitness(PlutusWitnessRecord),
+    PlutusRedeemer(PlutusRedeemerRecord),
+    PlutusDatum(PlutusDatumRecord),
+
     #[serde(rename = "cip25_asset")]
     CIP25Asset(CIP25AssetRecord),
+
+    #[serde(rename = "cip15_asset")]
+    CIP15Asset(CIP15AssetRecord),
 
     Mint(MintRecord),
     Collateral {
         tx_id: String,
         index: u64,
     },
-    NativeScript {},
+    NativeScript {
+        policy_id: String,
+        script: JsonValue,
+    },
     PlutusScript {
+        hash: String,
         data: String,
     },
     StakeRegistration {
@@ -235,6 +340,7 @@ pub enum EventData {
         pool_owners: Vec<String>,
         relays: Vec<String>,
         pool_metadata: Option<String>,
+        pool_metadata_hash: Option<String>,
     },
     PoolRetirement {
         pool: String,
@@ -251,11 +357,9 @@ pub enum EventData {
         block_slot: u64,
         block_hash: String,
     },
-    // // flow-control event to end the pipeline
-    // Finalize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Event {
     pub context: EventContext,
 
