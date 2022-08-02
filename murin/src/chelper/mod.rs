@@ -78,8 +78,8 @@ pub struct ExUnitPrice {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ExUnit {
-    steps: f64,
-    memory: f64,
+    pub steps: f64,
+    pub memory: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

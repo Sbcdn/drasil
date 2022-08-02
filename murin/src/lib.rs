@@ -9,6 +9,7 @@
 extern crate diesel;
 pub mod chelper;
 pub mod cip30;
+pub mod cost;
 pub mod error;
 pub mod txbuilders;
 pub mod utxomngr;
