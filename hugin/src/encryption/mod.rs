@@ -46,11 +46,8 @@ fn get_secure_key_from_pwd(pwd: &String) -> (Vec<u8>, [u8; 32]) {
 }
 
 async fn vault_auth(client: &VaultClient) -> AuthInfo {
-    log::debug!("Vault Auth");
     let secret_id = std::env::var("VSECRET_ID").unwrap();
     let role_id = std::env::var("V_ROLE_ID").unwrap();
-    //let mut path = std::env::var("VAULT_NAMESPACE").unwrap();
-    //path.push_str("approle");
     vaultrs::auth::approle::login(client, "approle", &role_id, &secret_id)
         .await
         .unwrap()
@@ -72,13 +69,11 @@ pub async fn vault_connect() -> VaultClient {
 
     let token = match std::env::var("VAULT_TOKEN") {
         Ok(o) => {
-            log::debug!("Found Token");
             client.set_token(&o);
             let lr = vaultrs::token::lookup_self(&client).await.unwrap();
             if lr.ttl > 30 {
                 o
             } else {
-                log::debug!("Get new Token");
                 vault_auth(&client).await.client_token
             }
         }
@@ -86,7 +81,6 @@ pub async fn vault_connect() -> VaultClient {
     };
     client.set_token(&token);
     std::env::set_var("VAULT_TOKEN", &token);
-    log::debug!("Token: {:?}", token);
     client
 }
 
@@ -94,10 +88,7 @@ pub async fn encrypt_data(source: &String, ident: &String) -> Result<String, Mur
     let mut password = [0u8; 1024];
     OsRng.fill_bytes(&mut password);
     let password = hex::encode(password);
-    log::debug!("RANDOM PASSWORD: {}", password);
     let mount = std::env::var("MOUNT").unwrap_or("secret".to_string());
-    //let mut path = std::env::var("VAULT_NAMESPACE").unwrap();
-    //path.push_str(&
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
     path.push_str("/");
@@ -157,17 +148,12 @@ pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError>
 
 pub async fn decrypt_data(encrypted_source: &String, ident: &String) -> Result<String, MurinError> {
     let mount = std::env::var("MOUNT").unwrap_or("secret".to_string());
-    //let mut path = std::env::var("VAULT_NAMESPACE").unwrap();
-    //path.push_str(&std::env::var("VPATH").unwrap());
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
 
     path.push_str(ident);
-    log::debug!("Path: {:?}", path);
     let p: HashMap<String, String> = vaultrs::kv2::read(&vault, &mount, &path).await.unwrap();
     let clear = decrypt(&encrypted_source, &p.get("pw").unwrap())?;
-    log::debug!("Value: {:?}", p);
-
     Ok(clear)
 }
 
