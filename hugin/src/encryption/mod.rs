@@ -13,11 +13,15 @@ use chacha20poly1305::{
 use mimir::MurinError;
 use rand::{rngs::OsRng, RngCore};
 
+use serde_json::json;
 use sha2::Digest;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::{api::AuthInfo, client::Client};
 
-use std::io::{BufWriter, Read, Write};
+use std::{
+    collections::HashMap,
+    io::{BufWriter, Read, Write},
+};
 use zeroize::Zeroize;
 
 fn argon2_config<'a>() -> rargon2::Config<'a> {
@@ -42,21 +46,24 @@ fn get_secure_key_from_pwd(pwd: &String) -> (Vec<u8>, [u8; 32]) {
 }
 
 async fn vault_auth(client: &VaultClient) -> AuthInfo {
+    log::debug!("Vault Auth");
     let secret_id = std::env::var("VSECRET_ID").unwrap();
     let role_id = std::env::var("V_ROLE_ID").unwrap();
-    let mount = "secret";
-    vaultrs::auth::approle::login(client, mount, &role_id, &secret_id)
+    //let mut path = std::env::var("VAULT_NAMESPACE").unwrap();
+    //path.push_str("approle");
+    vaultrs::auth::approle::login(client, "approle", &role_id, &secret_id)
         .await
         .unwrap()
 }
 
 pub async fn vault_connect() -> VaultClient {
     let address = std::env::var("VAULT_ADDR").unwrap();
-
+    let namespace = std::env::var("VAULT_NAMESPACE").unwrap();
     let mut client = VaultClient::new(
         VaultClientSettingsBuilder::default()
             .address(address)
-            .token("token")
+            .set_namespace(namespace)
+            .token("")
             .timeout(Some(core::time::Duration::from_secs(30)))
             .build()
             .unwrap(),
@@ -65,17 +72,21 @@ pub async fn vault_connect() -> VaultClient {
 
     let token = match std::env::var("VAULT_TOKEN") {
         Ok(o) => {
-            let lr = vaultrs::token::lookup(&client, &o).await.unwrap();
+            log::debug!("Found Token");
+            client.set_token(&o);
+            let lr = vaultrs::token::lookup_self(&client).await.unwrap();
             if lr.ttl > 30 {
                 o
             } else {
+                log::debug!("Get new Token");
                 vault_auth(&client).await.client_token
             }
         }
         Err(_) => vault_auth(&client).await.client_token,
     };
     client.set_token(&token);
-
+    std::env::set_var("VAULT_TOKEN", &token);
+    log::debug!("Token: {:?}", token);
     client
 }
 
@@ -84,11 +95,16 @@ pub async fn encrypt_data(source: &String, ident: &String) -> Result<String, Mur
     OsRng.fill_bytes(&mut password);
     let password = hex::encode(password);
     log::debug!("RANDOM PASSWORD: {}", password);
-    let mount = "secret";
+    let mount = std::env::var("MOUNT").unwrap_or("secret".to_string());
+    //let mut path = std::env::var("VAULT_NAMESPACE").unwrap();
+    //path.push_str(&
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
+    path.push_str("/");
     path.push_str(ident);
-    let _set = vaultrs::kv2::set(&vault, mount, &path, &password)
+    let mut data = HashMap::<&str, &str>::new();
+    data.insert("pw", &password);
+    let _set = vaultrs::kv2::set(&vault, &mount, &path, &json!(&data).to_string())
         .await
         .unwrap();
     let cipher = encrypt(&source, &password)?;
@@ -140,12 +156,17 @@ pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError>
 }
 
 pub async fn decrypt_data(encrypted_source: &String, ident: &String) -> Result<String, MurinError> {
-    let mount = "secret";
+    let mount = std::env::var("MOUNT").unwrap_or("secret".to_string());
+    //let mut path = std::env::var("VAULT_NAMESPACE").unwrap();
+    //path.push_str(&std::env::var("VPATH").unwrap());
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
+
     path.push_str(ident);
-    let p = vaultrs::kv2::read(&vault, mount, &path).await.unwrap();
-    let clear = decrypt(&encrypted_source, &p)?;
+    log::debug!("Path: {:?}", path);
+    let p: HashMap<String, String> = vaultrs::kv2::read(&vault, &mount, &path).await.unwrap();
+    let clear = decrypt(&encrypted_source, &p.get("pw").unwrap())?;
+    log::debug!("Value: {:?}", p);
 
     Ok(clear)
 }
