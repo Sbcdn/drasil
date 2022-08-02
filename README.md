@@ -1,19 +1,21 @@
 # Drasil
 
-The Drasil Application Framework is a collection of microservices which act together as scalabe blockchain framework for the Cardano blockchain to run dApps. Its architecture, services and libraries are written in Rust.
+The Drasil Application Framework is a collection of microservices which, when used together, form an effective, scalabe framework for running dApps on the Cardano blockchain. Its architecture, services and libraries are written in Rust.
 
-Drasil was created by Torben and Zak but it also uses several tools developed by the Cardano community (many thanks to all of you) and to run a full "Drasil System" it needs more than the applications and libraries you can find in this repository. Torben and Zak can support and advise how to utillize this framework for your application and consult you on what it needs to run it, just contact us. 
-Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. We constantly develop Drasil and add features, smart contracts and applications. We also maintain a testnet and mainnet version. It is also possible to book single services or applications directly without running your own Drasil System. 
-Visit us on [drasil.io](https://www.drasil.io)
+Drasil system and concept was created by Torben and Zak, but it also utilises several tools developed by the Cardano community, to whom we are grateful and hope to continue to repay with our own small contributions.  Because of the complicated way in which the various tools interact, a lot more is required to actually run a fully integrated and working "Drasil System" than just the applications and libraries found in this repository, of course!  We exist to support and advise on how to utilize this framework for particular applications and consult on what it is required to run it effectively.
 
-We also work closely together with [Maestro](https://www.gomaestro.org) for infrastructure and managed Drasil systems. 
+Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. We constantly develop Drasil and add features, smart contracts and applications. We also maintain a testnet and mainnet version, and it is possible to subscribe to single services or applications directly without running your own Drasil System.  You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
+
+Visit us at [drasil.io](https://www.drasil.io)
+
+We also work with [Maestro](https://www.gomaestro.org) for infrastructure and managed Drasil systems. 
 
 * [Documentation](https://docs.drasil.io/)
 
 * [License]( https://www.drasil.io/licenses/LICENSE-1.0)
 
 ## Mythology
-The word "Drasil" derives from "Yggdrasil" which is in north mythology the world tree, there are some different transalation and interpretations which you can find below. We chose Drasil as we see this application framework as the branches of a large tree, the "World tree" bearing Cardanos applications.
+The word "Drasil" derives from "Yggdrasil" which described the "world tree" in Norse mythology, although there are several different transalations and interpretations, some of which you can find below. We chose Drasil as we imagine this application framework as providing the branches of a large tree, the "World tree" bearing Cardanos applications.
 
 Yggdrasil (from Old Norse Yggdrasill [ˈyɡːˌdrɑselː]), in Norse cosmology, is an immense and central sacred tree. Around it exists all else, including the Nine Worlds.
 
