@@ -3258,7 +3258,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vaultrs"
 version = "0.6.2"
-source = "git+ssh://git@github.com/sbcdn/vaultrs.git?branch=master#01acc78337c191b3ea57f2ccaa3d60d34d1ec148"
+source = "git+https://github.com/Sbcdn/vaultrs.git?branch=master#01acc78337c191b3ea57f2ccaa3d60d34d1ec148"
 dependencies = [
  "async-trait",
  "bytes",
