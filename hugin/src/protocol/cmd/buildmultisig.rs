@@ -341,9 +341,6 @@ impl BuildMultiSig {
             &contract.version,
         )?;
 
-        info!("applying fees...");
-        let apply_system_fee = std::env::var("APPLY_SYSTEM_FEE")?.parse::<bool>()?;
-
         if let Some(fee_addr) = keyloc.fee_wallet_addr {
             if let Ok(addr) = murin::clib::address::Address::from_bech32(&fee_addr) {
                 rwdtxd.set_fee_wallet_addr(&addr);
@@ -406,7 +403,6 @@ impl BuildMultiSig {
             &ns_addr,
             &ns_script,
             &ns_version,
-            &apply_system_fee,
         )
         .await?;
 
@@ -647,7 +643,6 @@ impl BuildMultiSig {
         //ToDO:
         // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
 
-        let apply_mint_fee = false; // retrieve via .env variables
         let ident = crate::encryption::mident(
             &contract.user_id,
             &contract.contract_id,
@@ -664,7 +659,6 @@ impl BuildMultiSig {
             ns_addr.as_ref(),
             &ns_script,
             &ns_version,
-            &apply_mint_fee,
         )
         .await?;
         log::debug!("Try to create raw tx...");
@@ -988,7 +982,6 @@ impl BuildMultiSig {
 
         gtxd.set_inputs(policy_script_utxos);
 
-        let apply_mint_fee = false; // retrieve via .env variables
         let ident = crate::encryption::mident(
             &contract.user_id,
             &contract.contract_id,
@@ -1003,7 +996,6 @@ impl BuildMultiSig {
             ns_addr.as_ref(),
             &ns_script,
             &ns_version,
-            &apply_mint_fee,
         )
         .await?;
         info!("Build Successful!");

@@ -25,7 +25,7 @@ pub fn perform_rwd(
     gtxd: &super::TxData,
     rwdtxd: &super::RWDTxData,
     pvks: &Vec<String>,
-    apply_system_fee: &bool,
+    //    apply_system_fee: &bool,
     dummy: bool,
 ) -> Result<
     (
@@ -49,7 +49,7 @@ pub fn perform_rwd(
 
     dotenv().ok();
 
-    let rwd_system_fee = env::var("SYSTEM_FEE_RWD")?.parse::<u64>()?;
+    //let rwd_system_fee = env::var("SYSTEM_FEE_RWD")?.parse::<u64>()?;
     //let rwd_system_fee_wallet = caddr::Address::from_bech32(&env::var("SYSTEM_FEE_WALLET")?)?;
     let native_script_address = caddr::Address::from_bech32(&ns_addr)?;
 
@@ -181,9 +181,9 @@ pub fn perform_rwd(
     }
 
     // Add SystemFee
-    if *apply_system_fee {
-        contract_fee = contract_fee + rwd_system_fee;
-    }
+    //if *apply_system_fee {
+    //    contract_fee = contract_fee + rwd_system_fee;
+    //}
 
     let fee_val = cutils::Value::new(&cutils::to_bignum(contract_fee));
     debug!("\n\nFee Value: {:?}", fee_val);
@@ -398,7 +398,7 @@ pub async fn build_rwd_multisig(
     ns_addr: &String,
     ns_script: &String,
     ns_version: &String,
-    apply_system_fee: &bool,
+    //    apply_system_fee: &bool,
 ) -> Result<htypes::BuildOutput, MurinError> {
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
@@ -422,7 +422,7 @@ pub async fn build_rwd_multisig(
         gtxd,
         rwdtxd,
         pvks,
-        apply_system_fee,
+        //    apply_system_fee,
         true,
     )?;
 
@@ -449,7 +449,7 @@ pub async fn build_rwd_multisig(
         gtxd,
         rwdtxd,
         &pvks,
-        apply_system_fee,
+        //    apply_system_fee,
         false,
     )?;
 
@@ -471,7 +471,7 @@ pub async fn build_rwd_multisig(
             gtxd,
             rwdtxd,
             &pvks,
-            apply_system_fee,
+            //        apply_system_fee,
             false,
         )?;
         info!("Fee: {:?}", calculated_fee);
