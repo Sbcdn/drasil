@@ -41,7 +41,7 @@ chacha20poly1305 = { version = "0.9.0", features = ["stream"] }
 zeroize = "1.4"
 rargon2 = { package="rust-argon2", version= "1.0"}
 rpassword = "5.0.1"
-vaultrs = "0.6.2"
+vaultrs = { git = "ssh://git@github.com/sbcdn/vaultrs.git", branch="master" }#"0.6.2"
 sha2 = "0.10.2"
 
 
