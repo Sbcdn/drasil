@@ -8,9 +8,7 @@
 */
 use crate::htypes;
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
+use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use clib::NetworkIdKind;
 use serde::{Deserialize, Serialize};
 use std::ops::{Div, Rem, Sub};
@@ -69,48 +67,48 @@ impl TxData {
             contract_id,
             senders_addresses: saddresses,
             senders_stake_addr: sa,
-            inputs: inputs,
-            network: network,
+            inputs,
+            network,
             outputs: None,
             excludes: None,
             collateral: None,
-            current_slot: current_slot,
+            current_slot,
         })
     }
 
-    pub fn set_user_id(&mut self, user_id: u64) -> () {
+    pub fn set_user_id(&mut self, user_id: u64) {
         self.user_id = Some(user_id);
     }
 
-    pub fn set_contract_id(&mut self, contract_id: u64) -> () {
+    pub fn set_contract_id(&mut self, contract_id: u64) {
         self.contract_id = Some(contract_id);
     }
 
-    pub fn set_senders_addresses(&mut self, addresses: Vec<caddr::Address>) -> () {
+    pub fn set_senders_addresses(&mut self, addresses: Vec<caddr::Address>) {
         self.senders_addresses = addresses;
     }
 
-    pub fn set_stake_address(&mut self, address: caddr::Address) -> () {
+    pub fn set_stake_address(&mut self, address: caddr::Address) {
         self.senders_stake_addr = address;
     }
 
-    pub fn set_outputs(&mut self, outputs: TransactionUnspentOutputs) -> () {
+    pub fn set_outputs(&mut self, outputs: TransactionUnspentOutputs) {
         self.outputs = Some(outputs);
     }
 
-    pub fn set_inputs(&mut self, inputs: TransactionUnspentOutputs) -> () {
+    pub fn set_inputs(&mut self, inputs: TransactionUnspentOutputs) {
         self.inputs = inputs;
     }
 
-    pub fn set_excludes(&mut self, excludes: TransactionUnspentOutputs) -> () {
+    pub fn set_excludes(&mut self, excludes: TransactionUnspentOutputs) {
         self.excludes = Some(excludes);
     }
 
-    pub fn set_collateral(&mut self, collateral: TransactionUnspentOutput) -> () {
+    pub fn set_collateral(&mut self, collateral: TransactionUnspentOutput) {
         self.collateral = Some(collateral);
     }
 
-    pub fn set_current_slot(&mut self, current_slot: u64) -> () {
+    pub fn set_current_slot(&mut self, current_slot: u64) {
         self.current_slot = current_slot;
     }
 
@@ -131,7 +129,7 @@ impl TxData {
             0 => None,
             _ => match i {
                 Some(n) => {
-                    if n <= self.senders_addresses.len() - 1 {
+                    if n < self.senders_addresses.len() {
                         Some(self.senders_addresses[n].clone())
                     } else {
                         None
@@ -163,7 +161,7 @@ impl TxData {
     }
 
     pub fn get_network(&self) -> NetworkIdKind {
-        self.network.clone()
+        self.network
     }
 
     pub fn get_current_slot(&self) -> u64 {
@@ -237,23 +235,23 @@ impl ToString for TxData {
 
         let mut ret = "".to_string();
         ret.push_str(&s_senders_addresses);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_senders_stake_addr);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_outputs);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_inputs);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_excludes);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_collateral);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_network);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&self.get_current_slot().to_string());
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_user_id);
-        ret.push_str(&"|".to_string());
+        ret.push('|');
         ret.push_str(&s_contract_id);
 
         ret
@@ -263,7 +261,7 @@ impl ToString for TxData {
 impl core::str::FromStr for TxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let slice: Vec<&str> = src.split("|").collect();
+        let slice: Vec<&str> = src.split('|').collect();
         if slice.len() == 10 {
             // restore senders addresses
             let mut senders_addresses = Vec::<caddr::Address>::new();
@@ -305,7 +303,7 @@ impl core::str::FromStr for TxData {
                 "testnet" => clib::NetworkIdKind::Testnet,
                 _ => {
                     return Err(MurinError::new(
-                        &"ERROR network could not be restored from string",
+                        "ERROR network could not be restored from string",
                     ))
                 }
             };
@@ -324,25 +322,22 @@ impl core::str::FromStr for TxData {
             };
 
             Ok(TxData {
-                user_id: user_id,
-                contract_id: contract_id,
-                senders_addresses: senders_addresses,
+                user_id,
+                contract_id,
+                senders_addresses,
                 senders_stake_addr: strake_address,
-                outputs: outputs,
-                inputs: inputs,
-                excludes: excludes,
-                collateral: collateral,
-                network: network,
+                outputs,
+                inputs,
+                excludes,
+                collateral,
+                network,
                 current_slot: curr_slot,
             })
         } else {
-            Err(MurinError::new(
-                &format!(
-                    "Error the provided string '{}' cannot be parsed into 'TxData' ",
-                    src
-                )
-                .to_string(),
-            ))
+            Err(MurinError::new(&format!(
+                "Error the provided string '{}' cannot be parsed into 'TxData' ",
+                src
+            )))
         }
     }
 }
@@ -363,11 +358,11 @@ pub struct CPO {
 }
 
 impl CPO {
-    pub fn new(user_id: &i64, contract_id: &i64, security_code: &String) -> Self {
+    pub fn new(user_id: &i64, contract_id: &i64, security_code: &str) -> Self {
         CPO {
             user_id: *user_id,
             contract_id: *contract_id,
-            security_code: security_code.clone(),
+            security_code: security_code.to_string(),
         }
     }
 
@@ -478,7 +473,7 @@ pub fn find_token_utxos_na(
         ));
     }
 
-    if out.len() <= 0 {
+    if out.is_empty() {
         debug!("Inputs: {:?}", inputs);
         return Err(MurinError::new(
             "ERROR: The token is not available in the utxo set",
@@ -540,8 +535,8 @@ pub fn input_selection(
             let col = purecoinassets.swap_remove(index);
             debug!("Deleted collateral from inputs: {:?}\n", col);
             // Double check
-            if let Some(_) =
-                crate::chelper::hfn::find_collateral_by_txhash_txix(&cutxo, &purecoinassets)
+            if crate::chelper::hfn::find_collateral_by_txhash_txix(&cutxo, &purecoinassets)
+                .is_some()
             {
                 return Err(MurinError::new(
                     "PANIC COLLATERAL COULDN'T BE EXCLUDED FROM SELECTION SET",
@@ -570,7 +565,7 @@ pub fn input_selection(
             }
         }
         let token_selection = find_token_utxos_na(&multiassets.clone(), tokens_to_find, on_addr)?;
-        if token_selection.len() > 0 {
+        if !token_selection.is_empty() {
             for i in 0..token_selection.len() {
                 selection.add(&token_selection.get(i));
                 acc = acc
@@ -607,7 +602,7 @@ pub fn input_selection(
     while nv.coin().compare(&acc.coin()) > 0 && max_run < utxo_count {
         nv = nv.checked_sub(&acc).unwrap();
 
-        if purecoinassets.len() <= 0 {
+        if purecoinassets.is_empty() {
             // Find the tokens we want in the multis
             debug!("\nWe look for multiassets!\n");
             let ret = crate::chelper::hfn::find_suitable_coins(&mut nv, &mut multiassets, overhead);
@@ -677,11 +672,11 @@ impl PaymentValue {
         self.value.clone()
     }
 
-    pub fn set_payer(&mut self, a: &caddr::Address) -> () {
+    pub fn set_payer(&mut self, a: &caddr::Address) {
         self.payer = a.clone();
     }
 
-    pub fn set_value(&mut self, v: &cutils::Value) -> () {
+    pub fn set_value(&mut self, v: &cutils::Value) {
         self.value = v.clone();
     }
 }
@@ -718,13 +713,13 @@ impl PartialEq for Persona {
 }
 
 impl Persona {
-    pub fn new(own_address: &caddr::Address, receive: &Vec<PaymentValue>) -> Self {
+    pub fn new(own_address: &caddr::Address, receive: &[PaymentValue]) -> Self {
         Persona {
             txuo_out: None,
             own_address: own_address.clone(),
             stake_key: crate::chelper::get_stake_address(own_address),
             change: cutils::Value::new(&cutils::to_bignum(0)),
-            receive: receive.clone(),
+            receive: receive.to_owned(),
             used_inputs: TransactionUnspentOutputs::new(),
         }
     }
@@ -748,7 +743,7 @@ impl Persona {
 
         self.change = self.change.checked_add(&other.change)?;
         // ToDo ensure there are no double entires in receive (unique does not work needs to be doen by hand)
-        self.receive.extend(other.receive.iter().map(|n| n.clone()));
+        self.receive.extend(other.receive.iter().cloned());
         self.used_inputs.merge(other.used_inputs.to_owned());
 
         Ok(())
@@ -898,7 +893,7 @@ impl Persona {
 
                     input_utxos.delete_set(&utxo_selection);
 
-                    let _ = select_coins(
+                    select_coins(
                         &mut utxo_selection,
                         &mut input_utxos,
                         &needed,
@@ -908,7 +903,7 @@ impl Persona {
                 }
                 None => {
                     let mut utxo_selection = TransactionUnspentOutputs::new();
-                    let _ = select_coins(
+                    select_coins(
                         &mut utxo_selection,
                         &mut input_utxos,
                         &needed,
@@ -967,14 +962,14 @@ pub fn select_coins(
     if selected_value.coin().compare(&needed.coin()) == -1 {
         // Not enough Ada we need more
         let missing_coins = needed.coin().checked_sub(&selected_value.coin())?;
-        let additional_inputs = input_utxos.coin_value_subset_minutxo(&missing_coins, &payer);
+        let additional_inputs = input_utxos.coin_value_subset_minutxo(&missing_coins, payer);
         input_utxos.delete_set(&additional_inputs);
         utxo_selection.merge(additional_inputs);
 
         // make sure enough Ada is available
         select_min_utxo_input_coins(
-            &own_address,
-            &needed,
+            own_address,
+            needed,
             &mut selected_value,
             utxo_selection,
             input_utxos,
@@ -1009,8 +1004,8 @@ impl Personas {
                     .map(|n| n.to_owned())
                     .collect();
                 combinable_bs.iter().for_each(|n| a[0].add_left(n).unwrap());
-                b.retain(|n| !combinable_bs.contains(&n));
-                a.retain(|n| !combinable_bs.contains(&n));
+                b.retain(|n| !combinable_bs.contains(n));
+                a.retain(|n| !combinable_bs.contains(n));
                 let len = a.len() - 1;
                 a.swap(0, len);
 
@@ -1111,7 +1106,7 @@ pub fn balance_transaction(
         .filter(|n| n.txuo_out.clone().unwrap().to_bytes().len() > 5000)
         .collect();
 
-    if to_big.len() > 0 {
+    if !to_big.is_empty() {
         // Split the outputs which are to big in half if necessary add another input to get more Ada
         personas.p.to_owned().retain(|n| !to_big.contains(&n));
 
@@ -1127,7 +1122,7 @@ pub fn balance_transaction(
     }
 
     // Make TxIns and TxOuts
-    for elem in personas.p.to_owned() {
+    for elem in personas.p.iter().cloned() {
         txouts.add(&elem.txuo_out.unwrap());
         for u in elem.used_inputs {
             txins.add(&u.input());
@@ -1143,7 +1138,7 @@ pub fn half_utxo(
     paying_address: &caddr::Address,
 ) -> (clib::TransactionOutputs, TransactionUnspentOutputs) {
     let mut one = cutils::Value::new(&cutils::to_bignum(0));
-    let mut two = v.amount().clone();
+    let mut two = v.amount();
     let mut out = clib::TransactionOutputs::new();
     let mut used_inputs = TransactionUnspentOutputs::new();
 
@@ -1172,7 +1167,7 @@ pub fn half_utxo(
             // Not enough Ada for both min Utxos
             let missing_coins = total_min_ada.clamped_sub(&two.coin());
             let additional_inputs =
-                inputs.coin_value_subset_minutxo(&missing_coins, &paying_address);
+                inputs.coin_value_subset_minutxo(&missing_coins, paying_address);
             inputs.delete_set(&additional_inputs);
             used_inputs.merge(additional_inputs.clone());
 
@@ -1185,7 +1180,7 @@ pub fn half_utxo(
             tot_val = tot_val
                 .checked_sub(&cutils::Value::new(&total_min_ada))
                 .unwrap();
-            let new_change = clib::TransactionOutput::new(&paying_address, &tot_val);
+            let new_change = clib::TransactionOutput::new(paying_address, &tot_val);
             if new_change.to_bytes().len() > 5000 {
                 let next = half_utxo(&new_change, inputs, paying_address);
                 for i in 0..next.0.len() {
@@ -1230,7 +1225,7 @@ pub fn find_assets_in_value(
         let amt = &ma.get_asset(&t.0, &t.1);
         if cutils::from_bignum(amt) > 0 {
             flag = true;
-            let mut ramt = amt.clone();
+            let mut ramt = *amt;
             if amt.compare(&t.2) > 0 {
                 ramt = amt.clamped_sub(&t.2);
             }
@@ -1269,7 +1264,7 @@ pub fn calc_min_ada_for_utxo(
     };
 
     let size = bundle_size(
-        &value,
+        value,
         &htypes::OutputSizeConstants {
             k0: 2,
             k1: 6,
@@ -1299,7 +1294,7 @@ pub fn calc_min_ada_for_utxo(
         panic!("exceeded max value size ")
     }
 
-    return min_ada;
+    min_ada
 }
 
 pub fn bundle_size(value: &cutils::Value, osc: &htypes::OutputSizeConstants) -> usize {
@@ -1316,11 +1311,11 @@ pub fn bundle_size(value: &cutils::Value, osc: &htypes::OutputSizeConstants) -> 
 
             for policy in 0..policy_ids.len() {
                 let pid = &policy_ids.get(policy);
-                pil = pil + pid.to_bytes().len();
-                num_assets = num_assets + assets.get(&pid).unwrap().len();
+                pil += pid.to_bytes().len();
+                num_assets += assets.get(pid).unwrap().len();
                 let tns = assets.get(&policy_ids.get(policy)).unwrap().keys();
                 for tn in 0..tns.len() {
-                    anl = anl + tns.get(tn).name().len();
+                    anl += tns.get(tn).name().len();
                 }
             }
 
@@ -1359,7 +1354,7 @@ pub async fn create_and_submit_cbor_tx(tx: String, tx_hash: String) -> Result<St
 }
 
 pub async fn submit_endpoint(
-    tx: &Vec<u8>,
+    tx: &[u8],
     endpoint: String,
     own_tx_hash: &String,
     client: &reqwest::Client,
@@ -1369,7 +1364,7 @@ pub async fn submit_endpoint(
     let response = client
         .post(endpoint.clone())
         .header("Content-Type", "application/cbor")
-        .body(tx.clone())
+        .body(tx.to_owned())
         .send();
     pin_mut!(response);
 
@@ -1393,7 +1388,7 @@ pub async fn submit_endpoint(
                     err = format!("ERROR on tx submission: {:?}", resp_text);
                     debug!("Error 1 : {:?}", err);
                 } else {
-                    txhash = resp_text.replace("\"", "");
+                    txhash = resp_text.replace('\"', "");
                 }
                 let assert = *own_tx_hash == txhash;
 
@@ -1418,7 +1413,7 @@ pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<Str
     let client = reqwest::Client::new();
     let tx = hex::decode(tx.cborHex.clone())?;
     let mut response1 = (String::new(), String::new(), false);
-    match submit_endpoint(&tx, submit1, &own_tx_hash, &client).await {
+    match submit_endpoint(&tx, submit1, own_tx_hash, &client).await {
         Ok(x) => response1 = x,
         Err(e) => {
             error!("Error: '{}'", e.to_string())
@@ -1426,7 +1421,7 @@ pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<Str
     };
 
     let mut response2 = (String::new(), String::new(), false);
-    match submit_endpoint(&tx, submit2, &own_tx_hash, &client).await {
+    match submit_endpoint(&tx, submit2, own_tx_hash, &client).await {
         Ok(x) => response2 = x,
         Err(e) => {
             error!("Error: '{}'", e.to_string())
@@ -1434,7 +1429,7 @@ pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<Str
     };
 
     let mut response3 = (String::new(), String::new(), false);
-    match submit_endpoint(&tx, submit3, &own_tx_hash, &client).await {
+    match submit_endpoint(&tx, submit3, own_tx_hash, &client).await {
         Ok(x) => response3 = x,
         Err(e) => {
             error!("Error: '{}'", e.to_string())
@@ -1445,7 +1440,7 @@ pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<Str
         Ok(own_tx_hash.clone())
     } else {
         Err(MurinError::new(
-            &(response1.1 + &response2.1 + &response3.1).to_string(),
+            &(response1.1 + &response2.1 + &response3.1),
         ))
     }
 }
@@ -1486,7 +1481,7 @@ pub fn get_input_position(
         .0;
     debug!("\nIndex: {:?}\n", index);
 
-    return (index, my_index);
+    (index, my_index)
 }
 
 pub fn split_value(

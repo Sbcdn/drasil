@@ -40,7 +40,7 @@ pub fn redis_usedutxos_connection() -> Result<
     let redis_db = env::var("REDIS_DB_URL_UTXOMIND")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
 
     if !cluster {
-        let scon = match redis::Client::open(redis_db.clone())?.get_connection() {
+        let scon = match redis::Client::open(redis_db)?.get_connection() {
             Ok(c) => Some(c),
             Err(e) => {
                 log::debug!(
@@ -50,23 +50,22 @@ pub fn redis_usedutxos_connection() -> Result<
                 None
             }
         };
-        return Ok((None, scon));
-    } else {
-        let ccon =
-            match redis::cluster::ClusterClient::open(vec![redis_db.clone()])?.get_connection() {
-                Ok(c) => Some(c),
-                Err(e) => {
-                    log::debug!(
-                        "Error on trying to establish redis cluster connection; {:?}",
-                        e.to_string()
-                    );
-                    None
-                }
-            };
-        return Ok((ccon, None));
-    }
 
-    Ok((None, None))
+        Ok((None, scon))
+    } else {
+        let ccon = match redis::cluster::ClusterClient::open(vec![redis_db])?.get_connection() {
+            Ok(c) => Some(c),
+            Err(e) => {
+                log::debug!(
+                    "Error on trying to establish redis cluster connection; {:?}",
+                    e.to_string()
+                );
+                None
+            }
+        };
+
+        Ok((ccon, None))
+    }
 }
 
 pub fn redis_replica_connection() -> Result<redis::cluster::ClusterConnection, MurinError> {
