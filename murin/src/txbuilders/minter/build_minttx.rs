@@ -19,7 +19,7 @@ use crate::wallet::*;
 use crate::TxData;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
-use std::env;
+//use std::env;
 
 pub fn perform_mint(
     fee: &cutils::BigNum,
@@ -29,7 +29,7 @@ pub fn perform_mint(
     gtxd: &TxData,
     minttxd: &MinterTxData,
     pvks: &Vec<String>,
-    apply_system_fee: &bool,
+    // apply_system_fee: &bool,
     dummy: bool,
 ) -> std::result::Result<
     (
@@ -53,8 +53,8 @@ pub fn perform_mint(
 
     dotenv::dotenv().ok();
 
-    let rwd_system_fee = env::var("SYSTEM_FEE_MINT")?.parse::<u64>()?;
-    let rwd_system_fee_wallet = caddr::Address::from_bech32(&env::var("SYSTEM_FEE_WALLET")?)?;
+    //let rwd_system_fee = env::var("SYSTEM_FEE_MINT")?.parse::<u64>()?;
+    //let rwd_system_fee_wallet = caddr::Address::from_bech32(&env::var("SYSTEM_FEE_WALLET")?)?;
     let mut vendor_script_address: caddr::Address = minttxd.get_payment_addr();
     let receiving_address: caddr::Address = minttxd.get_payment_addr();
     if let Some(addr) = ns_vendorscript_addr {
@@ -113,12 +113,12 @@ pub fn perform_mint(
     }
 
     // Add System Mint Fee
-    if *apply_system_fee {
-        txouts.add(&clib::TransactionOutput::new(
-            &rwd_system_fee_wallet,
-            &cutils::Value::new(&cutils::to_bignum(rwd_system_fee)),
-        ));
-    }
+    //if *apply_system_fee {
+    //    txouts.add(&clib::TransactionOutput::new(
+    //        &rwd_system_fee_wallet,
+    //        &cutils::Value::new(&cutils::to_bignum(rwd_system_fee)),
+    //    ));
+    //}
 
     // Inputs
     let mut input_txuos = gtxd.clone().get_inputs();
@@ -313,7 +313,7 @@ pub async fn build_mint_multisig(
     vendor_ns_addr: Option<&String>,
     ns_script: &String,
     ns_version: &String,
-    apply_system_fee: &bool,
+    //apply_system_fee: &bool,
 ) -> std::result::Result<crate::htypes::BuildOutput, MurinError> {
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
@@ -337,7 +337,7 @@ pub async fn build_mint_multisig(
         gtxd,
         minttxd,
         pvks,
-        apply_system_fee,
+        //      apply_system_fee,
         true,
     )?;
 
@@ -364,7 +364,7 @@ pub async fn build_mint_multisig(
         gtxd,
         minttxd,
         &pvks,
-        apply_system_fee,
+        //   apply_system_fee,
         false,
     )?;
 
@@ -385,7 +385,7 @@ pub async fn build_mint_multisig(
             gtxd,
             minttxd,
             &pvks,
-            apply_system_fee,
+            //    apply_system_fee,
             false,
         )?;
         info!("Fee: {:?}", calculated_fee);
