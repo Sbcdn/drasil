@@ -26,7 +26,7 @@ impl BuildStdTx {
     pub fn new(cid: u64, txtype: StdTxType, txpatter: TransactionPattern) -> BuildStdTx {
         BuildStdTx {
             customer_id: cid,
-            txtype: txtype,
+            txtype,
             txpattern: txpatter,
         }
     }
@@ -54,9 +54,9 @@ impl BuildStdTx {
             .with_varint_encoding()
             .deserialize(&txpattern)?;
         Ok(BuildStdTx {
-            customer_id: customer_id,
-            txtype: txtype,
-            txpattern: txpattern,
+            customer_id,
+            txtype,
+            txpattern,
         })
     }
 
@@ -70,18 +70,14 @@ impl BuildStdTx {
             debug!(?response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
-            ()
         }
 
-        let mut ret = String::new();
-        match self.tx_type() {
-            StdTxType::DelegateStake => {
-                ret = match self.handle_stake_delegation().await {
-                    Ok(s) => s,
-                    Err(e) => e.to_string(),
-                }
-            }
-        }
+        let ret = match self.tx_type() {
+            StdTxType::DelegateStake => match self.handle_stake_delegation().await {
+                Ok(s) => s,
+                Err(e) => e.to_string(),
+            },
+        };
 
         response = Frame::Bulk(Bytes::from(
             bc::DefaultOptions::new()

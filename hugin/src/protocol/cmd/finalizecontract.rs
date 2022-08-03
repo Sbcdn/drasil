@@ -54,9 +54,9 @@ impl FinalizeContract {
     ) -> FinalizeContract {
         FinalizeContract {
             customer_id: cid,
-            ctype: ctype,
-            tx_id: tx_id,
-            signature: signature,
+            ctype,
+            tx_id,
+            signature,
         }
     }
 
@@ -91,10 +91,10 @@ impl FinalizeContract {
         let signature = signature;
 
         Ok(FinalizeContract {
-            customer_id: customer_id,
-            ctype: ctype,
-            tx_id: tx_id,
-            signature: signature,
+            customer_id,
+            ctype,
+            tx_id,
+            signature,
         })
     }
 

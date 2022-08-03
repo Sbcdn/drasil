@@ -135,7 +135,7 @@ impl TBContracts {
             .load::<i64>(&establish_connection()?)?;
 
         let mut contract_id_new = 0;
-        if result.len() > 0 {
+        if !result.is_empty() {
             contract_id_new = result[0] + 1;
         }
         Ok(contract_id_new)
@@ -159,15 +159,15 @@ impl TBContracts {
         depricated: &'a bool,
     ) -> Result<TBContracts, MurinError> {
         let new_contract = TBContractNew {
-            user_id: user_id,
-            contract_id: contract_id,
-            contract_type: contract_type,
-            description: description,
-            version: version,
-            plutus: plutus,
-            address: address,
-            policy_id: policy_id,
-            depricated: depricated,
+            user_id,
+            contract_id,
+            contract_type,
+            description,
+            version,
+            plutus,
+            address,
+            policy_id,
+            depricated,
             drasil_lqdty: None,
             customer_lqdty: None,
             external_lqdty: None,
@@ -233,13 +233,13 @@ impl TBMultiSigLoc {
         }
 
         let new_keyloc = TBMultiSigLocNew {
-            user_id: user_id,
-            contract_id: contract_id,
-            version: version,
-            fee_wallet_addr: fee_wallet_addr,
-            fee: fee,
+            user_id,
+            contract_id,
+            version,
+            fee_wallet_addr,
+            fee,
             pvks: &epvks,
-            depricated: depricated,
+            depricated,
         };
         //let conn = establish_connection()?;
         Ok(diesel::insert_into(multisig_keyloc::table)
@@ -342,7 +342,7 @@ impl TBDrasilUser {
         let user_id = match nuser_id {
             Ok(id) => id,
             Err(e) => {
-                if e.to_string() == "NotFound".to_string() {
+                if e.to_string() == *"NotFound" {
                     0
                 } else {
                     return Err(e);
@@ -351,10 +351,7 @@ impl TBDrasilUser {
         };
 
         let password_hash = Argon2::default()
-            .hash_password(
-                pwd.as_bytes(),
-                &SaltString::generate(&mut OsRng).to_string(),
-            )?
+            .hash_password(pwd.as_bytes(), &SaltString::generate(&mut OsRng))?
             .to_string();
 
         let new_user = TBDrasilUserNew {
@@ -382,10 +379,12 @@ impl TBDrasilUser {
 
         Ok(diesel::insert_into(drasil_user::table)
             .values(&new_user)
+            .on_conflict(drasil_user::email)
+            .do_nothing()
             .get_result::<TBDrasilUser>(conn)?)
     }
 
-    pub fn verify_email<'a>(email_in: &'a String) -> Result<TBDrasilUser, MurinError> {
+    pub fn verify_email(email_in: &String) -> Result<TBDrasilUser, MurinError> {
         use crate::schema::drasil_user::dsl::*;
         let conn = establish_connection()?;
         let user = TBDrasilUser::get_user_by_mail(&conn, email_in)?;

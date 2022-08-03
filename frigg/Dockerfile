@@ -32,6 +32,11 @@ COPY ./Cargo.toml ./Cargo.lock ./
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./src ./src
+COPY ./.cargo/hugin /hugin
+COPY ./.cargo/murin /murin
+COPY ./.cargo/gungnir /gungnir
+COPY ./.cargo/mimir /mimir
+COPY ./.cargo/sleipnir /sleipnir
 RUN cargo build --release --target x86_64-unknown-linux-gnu
 
 FROM gcr.io/distroless/cc as frigg

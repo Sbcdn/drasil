@@ -169,10 +169,10 @@ pub struct TBEmailVerificationTokenMessage {
 }
 
 impl TBEmailVerificationTokenMessage {
-    pub fn new(id: Option<String>, email: &String) -> Self {
+    pub fn new(id: Option<String>, email: &str) -> Self {
         TBEmailVerificationTokenMessage {
-            id: id,
-            email: email.clone(),
+            id,
+            email: email.to_owned(),
         }
     }
 }

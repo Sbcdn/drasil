@@ -7,7 +7,7 @@
 #################################################################################
 */
 
-use murin::{address::Address, TxData};
+use murin::TxData;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Error, str::FromStr};
 
@@ -49,12 +49,12 @@ impl FromStr for ContractType {
 impl ToString for ContractType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::MarketPlace => "mp".to_string(),
-            &Self::NftShop => "nftshop".to_string(),
-            &Self::NftMinter => "nftmint".to_string(),
-            &Self::TokenMinter => "tokmint".to_string(),
-            &Self::DrasilAPILiquidity => "drasilliquidity".to_string(),
-            &Self::Other => "not implemented".to_string(),
+            ContractType::MarketPlace => "mp".to_string(),
+            ContractType::NftShop => "nftshop".to_string(),
+            ContractType::NftMinter => "nftmint".to_string(),
+            ContractType::TokenMinter => "tokmint".to_string(),
+            ContractType::DrasilAPILiquidity => "drasilliquidity".to_string(),
+            ContractType::Other => "not implemented".to_string(),
         }
     }
 }
@@ -126,15 +126,15 @@ impl FromStr for MultiSigType {
 impl ToString for MultiSigType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::SpoRewardClaim => "sporwc".to_string(),
-            &Self::NftVendor => "nvendor".to_string(),
-            &Self::DAOVoting => "dvotng".to_string(),
-            &Self::VestingWallet => "vesting".to_string(),
-            &Self::Mint => "mint".to_string(),
-            &Self::ClAPIOneShotMint => "clapioneshotmint".to_string(),
-            &Self::TestRewards => "testrewards".to_string(),
-            &Self::CustomerPayout => "cpo".to_string(),
-            &Self::Other => "not implemented".to_string(),
+            MultiSigType::SpoRewardClaim => "sporwc".to_string(),
+            MultiSigType::NftVendor => "nvendor".to_string(),
+            MultiSigType::DAOVoting => "dvotng".to_string(),
+            MultiSigType::VestingWallet => "vesting".to_string(),
+            MultiSigType::Mint => "mint".to_string(),
+            MultiSigType::ClAPIOneShotMint => "clapioneshotmint".to_string(),
+            MultiSigType::TestRewards => "testrewards".to_string(),
+            MultiSigType::CustomerPayout => "cpo".to_string(),
+            MultiSigType::Other => "not implemented".to_string(),
         }
     }
 }
@@ -228,10 +228,10 @@ impl FromStr for ContractAction {
 impl ToString for ContractAction {
     fn to_string(&self) -> String {
         match &self {
-            &Self::MarketplaceActions(MarketplaceActions::List) => "list".to_string(),
-            &Self::MarketplaceActions(MarketplaceActions::Buy) => "buy".to_string(),
-            &Self::MarketplaceActions(MarketplaceActions::Cancel) => "cancel".to_string(),
-            &Self::MarketplaceActions(MarketplaceActions::Update) => "update".to_string(),
+            ContractAction::MarketplaceActions(MarketplaceActions::List) => "list".to_string(),
+            ContractAction::MarketplaceActions(MarketplaceActions::Buy) => "buy".to_string(),
+            ContractAction::MarketplaceActions(MarketplaceActions::Cancel) => "cancel".to_string(),
+            ContractAction::MarketplaceActions(MarketplaceActions::Update) => "update".to_string(),
         }
     }
 }
@@ -335,7 +335,7 @@ impl TransactionPattern {
             excludes: None,
             collateral: None,
             script: script_spec.clone(),
-            network: network,
+            network,
         }
     }
 
@@ -355,8 +355,8 @@ impl TransactionPattern {
         self.sending_wal_addrs.clone()
     }
 
-    pub fn set_sending_wal_addrs(&mut self, vec: &Vec<String>) -> () {
-        self.sending_wal_addrs = vec.clone();
+    pub fn set_sending_wal_addrs(&mut self, vec: &[String]) {
+        self.sending_wal_addrs = vec.to_owned();
     }
 
     pub fn sending_stake_addr(&self) -> Option<String> {
@@ -378,7 +378,7 @@ impl TransactionPattern {
     pub fn collateral(&self) -> Option<String> {
         match &self.collateral {
             Some(col) => {
-                if col.len() > 0 {
+                if !col.is_empty() {
                     Some(col[0].clone())
                 } else {
                     None
@@ -533,7 +533,7 @@ impl ScriptSpecParams {
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
                 if let Some(royaddr) = royalties_addr {
-                    mptx.set_royalties_address(murin::decode_addr(&royaddr).await?);
+                    mptx.set_royalties_address(murin::decode_addr(royaddr).await?);
                 }
 
                 if let Some(royrate) = royalties_rate {
@@ -567,8 +567,8 @@ impl ScriptSpecParams {
                 // reward_utxos,
             } => {
                 let assets = Token::for_all_into_asset(reward_tokens)?;
-                let stake_addr = murin::decode_addr(&recipient_stake_addr).await?;
-                let payment_addr = murin::decode_addr(&recipient_payment_addr).await?;
+                let stake_addr = murin::decode_addr(recipient_stake_addr).await?;
+                let payment_addr = murin::decode_addr(recipient_payment_addr).await?;
                 // let rwd_addr = murin::decode_addr(&reward_wallet_addr).await?;
                 // let mut utxos = murin::TransactionUnspentOutputs::new();
                 // if let Some(rwdutxo) = reward_utxos {
@@ -615,15 +615,15 @@ impl ScriptSpecParams {
                     None => Vec::<murin::MintTokenAsset>::new(),
                 };
                 let stake_addr = match receiver_stake_addr {
-                    Some(addr) => Some(murin::decode_addr(&addr).await?),
+                    Some(addr) => Some(murin::decode_addr(addr).await?),
                     None => None,
                 };
-                let payment_addr = murin::decode_addr(&receiver_payment_addr).await?;
+                let payment_addr = murin::decode_addr(receiver_payment_addr).await?;
                 let metadata = match mint_metadata {
                     Some(data) => {
-                        if *data != "".to_string() {
+                        if !data.is_empty() {
                             log::debug!("Serde deserializing script parameter");
-                            serde_json::from_str(&data)?
+                            serde_json::from_str(data)?
                         } else {
                             murin::minter::Cip25Metadata::new()
                         }
@@ -658,7 +658,7 @@ impl ScriptSpecParams {
                     let amt = murin::chelper::u64_to_bignum(amounts[i]);
                     assets.push((None, tn, amt))
                 }
-                let payment_addr = murin::b_decode_addr(&receiver).await?;
+                let payment_addr = murin::b_decode_addr(receiver).await?;
                 Ok(MinterTxData::new(
                     assets,
                     None,
@@ -739,12 +739,12 @@ impl FromStr for WalletType {
 impl ToString for WalletType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::Nami => "nami".to_string(),
-            &Self::Eternl => "gero".to_string(),
-            &Self::Gero => "ccvault".to_string(),
-            &Self::Flint => "flint".to_string(),
-            &Self::Yoroi => "yoroi".to_string(),
-            &Self::Typhon => "typhon".to_string(),
+            WalletType::Nami => "nami".to_string(),
+            WalletType::Eternl => "gero".to_string(),
+            WalletType::Gero => "ccvault".to_string(),
+            WalletType::Flint => "flint".to_string(),
+            WalletType::Yoroi => "yoroi".to_string(),
+            WalletType::Typhon => "typhon".to_string(),
         }
     }
 }
@@ -755,8 +755,10 @@ pub struct ReturnError {
 }
 
 impl ReturnError {
-    pub fn new(str: &String) -> ReturnError {
-        ReturnError { msg: str.clone() }
+    pub fn new(str: &str) -> ReturnError {
+        ReturnError {
+            msg: str.to_owned(),
+        }
     }
 }
 
@@ -788,11 +790,11 @@ impl UnsignedTransaction {
         self.id.clone()
     }
 
-    pub fn set_tx(&mut self, s: &String) -> () {
+    pub fn set_tx(&mut self, s: &String) {
         self.tx = s.to_string();
     }
 
-    pub fn set_id(&mut self, s: &String) -> () {
+    pub fn set_id(&mut self, s: &String) {
         self.id = s.to_string();
     }
 }
@@ -806,12 +808,9 @@ impl ToString for UnsignedTransaction {
 impl FromStr for UnsignedTransaction {
     type Err = Error;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let slice: Vec<&str> = src.split("|").collect();
+        let slice: Vec<&str> = src.split('|').collect();
         if slice.len() != 2 {
-            Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("{}", src),
-            ))
+            Err(Error::new(std::io::ErrorKind::InvalidData, src.to_string()))
         } else {
             Ok(UnsignedTransaction {
                 id: slice[0].to_string(),
@@ -833,7 +832,7 @@ impl TxHash {
         }
     }
 
-    pub fn set_txhash(&mut self, str: &String) -> () {
+    pub fn set_txhash(&mut self, str: &String) {
         self.txhash = str.to_string();
     }
 }
@@ -890,18 +889,18 @@ pub struct OneShotReturn {
 
 impl OneShotReturn {
     pub fn new(
-        policy_id: &String,
-        tokennames: &Vec<String>,
-        amounts: &Vec<u64>,
-        txhash: &String,
-        metadata: &String,
+        policy_id: &str,
+        tokennames: &[String],
+        amounts: &[u64],
+        txhash: &str,
+        metadata: &str,
     ) -> Self {
         OneShotReturn {
-            policy_id: policy_id.clone(),
-            tokennames: tokennames.clone(),
-            amounts: amounts.clone(),
-            txhash: txhash.clone(),
-            metadata: metadata.clone(),
+            policy_id: policy_id.to_owned(),
+            tokennames: tokennames.to_owned(),
+            amounts: amounts.to_owned(),
+            txhash: txhash.to_owned(),
+            metadata: metadata.to_owned(),
         }
     }
 }
