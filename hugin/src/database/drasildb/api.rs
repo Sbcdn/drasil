@@ -8,6 +8,7 @@
 */
 use super::*;
 use crate::schema::{contracts, email_verification_token, multisig_keyloc};
+use diesel::pg::upsert::on_constraint;
 use murin::MurinError;
 
 impl TBContracts {
@@ -227,11 +228,7 @@ impl TBMultiSigLoc {
         depricated: &'a bool,
     ) -> Result<TBMultiSigLoc, MurinError> {
         let ident = crate::encryption::mident(user_id, contract_id, version, ca);
-        let mut epvks = Vec::<String>::new();
-        for pv in pvks {
-            epvks.push(crate::encryption::encrypt_data(pv, &ident).await?)
-        }
-
+        let epvks = crate::encryption::encrypt_pvks(pvks, &ident).await?;
         let new_keyloc = TBMultiSigLocNew {
             user_id,
             contract_id,
@@ -334,22 +331,23 @@ impl TBDrasilUser {
         identification: &'a Vec<String>,
         cardano_wallet: Option<&'a String>,
     ) -> Result<TBDrasilUser, MurinError> {
+        log::debug!("create user");
         use argon2::{
             password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
             Argon2,
         };
-        let nuser_id = TBDrasilUser::get_next_user_id(&conn);
+        let nuser_id = TBDrasilUser::get_next_user_id(conn);
         let user_id = match nuser_id {
             Ok(id) => id,
             Err(e) => {
-                if e.to_string() == *"NotFound" {
+                if e.to_string() == *"Not User ID Found" {
                     0
                 } else {
                     return Err(e);
                 }
             }
         };
-
+        log::debug!("u1");
         let password_hash = Argon2::default()
             .hash_password(pwd.as_bytes(), &SaltString::generate(&mut OsRng))?
             .to_string();
@@ -376,12 +374,22 @@ impl TBDrasilUser {
             cardano_wallet,
             cwallet_verified: &false,
         };
-
-        Ok(diesel::insert_into(drasil_user::table)
-            .values(&new_user)
-            .on_conflict(drasil_user::email)
-            .do_nothing()
-            .get_result::<TBDrasilUser>(conn)?)
+        log::debug!("u2");
+        let user = match TBDrasilUser::get_user_by_mail(conn, email) {
+            Ok(u) => {
+                if u.email_verified {
+                    return Err(MurinError::new("User exists and is verified already"));
+                }
+                u
+            }
+            Err(e) => diesel::insert_into(drasil_user::table)
+                .values(&new_user)
+                .on_conflict(on_constraint("unique_email"))
+                .do_nothing()
+                .get_result::<TBDrasilUser>(conn)?,
+        };
+        log::debug!("u3");
+        Ok(user)
     }
 
     pub fn verify_email(email_in: &String) -> Result<TBDrasilUser, MurinError> {
@@ -422,13 +430,23 @@ impl TBEmailVerificationToken {
         Ok(token)
     }
 
+    pub fn find_by_mail(email_in: &str) -> Result<Self, MurinError> {
+        let conn = establish_connection()?;
+
+        let token = email_verification_token::table
+            .filter(email_verification_token::email.eq(email_in))
+            .first(&conn)?;
+
+        Ok(token)
+    }
+
     pub fn create(body: TBEmailVerificationTokenMessage) -> Result<Self, MurinError> {
         use rand::Rng;
 
         let conn = establish_connection()?;
 
         let id = rand::thread_rng().gen::<[u8; 32]>().to_vec();
-        let email = body.email;
+        let email = body.email.clone();
         let created_at = Utc::now();
         let expires_at = created_at + chrono::Duration::hours(12);
         let token = TBEmailVerificationToken {
@@ -438,17 +456,29 @@ impl TBEmailVerificationToken {
             created_at,
         };
 
+        let existing = match TBEmailVerificationToken::find_by_mail(&body.email) {
+            Ok(o) => {
+                log::debug!("delete token");
+                TBEmailVerificationToken::delete(&o.id)?;
+                true
+            }
+            Err(_) => {
+                log::debug!("no token existing");
+                false
+            }
+        };
+        /*
+        .on_conflict(email_verification_token::email)
+                   .do_update()
+                   .set((
+                       email_verification_token::id.eq(&token.id),
+                       email_verification_token::created_at.eq(&token.created_at),
+                       email_verification_token::expires_at.eq(&token.expires_at),
+                   )) */
         let token = diesel::insert_into(email_verification_token::table)
             .values(&token)
-            .on_conflict(email_verification_token::email)
-            .do_update()
-            .set((
-                email_verification_token::id.eq(&token.id),
-                email_verification_token::created_at.eq(&token.created_at),
-                email_verification_token::expires_at.eq(&token.expires_at),
-            ))
-            .get_result(&conn)?;
-
+            .get_result(&conn)
+            .unwrap();
         Ok(token)
     }
 
