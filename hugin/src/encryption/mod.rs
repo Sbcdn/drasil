@@ -25,14 +25,14 @@ use std::{
 use zeroize::Zeroize;
 
 fn argon2_config<'a>() -> rargon2::Config<'a> {
-    return rargon2::Config {
+    rargon2::Config {
         variant: rargon2::Variant::Argon2id,
         hash_length: 32,
         lanes: 8,
         mem_cost: 16 * 1024,
         time_cost: 8,
         ..Default::default()
-    };
+    }
 }
 
 fn get_secure_key_from_pwd(pwd: &String) -> (Vec<u8>, [u8; 32]) {
@@ -70,11 +70,15 @@ pub async fn vault_connect() -> VaultClient {
     let token = match std::env::var("VAULT_TOKEN") {
         Ok(o) => {
             client.set_token(&o);
-            let lr = vaultrs::token::lookup_self(&client).await.unwrap();
-            if lr.ttl > 30 {
-                o
-            } else {
-                vault_auth(&client).await.client_token
+            match vaultrs::token::lookup_self(&client).await {
+                Ok(lr) => {
+                    if lr.ttl > 30 {
+                        o
+                    } else {
+                        vault_auth(&client).await.client_token
+                    }
+                }
+                Err(_) => vault_auth(&client).await.client_token,
             }
         }
         Err(_) => vault_auth(&client).await.client_token,
@@ -84,21 +88,23 @@ pub async fn vault_connect() -> VaultClient {
     client
 }
 
-pub async fn encrypt_data(source: &String, ident: &String) -> Result<String, MurinError> {
+pub async fn encrypt_data(source: &String, ident: &str) -> Result<String, MurinError> {
     let mut password = [0u8; 1024];
     OsRng.fill_bytes(&mut password);
-    let password = hex::encode(password);
-    let mount = std::env::var("MOUNT").unwrap_or("secret".to_string());
+    let mut hasher = sha2::Sha512::new();
+    hasher.update(password);
+    let password = hex::encode(hasher.finalize());
+    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
-    path.push_str("/");
+    path.push('/');
     path.push_str(ident);
     let mut data = HashMap::<&str, &str>::new();
     data.insert("pw", &password);
-    let _set = vaultrs::kv2::set(&vault, &mount, &path, &json!(&data).to_string())
+    let _set = vaultrs::kv2::set(&vault, &mount, &path, &data)
         .await
         .unwrap();
-    let cipher = encrypt(&source, &password)?;
+    let cipher = encrypt(source, &password)?;
     Ok(cipher)
 }
 
@@ -114,8 +120,8 @@ pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError>
     let mut source_data = source.as_bytes();
     let mut dist = BufWriter::new(Vec::new());
 
-    dist.write(&salt)?;
-    dist.write(&nonce)?;
+    dist.write_all(&salt)?;
+    dist.write_all(&nonce)?;
     const BUFFER_LEN: usize = 500;
     let mut buffer = [0u8; BUFFER_LEN];
 
@@ -126,12 +132,12 @@ pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError>
             let ciphertext = stream_encryptor
                 .encrypt_next(buffer.as_slice())
                 .map_err(|err| murin::MurinError::new(&format!("Encrypting: {}", err)))?;
-            dist.write(&ciphertext)?;
+            dist.write_all(&ciphertext)?;
         } else {
             let ciphertext = stream_encryptor
                 .encrypt_last(&buffer[..read_count])
                 .map_err(|err| murin::MurinError::new(&format!("Encrypting: {}", err)))?;
-            dist.write(&ciphertext)?;
+            dist.write_all(&ciphertext)?;
             break;
         }
     }
@@ -146,14 +152,14 @@ pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError>
     Ok(string)
 }
 
-pub async fn decrypt_data(encrypted_source: &String, ident: &String) -> Result<String, MurinError> {
-    let mount = std::env::var("MOUNT").unwrap_or("secret".to_string());
+pub async fn decrypt_data(encrypted_source: &String, ident: &str) -> Result<String, MurinError> {
+    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
 
     path.push_str(ident);
     let p: HashMap<String, String> = vaultrs::kv2::read(&vault, &mount, &path).await.unwrap();
-    let clear = decrypt(&encrypted_source, &p.get("pw").unwrap())?;
+    let clear = decrypt(encrypted_source, p.get("pw").unwrap())?;
     Ok(clear)
 }
 
@@ -166,12 +172,12 @@ pub fn decrypt(encrypted_source: &String, password: &String) -> Result<String, M
 
     let mut read_count = encrypted_data.read(&mut salt)?;
     if read_count != salt.len() {
-        return Err(murin::MurinError::new(&format!("Error reading salt.")));
+        return Err(murin::MurinError::new("Error reading salt."));
     }
 
     read_count = encrypted_data.read(&mut nonce)?;
     if read_count != nonce.len() {
-        return Err(murin::MurinError::new(&format!("Error reading nonce.")));
+        return Err(murin::MurinError::new("Error reading nonce."));
     }
 
     let argon2_config = argon2_config();
@@ -191,14 +197,14 @@ pub fn decrypt(encrypted_source: &String, password: &String) -> Result<String, M
             let plaintext = stream_decryptor
                 .decrypt_next(buffer.as_slice())
                 .map_err(|err| murin::MurinError::new(&format!("Decrypting: {}", err)))?;
-            dist.write(&plaintext)?;
+            dist.write_all(&plaintext)?;
         } else if read_count == 0 {
             break;
         } else {
             let plaintext = stream_decryptor
                 .decrypt_last(&buffer[..read_count])
                 .map_err(|err| murin::MurinError::new(&format!("Decrypting: {}", err)))?;
-            dist.write(&plaintext)?;
+            dist.write_all(&plaintext)?;
             break;
         }
     }
@@ -215,7 +221,7 @@ pub fn decrypt(encrypted_source: &String, password: &String) -> Result<String, M
     Ok(string)
 }
 
-pub async fn decrypt_pkvs(vec: Vec<String>, ident: &String) -> Result<Vec<String>, MurinError> {
+pub async fn decrypt_pkvs(vec: Vec<String>, ident: &str) -> Result<Vec<String>, MurinError> {
     let mut epvks = Vec::<String>::new();
     for pv in vec {
         epvks.push(crate::encryption::decrypt_data(&pv, ident).await?)

@@ -55,8 +55,8 @@ impl FinalizeMultiSig {
         FinalizeMultiSig {
             customer_id: cid,
             mtype: ctype,
-            tx_id: tx_id,
-            signature: signature,
+            tx_id,
+            signature,
         }
     }
 
@@ -91,10 +91,10 @@ impl FinalizeMultiSig {
         let signature = signature;
 
         Ok(FinalizeMultiSig {
-            customer_id: customer_id,
-            mtype: mtype,
-            tx_id: tx_id,
-            signature: signature,
+            customer_id,
+            mtype,
+            tx_id,
+            signature,
         })
     }
 
@@ -212,7 +212,7 @@ impl FinalizeMultiSig {
         )?;
 
         let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
-            (self.customer_id as i64),
+            self.customer_id as i64,
             raw_tx.get_contract_id()?,
         )?;
         let ident = crate::encryption::mident(
@@ -239,7 +239,7 @@ impl FinalizeMultiSig {
             &raw_tx.get_contract_version()?,
         )?;
         let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
-            (self.customer_id as i64),
+            self.customer_id as i64,
             raw_tx.get_contract_id()?,
         )?;
         let ident = crate::encryption::mident(

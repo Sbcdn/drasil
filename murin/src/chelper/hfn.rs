@@ -12,7 +12,7 @@ use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{
     address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
 };
-use std::io::{self, BufRead, BufWriter, Read, Write};
+use std::io::{self, BufRead, BufWriter, Write};
 
 use crate::txbuilders;
 use cryptoxide::blake2b::Blake2b;
@@ -35,7 +35,7 @@ pub fn _ccli_query_utxos_address(
     network: String,
 ) -> Option<TransactionUnspentOutputs> {
     let cardano_cli_env = env::var("CARDANO_CLI_PATH");
-    if !cardano_cli_env.is_ok() {
+    if cardano_cli_env.is_err() {
         panic!("CARDANO_CLI_PATH not set");
     }
     let cardano_cli_path = cardano_cli_env.unwrap();
@@ -114,7 +114,7 @@ pub fn _ccli_query_utxos_address(
                                 }
                                 Err(_) => {
                                     if next == "token" {
-                                        let mut t = elem.split(".");
+                                        let mut t = elem.split('.');
                                         let mut asset = clib::Assets::new();
                                         let policy = clib::PolicyID::from_bytes(
                                             hex::decode(t.next().unwrap()).unwrap(),
@@ -194,7 +194,7 @@ pub fn _ccli_query_utxos_address(
         info!("Error: could not read stdin, {:?}", ret.status);
     }
 
-    return None;
+    None
 }
 
 pub fn get_nfts_for_sale(
@@ -208,11 +208,7 @@ pub fn get_nfts_for_sale(
             let assets = value.multiasset().unwrap().get(&policy_id).unwrap();
             for a in 0..assets.len() {
                 let tn = assets.keys().get(a);
-                ret.push((
-                    policy_id.clone(),
-                    tn.clone(),
-                    assets.get(&tn).unwrap().clone(),
-                ))
+                ret.push((policy_id.clone(), tn.clone(), assets.get(&tn).unwrap()))
             }
         }
     }
@@ -232,7 +228,7 @@ pub fn find_token_in_utxo(
                 match multi.get(&cs) {
                     Some(assets) => {
                         for j in 0..assets.len() {
-                            match assets.get(&tn) {
+                            match assets.get(tn) {
                                 Some(_) => return Some(j),
                                 None => continue,
                             }
@@ -244,7 +240,7 @@ pub fn find_token_in_utxo(
         }
         None => { /* Do nothing*/ }
     }
-    return None;
+    None
 }
 
 pub fn get_token_amount(v: &cutils::Value) -> usize {
@@ -255,25 +251,25 @@ pub fn get_token_amount(v: &cutils::Value) -> usize {
                 for i in 0..multis.keys().len() {
                     match multis.get(&multis.keys().get(i)) {
                         Some(assets) => {
-                            k = k + assets.len();
+                            k += assets.len();
                         }
                         None => continue,
                     }
                 }
-                return k;
+                k
             } else {
-                return 0;
+                0
             }
         }
-        None => return 0,
+        None => 0,
     }
 }
 
 pub fn get_ttl_tx(net: &cardano_serialization_lib::NetworkIdKind) -> u64 {
     if *net == cardano_serialization_lib::NetworkIdKind::Testnet {
-        return 1800;
+        1800
     } else {
-        return 7200;
+        7200
     }
 }
 
@@ -290,7 +286,7 @@ pub fn _query_utxos_by_address_from_cli(
         }
     }
     debug!("My Utxos: \n{:?}\n", txuos);
-    return txuos;
+    txuos
 }
 
 //Todo: Return Result
@@ -316,9 +312,9 @@ pub fn get_smart_contract(
 
 pub fn get_network(nws: &String) -> (clib::NetworkIdKind, &str) {
     if nws == "testnet" {
-        return (clib::NetworkIdKind::Testnet, "addr_test");
+        (clib::NetworkIdKind::Testnet, "addr_test")
     } else {
-        return (clib::NetworkIdKind::Mainnet, "addr");
+        (clib::NetworkIdKind::Mainnet, "addr")
     }
 }
 
@@ -354,7 +350,7 @@ pub fn get_input_position(
         .0;
     debug!("\nIndex: {:?}\n", index);
 
-    return (index, my_index);
+    (index, my_index)
 }
 
 pub fn get_vkey_count(
@@ -384,7 +380,7 @@ pub fn get_vkey_count(
         txuos.len()
     );
     debug!("\n\nVkey Counter in Method: {:?}\n", vkey_counter);
-    return vkey_counter;
+    vkey_counter
 }
 
 pub fn make_dummy_vkeywitnesses(vkey_count: usize) -> ccrypto::Vkeywitnesses {
@@ -399,7 +395,7 @@ pub fn make_dummy_vkeywitnesses(vkey_count: usize) -> ccrypto::Vkeywitnesses {
         "\n\nVkeywitness: {:?}\n\n",
         hex::encode(vkeywitness.to_bytes())
     );
-    return dummy_vkeywitnesses;
+    dummy_vkeywitnesses
 }
 
 pub fn get_stake_address(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
@@ -434,7 +430,7 @@ pub fn get_stake_address(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
             }
         }
     }
-    return stake_cred_key;
+    stake_cred_key
 }
 
 pub fn get_payment_address(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
@@ -470,7 +466,7 @@ pub fn get_payment_address(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
         }
     }
     //info!("Payment Addres: {:?}\n",hex::encode(payment_cred_key.to_bytes()));
-    return payment_cred_key;
+    payment_cred_key
 }
 
 pub fn make_cardano_cli_tx(tx: String, tx_hash: String, submit: String, node_ok: bool) -> () {
@@ -485,7 +481,7 @@ pub fn make_cardano_cli_tx(tx: String, tx_hash: String, submit: String, node_ok:
     info!("Tx_Hash: {:?}", tx_hash);
     if submit != "false" && node_ok {
         let cardano_cli_env = env::var("CARDANO_CLI_PATH");
-        if !cardano_cli_env.is_ok() {
+        if cardano_cli_env.is_err() {
             panic!("CARDANO_CLI_PATH not set");
         }
         let cardano_cli_path = cardano_cli_env.unwrap();
@@ -518,7 +514,7 @@ pub fn make_cardano_cli_tx(tx: String, tx_hash: String, submit: String, node_ok:
             let _r = fs::remove_file(format!("tmp_tx/{}.tx", tx_hash));
         } else {
             let txh = TxHash {
-                tx_hash: tx_hash.clone(),
+                tx_hash: tx_hash,
                 message: String::from_utf8(ret.stderr).unwrap(),
             };
             serde_json::to_writer(&io::stdout(), &txh).unwrap();
@@ -543,7 +539,7 @@ pub fn _api_sign_tx(message: clib::TransactionBody) -> ccrypto::Vkeywitness {
 
     debug!("Api Public Key Hash {:?}", api_pub_key_hash);
 
-    return api_vkeywitness;
+    api_vkeywitness
 }
 
 // Add Message Lib
@@ -593,7 +589,7 @@ pub fn tx_output_data(
     // Build and encode transaction
     let transaction = clib::Transaction::new(&txbody, &txwitness, None);
     let out = transaction.to_bytes();
-    let tx = hex::encode(out.clone());
+    let tx = hex::encode(out);
 
     // Conserve TxWitness
     let hex_txwitness = hex::encode(txwitness.to_bytes());
@@ -607,7 +603,7 @@ pub fn tx_output_data(
     let hex_body = hex::encode(txbody_out);
 
     let mut it = "";
-    if internal == true {
+    if internal {
         it = "it";
     }
 
@@ -616,8 +612,8 @@ pub fn tx_output_data(
         metadata: hex_aux,
         tx_body: hex_body,
         tx_unsigned: tx,
-        used_utxos: used_utxos,
-        royalties: royalties,
+        used_utxos,
+        royalties,
         internal_transfer: it.to_string(),
     };
 
@@ -641,16 +637,16 @@ pub fn make_script_outputs(
     //  Add the NFT from the users wallet to the smart contract
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     if script_outputs.len() == 1 {
-        for o in script_outputs {
+        if let Some(o) = script_outputs.iter().next() {
             let r_address = &caddr::Address::from_bech32(&sc_addr).unwrap();
             debug!("Address NetworkId: {:?}", r_address.network_id());
             let mut value = cutils::Value::new(&cutils::to_bignum(0u64));
             let mut lovelaces: u64 = 0;
             let mut multiasset = clib::MultiAsset::new();
             for v in &o.value {
-                if v.currencySymbol == "" || v.currencySymbol == "lovelace" {
+                if v.currencySymbol.is_empty() || v.currencySymbol == "lovelace" {
                     for a in &v.assets {
-                        lovelaces = lovelaces + a.amount;
+                        lovelaces += a.amount;
                     }
                 } else {
                     let cs: clib::PolicyID =
@@ -684,7 +680,7 @@ pub fn make_script_outputs(
             return Some((value, TransactionUnspentOutput::new(&txin, &txout)));
         }
     }
-    return None;
+    None
 }
 
 pub fn _make_wallet_outputs(
@@ -703,13 +699,13 @@ pub fn _make_wallet_outputs(
         let mut lovelaces: u64 = 0;
         let mut multiasset = clib::MultiAsset::new();
         for v in &o.value {
-            if v.currencySymbol == "" || v.currencySymbol == "lovelace" {
+            if v.currencySymbol.is_empty() || v.currencySymbol == "lovelace" {
                 for a in &v.assets {
                     if manual_fee == true && a.amount > 4000000 {
                         lovelaces = lovelaces + a.amount - 2000000;
                         manual_fee = false;
                     } else {
-                        lovelaces = lovelaces + a.amount
+                        lovelaces += a.amount
                     }
                 }
             } else {
@@ -728,7 +724,7 @@ pub fn _make_wallet_outputs(
         value.set_coin(&cutils::to_bignum(lovelaces));
         value.set_multiasset(&multiasset);
         //info!("For Output: {:?} added {:?} lovelaces and {:?} tokens",o.address,lovelaces,multiasset);
-        let txout = clib::TransactionOutput::new(&r_address, &value);
+        let txout = clib::TransactionOutput::new(r_address, &value);
         tx.add_output(&txout).unwrap();
     }
     //info!();
@@ -758,9 +754,9 @@ pub fn make_script_outputs_txb(
             let mut lovelaces: u64 = 0;
             let mut multiasset = clib::MultiAsset::new();
             for v in &o.value {
-                if v.currencySymbol == "" || v.currencySymbol == "lovelace" {
+                if v.currencySymbol.is_empty() || v.currencySymbol == "lovelace" {
                     for a in &v.assets {
-                        lovelaces = lovelaces + a.amount;
+                        lovelaces += a.amount;
                     }
                 } else {
                     let cs: clib::PolicyID =
@@ -799,7 +795,7 @@ pub fn make_script_outputs_txb(
             //i+=1;
         }
     }
-    return txuo;
+    txuo
 }
 
 pub fn sum_output_values(txouts: &clib::TransactionOutputs) -> cutils::Value {
@@ -808,7 +804,7 @@ pub fn sum_output_values(txouts: &clib::TransactionOutputs) -> cutils::Value {
         acc = acc.checked_add(&txouts.get(i).amount()).unwrap();
     }
 
-    return acc;
+    acc
 }
 
 pub fn splitt_ada_off(
@@ -825,7 +821,7 @@ pub fn splitt_ada_off(
     ) {
         1 => {
             let coins = &coins.checked_sub(&min_utxo_ada).unwrap();
-            let coin_value = cutils::Value::new(&coins);
+            let coin_value = cutils::Value::new(coins);
             let coin_txo = clib::TransactionOutput::new(&addr, &coin_value);
 
             let mut token_value = cutils::Value::new(&min_utxo_ada);
@@ -860,7 +856,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                 }
                 Some(multi) => {
                     debug!("Multi Asset in Splitter");
-                    if multi.len() <= 0 {
+                    if multi.len() == 0 {
                         // Ada only leave it as it is
                         debug!("Multi Len <= 0 , {:?}", multi);
                         split_txos.add(&txo);
@@ -958,7 +954,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                     debug!("Many policy ID");
                                     let mut i: usize = 0;
                                     let mut j: usize = 0;
-                                    let work_multi = multi.clone();
+                                    let work_multi = multi;
 
                                     let mut worker_val =
                                         cutils::Value::new(&cutils::to_bignum(2000000u64));
@@ -971,7 +967,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                                 break;
                                             }
                                             Some(assets) => {
-                                                if assets.len() <= 0 || j >= assets.len() {
+                                                if assets.len() == 0 || j >= assets.len() {
                                                     i += 1;
                                                     j = 0;
                                                     continue;
@@ -979,7 +975,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                                     let name = assets.keys().get(j);
                                                     let amt = &assets.get(&name).unwrap();
                                                     let mut new_token = clib::Assets::new();
-                                                    new_token.insert(&name, &amt);
+                                                    new_token.insert(&name, amt);
                                                     let mut new_multi = clib::MultiAsset::new();
                                                     new_multi.insert(
                                                         &work_multi.keys().get(i),
@@ -1108,7 +1104,7 @@ pub fn splitt_coin_multi(
     ada_only.sort_by_coin();
     multi.sort_by_multi_amount();
 
-    return (ada_only, multi);
+    (ada_only, multi)
 }
 
 pub fn find_suitable_coins(
@@ -1187,7 +1183,7 @@ pub fn find_suitable_coins(
             }
         }
         if lc <= coins {
-            if coin_storage.len() > 0 {
+            if !coin_storage.is_empty() {
                 debug!("Took from coinstorage");
                 coin_storage.sort_by_coin();
                 let tx = coin_storage.get(0);
@@ -1199,7 +1195,7 @@ pub fn find_suitable_coins(
             break 'outer;
         }
     }
-    if coin_storage.len() > 0 {
+    if !coin_storage.is_empty() {
         coin_storage.sort_by_coin();
         debug!("Took from coinstorage: {:?}", coin_storage);
 
@@ -1215,7 +1211,7 @@ pub fn find_suitable_coins(
                 tx.input().index()
             );
             let lc = cutils::from_bignum(&tx.output().amount().coin());
-            acc = acc + lc;
+            acc += lc;
             debug!("Acc {:?}, LC: {:?}", acc, lc);
             selection.add(&tx);
             if acc > coins + MIN_ADA {
@@ -1227,18 +1223,18 @@ pub fn find_suitable_coins(
 
     debug!("SUITABLE COINS: {:?}", acc);
 
-    if selection.len() <= 0 {
+    if selection.len() == 0 {
         debug!("Selection length = 0");
-        return (None, 0);
+        (None, 0)
     } else {
-        if multi_storage.len() > 0 {
+        if !multi_storage.is_empty() {
             let mut selection = TransactionUnspentOutputs::new();
             multi_storage.sort_by_multi_amount();
             let tx = multi_storage.get(0);
             selection.add(&tx);
             acc = cutils::from_bignum(&tx.output().amount().coin());
         }
-        return (Some(selection), acc);
+        (Some(selection), acc)
     }
 }
 
@@ -1247,7 +1243,7 @@ pub fn find_asset_utxo(
     nft_cs: ccrypto::ScriptHash,
     nft_tn: clib::AssetName,
 ) -> Option<usize> {
-    if txuos.len() > 0 {
+    if !txuos.is_empty() {
         debug!("len > 1:  {:?}", txuos);
         for i in 0..txuos.len() {
             let unspent_output = txuos.get(i);
@@ -1273,7 +1269,7 @@ pub fn find_asset_utxo(
             }
         }
     }
-    return None;
+    None
 }
 
 pub fn find_asset_utxos_in_txuos(
@@ -1281,7 +1277,7 @@ pub fn find_asset_utxos_in_txuos(
     listing_tokens: &Vec<(ccrypto::ScriptHash, clib::AssetName, cutils::BigNum)>,
 ) -> Vec<usize> {
     let mut ret = Vec::<usize>::new();
-    if txuos.len() > 0 {
+    if !txuos.is_empty() {
         debug!("len > 1:  {:?}", txuos);
         for token in listing_tokens {
             let cs = &token.0;
@@ -1291,7 +1287,7 @@ pub fn find_asset_utxos_in_txuos(
                 let unspent_output = txuos.get(i);
                 let value = unspent_output.output().amount();
                 match value.multiasset() {
-                    Some(multi) => match multi.get(&cs) {
+                    Some(multi) => match multi.get(cs) {
                         Some(assets) => {
                             for p in 0..assets.len() {
                                 if assets.keys().get(p) == *tn {
@@ -1312,7 +1308,7 @@ pub fn find_asset_utxos_in_txuos(
             }
         }
     }
-    return ret;
+    ret
 }
 
 pub fn find_collateral_by_txhash_txix(
@@ -1335,7 +1331,7 @@ pub fn find_collateral_by_txhash_txix(
             }
         }
     }
-    return None;
+    None
 }
 
 pub fn find_utxos_by_address(
@@ -1356,7 +1352,7 @@ pub fn find_utxos_by_address(
     addr_utxos.sort_by_multi_amount();
     other_utxos.sort_by_coin();
 
-    return (addr_utxos, other_utxos);
+    (addr_utxos, other_utxos)
 }
 
 pub fn input_selection(
@@ -1409,7 +1405,7 @@ pub fn input_selection(
             let col = purecoinassets.swap_remove(index);
             debug!("Deleted collateral from inputs: {:?}\n", col);
             // Double check
-            if let Some(_) = find_collateral_by_txhash_txix(&cutxo, &purecoinassets) {
+            if find_collateral_by_txhash_txix(&cutxo, &purecoinassets).is_some() {
                 panic!("PANIC COLLATERAL COULDN'T BE EXCLUDED FROM SELECTION SET");
             }
         }
@@ -1433,7 +1429,7 @@ pub fn input_selection(
     while nv.coin().compare(&acc.coin()) > 0 && max_run < utxo_count {
         nv = nv.checked_sub(&acc).unwrap();
 
-        if purecoinassets.len() <= 0 {
+        if purecoinassets.len() == 0 {
             // Find the tokens we want in the multis
             debug!("\nWe look for multiassets!\n");
             let ret = find_suitable_coins(&mut nv, &mut multiassets, overhead);
@@ -1475,7 +1471,7 @@ pub fn input_selection(
         txins.add(&txuo.input());
     }
     debug!("\n\nSelection: {:?}\n\n", selection);
-    return (txins, selection);
+    (txins, selection)
 }
 
 pub fn balance_tx(
@@ -1548,7 +1544,7 @@ pub fn balance_tx(
                 }
             }
             // call this function recursivley
-            return balance_tx(
+            balance_tx(
                 input_txuos,
                 tokens,
                 txos,
@@ -1563,7 +1559,7 @@ pub fn balance_tx(
                 acc_change,
                 sc_addr,
                 dummyrun,
-            );
+            )
         }
         None => {
             // If we had many small utxos they got accumulated, we now substract it from the accumulation
@@ -1602,13 +1598,11 @@ pub fn balance_tx(
                     txos.add(&out_txos.get(i));
                 }
                 *acc_change = acc_change.checked_sub(&acc_change).unwrap();
-            } else {
-                if (acc_change.coin().compare(&min_utxo) == -1
-                    && !(acc_change.coin().compare(&cutils::to_bignum(0u64)) == 0))
-                    && !*dummyrun
-                {
-                    panic!("\nERROR: Transaction does balance but last output is below min Ada value: {:?} overhead",acc_change.coin());
-                }
+            } else if (acc_change.coin().compare(&min_utxo) == -1
+                && !(acc_change.coin().compare(&cutils::to_bignum(0u64)) == 0))
+                && !*dummyrun
+            {
+                panic!("\nERROR: Transaction does balance but last output is below min Ada value: {:?} overhead",acc_change.coin());
             }
             if (!*txos_paied
                 || !*fee_paied
@@ -1651,9 +1645,9 @@ pub fn make_inputs_txb(
         let mut lovelaces: u64 = 0;
         let mut multiasset = clib::MultiAsset::new();
         for v in &i.value {
-            if v.currencySymbol == "" || v.currencySymbol == "lovelace" {
+            if v.currencySymbol.is_empty() || v.currencySymbol == "lovelace" {
                 for a in &v.assets {
-                    lovelaces = lovelaces + a.amount;
+                    lovelaces += a.amount;
                 }
             } else {
                 let cs: clib::PolicyID =
@@ -1678,10 +1672,10 @@ pub fn make_inputs_txb(
         //info!();
 
         txuos.add(&txuo);
-        txins.add(&txuo_in);
+        txins.add(txuo_in);
     }
 
-    return (txins.clone(), txuos.clone());
+    (txins.clone(), txuos.clone())
 }
 
 pub fn make_datum_mp(
@@ -1693,8 +1687,8 @@ pub fn make_datum_mp(
     royalties_pkh: &ccrypto::Ed25519KeyHash,
     sc_version: &String,
 ) -> (ccrypto::DataHash, plutus::PlutusList, Vec<Vec<u8>>) {
-    let trade_address = &caddr::Address::from_bech32(&trade_owner).unwrap();
-    let wallet_address = &caddr::BaseAddress::from_address(&trade_address).unwrap();
+    let trade_address = &caddr::Address::from_bech32(trade_owner).unwrap();
+    let wallet_address = &caddr::BaseAddress::from_address(trade_address).unwrap();
     let pub_key_hash = hex::encode(
         wallet_address
             .payment_cred()
@@ -1730,7 +1724,7 @@ pub fn make_datum_mp(
         hex::decode(pub_key_hash.clone()).unwrap(),
     )); // Sellers PubKeyHash
     fields_inner.add(&plutus::PlutusData::new_integer(
-        &cutils::BigInt::from_str(&royalties_rate).unwrap(),
+        &cutils::BigInt::from_str(royalties_rate).unwrap(),
     )); // royalties rate in promille
     fields_inner.add(&plutus::PlutusData::new_bytes(roy_pkey_hash.clone())); // Royalties PubKeyHash
     fields_inner.add(&plutus::PlutusData::new_bytes(
@@ -1791,15 +1785,15 @@ pub fn make_datum_mp(
     */
 
     let mut datums = plutus::PlutusList::new();
-    datums.add(&datum);
+    datums.add(datum);
     debug!("Datum: {:?}\n", datum.clone());
     debug!("Datums: {:?}\n", datums.clone());
 
-    let datumhash = cutils::hash_plutus_data(&datum);
-    let hex_datum = hex::encode(datumhash.clone().to_bytes());
+    let datumhash = cutils::hash_plutus_data(datum);
+    let hex_datum = hex::encode(datumhash.to_bytes());
     info!("DatumHash: {:?}\n", hex_datum);
 
-    return (datumhash, datums, meta_list);
+    (datumhash, datums, meta_list)
 }
 
 pub fn decode_datum_mp(
@@ -1836,11 +1830,7 @@ pub fn decode_datum_mp(
 
     let pub_key_hash = ccrypto::Ed25519KeyHash::from_bytes(m1.clone())?;
     let payment_credentials = caddr::StakeCredential::from_keyhash(&pub_key_hash);
-    let stake_str = format!(
-        "{}{}",
-        str::from_utf8(&m4.clone())?,
-        str::from_utf8(&m5.clone())?
-    );
+    let stake_str = format!("{}{}", str::from_utf8(&m4)?, str::from_utf8(&m5)?);
     let stake_key = ccrypto::Ed25519KeyHash::from_bech32(&stake_str)?;
     let stake_credentials = caddr::StakeCredential::from_keyhash(&stake_key);
     let mut networkbyte: u8 = 0b0001;
@@ -1876,12 +1866,12 @@ pub fn decode_datum_mp(
     fields_inner.add(&plutus::PlutusData::new_integer(&cutils::BigInt::from_str(
         &m0,
     )?)); // Selling Price
-    fields_inner.add(&plutus::PlutusData::new_bytes(m1.clone())); // Sellers PubKeyHash
+    fields_inner.add(&plutus::PlutusData::new_bytes(m1)); // Sellers PubKeyHash
     fields_inner.add(&plutus::PlutusData::new_integer(&cutils::BigInt::from_str(
         &rr,
     )?)); // Royalties Rate
-    fields_inner.add(&plutus::PlutusData::new_bytes(ra.clone())); // Royalties PubKeyHash
-    fields_inner.add(&plutus::PlutusData::new_bytes(m2.clone())); // PolicyId
+    fields_inner.add(&plutus::PlutusData::new_bytes(ra)); // Royalties PubKeyHash
+    fields_inner.add(&plutus::PlutusData::new_bytes(m2)); // PolicyId
     fields_inner.add(&plutus::PlutusData::new_bytes(m3.clone())); // TokenName
 
     //NFT Shop
@@ -1896,8 +1886,8 @@ pub fn decode_datum_mp(
     debug!("\nReconstructed Datum: {:?}\n", datum.clone());
     debug!("Datums: {:?}\n", datums.clone());
 
-    let datumhash = cutils::hash_plutus_data(&datum);
-    let hex_datum = hex::encode(datumhash.clone().to_bytes());
+    let datumhash = cutils::hash_plutus_data(datum);
+    let hex_datum = hex::encode(datumhash.to_bytes());
 
     info!("\nReconstructed DatumHash: {:?}\n", hex_datum);
 
@@ -1906,7 +1896,7 @@ pub fn decode_datum_mp(
         trade_owner,
         royalties_rate,
         nft_policy_id,
-        hex::encode(m3.clone()),
+        hex::encode(m3),
         datums,
         datumhash,
         royalties_pkey,
@@ -1925,11 +1915,11 @@ pub fn calc_txfee(
 ) -> cutils::BigNum {
     let txsfee = tx_script_fee(
         ex_unit_price,
-        cutils::from_bignum(&steps),
-        cutils::from_bignum(&mem),
+        cutils::from_bignum(steps),
+        cutils::from_bignum(mem),
     );
-    let linearfee = clib::fees::LinearFee::new(&a, &b);
-    let base_fee = clib::fees::min_fee(&tx.clone(), &linearfee.clone()).unwrap();
+    let linearfee = clib::fees::LinearFee::new(a, b);
+    let base_fee = clib::fees::min_fee(&tx.clone(), &linearfee).unwrap();
     let mut calculated_fee = base_fee.checked_add(&cutils::to_bignum(txsfee)).unwrap();
 
     if no_sc {
@@ -1946,7 +1936,7 @@ pub fn calc_txfee(
 pub fn tx_script_fee(ex_unit_price: ExUnitPrice, steps: u64, mem: u64) -> u64 {
     let tx_script_fee =
         (ex_unit_price.priceMemory * mem as f64) + (ex_unit_price.priceSteps * steps as f64);
-    return tx_script_fee.ceil() as u64;
+    tx_script_fee.ceil() as u64
 }
 
 pub fn create_ada_tx(
@@ -1968,7 +1958,7 @@ pub fn create_ada_tx(
     ),
     MurinError,
 > {
-    if dummy == true {
+    if dummy {
         info!("--------------------------------------------------------------------------------------------------------");
         info!("-----------------------------------------Fee calcualtion------------------------------------------------");
         info!("---------------------------------------------------------------------------------------------------------\n");
@@ -1994,7 +1984,7 @@ pub fn create_ada_tx(
     let mut txouts = clib::TransactionOutputs::new();
     //let (_, input_txuos) = make_inputs_txb (&input_utxos);
     txouts.add(&clib::TransactionOutput::new(
-        &to,
+        to,
         &cutils::Value::new(&cutils::to_bignum(lovelaces)),
     ));
 
@@ -2030,15 +2020,16 @@ pub fn create_ada_tx(
         &mut first_run,
         &mut txos_paied,
         &mut tbb_values,
-        &to,
-        &change,
+        to,
+        change,
         &mut acc,
         None,
         &dummy,
     )?;
 
     let slot = in_current_slot + 3000;
-    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, &fee, Some(slot as u32));
+    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
+    txbody.set_ttl(&cutils::to_bignum(slot));
 
     txbody.set_auxiliary_data_hash(&aux_data_hash);
 

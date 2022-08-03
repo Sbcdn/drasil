@@ -36,9 +36,9 @@ impl BuildContract {
     ) -> BuildContract {
         BuildContract {
             customer_id: cid,
-            ctype: ctype,
-            action: action,
-            txpattern: txpattern,
+            ctype,
+            action,
+            txpattern,
         }
     }
 
@@ -75,10 +75,10 @@ impl BuildContract {
             .deserialize(&txpattern)?;
 
         Ok(BuildContract {
-            customer_id: customer_id,
-            ctype: ctype,
-            action: action,
-            txpattern: txpattern,
+            customer_id,
+            ctype,
+            action,
+            txpattern,
         })
     }
 
@@ -90,7 +90,6 @@ impl BuildContract {
             debug!(?response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
-            ()
         }
 
         let mut ret = String::new();
@@ -177,7 +176,7 @@ impl BuildContract {
         let slot = mimir::get_slot(&dbsync)?;
         gtxd.set_current_slot(slot as u64);
 
-        let mut ret = String::new();
+        let ret: String;
         match self.action() {
             ContractAction::MarketplaceActions(mpa) => {
                 match mpa {
@@ -224,18 +223,12 @@ impl BuildContract {
                         .to_string();
                     }
                     MarketplaceActions::Buy => {
-                        use murin::txbuilders::marketplace::buy::*;
-
                         ret = "Got MP Buy Transaction".to_string();
                     }
                     MarketplaceActions::Cancel => {
-                        use murin::txbuilders::marketplace::cancel::*;
-
                         ret = "Got MP Cancel Transaction".to_string();
                     }
                     MarketplaceActions::Update => {
-                        use murin::txbuilders::marketplace::update::*;
-
                         ret = "Got MP Update Transaction".to_string();
                     }
                 }

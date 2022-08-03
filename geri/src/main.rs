@@ -67,7 +67,7 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
     let worker = StreamWorker {
         stream: stream.clone(),
         consumer_group: stream.clone() + "_grp",
-        worker_number: worker_number,
+        worker_number,
     };
     log::info!("Worker redis request ...: {:?}", worker);
     let new_message: Vec<Vec<Vec<Vec<(String, Vec<String>)>>>>;
@@ -80,7 +80,7 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
                 .arg("COUNT")
                 .arg("1")
                 .arg("STREAMS")
-                .arg(&worker.stream.clone())
+                .arg(&worker.stream)
                 .arg(id)
                 .query(&mut c)?;
         }
@@ -92,7 +92,7 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
                 .arg("COUNT")
                 .arg("1")
                 .arg("STREAMS")
-                .arg(&worker.stream.clone())
+                .arg(&worker.stream)
                 .arg(id)
                 .query(&mut c)?;
         }
@@ -198,7 +198,7 @@ pub fn main() -> Result<()> {
     let use_stream_trimmer = std::env::var("STREAM_TRIMMER")?.parse::<bool>()?;
     let streams = std::env::var("STREAMS")?;
 
-    let slice: Vec<_> = streams.split("|").collect();
+    let slice: Vec<_> = streams.split('|').collect();
     let mut streams = Vec::<String>::new();
     streams.extend(slice.iter().map(|n| n.to_string()));
 

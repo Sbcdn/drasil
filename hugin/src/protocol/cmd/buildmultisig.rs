@@ -13,6 +13,7 @@ use crate::{Connection, Frame, IntoFrame};
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
+//use gungnir::schema::whitelist;
 use mimir::MurinError;
 use serde_json::json;
 use tracing::{debug, instrument};
@@ -30,7 +31,7 @@ impl BuildMultiSig {
     pub fn new(cid: u64, mtype: MultiSigType, txpatter: TransactionPattern) -> BuildMultiSig {
         BuildMultiSig {
             customer_id: cid,
-            mtype: mtype,
+            mtype,
             txpattern: txpatter,
         }
     }
@@ -58,9 +59,9 @@ impl BuildMultiSig {
             .with_varint_encoding()
             .deserialize(&txpattern)?;
         Ok(BuildMultiSig {
-            customer_id: customer_id,
-            mtype: mtype,
-            txpattern: txpattern,
+            customer_id,
+            mtype,
+            txpattern,
         })
     }
 
@@ -74,7 +75,6 @@ impl BuildMultiSig {
                 debug!(?response);
                 response = Frame::Simple(e.to_string());
                 dst.write_frame(&response).await?;
-                ()
             }
             log::debug!("Transaction pattern check okay!");
         }
@@ -148,16 +148,13 @@ impl BuildMultiSig {
                 if reward_tokens.is_empty()
                     || murin::decode_addr(&recipient_stake_addr).await.is_err()
                     || murin::decode_addr(&recipient_payment_addr).await.is_err()
-                {
-                    return err;
-                } else {
-                    if murin::wallet::get_stake_address(
+                    || murin::wallet::get_stake_address(
                         &murin::decode_addr(&recipient_stake_addr).await?,
                     )? != murin::wallet::get_stake_address(
                         &murin::decode_addr(&recipient_payment_addr).await?,
-                    )? {
-                        return err;
-                    }
+                    )?
+                {
+                    return err;
                 }
             }
             _ => {
@@ -184,7 +181,7 @@ impl BuildMultiSig {
 
         info!("determine contract...");
         let mut contract = determine_contract(gtxd.get_contract_id(), self.customer_id as i64)?;
-        if let None = contract {
+        if contract.is_none() {
             info!("No contract ID provided, try to select contract automatically");
             let contracts = crate::drasildb::TBContracts::get_all_contracts_for_user_typed(
                 self.customer_id as i64,
@@ -206,7 +203,7 @@ impl BuildMultiSig {
                     .unwrap();
                     if has_wl {
                         // Check if whitelist token on contract also has available rewards
-                        match gungnir::Rewards::get_available_rewards(
+                        gungnir::Rewards::get_available_rewards(
                             &gcon,
                             &gtxd.get_stake_address().to_bech32(None).expect(
                                 "ERROR Could not construct bech32 address for stake address",
@@ -215,10 +212,8 @@ impl BuildMultiSig {
                             c.contract_id as i64,
                             self.customer_id() as i64,
                             murin::clib::utils::from_bignum(&t.2) as i64,
-                        ) {
-                            Ok(_) => true,
-                            Err(_) => false,
-                        }
+                        )
+                        .is_ok()
                     } else {
                         false
                     }
@@ -237,7 +232,7 @@ impl BuildMultiSig {
 
             if contract.is_none() {
                 return Err(CmdError::Custom {
-                    str: format!("Automatic selection failed, no suitable contract found."),
+                    str: "Automatic selection failed, no suitable contract found.".to_string(),
                 }
                 .into());
             }
@@ -268,9 +263,9 @@ impl BuildMultiSig {
         }
         debug!("Reward Tokens after Vesting filte:\n'{:?}'", rwd_tokens);
         rwdtxd.set_reward_tokens(&rwd_tokens);
-        if rwdtxd.get_reward_tokens().len() == 0 {
+        if rwdtxd.get_reward_tokens().is_empty() {
             return Err(CmdError::Custom {
-                str: format!("The requested tokens are all still in a vesting period."),
+                str: "The requested tokens are all still in a vesting period.".to_string(),
             }
             .into());
         }
@@ -364,9 +359,8 @@ impl BuildMultiSig {
             // ToDO :
             // Send Email to Admin that not enough tokens are available on the script
             return Err(CmdError::Custom {
-                str: format!(
-                    "The contract does not contain enough tokens to claim, please try again later"
-                ),
+                str: "The contract does not contain enough tokens to claim, please try again later"
+                    .to_string(),
             }
             .into());
         }
@@ -452,15 +446,13 @@ impl BuildMultiSig {
                 .into());
                 if murin::decode_addr(&receiver_payment_addr).await.is_err() {
                     return err;
-                } else {
-                    if let Some(saddr) = receiver_stake_addr {
-                        if murin::wallet::get_stake_address(&murin::decode_addr(&saddr).await?)?
-                            != murin::wallet::get_stake_address(
-                                &murin::decode_addr(&receiver_payment_addr).await?,
-                            )?
-                        {
-                            return err;
-                        }
+                } else if let Some(saddr) = receiver_stake_addr {
+                    if murin::wallet::get_stake_address(&murin::decode_addr(&saddr).await?)?
+                        != murin::wallet::get_stake_address(
+                            &murin::decode_addr(&receiver_payment_addr).await?,
+                        )?
+                    {
+                        return err;
                     }
                 }
             }
@@ -529,11 +521,11 @@ impl BuildMultiSig {
             self.customer_id as i64,
             contract.contract_id,
         )?;
-        let whitelist: Option<gungnir::Whitelist>;
+        let _whitelist: Option<gungnir::Whitelist>;
         if let Some(wid) = mint_project.whitelist_id {
-            whitelist = Some(gungnir::Whitelist::get_whitelist(&gcon, wid)?);
+            _whitelist = Some(gungnir::Whitelist::get_whitelist(&gcon, wid)?);
         } else {
-            whitelist = None
+            _whitelist = None
         };
 
         let policy_id = contract
@@ -547,10 +539,10 @@ impl BuildMultiSig {
         if mint_project.reward_minter {
             nfts_to_mint =
                 gungnir::Nft::get_nft_by_payaddr(&gcon, mint_project.id, &payment_addr_bech32)?;
-            nfts_to_mint.retain(|n| n.minted == false);
-            if nfts_to_mint.len() <= 0 {
+            nfts_to_mint.retain(|n| !n.minted);
+            if nfts_to_mint.is_empty() {
                 return Err(CmdError::Custom {
-                    str: format!("ERROR No assets for this address available"),
+                    str: "ERROR No assets for this address available".to_string(),
                 }
                 .into());
             }
@@ -564,13 +556,13 @@ impl BuildMultiSig {
                     contract.contract_id,
                     self.customer_id(),
                 )?;
-                if rewards.len() > 0 {
+                if !rewards.is_empty() {
                     eligable_nfts.push(nft.clone());
                 }
                 avail_rewards.extend(rewards.iter().map(|n| n.to_owned()));
             }
             if avail_rewards.len() != eligable_nfts.len() {
-                return Err(CmdError::Custom{str:format!("ERROR there is some missmatch in your available rewards please contact support")}.into());
+                return Err(CmdError::Custom{str:"ERROR there is some missmatch in your available rewards please contact support".to_string()}.into());
             }
         } else {
             let claimed = gungnir::Claimed::get_claims(
@@ -584,7 +576,7 @@ impl BuildMultiSig {
             if let Some(max) = mint_project.max_mint_p_addr {
                 if claimed.len() >= max as usize {
                     return Err(CmdError::Custom {
-                        str: format!("ERROR No assets for this address available"),
+                        str: "ERROR No assets for this address available".to_string(),
                     }
                     .into());
                 }
@@ -595,7 +587,7 @@ impl BuildMultiSig {
                     gungnir::Nft::get_random_unminted_nft(&gcon, mint_project.id)?.into_iter(),
                 )
             }
-            eligable_nfts = nfts_to_mint.clone();
+            //eligable_nfts = nfts_to_mint.clone();
         }
 
         // create MintTokenAsset datatype for all nfts to be minted
@@ -697,7 +689,7 @@ impl BuildMultiSig {
             .await?;
         log::debug!("Minter Txd: {:?}", minttxd);
         let mut txp = self.transaction_pattern();
-        txp.set_sending_wal_addrs(&vec![minttxd.get_payment_addr_bech32()?]);
+        txp.set_sending_wal_addrs(&[minttxd.get_payment_addr_bech32()?]);
         log::debug!("Transaction Patter: {:?}\n", &txp);
         log::debug!("Try to create general transaction data...");
         let mut gtxd = txp.into_txdata().await?;
@@ -841,7 +833,7 @@ impl BuildMultiSig {
         log::info!("Determine network....");
         if gtxd.get_network() != murin::clib::NetworkIdKind::Testnet {
             return Err(CmdError::Custom {
-                str: format!("ERROR: this functions is just for testing"),
+                str: "ERROR: this functions is just for testing".to_string(),
             }
             .into());
         }
@@ -877,13 +869,12 @@ impl BuildMultiSig {
         metadataarray.push(m2);
         metadataarray.push(m3);
 
-        let mut tns = Vec::<String>::new();
-        tns.push(hex::encode("tFLZC".as_bytes().to_vec()));
-        tns.push(hex::encode("tSIL".as_bytes().to_vec()));
-        tns.push(hex::encode("tDRSL".as_bytes().to_vec()));
-
-        let mut tokens = Vec::<murin::MintTokenAsset>::new();
-        tokens.push(t1[i].clone());
+        let tns = vec![
+            hex::encode("tFLZC".as_bytes()),
+            hex::encode("tSIL".as_bytes()),
+            hex::encode("tDRSL".as_bytes()),
+        ];
+        let tokens = vec![t1[i].clone()];
 
         let t_minter_contract_id = 111;
         let t_minter_user_id = 111;
@@ -1064,7 +1055,7 @@ impl BuildMultiSig {
             );
             println!("Stake Rewards Update: {:?}", stake_rwd);
         }
-        if rewards.len() == 0 {
+        if rewards.is_empty() {
             let tot_earned = gungnir::BigDecimal::from_u64(murin::clib::utils::from_bignum(
                 &minttxd.get_mint_tokens()[0].2,
             ))
@@ -1102,7 +1093,7 @@ impl BuildMultiSig {
         // The Drasil verification would apply the last needed MultiSig Key for the payout so no accidential payout is possible.
 
         info!("create raw data...");
-        let mut cpo_data = self
+        let cpo_data = self
             .transaction_pattern()
             .script()
             .unwrap()
@@ -1118,7 +1109,7 @@ impl BuildMultiSig {
             cpo_data.get_contract_id(),
         )?;
 
-        let contract_address = murin::address::Address::from_bech32(&contract.address).unwrap();
+        let _contract_address = murin::address::Address::from_bech32(&contract.address).unwrap();
 
         info!("retrieve additional data...");
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
@@ -1130,8 +1121,8 @@ impl BuildMultiSig {
         info!("Drasil Connection!");
         info!("keyloc: {:?}", keyloc);
 
-        let ns_script = contract.plutus.clone();
-        let ns_version = contract.version.to_string();
+        let _ns_script = contract.plutus.clone();
+        let _ns_version = contract.version.to_string();
 
         let dbsync = match mimir::establish_connection() {
             Ok(conn) => conn,
@@ -1231,9 +1222,9 @@ pub fn determine_contract(
         let tcontract =
             crate::drasildb::TBContracts::get_contract_uid_cid(u_customer_id, u_contract_id);
         log::debug!("Found contract: {:?}...", tcontract);
-        return Ok(Some(tcontract?));
+        Ok(Some(tcontract?))
     } else {
-        return Ok(None);
+        Ok(None)
     }
 }
 
@@ -1244,7 +1235,7 @@ pub fn convert_nfts_to_minter_token_asset(
     let mut out = Vec::<murin::MintTokenAsset>::new();
     for nft in nfts {
         out.push((
-            Some(murin::chelper::string_to_policy(&policy_id)?),
+            Some(murin::chelper::string_to_policy(policy_id)?),
             murin::chelper::string_to_assetname(&nft.asset_name)?,
             murin::u64_to_bignum(1),
         ))

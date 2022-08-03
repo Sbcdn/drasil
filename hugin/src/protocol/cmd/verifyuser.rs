@@ -67,7 +67,7 @@ impl VerifyUser {
                 dst.write_frame(&response).await?;
             } else {
                 return Err(CmdError::Custom {
-                    str: format!("ERROR not authenticated"),
+                    str: "ERROR not authenticated".to_string(),
                 }
                 .into());
             }

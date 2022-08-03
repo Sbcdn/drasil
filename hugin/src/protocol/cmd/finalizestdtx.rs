@@ -49,9 +49,9 @@ impl FinalizeStdTx {
     pub fn new(cid: u64, txtype: StdTxType, tx_id: String, signature: String) -> FinalizeStdTx {
         FinalizeStdTx {
             customer_id: cid,
-            txtype: txtype,
-            tx_id: tx_id,
-            signature: signature,
+            txtype,
+            tx_id,
+            signature,
         }
     }
 
@@ -83,10 +83,10 @@ impl FinalizeStdTx {
         let signature = signature;
 
         Ok(FinalizeStdTx {
-            customer_id: customer_id,
-            txtype: txtype,
-            tx_id: tx_id,
-            signature: signature,
+            customer_id,
+            txtype,
+            tx_id,
+            signature,
         })
     }
 
@@ -95,16 +95,15 @@ impl FinalizeStdTx {
         let mut response = Frame::Simple("Error: something went wrong".to_string());
         let raw_tx = murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;
 
-        let mut ret = String::new();
         let used_utxos = raw_tx.get_usedutxos().clone();
-        match self.txtype {
+        let ret = match self.txtype {
             StdTxType::DelegateStake => {
                 if let Err(e) =
                     murin::delegation::DelegTxData::from_str(raw_tx.get_tx_specific_rawdata())
                 {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a standard transaction, {:?}",e.to_string())}.into());
                 };
-                ret = self.finalize_delegation(raw_tx.clone()).await?;
+                self.finalize_delegation(raw_tx.clone()).await?
             }
 
             _ => {
@@ -113,7 +112,7 @@ impl FinalizeStdTx {
                 }
                 .into());
             }
-        }
+        };
 
         // store used Utxos into utxo manager and store txhash for ovserver
         murin::utxomngr::usedutxos::store_used_utxos(

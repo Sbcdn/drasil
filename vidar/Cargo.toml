@@ -30,7 +30,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.79"
 bigdecimal = { version = "0.1.2", features = ["serde"] }
 dotenv = "0.15.0"
-cardano-serialization-lib = "10.0.4"
+cardano-serialization-lib = "11.0.0"
 tracing = "0.1.32"
 hex = "0.4"
 chrono = { version="0.4.19", features = ["serde"] }

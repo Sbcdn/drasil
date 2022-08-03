@@ -113,8 +113,6 @@ impl Command {
                 let response = Frame::Simple("ERROR command could not be applied".to_string());
                 debug!("{:?}", response);
                 dst.write_frame(&response).await?;
-
-                ()
             }
         }
 
@@ -141,22 +139,22 @@ impl Command {
 async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     let empty_vec = Vec::<String>::new();
     // Check if user is valid
-    let username = txp.user();
+    let _username = txp.user();
 
     // TODO
     if txp.inputs().is_none() || txp.inputs().unwrap_or(empty_vec).is_empty() {
         // Get inputs from dbsync and format them to TransactionUnspentOutputs (byte encoded or not ? )
     }
 
-    if !txp.outputs().is_none() {
+    if txp.outputs().is_some() {
         return Err(CmdError::Custom {
             str: "ERROR outputs must be None for this contract type".to_string(),
         }
         .into());
     }
 
-    if (txp.collateral().is_some() && //txp.collateral().is_none() ||
-         (hex::decode(txp.collateral().unwrap()).is_err() || txp.collateral().unwrap() == ""))
+    if txp.collateral().is_some() && //txp.collateral().is_none() ||
+         (hex::decode(txp.collateral().unwrap()).is_err() || txp.collateral().unwrap() == "")
     {
         return Err(CmdError::Custom {
             str: "ERROR no collateral provided".to_string(),
@@ -193,7 +191,7 @@ pub fn create_response(
     wallet_type: Option<&crate::datamodel::hephadata::WalletType>,
 ) -> Result<crate::datamodel::hephadata::UnsignedTransaction, murin::MurinError> {
     debug!("RawTx: {:?}", raw_tx);
-    let tx_id = murin::utxomngr::txmind::store_raw_tx(&raw_tx)?;
+    let tx_id = murin::utxomngr::txmind::store_raw_tx(raw_tx)?;
     let mut response = crate::datamodel::hephadata::UnsignedTransaction::new(
         Some(&bld_tx.get_tx_unsigned()),
         &tx_id,
