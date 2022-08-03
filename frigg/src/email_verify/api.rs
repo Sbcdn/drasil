@@ -28,6 +28,7 @@ pub struct RegistrationMessage {
 }
 
 pub async fn invite(body: TBEmailVerificationTokenMessage) -> crate::WebResult<impl warp::Reply> {
+    log::debug!("invite");
     let token = match TBEmailVerificationToken::create(body.clone()) {
         Ok(t) => t,
         Err(_) => {

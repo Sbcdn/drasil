@@ -88,7 +88,7 @@ pub async fn vault_connect() -> VaultClient {
     client
 }
 
-pub async fn encrypt_data(source: &String, ident: &str) -> Result<String, MurinError> {
+pub async fn generate_pph(ident: &str) -> String {
     let mut password = [0u8; 1024];
     OsRng.fill_bytes(&mut password);
     let mut hasher = sha2::Sha512::new();
@@ -97,13 +97,27 @@ pub async fn encrypt_data(source: &String, ident: &str) -> Result<String, MurinE
     let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
     let mut path = std::env::var("VPATH").unwrap();
     let vault = vault_connect().await;
-    path.push('/');
+    //path.push('/');
     path.push_str(ident);
     let mut data = HashMap::<&str, &str>::new();
     data.insert("pw", &password);
     let _set = vaultrs::kv2::set(&vault, &mount, &path, &data)
         .await
         .unwrap();
+    password
+}
+
+pub async fn encrypt_pvks(source: &[String], ident: &str) -> Result<Vec<String>, MurinError> {
+    let password = generate_pph(ident).await;
+    let mut ret = Vec::<String>::new();
+    for s in source {
+        ret.push(crate::encryption::encrypt(s, &password)?)
+    }
+    Ok(ret)
+}
+
+pub async fn encrypt_data(source: &String, ident: &str) -> Result<String, MurinError> {
+    let password = generate_pph(ident).await;
     let cipher = encrypt(source, &password)?;
     Ok(cipher)
 }
