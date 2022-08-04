@@ -11,15 +11,12 @@ use crate::hfn;
 use crate::htypes;
 use crate::marketplace::*;
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
-use clib::to_bytes;
+use cardano_serialization_lib::{address as caddr, crypto as ccrypto, plutus, utils as cutils};
 
 pub fn perform_cancel(
     fee: &cutils::BigNum,
     sc_scripts: &String,
-    sc_addr: &String,
+    sc_addr: &str,
     gtxd: &super::TxData,
     mptxd: &super::marketplace::MpTxData,
     dummy: bool,
@@ -33,7 +30,7 @@ pub fn perform_cancel(
     ),
     MurinError,
 > {
-    if dummy == true {
+    if dummy {
         info!("--------------------------------------------------------------------------------------------------------");
         info!("-----------------------------------------Fee calcualtion------------------------------------------------");
         info!("---------------------------------------------------------------------------------------------------------\n");
@@ -79,7 +76,7 @@ pub fn perform_cancel(
         metadata = meta;
     };
 
-    let decoded_datum = hfn::decode_datum_mp(metadata.clone(), &gtxd.get_network())?;
+    let decoded_datum = hfn::decode_datum_mp(metadata, &gtxd.get_network())?;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
     //Add Inputs and Outputs
@@ -88,8 +85,8 @@ pub fn perform_cancel(
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     let trade_owner = clib::address::Address::from_bech32(&decoded_datum.1).unwrap();
     let mut txouts = clib::TransactionOutputs::new();
-    let smart_contract_address = caddr::Address::from_bech32(&sc_addr.to_string()).unwrap();
-    let script_utxo = make_mp_contract_utxo_output(
+    let smart_contract_address = caddr::Address::from_bech32(sc_addr).unwrap();
+    let _script_utxo = make_mp_contract_utxo_output(
         &mut txouts,
         trade_owner.clone(),
         &decoded_datum.6,
@@ -137,7 +134,7 @@ pub fn perform_cancel(
     //
     // TODO: Ensure the Smart Contract UTXO is Part of the Input UTXOS
     //
-    let token_input_utxo = hfn::find_asset_utxos_in_txuos(&input_txuos, &mptxd.get_tokens());
+    let token_input_utxo = hfn::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
     debug!("Token Input Utxos: {:?}", token_input_utxo);
 
     let (mut txins, mut input_txuos) = super::input_selection(
@@ -152,57 +149,55 @@ pub fn perform_cancel(
 
     if input_txuos.contains_any(&signers_address_utxos) {
         info!("\n\nUtxo Input set contains minimum one utxo from the listing address\n\n");
+    } else if !signers_address_utxos.is_empty() {
+        txins.add(&signers_address_utxos.get(0).input());
+        input_txuos.add(&signers_address_utxos.get(0));
     } else {
-        if !signers_address_utxos.is_empty() {
-            txins.add(&signers_address_utxos.get(0).input());
-            input_txuos.add(&signers_address_utxos.get(0));
-        } else {
-            info!("The utxo set does not contain any utxos from the listing adress, transaction would fail!");
-            info!("Creating transaction for internal transfer instead!");
-            let mut internal_transfer = hfn::create_ada_tx(
-                &cutils::to_bignum(2000000u64), // fee: &cutils::BigNum,
-                true,
-                &gtxd.get_network(),
-                input_txuos.clone(),
-                &trade_owner,
-                &trade_owner,
-                5000000,
-                gtxd.get_current_slot(),
-            )?;
+        info!("The utxo set does not contain any utxos from the listing adress, transaction would fail!");
+        info!("Creating transaction for internal transfer instead!");
+        let mut internal_transfer = hfn::create_ada_tx(
+            &cutils::to_bignum(2000000u64), // fee: &cutils::BigNum,
+            true,
+            &gtxd.get_network(),
+            input_txuos.clone(),
+            &trade_owner,
+            &trade_owner,
+            5000000,
+            gtxd.get_current_slot(),
+        )?;
 
-            let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(internal_transfer.3);
-            internal_transfer.1.set_vkeys(&dummy_vkeywitnesses);
+        let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(internal_transfer.3);
+        internal_transfer.1.set_vkeys(&dummy_vkeywitnesses);
 
-            // Build and encode dummy transaction
-            let transaction_ = clib::Transaction::new(
-                &internal_transfer.0,
-                &internal_transfer.1,
-                Some(internal_transfer.2.clone()),
-            );
-            let calculated_fee =
-                hfn::calc_txfee(&transaction_, &a, &b, ex_unit_price, &steps, &mem, true);
+        // Build and encode dummy transaction
+        let transaction_ = clib::Transaction::new(
+            &internal_transfer.0,
+            &internal_transfer.1,
+            Some(internal_transfer.2.clone()),
+        );
+        let calculated_fee =
+            hfn::calc_txfee(&transaction_, &a, &b, ex_unit_price, &steps, &mem, true);
 
-            let (txbody, txwitness, aux_data, _, used_utxos) = hfn::create_ada_tx(
-                &calculated_fee, // fee: &cutils::BigNum,
-                true,
-                &gtxd.get_network(),
-                input_txuos.clone(),
-                &trade_owner,
-                &trade_owner,
-                5000000,
-                gtxd.get_current_slot(),
-            )?;
+        let (txbody, txwitness, aux_data, _, used_utxos) = hfn::create_ada_tx(
+            &calculated_fee, // fee: &cutils::BigNum,
+            true,
+            &gtxd.get_network(),
+            input_txuos.clone(),
+            &trade_owner,
+            &trade_owner,
+            5000000,
+            gtxd.get_current_slot(),
+        )?;
 
-            hfn::tx_output_data(
-                txbody,
-                txwitness,
-                aux_data,
-                used_utxos.to_hex()?,
-                0u64,
-                true,
-            )?;
-            std::process::exit(0);
-        }
+        hfn::tx_output_data(
+            txbody,
+            txwitness,
+            aux_data,
+            used_utxos.to_hex()?,
+            0u64,
+            true,
+        )?;
+        std::process::exit(0);
     }
 
     let vkey_counter = hfn::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
@@ -213,7 +208,7 @@ pub fn perform_cancel(
 
     let txouts_fin = hfn::balance_tx(
         &mut input_txuos,
-        &mptxd.get_tokens(),
+        mptxd.get_tokens(),
         &mut txouts,
         None,
         fee,
@@ -229,7 +224,7 @@ pub fn perform_cancel(
     )?;
 
     let slot = gtxd.get_current_slot() + 3000;
-    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, &fee, Some(slot as u32)); //922321
+    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, fee, Some(slot as u32)); //922321
     debug!("\nTxOutputs: {:?}\n", txbody.outputs());
     debug!("\nTxInouts: {:?}\n", txbody.inputs());
 
@@ -366,7 +361,7 @@ pub async fn build_mp_cancel(
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
-    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_.clone()));
+    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
     let calculated_fee = hfn::calc_txfee(
         &transaction_,

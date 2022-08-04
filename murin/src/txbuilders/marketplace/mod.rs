@@ -7,11 +7,7 @@
 #################################################################################
 */
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
-use clib::address::Address;
-use serde::{Deserialize, Serialize};
+use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 
 pub mod buy;
 pub mod cancel;
@@ -108,13 +104,13 @@ impl ToString for MpTxData {
 impl core::str::FromStr for MpTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let slice: Vec<&str> = src.split("|").collect();
+        let slice: Vec<&str> = src.split('|').collect();
         if slice.len() == 6 {
             // restore token vector
             let mut tokens = Vec::<TokenAsset>::new();
-            let tokens_vec: Vec<&str> = slice[0].split("!").collect();
+            let tokens_vec: Vec<&str> = slice[0].split('!').collect();
             for token in tokens_vec {
-                let token_slice: Vec<&str> = token.split("?").collect();
+                let token_slice: Vec<&str> = token.split('?').collect();
                 tokens.push((
                     clib::PolicyID::from_bytes(hex::decode(token_slice[0])?)?,
                     clib::AssetName::from_bytes(hex::decode(token_slice[1])?)?,
@@ -153,7 +149,7 @@ impl core::str::FromStr for MpTxData {
                 "NoData" => None,
                 _ => {
                     let mut md = Vec::<String>::new();
-                    let meta_slice: Vec<&str> = slice[5].split("?").collect();
+                    let meta_slice: Vec<&str> = slice[5].split('?').collect();
                     for d in meta_slice {
                         md.push(d.to_string());
                     }
@@ -162,12 +158,12 @@ impl core::str::FromStr for MpTxData {
             };
 
             Ok(MpTxData {
-                tokens: tokens,
-                token_utxos: token_utxos,
+                tokens,
+                token_utxos,
                 royalties_addr: roy_addr,
                 royalties_rate: roy_rate,
-                selling_price: selling_price,
-                metadata: metadata,
+                selling_price,
+                metadata,
             })
         } else {
             Err(MurinError::new(
@@ -176,8 +172,7 @@ impl core::str::FromStr for MpTxData {
                 &format!(
                     "Error the provided string '{}' cannot be parsed into 'MpTxData' ",
                     src
-                )
-                .to_string(),
+                ),
             ))
         }
     }
@@ -190,24 +185,24 @@ impl MpTxData {
         selling_price: u64,
     ) -> MpTxData {
         MpTxData {
-            tokens: tokens,
-            token_utxos: token_utxos,
+            tokens,
+            token_utxos,
             royalties_addr: None,
             royalties_rate: None,
-            selling_price: selling_price,
+            selling_price,
             metadata: None,
         }
     }
 
-    pub fn set_royalties_address(&mut self, royaddr: caddr::Address) -> () {
+    pub fn set_royalties_address(&mut self, royaddr: caddr::Address) {
         self.royalties_addr = Some(royaddr);
     }
 
-    pub fn set_royalties_rate(&mut self, royrate: f32) -> () {
+    pub fn set_royalties_rate(&mut self, royrate: f32) {
         self.royalties_rate = Some(royrate);
     }
 
-    pub fn set_metadata(&mut self, metadata: Vec<String>) -> () {
+    pub fn set_metadata(&mut self, metadata: Vec<String>) {
         self.metadata = Some(metadata);
     }
 
@@ -224,7 +219,7 @@ impl MpTxData {
     }
 
     pub fn get_royalties_rate(&self) -> Option<f32> {
-        self.royalties_rate.clone()
+        self.royalties_rate
     }
 
     pub fn get_price(&self) -> u64 {
@@ -272,12 +267,12 @@ pub fn make_mp_contract_utxo_output(
         //    &ccrypto::TransactionHash::from_bytes(hex::decode(o.txhash.clone()).unwrap()).unwrap(),o.txinput);
 
         if set_datum {
-            txout.set_data_hash(&datum)
+            txout.set_data_hash(datum)
         };
         txos.add(&txout);
 
         Some(txos.clone())
     } else {
-        return None;
+        None
     }
 }
