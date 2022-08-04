@@ -62,6 +62,7 @@ impl RawTx {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         tx_body: &String,
         tx_witness: &String,
@@ -144,43 +145,43 @@ impl RawTx {
         &self.contract_version
     }
 
-    pub fn set_txbody(&mut self, str: &String) -> () {
-        self.tx_body = str.clone();
+    pub fn set_txbody(&mut self, str: &str) {
+        self.tx_body = str.to_owned();
     }
 
-    pub fn set_txwitness(&mut self, str: &String) -> () {
-        self.tx_witness = str.clone();
+    pub fn set_txwitness(&mut self, str: &str) {
+        self.tx_witness = str.to_owned();
     }
 
-    pub fn set_txunsigned(&mut self, str: &String) -> () {
-        self.tx_unsigned = str.clone();
+    pub fn set_txunsigned(&mut self, str: &str) {
+        self.tx_unsigned = str.to_owned();
     }
 
-    pub fn set_txaux(&mut self, str: &String) -> () {
-        self.tx_aux = str.clone();
+    pub fn set_txaux(&mut self, str: &str) {
+        self.tx_aux = str.to_owned();
     }
 
-    pub fn set_txrawdata(&mut self, str: &String) -> () {
-        self.tx_raw_data = str.clone();
+    pub fn set_txrawdata(&mut self, str: &str) {
+        self.tx_raw_data = str.to_owned();
     }
 
-    pub fn set_tx_specific_rawdata(&mut self, str: &String) -> () {
-        self.specific_raw_data = str.clone();
+    pub fn set_tx_specific_rawdata(&mut self, str: &str) {
+        self.specific_raw_data = str.to_owned();
     }
 
-    pub fn set_usedutxos(&mut self, str: &String) -> () {
-        self.used_utxos = str.clone();
+    pub fn set_usedutxos(&mut self, str: &str) {
+        self.used_utxos = str.to_owned();
     }
 
-    pub fn set_stake_addr(&mut self, str: &String) -> () {
-        self.stake_addr = str.clone();
+    pub fn set_stake_addr(&mut self, str: &str) {
+        self.stake_addr = str.to_owned();
     }
 
-    pub fn set_contract_id(&mut self, n: i64) -> () {
+    pub fn set_contract_id(&mut self, n: i64) {
         self.contract_id = n.to_string();
     }
 
-    pub fn set_contract_version(&mut self, n: f32) -> () {
+    pub fn set_contract_version(&mut self, n: f32) {
         self.contract_version = n.to_string();
     }
 
@@ -207,7 +208,7 @@ pub fn store_raw_tx(payload: &RawTx) -> Result<String, MurinError> {
     let key = TxMindId::new(payload);
 
     let items = payload.to_redis_item();
-    let _response: () = redis::cmd("HMSET")
+    redis::cmd("HMSET")
         .arg(&key.id)
         .arg(&items)
         .query(&mut con)?;
@@ -219,9 +220,10 @@ pub fn read_raw_tx(key: &String) -> Result<RawTx, MurinError> {
     let mut con = redis_txmind_connection()?;
 
     let response: HashMap<String, String> = redis::cmd("HGETALL").arg(key).query(&mut con)?;
-    let err = MurinError::new(
-        &format!("Error in decoding Redis Data for 'RawTx' : {:?}", response).to_string(),
-    );
+    let err = MurinError::new(&format!(
+        "Error in decoding Redis Data for 'RawTx' : {:?}",
+        response
+    ));
 
     Ok(RawTx::new(
         response.get("txbody").ok_or(&err)?,
