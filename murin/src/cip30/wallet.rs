@@ -9,10 +9,8 @@
 use crate::error::MurinError;
 use crate::htypes::*;
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
-use clib::address::{BaseAddress, EnterpriseAddress, RewardAddress};
+use cardano_serialization_lib::{address as caddr, crypto as ccrypto};
+use clib::address::{BaseAddress, EnterpriseAddress};
 use clib::crypto::{Ed25519KeyHash, PrivateKey, PublicKey};
 
 /// decode an hex encoded address into an address
@@ -39,7 +37,7 @@ pub async fn b_decode_addr(str: &String) -> Result<caddr::Address, MurinError> {
         Ok(bytes) => Ok(caddr::Address::from_bytes(bytes)?),
         Err(_) => match caddr::Address::from_bech32(str) {
             Ok(addr) => Ok(addr),
-            Err(e) => Err(MurinError::new(
+            Err(_e) => Err(MurinError::new(
                 "The provided Address is not byte encoded not bech32 encoded, Address invalid!",
             )),
         },
@@ -54,7 +52,7 @@ pub async fn decode_addresses(addresses: &Vec<String>) -> Result<Vec<caddr::Addr
     for addr in addresses {
         ret.push(b_decode_addr(addr).await?)
     }
-    if ret.len() != 0 || addresses.len() == 0 {
+    if !ret.is_empty() || addresses.is_empty() {
         Ok(ret)
     } else {
         Err(MurinError::new("ERROR: No valid Addresses provided"))
@@ -63,12 +61,12 @@ pub async fn decode_addresses(addresses: &Vec<String>) -> Result<Vec<caddr::Addr
 
 /// convert hex encoded utxos into TransactionUnspentOutputs, filter collateral and excluded utxos if provided
 pub async fn get_transaction_unspent_outputs(
-    enc_txuos: &Vec<String>,
+    enc_txuos: &[String],
     col_utxo: Option<&String>,
     enc_excl: Option<&Vec<String>>,
 ) -> Result<TransactionUnspentOutputs, MurinError> {
     let mut txuos = TransactionUnspentOutputs::new();
-    let mut utxos = enc_txuos.clone();
+    let mut utxos = enc_txuos.to_vec();
 
     // Filter exculdes if there are some
     if enc_excl.is_some() {
@@ -93,7 +91,9 @@ pub async fn get_transaction_unspent_outputs(
 pub async fn get_transaction_unspent_output(
     encoded_utxo: &String,
 ) -> Result<TransactionUnspentOutput, MurinError> {
-    Ok(TransactionUnspentOutput::from_bytes(hex::decode(encoded_utxo)?)?.into())
+    Ok(TransactionUnspentOutput::from_bytes(hex::decode(
+        encoded_utxo,
+    )?)?)
 }
 
 /// converts network id into NetworkIdKind from ser.lib
@@ -109,30 +109,32 @@ pub fn get_stake_address(addr: &caddr::Address) -> Result<ccrypto::Ed25519KeyHas
     debug!("Address in get_stake_address: {:?}", addr.to_bech32(None));
 
     match caddr::BaseAddress::from_address(addr) {
-        Some(addr) => Ok(addr.stake_cred().to_keyhash().ok_or(MurinError::new(
-            "ERROR: cannot get key hash from stake credential",
-        ))?),
+        Some(addr) => Ok(addr
+            .stake_cred()
+            .to_keyhash()
+            .ok_or_else(|| MurinError::new("ERROR: cannot get key hash from stake credential"))?),
         None => match caddr::RewardAddress::from_address(addr) {
-            Some(reward) => Ok(reward.payment_cred().to_keyhash().ok_or(MurinError::new(
-                "ERROR: cannot get keyhash from reward address",
-            ))?),
+            Some(reward) => Ok(reward
+                .payment_cred()
+                .to_keyhash()
+                .ok_or_else(|| MurinError::new("ERROR: cannot get keyhash from reward address"))?),
             None => {
-                let enterprise_address = caddr::EnterpriseAddress::from_address(&addr)
-                    .ok_or(MurinError::new("ERROR: cannot decode Enterprise Address"))?;
+                let enterprise_address = caddr::EnterpriseAddress::from_address(addr)
+                    .ok_or_else(|| MurinError::new("ERROR: cannot decode Enterprise Address"))?;
                 let payment_cred_key_ = enterprise_address.payment_cred();
                 match payment_cred_key_.kind() {
                     caddr::StakeCredKind::Key => {
-                        let cred_key_ = payment_cred_key_.to_keyhash().ok_or(MurinError::new(
-                            "ERROR: cannot get key hash from stake credential",
-                        ))?;
+                        let cred_key_ = payment_cred_key_.to_keyhash().ok_or_else(|| {
+                            MurinError::new("ERROR: cannot get key hash from stake credential")
+                        })?;
                         let scripthash_bytes = cred_key_.to_bytes();
-                        Ok(ccrypto::Ed25519KeyHash::from_bytes(scripthash_bytes)?.into())
+                        Ok(ccrypto::Ed25519KeyHash::from_bytes(scripthash_bytes)?)
                     }
 
                     caddr::StakeCredKind::Script => {
-                        let cred_key_ = payment_cred_key_.to_scripthash().ok_or(
-                            MurinError::new("ERROR: cannot get key hash from stake credential"),
-                        )?;
+                        let cred_key_ = payment_cred_key_.to_scripthash().ok_or_else(|| {
+                            MurinError::new("ERROR: cannot get key hash from stake credential")
+                        })?;
                         let scripthash_bytes = cred_key_.to_bytes();
                         Ok(ccrypto::Ed25519KeyHash::from_bytes(scripthash_bytes)?)
                     }
@@ -168,7 +170,7 @@ pub fn get_reward_address(addr: &caddr::Address) -> Result<caddr::Address, Murin
 pub fn get_bech32_stake_address_from_str(str: &str) -> Result<String, MurinError> {
     let address = match caddr::Address::from_bech32(str) {
         Ok(addr) => Ok(addr),
-        Err(e) => Err(MurinError::new(
+        Err(_e) => Err(MurinError::new(
             "The provided Address is not byte encoded not bech32 encoded, Address invalid!",
         )),
     }?;
@@ -190,9 +192,9 @@ pub fn get_pubkey(addr: &caddr::Address) -> Result<ccrypto::Ed25519KeyHash, Muri
     let address = caddr::BaseAddress::from_address(addr);
     let err = MurinError::new("ERROR wallet::get_pubkey gut not deserialize pub key from address");
     match address {
-        Some(base_addr) => base_addr.payment_cred().to_keyhash().ok_or(err.clone()),
+        Some(base_addr) => base_addr.payment_cred().to_keyhash().ok_or(err),
         None => {
-            let enterprise_address = caddr::EnterpriseAddress::from_address(&addr).ok_or(&err);
+            let enterprise_address = caddr::EnterpriseAddress::from_address(addr).ok_or(&err);
             if let Ok(payment_cred_key) = enterprise_address {
                 match payment_cred_key.payment_cred().kind() {
                     caddr::StakeCredKind::Key => {
@@ -214,8 +216,6 @@ pub fn get_pubkey(addr: &caddr::Address) -> Result<ccrypto::Ed25519KeyHash, Muri
                             Err(err.clone())
                         }
                     }
-
-                    _ => Err(err.clone()),
                 }
             } else {
                 Err(err)

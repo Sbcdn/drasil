@@ -25,7 +25,7 @@ pub fn perform_mint(
     native_script: &clib::NativeScript,
     gtxd: &TxData,
     minttxd: &MinterTxData,
-    pvks: &Vec<String>,
+    pvks: &[String],
     liquidity_addr: &Address,
     dummy: bool,
 ) -> std::result::Result<
@@ -38,7 +38,7 @@ pub fn perform_mint(
     ),
     MurinError,
 > {
-    if dummy == true {
+    if dummy {
         info!("--------------------------------------------------------------------------------------------------------");
         info!("-----------------------------------------Fee calcualtion------------------------------------------------");
         info!("---------------------------------------------------------------------------------------------------------\n");
@@ -211,7 +211,7 @@ pub fn perform_mint(
     let slot = cutils::to_bignum(
         gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network()),
     );
-    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, &fee);
+    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&slot);
     info!("\nTxOutputs: {:?}\n", txbody.outputs());
     debug!("\nTxInputs: {:?}\n", txbody.inputs());
@@ -235,7 +235,7 @@ pub fn perform_mint(
 
     let mut txwitness = clib::TransactionWitnessSet::new();
     let mut native_scripts = clib::NativeScripts::new();
-    native_scripts.add(&native_script);
+    native_scripts.add(native_script);
     txwitness.set_native_scripts(&native_scripts);
 
     let root_key1 = clib::crypto::Bip32PrivateKey::from_bytes(&hex::decode(&pvks[0])?)?;
@@ -260,7 +260,7 @@ pub fn perform_mint(
 pub async fn build_oneshot_mint_multisig(
     gtxd: &TxData,
     minttxd: &MinterTxData,
-    pvks: &Vec<String>,
+    pvks: &[String],
     ns_script: &clib::NativeScript,
     liquidity_addr: &Address,
 ) -> std::result::Result<crate::htypes::BuildOutput, MurinError> {
@@ -289,7 +289,7 @@ pub async fn build_oneshot_mint_multisig(
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
-    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_.clone()));
+    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
     let calculated_fee = calc_txfee(
         &transaction_,
@@ -305,7 +305,7 @@ pub async fn build_oneshot_mint_multisig(
         ns_script,
         gtxd,
         minttxd,
-        &pvks,
+        pvks,
         liquidity_addr,
         false,
     )?;
@@ -324,7 +324,7 @@ pub async fn build_oneshot_mint_multisig(
             ns_script,
             gtxd,
             minttxd,
-            &pvks,
+            pvks,
             liquidity_addr,
             false,
         )?;
