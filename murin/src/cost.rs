@@ -4,7 +4,7 @@ use cardano_serialization_lib::{
     Transaction,
 };
 use pallas_primitives::{babbage::PlutusData, Fragment};
-use uplc::ast::{Constant, DeBruijn, FakeNamedDeBruijn, NamedDeBruijn, Program, Term};
+use uplc::ast::{Constant, DeBruijn, NamedDeBruijn, Program, Term};
 
 use crate::ExUnit;
 
@@ -24,7 +24,7 @@ pub fn calculate(
             let script = scripts.get(i);
             let redeemer = redeemers.get(i);
 
-            let program = Program::<FakeNamedDeBruijn>::from_flat(&script.bytes())?;
+            let program = Program::<DeBruijn>::from_flat(&script.bytes())?;
 
             let program: Program<NamedDeBruijn> = program.into();
 
