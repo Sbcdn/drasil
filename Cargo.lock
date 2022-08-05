@@ -169,6 +169,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
+name = "base58"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6107fe1be6682a68940da878d9e9f5e90ca5745b3dec9fd1bb393c8777d4f581"
+
+[[package]]
 name = "base64"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -197,6 +203,12 @@ name = "bech32"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dabbe35f96fb9507f7330793dc490461b2962659ac5d427181e451a623751d1"
+
+[[package]]
+name = "bech32"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c5738be7561b0eeb501ef1d5c5db3f24e01ceb55fededd9b00039aada34966ad"
 
 [[package]]
 name = "bigdecimal"
@@ -770,9 +782,9 @@ dependencies = [
 
 [[package]]
 name = "flat-rs"
-version = "0.0.6"
+version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd4550a7b2c50b57f035221da8d91a64d6dc84d09745968c62743f1aecd3bf91"
+checksum = "aa90df4f7f297c56cc4653e6138083f95421443e333b6a6dd69c0c64f79797af"
 dependencies = [
  "anyhow",
  "thiserror",
@@ -1041,6 +1053,12 @@ dependencies = [
  "tokio-util 0.7.3",
  "tracing",
 ]
+
+[[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "hashbrown"
@@ -1490,6 +1508,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "minicbor"
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5e575910763b21a0db7df5e142907fe944bff84d1dfc78e2ba92e7f3bdfd36b"
+dependencies = [
+ "half",
+ "minicbor-derive 0.11.0",
+]
+
+[[package]]
+name = "minicbor"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a20020e8e2d1881d8736f64011bb5ff99f1db9947ce3089706945c8915695cb"
+dependencies = [
+ "minicbor-derive 0.12.0",
+]
+
+[[package]]
+name = "minicbor-derive"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0a86c5f04def8fb7735ae918bb589af82f985526f4c62e0249544b668b2f456"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "minicbor-derive"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8608fb1c805b5b6b3d5ab7bd95c40c396df622b64d77b2d621a5eae1eed050ee"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1557,6 +1616,7 @@ dependencies = [
  "log",
  "num",
  "octavo-digest",
+ "pallas-primitives",
  "pretty_env_logger",
  "redis",
  "reqwest",
@@ -1737,6 +1797,44 @@ name = "openssl-probe"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
+
+[[package]]
+name = "pallas-codec"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0dce0ea17341c1a0e43e2bb4a637740198dcb09826879ce3ac5ae1c6f4398a5d"
+dependencies = [
+ "minicbor 0.17.1",
+]
+
+[[package]]
+name = "pallas-crypto"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "051226367cd851895c73e3115d378b58495ade1ee60c3a154c0d0c30554565fa"
+dependencies = [
+ "cryptoxide 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex",
+ "pallas-codec",
+ "rand_core 0.6.3",
+ "thiserror",
+]
+
+[[package]]
+name = "pallas-primitives"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97a0fcc7d5a7120bc2b2e203ec5e7f8088107c500c0eb665569d0e77a910d3c0"
+dependencies = [
+ "base58",
+ "bech32 0.9.0",
+ "hex",
+ "log",
+ "pallas-codec",
+ "pallas-crypto",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "parking_lot"
@@ -3267,12 +3365,14 @@ checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "uplc"
-version = "0.0.6"
+version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfcffcc9e171c8e2d162d3b3bef52112f0cff0407919095aa5341e48a6a84a32"
+checksum = "fbb134b8250876adbfe59b0ee71b9832c1b59590aa0f7a92af1c592272a5d6b5"
 dependencies = [
  "flat-rs",
  "hex",
+ "minicbor 0.18.0",
+ "pallas-primitives",
  "peg",
  "pretty",
  "thiserror",

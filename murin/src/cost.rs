@@ -3,11 +3,15 @@ use cardano_serialization_lib::{
     utils::{from_bignum, TransactionUnspentOutputs},
     Transaction,
 };
-use uplc;
+use pallas_primitives::{babbage::PlutusData, Fragment};
+use uplc::ast::{Constant, DeBruijn, FakeNamedDeBruijn, NamedDeBruijn, Program, Term};
 
 use crate::ExUnit;
 
-pub fn calculate(tx: Transaction, input_utxos: TransactionUnspentOutputs) -> ExUnit {
+pub fn calculate(
+    tx: Transaction,
+    input_utxos: TransactionUnspentOutputs,
+) -> Result<ExUnit, Box<dyn std::error::Error>> {
     let mut ex_unit = ExUnit {
         steps: 0.,
         memory: 0.,
@@ -20,10 +24,9 @@ pub fn calculate(tx: Transaction, input_utxos: TransactionUnspentOutputs) -> ExU
             let script = scripts.get(i);
             let redeemer = redeemers.get(i);
 
-            let program: uplc::ast::Program<uplc::ast::DeBruijn> =
-                uplc::ast::Program::from_flat(&script.bytes()).unwrap();
+            let program = Program::<FakeNamedDeBruijn>::from_flat(&script.bytes())?;
 
-            let program: uplc::ast::Program<uplc::ast::NamedDeBruijn> = program.try_into().unwrap();
+            let program: Program<NamedDeBruijn> = program.into();
 
             let program = match redeemer.tag().kind() {
                 RedeemerTagKind::Mint => todo!(),
@@ -33,12 +36,19 @@ pub fn calculate(tx: Transaction, input_utxos: TransactionUnspentOutputs) -> ExU
                         .inputs()
                         .get(from_bignum(&redeemer.index()) as usize);
 
-                    let output = input_utxos
-                        .get(from_bignum(&redeemer.index()) as usize)
-                        .output();
+                    let output = input_utxos.get(input.index() as usize).output();
 
                     match output.plutus_data() {
-                        Some(data) => program.apply(data),
+                        Some(data) => {
+                            let datum = Program {
+                                version: (0, 0, 0),
+                                term: Term::Constant(Constant::Data(PlutusData::decode_fragment(
+                                    &data.to_bytes(),
+                                )?)),
+                            };
+
+                            program.apply(&datum)
+                        }
                         None => todo!(),
                     }
                 }
@@ -46,7 +56,14 @@ pub fn calculate(tx: Transaction, input_utxos: TransactionUnspentOutputs) -> ExU
                 RedeemerTagKind::Reward => todo!(),
             };
 
-            let program = program.apply(redeemer.data());
+            let redeemer = Program {
+                version: (0, 0, 0),
+                term: Term::Constant(Constant::Data(PlutusData::decode_fragment(
+                    &redeemer.data().to_bytes(),
+                )?)),
+            };
+
+            let program = program.apply(&redeemer);
 
             // TODO: apply script context
 
@@ -57,5 +74,5 @@ pub fn calculate(tx: Transaction, input_utxos: TransactionUnspentOutputs) -> ExU
         }
     }
 
-    ex_unit
+    Ok(ex_unit)
 }
