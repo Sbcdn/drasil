@@ -70,5 +70,5 @@ pub async fn finalize_rwd(
     let fin_tx =
         hex::encode(clib::Transaction::new(&tx_body, &tx_witness_stored, aux_data).to_bytes());
 
-    Ok(create_and_submit_cbor_tx(fin_tx, tx_hash).await?)
+    create_and_submit_cbor_tx(fin_tx, tx_hash).await
 }

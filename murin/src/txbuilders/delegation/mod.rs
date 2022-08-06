@@ -20,10 +20,10 @@ pub struct DelegTxData {
 }
 
 impl DelegTxData {
-    pub fn new(poolhash: &String) -> Result<DelegTxData, MurinError> {
+    pub fn new(poolhash: &str) -> Result<DelegTxData, MurinError> {
         let pool_keyhash = ccrypto::Ed25519KeyHash::from_bech32(poolhash)?;
         Ok(DelegTxData {
-            poolhash: poolhash.clone(),
+            poolhash: poolhash.to_string(),
             poolkeyhash: pool_keyhash,
         })
     }
@@ -46,6 +46,6 @@ impl ToString for DelegTxData {
 impl core::str::FromStr for DelegTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        Ok(DelegTxData::new(&src.to_string())?)
+        DelegTxData::new(src)
     }
 }

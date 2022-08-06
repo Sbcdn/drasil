@@ -40,5 +40,5 @@ pub async fn finalize(signature: &String, raw_tx: RawTx) -> Result<String, Murin
     let fin_tx =
         hex::encode(clib::Transaction::new(&tx_body, &tx_witness_stored, aux_data).to_bytes());
     let tx_hash = hex::encode(cutils::hash_transaction(&tx_body).to_bytes());
-    Ok(create_and_submit_cbor_tx(fin_tx, tx_hash).await?)
+    create_and_submit_cbor_tx(fin_tx, tx_hash).await
 }

@@ -33,6 +33,7 @@ pub struct MinterTxData {
 }
 
 impl MinterTxData {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         mint_tokens: Vec<MintTokenAsset>,
         receiver_stake_addr: Option<caddr::Address>,
@@ -65,7 +66,7 @@ impl MinterTxData {
 
     pub fn get_stake_addr_bech32(&self) -> Result<Option<String>, MurinError> {
         if let Some(sa) = &self.receiver_stake_addr {
-            return Ok(Some(sa.to_bech32(None)?.clone()));
+            return Ok(Some(sa.to_bech32(None)?));
         };
 
         Ok(None)
@@ -76,7 +77,7 @@ impl MinterTxData {
     }
 
     pub fn get_payment_addr_bech32(&self) -> Result<String, MurinError> {
-        Ok(self.receiver_payment_addr.to_bech32(None)?.clone())
+        Ok(self.receiver_payment_addr.to_bech32(None)?)
     }
 
     pub fn get_metadata(&self) -> Cip25Metadata {
@@ -84,7 +85,7 @@ impl MinterTxData {
     }
 
     pub fn get_auto_mint(&self) -> bool {
-        self.auto_mint.clone()
+        self.auto_mint
     }
 
     pub fn get_fee_addr(&self) -> Option<caddr::Address> {
@@ -99,19 +100,19 @@ impl MinterTxData {
         self.fee
     }
 
-    pub fn set_mint_tokens(&mut self, mint_tokens: Vec<MintTokenAsset>) -> () {
+    pub fn set_mint_tokens(&mut self, mint_tokens: Vec<MintTokenAsset>) {
         self.mint_tokens = mint_tokens;
     }
 
-    pub fn set_metadata(&mut self, metadata: Cip25Metadata) -> () {
+    pub fn set_metadata(&mut self, metadata: Cip25Metadata) {
         self.mint_metadata = metadata;
     }
 
-    pub fn set_fee_addr(&mut self, addr: caddr::Address) -> () {
+    pub fn set_fee_addr(&mut self, addr: caddr::Address) {
         self.fee_addr = Some(addr);
     }
 
-    pub fn set_fee(&mut self, fee: i64) -> () {
+    pub fn set_fee(&mut self, fee: i64) {
         self.fee = Some(fee);
     }
 }
@@ -177,14 +178,14 @@ impl ToString for MinterTxData {
 impl core::str::FromStr for MinterTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> std::result::Result<Self, Self::Err> {
-        let slice: Vec<&str> = src.split("|").collect();
+        let slice: Vec<&str> = src.split('|').collect();
         //debug!("Slice: {:?}",slice);
         if slice.len() == 8 {
             // restore token vector
             let mut tokens = Vec::<MintTokenAsset>::new();
-            let tokens_vec: Vec<&str> = slice[0].split("!").collect();
+            let tokens_vec: Vec<&str> = slice[0].split('!').collect();
             for token in tokens_vec {
-                let token_slice: Vec<&str> = token.split("?").collect();
+                let token_slice: Vec<&str> = token.split('?').collect();
                 let p = match token_slice[0] {
                     "NoData" => None,
                     _ => Some(clib::PolicyID::from_bytes(hex::decode(token_slice[0])?)?),
@@ -228,19 +229,16 @@ impl core::str::FromStr for MinterTxData {
                 receiver_stake_addr: stake_address,
                 receiver_payment_addr: payment_address,
                 mint_metadata: metadata,
-                auto_mint: auto_mint,
-                fee_addr: fee_addr,
-                fee: fee,
-                contract_id: contract_id,
+                auto_mint,
+                fee_addr,
+                fee,
+                contract_id,
             })
         } else {
-            Err(MurinError::new(
-                &format!(
-                    "Error the provided string '{}' cannot be parsed into 'RWDTxData' ",
-                    src
-                )
-                .to_string(),
-            ))
+            Err(MurinError::new(&format!(
+                "Error the provided string '{}' cannot be parsed into 'RWDTxData' ",
+                src
+            )))
         }
     }
 }
@@ -277,6 +275,12 @@ pub struct Cip25Metadata {
     pub assets: Vec<AssetMetadata>,
     pub other: Option<Vec<MetadataOther>>,
     pub version: String,
+}
+
+impl Default for Cip25Metadata {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Cip25Metadata {
@@ -338,7 +342,7 @@ pub fn make_mint_metadata_from_json(
     let mut metamap = clib::metadata::MetadataMap::new();
     let mut assetmap = MetadataMap::new();
     for asset in &raw_metadata.assets {
-        make_721_asset_entry(&asset, &mut assetmap)?;
+        make_721_asset_entry(asset, &mut assetmap)?;
     }
     let metadatum = clib::metadata::TransactionMetadatum::new_map(&assetmap);
     metamap.insert_str(&policy_str, &metadatum)?;
@@ -350,7 +354,7 @@ pub fn make_mint_metadata_from_json(
     // Other
     if let Some(other) = &raw_metadata.other {
         for o in other.clone() {
-            if o.value.len() >= 1 {
+            if !o.value.is_empty() {
                 let mut olist = MetadataList::new();
                 for l in o.value {
                     olist.add(&clib::metadata::TransactionMetadatum::new_text(l)?)
@@ -397,8 +401,7 @@ pub fn make_721_asset_entry(
                 asset
                     .media_type
                     .clone()
-                    .expect("If an image url is provided a mediaType is mandatory")
-                    .clone(),
+                    .expect("If an image url is provided a mediaType is mandatory"),
             )?,
         )?;
     }
@@ -441,7 +444,7 @@ pub fn make_721_asset_entry(
             if let Some(other) = f.other {
                 log::debug!("Found some key / values in other: {:?}", other);
                 for o in other {
-                    if o.value.len() >= 1 {
+                    if !o.value.is_empty() {
                         let mut filelist = MetadataList::new();
                         for l in o.value {
                             filelist.add(&clib::metadata::TransactionMetadatum::new_text(l)?)
@@ -469,7 +472,7 @@ pub fn make_721_asset_entry(
     // Other
     if let Some(other) = &asset.other {
         for o in other.clone() {
-            if o.value.len() >= 1 {
+            if !o.value.is_empty() {
                 let mut olist = MetadataList::new();
                 for l in o.value {
                     olist.add(&clib::metadata::TransactionMetadatum::new_text(l)?)
