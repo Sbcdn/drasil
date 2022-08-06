@@ -34,7 +34,7 @@ fn perform_delegation(
     ),
     MurinError,
 > {
-    if dummy == true {
+    if dummy {
         info!("--------------------------------------------------------------------------------------------------------");
         info!("-----------------------------------------Fee calcualtion------------------------------------------------");
         info!("---------------------------------------------------------------------------------------------------------\n");
@@ -136,7 +136,7 @@ fn perform_delegation(
     }
 
     let security =
-        cutils::to_bignum(cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (1 * MIN_ADA)); // 10% Security for min utxo etc.
+        cutils::to_bignum(cutils::from_bignum(&needed_value.coin()) / 100 * 10 + MIN_ADA); // 10% Security for min utxo etc.
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
     let mut needed_value = cutils::Value::new(&needed_value.coin());
 
@@ -182,7 +182,7 @@ fn perform_delegation(
     )?;
 
     let slot = gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network());
-    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, &fee, Some(slot as u32));
+    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, fee, Some(slot as u32));
     info!("\nTxOutputs: {:?}\n", txbody.outputs());
     debug!("\nTxInputs: {:?}\n", txbody.inputs());
 
@@ -245,7 +245,7 @@ pub async fn build_delegation_tx(
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
-    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_.clone()));
+    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
     let calculated_fee = calc_txfee(
         &transaction_,

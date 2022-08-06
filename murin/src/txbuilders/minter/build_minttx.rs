@@ -21,14 +21,15 @@ use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 //use std::env;
 
+#[allow(clippy::too_many_arguments)]
 pub fn perform_mint(
     fee: &cutils::BigNum,
     ns_vendorscript_addr: Option<&String>,
     ns_script: &String,
-    _ns_version: &String,
+    _ns_version: &str,
     gtxd: &TxData,
     minttxd: &MinterTxData,
-    pvks: &Vec<String>,
+    pvks: &[String],
     // apply_system_fee: &bool,
     dummy: bool,
 ) -> std::result::Result<
@@ -41,7 +42,7 @@ pub fn perform_mint(
     ),
     MurinError,
 > {
-    if dummy == true {
+    if dummy {
         info!("--------------------------------------------------------------------------------------------------------");
         info!("-----------------------------------------Fee calcualtion------------------------------------------------");
         info!("---------------------------------------------------------------------------------------------------------\n");
@@ -58,7 +59,7 @@ pub fn perform_mint(
     let mut vendor_script_address: caddr::Address = minttxd.get_payment_addr();
     let receiving_address: caddr::Address = minttxd.get_payment_addr();
     if let Some(addr) = ns_vendorscript_addr {
-        vendor_script_address = caddr::Address::from_bech32(&addr)?;
+        vendor_script_address = caddr::Address::from_bech32(addr)?;
     };
 
     let receiving_address_bech32 = receiving_address.to_bech32(None)?;
@@ -251,7 +252,7 @@ pub fn perform_mint(
         "Added Slot Time: {:?}",
         get_ttl_tx(&gtxd.clone().get_network())
     );
-    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, &fee);
+    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&slot);
     info!("\nTxOutputs: {:?}\n", txbody.outputs());
     debug!("\nTxInputs: {:?}\n", txbody.inputs());
@@ -309,10 +310,10 @@ pub fn perform_mint(
 pub async fn build_mint_multisig(
     gtxd: &TxData,
     minttxd: &MinterTxData,
-    pvks: &Vec<String>,
+    pvks: &[String],
     vendor_ns_addr: Option<&String>,
     ns_script: &String,
-    ns_version: &String,
+    ns_version: &str,
     //apply_system_fee: &bool,
 ) -> std::result::Result<crate::htypes::BuildOutput, MurinError> {
     // Temp until Protocol Parameters fixed
@@ -345,7 +346,7 @@ pub async fn build_mint_multisig(
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
-    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_.clone()));
+    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
     let calculated_fee = calc_txfee(
         &transaction_,
@@ -363,7 +364,7 @@ pub async fn build_mint_multisig(
         ns_version,
         gtxd,
         minttxd,
-        &pvks,
+        pvks,
         //   apply_system_fee,
         false,
     )?;
@@ -384,7 +385,7 @@ pub async fn build_mint_multisig(
             ns_version,
             gtxd,
             minttxd,
-            &pvks,
+            pvks,
             //    apply_system_fee,
             false,
         )?;

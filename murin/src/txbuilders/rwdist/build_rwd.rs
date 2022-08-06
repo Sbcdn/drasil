@@ -14,17 +14,17 @@ use crate::wallet::*;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use dotenv::dotenv;
-use std::env;
 use std::str::from_utf8;
 
+#[allow(clippy::too_many_arguments)]
 pub fn perform_rwd(
     fee: &cutils::BigNum,
-    ns_addr: &String,
+    ns_addr: &str,
     ns_script: &String,
     ns_version: &String,
     gtxd: &super::TxData,
     rwdtxd: &super::RWDTxData,
-    pvks: &Vec<String>,
+    pvks: &[String],
     //    apply_system_fee: &bool,
     dummy: bool,
 ) -> Result<
@@ -37,7 +37,7 @@ pub fn perform_rwd(
     ),
     MurinError,
 > {
-    if dummy == true {
+    if dummy {
         info!("--------------------------------------------------------------------------------------------------------");
         info!("-----------------------------------------Fee calcualtion------------------------------------------------");
         info!("---------------------------------------------------------------------------------------------------------\n");
@@ -51,7 +51,7 @@ pub fn perform_rwd(
 
     //let rwd_system_fee = env::var("SYSTEM_FEE_RWD")?.parse::<u64>()?;
     //let rwd_system_fee_wallet = caddr::Address::from_bech32(&env::var("SYSTEM_FEE_WALLET")?)?;
-    let native_script_address = caddr::Address::from_bech32(&ns_addr)?;
+    let native_script_address = caddr::Address::from_bech32(ns_addr)?;
 
     let recipient_address = rwdtxd.get_payment_addr();
     debug!("Recipent Address: {:?}", recipient_address);
@@ -177,7 +177,7 @@ pub fn perform_rwd(
     //Contract fee
     let mut contract_fee = 0u64;
     if let Some(f) = &rwdtxd.get_fee() {
-        contract_fee = contract_fee + f;
+        contract_fee += f;
     }
 
     // Add SystemFee
@@ -189,7 +189,7 @@ pub fn perform_rwd(
     debug!("\n\nFee Value: {:?}", fee_val);
 
     debug!("\n\nrwd_utxo_selection: {:?}", rwd_utxo_selection);
-    if rwd_utxo_selection.len() > 0 {
+    if !rwd_utxo_selection.is_empty() {
         let mut zcoin_rval = rwd_val.clone();
         zcoin_rval.set_coin(&cutils::to_bignum(0u64));
         //Todo: Output splitten if it makes sense, good option for splitting outputs in user transactions to
@@ -327,7 +327,7 @@ pub fn perform_rwd(
     let slot = cutils::to_bignum(
         gtxd.clone().get_current_slot() + hfn::get_ttl_tx(&gtxd.clone().get_network()),
     );
-    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, &fee);
+    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&slot);
     debug!("\nTxOutputs: {:?}\n", txbody.outputs());
     debug!("\nTxInputs: {:?}\n", txbody.inputs());
@@ -394,8 +394,8 @@ pub fn perform_rwd(
 pub async fn build_rwd_multisig(
     gtxd: &super::TxData,
     rwdtxd: &super::RWDTxData,
-    pvks: &Vec<String>,
-    ns_addr: &String,
+    pvks: &[String],
+    ns_addr: &str,
     ns_script: &String,
     ns_version: &String,
     //    apply_system_fee: &bool,
@@ -430,7 +430,7 @@ pub async fn build_rwd_multisig(
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
-    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_.clone()));
+    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
     let calculated_fee = hfn::calc_txfee(
         &transaction_,
@@ -448,7 +448,7 @@ pub async fn build_rwd_multisig(
         ns_version,
         gtxd,
         rwdtxd,
-        &pvks,
+        pvks,
         //    apply_system_fee,
         false,
     )?;
@@ -470,7 +470,7 @@ pub async fn build_rwd_multisig(
             ns_version,
             gtxd,
             rwdtxd,
-            &pvks,
+            pvks,
             //        apply_system_fee,
             false,
         )?;

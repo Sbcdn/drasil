@@ -16,11 +16,7 @@ pub mod build_cpo;
 
 use super::*;
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
-use clib::address::Address;
-use serde::{Deserialize, Serialize};
+use cardano_serialization_lib::{address as caddr, utils as cutils};
 
 #[derive(Debug, Clone)]
 pub struct RWDTxData {
@@ -34,7 +30,7 @@ pub struct RWDTxData {
 
 impl RWDTxData {
     pub fn new(
-        reward_tokens: &Vec<TokenAsset>,
+        reward_tokens: &[TokenAsset],
         recipient_stake_addr: &caddr::Address,
         recipient_payment_addr: &caddr::Address,
         //fee_wallet_addr         : &caddr::Address,
@@ -42,7 +38,7 @@ impl RWDTxData {
         //reward_utxos            : &Option<TransactionUnspentOutputs>,
     ) -> RWDTxData {
         RWDTxData {
-            reward_tokens: reward_tokens.clone(),
+            reward_tokens: reward_tokens.to_vec(),
             recipient_stake_addr: recipient_stake_addr.clone(),
             recipient_payment_addr: recipient_payment_addr.clone(),
             fee_wallet_addr: None, //fee_wallet_addr.clone(),
@@ -75,27 +71,27 @@ impl RWDTxData {
         self.reward_utxos.clone()
     }
 
-    pub fn set_reward_tokens(&mut self, data: &Vec<TokenAsset>) -> () {
-        self.reward_tokens = data.clone();
+    pub fn set_reward_tokens(&mut self, data: &[TokenAsset]) {
+        self.reward_tokens = data.to_vec();
     }
 
-    pub fn set_stake_addr(&mut self, data: &caddr::Address) -> () {
+    pub fn set_stake_addr(&mut self, data: &caddr::Address) {
         self.recipient_stake_addr = data.clone();
     }
 
-    pub fn set_payment_addr(&mut self, data: &caddr::Address) -> () {
+    pub fn set_payment_addr(&mut self, data: &caddr::Address) {
         self.recipient_payment_addr = data.clone()
     }
 
-    pub fn set_fee_wallet_addr(&mut self, data: &caddr::Address) -> () {
+    pub fn set_fee_wallet_addr(&mut self, data: &caddr::Address) {
         self.fee_wallet_addr = Some(data.clone());
     }
 
-    pub fn set_fee(&mut self, data: &u64) -> () {
+    pub fn set_fee(&mut self, data: &u64) {
         self.fee = Some(*data);
     }
 
-    pub fn set_reward_utxos(&mut self, data: &Option<TransactionUnspentOutputs>) -> () {
+    pub fn set_reward_utxos(&mut self, data: &Option<TransactionUnspentOutputs>) {
         self.reward_utxos = data.clone();
     }
 }
@@ -159,13 +155,13 @@ impl ToString for RWDTxData {
 impl core::str::FromStr for RWDTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let slice: Vec<&str> = src.split("|").collect();
+        let slice: Vec<&str> = src.split('|').collect();
         if slice.len() == 6 {
             // restore token vector
             let mut tokens = Vec::<TokenAsset>::new();
-            let tokens_vec: Vec<&str> = slice[0].split("!").collect();
+            let tokens_vec: Vec<&str> = slice[0].split('!').collect();
             for token in tokens_vec {
-                let token_slice: Vec<&str> = token.split("?").collect();
+                let token_slice: Vec<&str> = token.split('?').collect();
                 tokens.push((
                     clib::PolicyID::from_bytes(hex::decode(token_slice[0])?)?,
                     clib::AssetName::from_bytes(hex::decode(token_slice[1])?)?,
@@ -205,8 +201,8 @@ impl core::str::FromStr for RWDTxData {
                 reward_tokens: tokens,
                 recipient_stake_addr: stake_address,
                 recipient_payment_addr: payment_address,
-                fee_wallet_addr: fee_wallet_addr,
-                fee: fee,
+                fee_wallet_addr,
+                fee,
                 reward_utxos: token_utxos,
             })
         } else {
@@ -216,8 +212,7 @@ impl core::str::FromStr for RWDTxData {
                 &format!(
                     "Error the provided string '{}' cannot be parsed into 'RWDTxData' ",
                     src
-                )
-                .to_string(),
+                ),
             ))
         }
     }

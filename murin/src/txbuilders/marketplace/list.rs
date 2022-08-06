@@ -11,10 +11,7 @@ use crate::hfn;
 use crate::htypes;
 use crate::marketplace::*;
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
-use clib::to_bytes;
+use cardano_serialization_lib::{address as caddr, utils as cutils};
 
 pub fn perform_listing(
     fee: &cutils::BigNum,
@@ -33,7 +30,7 @@ pub fn perform_listing(
     ),
     MurinError,
 > {
-    if dummy == true {
+    if dummy {
         info!("--------------------------------------------------------------------------------------------------------");
         info!("-----------------------------------------Fee calcualtion------------------------------------------------");
         info!("---------------------------------------------------------------------------------------------------------\n");
@@ -57,7 +54,7 @@ pub fn perform_listing(
         roy_rate = 500;
     }
 
-    let sc_address = caddr::Address::from_bech32(&sc_addr).unwrap();
+    let sc_address = caddr::Address::from_bech32(sc_addr).unwrap();
     let mut roy_pkey = hfn::get_payment_address(&sc_address);
     let roy_addr: caddr::Address;
     if let Some(royaddr) = mptxd.clone().get_royalties_address() {
@@ -78,7 +75,7 @@ pub fn perform_listing(
         &hex::encode(&mptxd.get_tokens()[0].0.to_bytes()),
         &hex::encode(&mptxd.get_tokens()[0].1.to_bytes()),
         &roy_pkey,
-        &sc_version,
+        sc_version,
     );
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,9 +113,9 @@ pub fn perform_listing(
     let trade_owner = &gtxd.clone().get_senders_addresses()[0];
     let mut txouts = clib::TransactionOutputs::new();
 
-    let smart_contract_address = caddr::Address::from_bech32(&sc_addr.to_string()).unwrap();
+    let smart_contract_address = caddr::Address::from_bech32(sc_addr).unwrap();
 
-    let script_utxo = make_mp_contract_utxo_output(
+    let _script_utxo = make_mp_contract_utxo_output(
         &mut txouts,
         smart_contract_address,
         &datumpair.0,
@@ -172,7 +169,7 @@ pub fn perform_listing(
     //token_utxos.add(&script_utxo);
     //let listing_tokens  = artifn::get_nfts_for_sale(&token_utxos);
 
-    let token_input_utxo = hfn::find_asset_utxos_in_txuos(&input_txuos, &mptxd.get_tokens());
+    let token_input_utxo = hfn::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
     debug!("Token Input Utxos: {:?}", token_input_utxo);
 
     let (txins, mut input_txuos) = hfn::input_selection(
@@ -191,7 +188,7 @@ pub fn perform_listing(
 
     let txouts_fin = hfn::balance_tx(
         &mut input_txuos,
-        &mptxd.get_tokens(),
+        mptxd.get_tokens(),
         &mut txouts,
         None,
         fee,
@@ -199,7 +196,7 @@ pub fn perform_listing(
         &mut first_run,
         &mut txos_paied,
         &mut tbb_values,
-        &trade_owner,
+        trade_owner,
         change_address,
         &mut acc,
         None,
@@ -207,7 +204,7 @@ pub fn perform_listing(
     )?;
 
     let slot = gtxd.clone().get_current_slot() + hfn::get_ttl_tx(&gtxd.clone().get_network());
-    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, &fee, Some(slot as u32)); //922321
+    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, fee, Some(slot as u32)); //922321
     info!("\nTxOutputs: {:?}\n", txbody.outputs());
     info!("\nTxInputs: {:?}\n", txbody.inputs());
 
@@ -247,7 +244,7 @@ pub async fn build_mp_listing(
     //
 
     //Create Tx
-    let (txbody_, mut txwitness_, aux_data_, used_utxos, vkey_counter) = perform_listing(
+    let (txbody_, mut txwitness_, aux_data_, _used_utxos, vkey_counter) = perform_listing(
         &cutils::to_bignum(2000000),
         sc_addr,
         sc_version,
@@ -260,7 +257,7 @@ pub async fn build_mp_listing(
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
-    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_.clone()));
+    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
     let calculated_fee = hfn::calc_txfee(
         &transaction_,
