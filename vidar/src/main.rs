@@ -20,8 +20,8 @@ const DEFAULT_PORT: &str = "4101";
 
 #[tokio::main]
 async fn main() {
-    let host: String = env::var("POD_HOST").unwrap_or(DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
-    let port = env::var("POD_PORT").unwrap_or(DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
+    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
+    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
 
     if env::var_os("RUST_LOG").is_none() {
         env::set_var("RUST_LOG", "vidar=info");
@@ -169,7 +169,7 @@ mod handlers {
     use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive}; //ToPrimitive
     use cardano_serialization_lib::address::Address;
     use chrono::{DateTime, Utc};
-    use hex;
+
     use std::convert::Infallible;
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -178,8 +178,10 @@ mod handlers {
     }
 
     impl ReturnError {
-        pub fn new(str: &String) -> ReturnError {
-            ReturnError { msg: str.clone() }
+        pub fn new(str: &str) -> ReturnError {
+            ReturnError {
+                msg: str.to_string(),
+            }
         }
     }
 
@@ -201,6 +203,7 @@ mod handlers {
     }
 
     impl ClaimedResponse {
+        #[allow(clippy::too_many_arguments)]
         pub fn new(
             stake_addr: String,
             payment_addr: String,
@@ -515,7 +518,7 @@ mod handlers {
 
     pub fn make_error(e: String) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
         Ok(warp::reply::with_status(
-            warp::reply::json(&ReturnError::new(&e.to_string())),
+            warp::reply::json(&ReturnError::new(&e)),
             warp::http::StatusCode::NOT_ACCEPTABLE,
         ))
     }
@@ -526,15 +529,11 @@ mod handlers {
             Ok(h) => match Address::from_bytes(h) {
                 Ok(a) => match a.to_bech32(None) {
                     Ok(s) => Ok(s),
-                    Err(e) => return Err(e.to_string() + &err),
+                    Err(e) => Err(e.to_string() + &err),
                 },
-                Err(e) => {
-                    return Err(e.to_string() + &err);
-                }
+                Err(e) => Err(e.to_string() + &err),
             },
-            Err(e) => {
-                return Err(e.to_string() + &err);
-            }
+            Err(e) => Err(e.to_string() + &err),
         }
     }
 }

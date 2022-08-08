@@ -69,11 +69,9 @@ pub fn get_slot(conn: &PgConnection) -> Result<i64, MurinError> {
         .load::<Option<i64>>(&*conn)?;
     match slot[0] {
         Some(s) => Ok(s),
-        None => {
-            return Err(murin::MurinError::new(
-                "ERROR: Could not find slot number in DBsync",
-            ));
-        }
+        None => Err(murin::MurinError::new(
+            "ERROR: Could not find slot number in DBsync",
+        )),
     }
 }
 
@@ -186,6 +184,7 @@ pub fn get_token_info(
     Ok(ti)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn stake_registration(
     conn: &PgConnection,
     stake_addr_in: &String,
@@ -206,6 +205,7 @@ pub fn stake_registration(
     Ok(registration)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn stake_deregistration(
     conn: &PgConnection,
     stake_addr_in: &String,
@@ -376,7 +376,7 @@ pub fn find_avail_pool(pool_id: &String) -> Result<bool, MurinError> {
         .filter(pool_retire::id.eq(&pool_stake.id))
         .load::<PoolRetire>(&conn)?;
 
-    if pool_retire.len() != 0 {
+    if !pool_retire.is_empty() {
         return Ok(false);
     }
 
@@ -397,7 +397,7 @@ pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MurinError> {
         .filter(tx_in::tx_in_id.is_not_null())
         .filter(tx::hash.eq(txh_b))
         .load::<(Vec<u8>, i16)>(&conn)?;
-    if tx.len() > 0 {
+    if !tx.is_empty() {
         Ok(true)
     } else {
         Ok(false)
