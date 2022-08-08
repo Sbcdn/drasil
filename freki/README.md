@@ -1,7 +1,7 @@
 # Freki
 
 ## Summary
-Freki is a reward caluclator and has to run in a cron job once per epoch.
+Freki is a reward calculator and has to run in a cron job once per epoch.
 
 * [Documentation](https://docs.drasil.io/reward-and-distribution/drasil-rewards-api/reward-information)
 

@@ -12,6 +12,7 @@ use std::convert::Infallible;
 use thiserror::Error;
 use warp::{http::StatusCode, Rejection, Reply};
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("wrong credentials")]
@@ -91,7 +92,7 @@ impl From<SleipnirError> for Error {
 
 impl From<std::string::String> for Error {
     fn from(err: std::string::String) -> Self {
-        Error::Custom(err.to_string())
+        Error::Custom(err)
     }
 }
 

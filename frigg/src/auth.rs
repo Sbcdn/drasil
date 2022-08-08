@@ -119,7 +119,7 @@ async fn authorize((role, headers): (Role, HeaderMap<HeaderValue>)) -> WebResult
 
             Ok(decoded.claims.sub)
         }
-        Err(e) => return Err(reject::custom(e)),
+        Err(e) => Err(reject::custom(e)),
     }
 }
 

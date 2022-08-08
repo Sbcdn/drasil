@@ -16,8 +16,8 @@ use lettre::Message;
 use rusoto_ses::{RawMessage, SendRawEmailRequest, Ses, SesClient};
 
 lazy_static::lazy_static! {
-    static ref SMTP_USER: String = std::env::var("SMTP_USER").unwrap_or("".to_string());
-    static ref SMTP_PW: String = std::env::var("SMTP_PW").unwrap_or("".to_string());
+    static ref SMTP_USER: String = std::env::var("SMTP_USER").unwrap_or_else(|_| "".to_string());
+    static ref SMTP_PW: String = std::env::var("SMTP_PW").unwrap_or_else(|_| "".to_string());
 }
 
 #[derive(Debug, Serialize)]
@@ -86,10 +86,7 @@ impl Email {
         }
         let email = Message::builder()
             // Addresses can be specified by the tuple (email, alias)
-            .to((rname + "<" + &self.recipient.email + ">")
-                .to_string()
-                .parse()
-                .unwrap())
+            .to((rname + "<" + &self.recipient.email + ">").parse().unwrap())
             // ... or by an address only
             .from(std::env::var("FROM_EMAIL").unwrap().parse().unwrap())
             .subject(self.subject)
