@@ -20,7 +20,7 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-warp = { version="0.3", features=["tls"]}
+warp = { version = "0.3", features = ["tls"] }
 pretty_env_logger = "0.4.0"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -29,11 +29,11 @@ bincode = "1.3.3"
 serde_bytes = "0.11.5"
 dotenv = "0.15.0"
 structopt = "0.3.26"
-jsonwebtoken = { version="8.1.0", features=["use_pem"]}
+jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 thiserror = "1.0"
 
-hugin = { path = "../hugin", version="0.1.0" }
-sleipnir = { path = "../sleipnir", version="0.1.0" }
+hugin = { path = "../hugin", version = "0.1.0" }
+#sleipnir = { path = "../sleipnir", version="0.1.0" }
 
 #hugin = { git = "ssh://git@github.com/sbcdn/hugin.git", branch="main" }
 #sleipnir = { git = "ssh://git@github.com/sbcdn/sleipnir.git", branch="main" }

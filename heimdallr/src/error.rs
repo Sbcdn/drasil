@@ -7,7 +7,7 @@
 #################################################################################
 */
 use serde::Serialize;
-use sleipnir::SleipnirError;
+//use sleipnir::SleipnirError;
 use std::convert::Infallible;
 use thiserror::Error;
 use warp::{http::StatusCode, Rejection, Reply};
@@ -81,13 +81,14 @@ impl From<MurinError> for Error {
         Error::Custom(err.to_string())
     }
 }
-*/
 
 impl From<SleipnirError> for Error {
     fn from(err: SleipnirError) -> Self {
         Error::Custom(err.to_string())
     }
 }
+
+*/
 
 impl From<std::string::String> for Error {
     fn from(err: std::string::String) -> Self {

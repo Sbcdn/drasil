@@ -1,15 +1,15 @@
 FROM rust:1.61.0-slim-bullseye as base
 RUN apt update -y
 RUN apt install -y --no-install-recommends \
-        ca-certificates \
-        gcc \
-        libc6-dev \
-        libpq-dev \
-        libasn1-8-heimdal \
-        libtasn1-6 \
-        libhdb9-heimdal \
-        nettle-dev \
-        libhogweed6
+    ca-certificates \
+    gcc \
+    libc6-dev \
+    libpq-dev \
+    libasn1-8-heimdal \
+    libtasn1-6 \
+    libhdb9-heimdal \
+    nettle-dev \
+    libhogweed6
 
 RUN apt clean -y
 
@@ -33,6 +33,7 @@ COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./.cargo/murin /murin
 COPY ./src ./src
+COPY ./.cargo/murin /murin
 RUN cargo build --release --target x86_64-unknown-linux-gnu
 
 FROM gcr.io/distroless/cc as geri
