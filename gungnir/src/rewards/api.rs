@@ -158,6 +158,7 @@ impl Rewards {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_rewards<'a>(
         conn: &PgConnection,
         stake_addr: &'a String,
@@ -223,11 +224,11 @@ impl Rewards {
     ) -> Result<Rewards, RWDError> {
         use crate::schema::rewards::dsl::*;
         let rwds = Self::get_rewards_per_token(
-            &conn,
-            &stake_addr_in,
+            conn,
+            stake_addr_in,
             *contract_id_in,
             *user_id_in,
-            &fingerprint_in,
+            fingerprint_in,
         )?;
         if rwds.len() == 1 {
             let total_claimed =
@@ -336,6 +337,7 @@ impl Claimed {
         Ok(sum)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_claim<'a>(
         conn: &PgConnection,
         stake_addr: &'a String,
@@ -671,6 +673,7 @@ impl TokenWhitelist {
         Ok(result)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_twl_entry<'a>(
         conn: &PgConnection,
         fingerprint: &'a String,
@@ -679,7 +682,7 @@ impl TokenWhitelist {
         contract_id: &'a i64,
         user_id: &'a i64,
         vesting_period: &'a DateTime<Utc>,
-        pools: &'a Vec<GPools>,
+        pools: &'a [GPools],
         mode: &'a Calculationmode,
         equation: &'a String,
         start_epoch_in: &'a i64,
@@ -709,6 +712,7 @@ impl TokenWhitelist {
             .get_result::<TokenWhitelist>(conn)?)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn update_twl<'a>(
         conn: &PgConnection,
         fingerprint_in: &'a String,
@@ -788,7 +792,7 @@ impl TokenWhitelist {
         fingerprint_in: &'a String,
         contract_id_in: &'a i64,
         user_id_in: &'a i64,
-        pools_in: &'a Vec<GPools>,
+        pools_in: &'a [GPools],
     ) -> Result<TokenWhitelist, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
         use itertools::Itertools;
@@ -797,9 +801,9 @@ impl TokenWhitelist {
         let conn = establish_connection()?;
         let twl = TokenWhitelist::get_whitelist_entry(
             &conn,
-            &fingerprint_in,
-            contract_id_in.clone(),
-            user_id_in.clone(),
+            fingerprint_in,
+            *contract_id_in,
+            *user_id_in,
         )?;
 
         let mut old_pools = Vec::<GPools>::new();
@@ -809,7 +813,7 @@ impl TokenWhitelist {
                 .iter()
                 .map(|n| GPools::from_str(n).expect("Could not convert string to GPools")),
         );
-        old_pools.extend(pools_in.iter().map(|p| p.clone()));
+        old_pools.extend(pools_in.iter().cloned());
         let npool: Vec<_> = old_pools.iter().unique_by(|p| p.pool_id.clone()).collect();
 
         let mut spools = Vec::<String>::new();
@@ -831,7 +835,7 @@ impl TokenWhitelist {
         fingerprint_in: &'a String,
         contract_id_in: &'a i64,
         user_id_in: &'a i64,
-        pools_in: &'a Vec<GPools>,
+        pools_in: &'a [GPools],
     ) -> Result<TokenWhitelist, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
         use std::str::FromStr;
@@ -839,9 +843,9 @@ impl TokenWhitelist {
         let conn = establish_connection()?;
         let twl = TokenWhitelist::get_whitelist_entry(
             &conn,
-            &fingerprint_in,
-            contract_id_in.clone(),
-            user_id_in.clone(),
+            fingerprint_in,
+            *contract_id_in,
+            *user_id_in,
         )?;
 
         let mut old_pools = Vec::<GPools>::new();
@@ -957,6 +961,7 @@ impl AirDropParameter {
         Ok(result)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_airdrop_parameter<'a>(
         conn: &PgConnection,
         contract_id: &'a i64,
@@ -986,10 +991,7 @@ impl AirDropParameter {
             .get_result::<AirDropParameter>(conn)?)
     }
 
-    pub fn remove_airdrop_parameter<'a>(
-        conn: &PgConnection,
-        id_in: i64,
-    ) -> Result<usize, RWDError> {
+    pub fn remove_airdrop_parameter(conn: &PgConnection, id_in: i64) -> Result<usize, RWDError> {
         use crate::schema::airdrop_parameter::dsl::*;
         let result = diesel::delete(airdrop_parameter.find(id_in)).execute(conn)?;
 
@@ -1004,9 +1006,9 @@ impl WlAddresses {
         Ok(result)
     }
 
-    pub fn create_wladdress<'a>(
+    pub fn create_wladdress(
         conn: &PgConnection,
-        address: &'a String,
+        address: &String,
     ) -> Result<WlAddresses, RWDError> {
         let new_entry = WlAddressesNew {
             payment_address: address,
@@ -1018,7 +1020,7 @@ impl WlAddresses {
             .get_result::<WlAddresses>(conn)?)
     }
 
-    pub fn remove_wladdress<'a>(conn: &PgConnection, id_in: i64) -> Result<usize, RWDError> {
+    pub fn remove_wladdress(conn: &PgConnection, id_in: i64) -> Result<usize, RWDError> {
         use crate::schema::wladdresses::dsl::*;
         let result = diesel::delete(wladdresses.find(id_in)).execute(conn)?;
 
@@ -1061,7 +1063,7 @@ impl WlAlloc {
         Ok(result)
     }
 
-    pub fn remove_wl<'a>(conn: &PgConnection, wl_in: &'a i64) -> Result<usize, RWDError> {
+    pub fn remove_wl(conn: &PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
         let result = diesel::delete(wlalloc::table.filter(wlalloc::wl.eq(wl_in))).execute(conn)?;
         Ok(result)
     }
@@ -1075,9 +1077,9 @@ impl Whitelist {
         Ok(result)
     }
 
-    pub fn create_wladdress<'a>(
+    pub fn create_wladdress(
         conn: &PgConnection,
-        max_addr_repeat: &'a i32,
+        max_addr_repeat: &i32,
     ) -> Result<Whitelist, RWDError> {
         let new_entry = WhitelistNew { max_addr_repeat };
 
@@ -1096,7 +1098,7 @@ impl Whitelist {
         Ok(ralloc)
     }
 
-    pub fn remove_wl<'a>(conn: &PgConnection, wl_in: &'a i64) -> Result<usize, RWDError> {
+    pub fn remove_wl(conn: &PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
         let _result = WlAlloc::remove_wl(conn, wl_in)?;
 
         let result =
@@ -1125,6 +1127,7 @@ impl MintProject {
         Ok(result)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_mintproject<'a>(
         conn: &PgConnection,
         customer_name: &'a String,
@@ -1164,7 +1167,7 @@ impl MintProject {
             .get_result::<MintProject>(conn)?)
     }
 
-    pub fn remove_mintproject<'a>(conn: &PgConnection, id_in: &'a i64) -> Result<usize, RWDError> {
+    pub fn remove_mintproject(conn: &PgConnection, id_in: &i64) -> Result<usize, RWDError> {
         let result = diesel::delete(mint_projects::table.find(id_in)).execute(conn)?;
 
         Ok(result)
@@ -1246,6 +1249,7 @@ impl Nft {
         Ok(result)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_nft<'a>(
         conn: &PgConnection,
         project_id: &'a i64,

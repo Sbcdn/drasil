@@ -8,10 +8,7 @@
 */
 use crate::MurinError;
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
-use clib::chain_core::property::Transaction;
+use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -160,7 +157,7 @@ impl ARemove for clib::TransactionOutputs {
                 res.add(&self.get(tx));
             }
         }
-        return res;
+        res
     }
 }
 
@@ -168,6 +165,12 @@ pub type TransactionUnspentOutput = cutils::TransactionUnspentOutput;
 
 #[derive(Clone, Debug)]
 pub struct TransactionUnspentOutputs(pub(crate) Vec<TransactionUnspentOutput>);
+
+impl Default for TransactionUnspentOutputs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TransactionUnspentOutputs {
     pub fn new() -> Self {
@@ -214,7 +217,7 @@ impl TransactionUnspentOutputs {
                 return Some(i);
             }
         }
-        return None;
+        None
     }
 
     pub fn merge(&mut self, other: TransactionUnspentOutputs) {
@@ -223,32 +226,28 @@ impl TransactionUnspentOutputs {
         }
     }
 
-    pub fn sort_by_coin(&mut self) -> () {
+    pub fn sort_by_coin(&mut self) {
         self.0
             .sort_by_cached_key(|k| cutils::from_bignum(&k.output().amount().coin()));
     }
 
-    pub fn sort_by_multi_amount(&mut self) -> () {
-        self.0.sort_by_cached_key(|k| get_amount(k));
+    pub fn sort_by_multi_amount(&mut self) {
+        self.0.sort_by_cached_key(get_amount);
 
         fn get_amount(k: &TransactionUnspentOutput) -> usize {
             let mut acc = 0usize;
             let policies = k.output().amount().multiasset().unwrap().keys();
             let assets = k.output().amount().multiasset().unwrap();
             for policy in 0..policies.len() {
-                acc = acc + assets.get(&policies.get(policy)).unwrap().len();
+                acc += assets.get(&policies.get(policy)).unwrap().len();
             }
-            acc = acc + (policies.len() * 1.5 as usize);
-            return acc;
+            acc += policies.len() * 1.5 as usize;
+            acc
         }
     }
 
     /// sort by asset amount, largest first
-    pub fn sort_by_asset_amount(
-        &mut self,
-        policy: &ccrypto::ScriptHash,
-        asset: &clib::AssetName,
-    ) -> () {
+    pub fn sort_by_asset_amount(&mut self, policy: &ccrypto::ScriptHash, asset: &clib::AssetName) {
         self.0.sort_by_cached_key(|k| get_amount(k, policy, asset));
 
         fn get_amount(
@@ -257,12 +256,12 @@ impl TransactionUnspentOutputs {
             asset: &clib::AssetName,
         ) -> usize {
             match k.output().amount().multiasset() {
-                Some(ma) => match ma.get(&policy) {
+                Some(ma) => match ma.get(policy) {
                     Some(assets) => match assets.get(asset) {
-                        Some(a) => return cutils::from_bignum(&a) as usize,
-                        None => return 100,
+                        Some(a) => cutils::from_bignum(&a) as usize,
+                        None => 100,
                     },
-                    None => return 1000,
+                    None => 1000,
                 },
                 None => 2000,
             }
@@ -308,7 +307,7 @@ impl TransactionUnspentOutputs {
     }
 
     pub fn add_if_not_contained(&mut self, addons: &TransactionUnspentOutput) -> Option<()> {
-        if let Some(_) = self.0.iter().find(|n| n.to_bytes() == addons.to_bytes()) {
+        if self.0.iter().any(|n| n.to_bytes() == addons.to_bytes()) {
             self.add(addons);
             return Some(());
         };
@@ -383,7 +382,7 @@ impl TransactionUnspentOutputs {
             .fold_while(
                 TransactionUnspentOutputs::new(),
                 |mut acc: TransactionUnspentOutputs, x| {
-                    if acc.coin_sum_minutxo() >= cutils::from_bignum(&ncoin) {
+                    if acc.coin_sum_minutxo() >= cutils::from_bignum(ncoin) {
                         Done(acc)
                     } else {
                         Continue({
@@ -411,7 +410,7 @@ impl TransactionUnspentOutputs {
             TransactionUnspentOutputs::new(),
             |mut acc: TransactionUnspentOutputs, x| {
                 if x.output().address() == *payaddr {
-                    acc.add(&x)
+                    acc.add(x)
                 };
                 acc
             },
@@ -419,7 +418,7 @@ impl TransactionUnspentOutputs {
         out
     }
 
-    pub fn delete_set(&mut self, set: &Self) -> () {
+    pub fn delete_set(&mut self, set: &Self) {
         let b_set = set.to_bytes();
         self.0.retain(|n| !b_set.contains(&n.to_bytes()));
     }
@@ -450,7 +449,7 @@ impl TransactionUnspentOutputs {
                 return true;
             }
         }
-        return false;
+        false
     }
     pub fn get_coin_only(&self) -> TransactionUnspentOutputs {
         let coin_only = self
@@ -475,7 +474,7 @@ impl TransactionUnspentOutputs {
                 }
             }
         }
-        return false;
+        false
     }
 
     pub fn contains_address(&self, addr: caddr::Address) -> bool {
@@ -484,10 +483,10 @@ impl TransactionUnspentOutputs {
                 return true;
             }
         }
-        return false;
+        false
     }
 
-    pub fn reverse(&mut self) -> () {
+    pub fn reverse(&mut self) {
         self.0.reverse();
     }
 
@@ -526,8 +525,7 @@ impl TransactionUnspentOutputs {
             }
 
             Ok(())
-        })()
-        .map_err(|e| e)?;
+        })()?;
         Ok(v)
     }
 
@@ -550,14 +548,13 @@ impl TransactionUnspentOutputs {
         None
     }
 
-    pub fn remove_used_utxos(&mut self, used: Vec<crate::utxomngr::usedutxos::UsedUtxo>) -> () {
+    pub fn remove_used_utxos(&mut self, used: Vec<crate::utxomngr::usedutxos::UsedUtxo>) {
         for u in used {
             if let Some(i) = self.find_utxo_by_txhash(u.get_txhash(), u.get_index()) {
                 let d = self.swap_remove(i);
                 debug!("Deleted: {:?}", d);
             }
         }
-        ()
     }
 }
 
@@ -565,7 +562,7 @@ impl<'a> FromIterator<&'a cutils::TransactionUnspentOutput> for TransactionUnspe
     fn from_iter<I: IntoIterator<Item = &'a cutils::TransactionUnspentOutput>>(iter: I) -> Self {
         let mut tuos = TransactionUnspentOutputs::new();
         for i in iter {
-            tuos.add(&i);
+            tuos.add(i);
         }
         tuos
     }
@@ -575,11 +572,7 @@ impl Iterator for TransactionUnspentOutputs {
     type Item = TransactionUnspentOutput;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.pop() {
-            Some(x) => Some(x),
-
-            None => None,
-        }
+        self.pop()
     }
 }
 
@@ -642,16 +635,16 @@ pub fn find_tokenindex_by_policy_assetname(
     p: &ccrypto::ScriptHash,
     a: &clib::AssetName,
 ) -> Option<usize> {
-    match t.iter().enumerate().find(|k| k.1 .0 == *p && k.1 .1 == *a) {
-        Some(k) => Some(k.0),
-        None => None,
-    }
+    t.iter()
+        .enumerate()
+        .find(|k| k.1 .0 == *p && k.1 .1 == *a)
+        .map(|k| k.0)
 }
 
 pub fn check_overhead_tokens(tok_l: &Tokens, tok_r: &Tokens) -> Tokens {
     let mut out = Tokens::new();
     for tok in tok_l {
-        if let Some(s) = find_tokenindex_by_policy_assetname(&tok_r, &tok.0, &tok.1) {
+        if let Some(s) = find_tokenindex_by_policy_assetname(tok_r, &tok.0, &tok.1) {
             if tok_r[s].2.compare(&tok.2) >= 0 {
                 //cutils::from_bignum(&r) >= 0 {
                 out.push((tok.0.clone(), tok.1.clone(), tok.2))
@@ -667,7 +660,7 @@ pub fn check_overhead_tokens(tok_l: &Tokens, tok_r: &Tokens) -> Tokens {
 pub fn acc_tokens(tok_l: &Tokens, tok_r: &Tokens) -> Tokens {
     let mut out = Tokens::new();
     for tok in tok_l {
-        match find_tokenindex_by_policy_assetname(&tok_r, &tok.0, &tok.1) {
+        match find_tokenindex_by_policy_assetname(tok_r, &tok.0, &tok.1) {
             Some(s) => {
                 let r = tok.2.clamped_sub(&tok_r[s].2);
                 if cutils::from_bignum(&r) == 0 {

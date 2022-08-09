@@ -8,7 +8,7 @@
 */
 
 extern crate pretty_env_logger;
-#[macro_use]
+
 extern crate log;
 
 pub mod handler;
@@ -67,8 +67,8 @@ async fn main() {
     }
 
     //let cli = Cli::from_args();
-    let host: String = env::var("POD_HOST").unwrap_or(DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
-    let port = env::var("POD_PORT").unwrap_or(DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
+    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
+    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
 
     let login_route = warp::path!("login")
         .and(warp::post())
@@ -221,7 +221,7 @@ async fn main() {
 
     let retailer_route = warp::path("ret").and(with_auth(Role::Retailer));
 
-    let retailer_get = retailer_route.clone().and(warp::get());
+    let _retailer_get = retailer_route.clone().and(warp::get());
 
     let retailer_post = retailer_route.clone().and(warp::post());
 
@@ -234,7 +234,7 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::entrp_reactivate_sporwc);
 
-    let retailer = enterprise_post_reactivate_reward_contract;
+    let _retailer = enterprise_post_reactivate_reward_contract;
 
     // Drasil Admin Routes
 
@@ -317,7 +317,7 @@ pub async fn login_handler(body: LoginRequest) -> WebResult<impl Reply> {
         Ok(u) => match u.email_verified {
             true => {
                 let token = auth::create_jwt(&u.user_id.to_string(), &Role::from_str(&u.role))
-                    .map_err(|e| reject::custom(e))?;
+                    .map_err(reject::custom)?;
                 Ok(reply::json(&LoginResponse { token }))
             }
             _ => Err(reject::custom(error::Error::EmailNotVerified)),
@@ -373,8 +373,8 @@ pub async fn user_handler(uid: String) -> WebResult<impl Reply> {
 
 pub async fn enterprise_post_handler(
     uid: String,
-    param: String,
-    json: String,
+    _param: String,
+    _json: String,
 ) -> WebResult<impl Reply> {
     Ok(format!("Hello Enterprise {}", uid))
 }

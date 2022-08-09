@@ -49,12 +49,12 @@ fn connect_cluster() -> Result<Connection> {
 
     if redis_cluster {
         let redis_db = std::env::var("REDIS_DB")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
-        let con = redis::cluster::ClusterClient::open(vec![redis_db.clone()])?.get_connection()?;
+        let con = redis::cluster::ClusterClient::open(vec![redis_db])?.get_connection()?;
 
-        return Ok(Connection::Cluster(con));
+        Ok(Connection::Cluster(con))
     } else {
         let redis_db = std::env::var("REDIS_DB")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
-        let con = redis::Client::open(redis_db.clone())?.get_connection()?;
+        let con = redis::Client::open(redis_db)?.get_connection()?;
 
         Ok(Connection::Single(con))
     }
@@ -70,33 +70,30 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
         worker_number,
     };
     log::info!("Worker redis request ...: {:?}", worker);
-    let new_message: Vec<Vec<Vec<Vec<(String, Vec<String>)>>>>;
-    match con {
-        Connection::Cluster(mut c) => {
-            new_message = redis::cmd("XREADGROUP")
-                .arg("GROUP")
-                .arg(worker.consumer_group.clone())
-                .arg("worker_".to_string() + &worker.worker_number.to_string())
-                .arg("COUNT")
-                .arg("1")
-                .arg("STREAMS")
-                .arg(&worker.stream)
-                .arg(id)
-                .query(&mut c)?;
-        }
-        Connection::Single(mut c) => {
-            new_message = redis::cmd("XREADGROUP")
-                .arg("GROUP")
-                .arg(worker.consumer_group.clone())
-                .arg("worker_".to_string() + &worker.worker_number.to_string())
-                .arg("COUNT")
-                .arg("1")
-                .arg("STREAMS")
-                .arg(&worker.stream)
-                .arg(id)
-                .query(&mut c)?;
-        }
-    }
+
+    #[allow(clippy::type_complexity)]
+    let new_message: Vec<Vec<Vec<Vec<(String, Vec<String>)>>>> = match con {
+        Connection::Cluster(mut c) => redis::cmd("XREADGROUP")
+            .arg("GROUP")
+            .arg(worker.consumer_group.clone())
+            .arg("worker_".to_string() + &worker.worker_number.to_string())
+            .arg("COUNT")
+            .arg("1")
+            .arg("STREAMS")
+            .arg(&worker.stream)
+            .arg(id)
+            .query(&mut c)?,
+        Connection::Single(mut c) => redis::cmd("XREADGROUP")
+            .arg("GROUP")
+            .arg(worker.consumer_group.clone())
+            .arg("worker_".to_string() + &worker.worker_number.to_string())
+            .arg("COUNT")
+            .arg("1")
+            .arg("STREAMS")
+            .arg(&worker.stream)
+            .arg(id)
+            .query(&mut c)?,
+    };
 
     log::info!(
         "New Message, Worker: {:?}, Stream: {:?}: {:?}",
@@ -120,8 +117,8 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
         let tx_data: Event = serde_json::from_str(&data[1])?;
         match tx_data.data {
             EventData::Transaction(_) => {
-                let del = delete_used_utxo(&txhash)?;
-                log::info!("Delete: {:?}", del);
+                delete_used_utxo(&txhash)?;
+                log::info!("Delete: {}", txhash);
             }
             _ => {
                 log::info!("Event data is not a transaction");
@@ -206,7 +203,7 @@ pub fn main() -> Result<()> {
     let timeout = std::env::var("TIMEOUT")?;
     let mut last_id: String; //store in file and read on startup
     let mut read_backlog = true;
-    let mut n = Vec::<u8>::new(); // = 0;
+
     let mut id: String;
     let mut init = true;
 
@@ -303,7 +300,7 @@ pub fn main() -> Result<()> {
     }
 
     loop {
-        n = Vec::<u8>::new();
+        let mut n = Vec::<u8>::new();
 
         log::info!("Worker loop....");
         for i in 0..streams.len() {

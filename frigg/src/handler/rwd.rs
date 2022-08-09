@@ -99,9 +99,9 @@ pub async fn entrp_add_token_sporwc(
     cparam: AddTokenWhitelisitng,
 ) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    let _ = match hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
+    match hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
         Ok(c) => {
-            if c.contract_type != "sporwc".to_string() {
+            if c.contract_type != *"sporwc" {
                 return Err(reject::custom(Error::Custom(
                     "error in requested contract update, contract has wrong type".to_string(),
                 )));
@@ -112,7 +112,7 @@ pub async fn entrp_add_token_sporwc(
                 "error in requested contract update, contract does not exist".to_string(),
             )))
         }
-    };
+    }
     log::debug!("Try to create TokenWhitelisting...");
     let token_listing = sleipnir::rewards::create_token_whitelisting(
         user,
@@ -142,9 +142,9 @@ pub struct GetTWL {
 
 pub async fn entrp_rm_token_sporwc(uid: String, cparam: GetTWL) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    let _ = match hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
+    match hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
         Ok(c) => {
-            if c.contract_type != "sporwc".to_string() {
+            if c.contract_type != *"sporwc" {
                 return Err(reject::custom(Error::Custom(
                     "error in requested contract update, contract has wrong type".to_string(),
                 )));
@@ -155,7 +155,7 @@ pub async fn entrp_rm_token_sporwc(uid: String, cparam: GetTWL) -> WebResult<imp
                 "error in requested contract update, contract does not exist".to_string(),
             )))
         }
-    };
+    }
 
     let token_listing =
         sleipnir::rewards::remove_token_whitelisting(user, cparam.contract_id, cparam.fingerprint)
@@ -180,6 +180,7 @@ pub async fn get_pools(uid: String, cparam: GetTWL) -> WebResult<impl Reply> {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct TxCountStat {
+    #[allow(dead_code)]
     contract_id: Option<String>,
     from: Option<String>,
     to: Option<String>,
