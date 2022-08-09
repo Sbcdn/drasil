@@ -12,22 +12,20 @@ pub mod hfn;
 pub mod htypes;
 
 pub use super::MurinError;
-use bech32::{self, FromBase32, ToBase32};
+use bech32::{self, ToBase32};
 pub use cproparams::*;
 use cryptoxide::{blake2b::Blake2b, digest::Digest};
 pub use hfn::*;
 pub use htypes::*;
 
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{
-    address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
-};
+use cardano_serialization_lib::utils as cutils;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::path::PathBuf;
 
 //use octavo_digest::Digest;
-use octavo_digest::blake2::*;
+// use octavo_digest::blake2::*;
 
 pub fn blake2b160(data: &[u8]) -> [u8; 20] {
     //Vec::<u8> {
@@ -127,16 +125,13 @@ impl Cpp {
     // Maybe via Redis ?
 
     pub fn get_protcol_parameters(path: Option<&String>) -> Result<Cpp, MurinError> {
-        let path_pp: PathBuf;
-        match path {
+        let path_pp: PathBuf = match path {
             None => {
                 let path_pp_env = env::var("CARDANO_PROTOCOL_PARAMETER_PATH")?;
-                path_pp = PathBuf::from(path_pp_env);
+                PathBuf::from(path_pp_env)
             }
-            Some(path) => {
-                path_pp = PathBuf::from(path);
-            }
-        }
+            Some(path) => PathBuf::from(path),
+        };
         // Protocol Parameter JSON
         let pp_data = std::fs::read_to_string(path_pp)?;
         let pp: Cpp = serde_json::from_str(&pp_data)?;

@@ -47,6 +47,7 @@ pub struct TwlData {
 }
 
 impl TwlData {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         fingerprint: String,
         policy_id: String,
@@ -94,7 +95,7 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
             let token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
             let rewards = gungnir::Rewards::get_rewards_per_token(
                 &gconn,
-                &stake.stake_addr.clone(),
+                &stake.stake_addr,
                 twd.contract_id,
                 twd.user_id,
                 &twd.fingerprint.clone(),
@@ -118,7 +119,7 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
                 );
                 info!("Stake Rewards Update: {:?}", stake_rwd);
             }
-            if rewards.len() == 0 {
+            if rewards.is_empty() {
                 let tot_earned = token_earned;
 
                 let stake_rwd = gungnir::Rewards::create_rewards(
@@ -153,7 +154,7 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
             let token_earned = y / x * stake.amount;
             let rewards = gungnir::Rewards::get_rewards_per_token(
                 &gconn,
-                &stake.stake_addr.clone(),
+                &stake.stake_addr,
                 twd.contract_id,
                 twd.user_id,
                 &twd.fingerprint.clone(),
@@ -176,7 +177,7 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
                 )?;
                 info!("Stake Rewards Added : {:?}", stake_rwd);
             }
-            if rewards.len() == 0 {
+            if rewards.is_empty() {
                 let tot_earned = token_earned;
                 info!("Earned: {:?}", tot_earned);
                 let stake_rwd = gungnir::Rewards::create_rewards(
@@ -216,7 +217,7 @@ pub async fn handle_pool(pool: gungnir::GPools, epoch: i64, twd: &mut TwlData) -
     let conn = mimir::establish_connection()?;
     let pool_stake = mimir::get_tot_stake_per_pool(&conn, &pool.pool_id, epoch as i32)?;
     for stake in pool_stake {
-        handle_stake(stake, &twd).await?;
+        handle_stake(stake, twd).await?;
     }
 
     Ok(())
@@ -241,8 +242,8 @@ pub async fn handle_pools(rwd_token: &mut gungnir::TokenWhitelist, epoch: i64) -
         gungnir::Calculationmode::FixedEndEpoch => {
             let mut total_pools_stake = 0;
             for pool in pools.clone() {
-                total_pools_stake = total_pools_stake
-                    + (mimir::get_pool_total_stake(&conn, &pool.pool_id, epoch as i32)? / 1000000)
+                total_pools_stake +=
+                    mimir::get_pool_total_stake(&conn, &pool.pool_id, epoch as i32)? / 1000000
             }
             rwd_token.modificator_equ = Some(total_pools_stake.to_string());
         }
@@ -309,7 +310,7 @@ pub async fn main() -> Result<()> {
         i = opt.epoch.unwrap();
     };
     if let Some(b) = opt.from {
-        while i < current_epoch && b == true {
+        while i < current_epoch && b {
             let mut whitelist = get_token_whitelist(current_epoch).await?;
             whitelist.retain(|w| w.start_epoch <= i);
             debug!("Whitelist: {:?}", whitelist);

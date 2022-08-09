@@ -76,13 +76,13 @@ impl diesel::deserialize::FromSql<Calculationmode, diesel::pg::Pg> for Calculati
 
 impl ToString for Calculationmode {
     fn to_string(&self) -> String {
-        match &self {
-            &Self::Custom => "custom".to_string(),
-            &Self::ModifactorAndEquation => "modifactorandequation".to_string(),
-            &Self::SimpleEquation => "simpleequation".to_string(),
-            &Self::FixedEndEpoch => "fixedendepoch".to_string(),
-            &Self::RelationalToADAStake => "relationaltoadastake".to_string(),
-            &Self::AirDrop => "airdrop".to_string(),
+        match self {
+            Self::Custom => "custom".to_string(),
+            Self::ModifactorAndEquation => "modifactorandequation".to_string(),
+            Self::SimpleEquation => "simpleequation".to_string(),
+            Self::FixedEndEpoch => "fixedendepoch".to_string(),
+            Self::RelationalToADAStake => "relationaltoadastake".to_string(),
+            Self::AirDrop => "airdrop".to_string(),
         }
     }
 }
@@ -124,7 +124,7 @@ impl fmt::Display for GPools {
 impl std::str::FromStr for GPools {
     type Err = RWDError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let split: Vec<&str> = src.split(",").collect();
+        let split: Vec<&str> = src.split(',').collect();
         Ok(GPools {
             pool_id: split[0].to_string(),
             first_valid_epoch: split[1].parse::<i64>()?,

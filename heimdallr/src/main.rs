@@ -24,8 +24,8 @@ async fn main() {
         env::set_var("RUST_LOG", "info");
     }
 
-    let host: String = env::var("POD_HOST").unwrap_or(DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
-    let port = env::var("POD_PORT").unwrap_or(DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
+    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
+    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
 
     pretty_env_logger::init();
 
@@ -86,7 +86,7 @@ async fn main() {
 ///Filters
 mod filters {
     use super::handlers;
-    use crate::clientapi::filter::{self, api_endpoints};
+    use crate::clientapi::filter::api_endpoints;
     use hugin::datamodel::hephadata::{
         ContractType, MultiSigType, Signature, StdTxType, TransactionPattern,
     };
@@ -274,7 +274,7 @@ mod auth {
                 };
                 Ok(user_id)
             }
-            Err(e) => return Err(reject::custom(e)),
+            Err(e) => Err(reject::custom(e)),
         }
     }
 
@@ -336,7 +336,7 @@ mod handlers {
 
         match contract {
             ContractType::MarketPlace => {
-                if let Err(_) = MarketplaceActions::from_str(&action) {
+                if MarketplaceActions::from_str(&action).is_err() {
                     return Ok(badreq);
                 }
             }
@@ -415,15 +415,11 @@ mod handlers {
         tx_type: StdTxType,
         payload: TransactionPattern,
     ) -> Result<impl warp::Reply, Infallible> {
-        let badreq =
+        let _badreq =
             warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
 
         match tx_type {
             StdTxType::DelegateStake => {}
-            _ => {
-                // Wrong Parameter
-                return Ok(badreq);
-            }
         }
 
         let mut client = connect_odin().await;
