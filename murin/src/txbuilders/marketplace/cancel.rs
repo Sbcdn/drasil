@@ -332,7 +332,7 @@ pub async fn build_mp_cancel(
     gtxd: &super::TxData,
     mptxd: &super::MpTxData,
     sc_script: &String,
-    sc_addr: &String,
+    sc_addr: &str,
 ) -> Result<htypes::BuildOutput, MurinError> {
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
