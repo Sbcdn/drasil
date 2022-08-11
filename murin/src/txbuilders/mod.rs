@@ -265,7 +265,7 @@ impl core::str::FromStr for TxData {
         if slice.len() == 10 {
             // restore senders addresses
             let mut senders_addresses = Vec::<caddr::Address>::new();
-            let slice_addresses: Vec<&str> = slice[0].split("?").collect();
+            let slice_addresses: Vec<&str> = slice[0].split('?').collect();
             debug!("Slice Addresses TxData: {:?}", slice_addresses);
             for addr in slice_addresses {
                 senders_addresses.push(caddr::Address::from_bytes(hex::decode(addr)?)?);
@@ -346,7 +346,8 @@ impl core::str::FromStr for TxData {
 pub struct CBORTransaction {
     r#type: String,
     description: String,
-    cborHex: String,
+    #[serde(rename = "camelCase")]
+    cbor_hex: String,
 }
 
 // Customer Payout
@@ -1345,7 +1346,7 @@ pub async fn create_and_submit_cbor_tx(tx: String, tx_hash: String) -> Result<St
     let cli_tx = CBORTransaction {
         r#type: "Tx BabbageEra".to_string(),
         description: "drasil build this transaction for you".to_string(),
-        cborHex: tx,
+        cbor_hex: tx,
     };
     debug!("{:?}", cli_tx);
     let node_tx_hash = submit_tx(&cli_tx, &tx_hash).await?;
@@ -1411,7 +1412,7 @@ pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<Str
     let submit3 = std::env::var("TX_SUBMIT_ENDPOINT3")?;
 
     let client = reqwest::Client::new();
-    let tx = hex::decode(tx.cborHex.clone())?;
+    let tx = hex::decode(tx.cbor_hex.clone())?;
     let mut response1 = (String::new(), String::new(), false);
     match submit_endpoint(&tx, submit1, own_tx_hash, &client).await {
         Ok(x) => response1 = x,

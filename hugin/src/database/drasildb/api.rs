@@ -148,6 +148,7 @@ impl TBContracts {
         Ok(result)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_contract<'a>(
         user_id: &'a i64,
         contract_id: &'a i64,
@@ -217,6 +218,7 @@ impl TBContracts {
 }
 
 impl TBMultiSigLoc {
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_multisig_keyloc<'a>(
         user_id: &'a i64,
         contract_id: &'a i64,
@@ -224,7 +226,7 @@ impl TBMultiSigLoc {
         ca: &'a String,
         fee_wallet_addr: Option<&'a String>,
         fee: Option<&'a i64>,
-        pvks: &'a Vec<String>,
+        pvks: &'a [String],
         depricated: &'a bool,
     ) -> Result<TBMultiSigLoc, MurinError> {
         let ident = crate::encryption::mident(user_id, contract_id, version, ca);
@@ -311,6 +313,7 @@ impl TBDrasilUser {
         Ok(user)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_user<'a>(
         conn: &PgConnection,
         api_pubkey: Option<&'a String>,
@@ -382,7 +385,7 @@ impl TBDrasilUser {
                 }
                 u
             }
-            Err(e) => diesel::insert_into(drasil_user::table)
+            Err(_e) => diesel::insert_into(drasil_user::table)
                 .values(&new_user)
                 .on_conflict(on_constraint("unique_email"))
                 .do_nothing()
@@ -456,7 +459,7 @@ impl TBEmailVerificationToken {
             created_at,
         };
 
-        let existing = match TBEmailVerificationToken::find_by_mail(&body.email) {
+        let _existing = match TBEmailVerificationToken::find_by_mail(&body.email) {
             Ok(o) => {
                 log::debug!("delete token");
                 TBEmailVerificationToken::delete(&o.id)?;
