@@ -13,7 +13,6 @@ use chacha20poly1305::{
 use mimir::MurinError;
 use rand::{rngs::OsRng, RngCore};
 
-use serde_json::json;
 use sha2::Digest;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
 use vaultrs::{api::AuthInfo, client::Client};

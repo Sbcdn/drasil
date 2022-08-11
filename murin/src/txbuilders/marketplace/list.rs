@@ -15,7 +15,7 @@ use cardano_serialization_lib::{address as caddr, utils as cutils};
 
 pub fn perform_listing(
     fee: &cutils::BigNum,
-    sc_addr: &String,
+    sc_addr: &str,
     sc_version: &String,
     gtxd: &super::TxData,
     mptxd: &super::marketplace::MpTxData,
@@ -227,7 +227,7 @@ pub fn perform_listing(
 pub async fn build_mp_listing(
     gtxd: &super::TxData,
     mptxd: &super::MpTxData,
-    sc_addr: &String,
+    sc_addr: &str,
     sc_version: &String,
 ) -> Result<htypes::BuildOutput, MurinError> {
     // Temp until Protocol Parameters fixed

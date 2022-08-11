@@ -9,13 +9,10 @@
 use hugin::client::{connect, Client};
 use hugin::datamodel::hephadata::{
     MultiSigType, OneShotMintPayload, OneShotReturn, ReturnError, TransactionPattern,
-    UnsignedTransaction,
 };
-use hugin::{
-    BuildContract, BuildMultiSig, BuildStdTx, FinalizeContract, FinalizeMultiSig, FinalizeStdTx,
-};
+use hugin::BuildMultiSig;
+use std::convert::Infallible;
 use std::env;
-use std::{convert::Infallible, str::FromStr};
 
 async fn connect_odin() -> Client {
     connect(env::var("ODIN_URL").unwrap()).await.unwrap()
