@@ -113,12 +113,13 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
         let id = &data_vec.0;
         log::info!("ID:\n {:?} \n", id);
         let data = &data_vec.1;
-        let txhash = data[0].clone();
+        let event_type = data[0].clone();
+        log::info!("Event Type: {}", event_type);
         let tx_data: Event = serde_json::from_str(&data[1])?;
         match tx_data.data {
-            EventData::Transaction(_) => {
-                delete_used_utxo(&txhash)?;
-                log::info!("Delete: {}", txhash);
+            EventData::Transaction(tx) => {
+                delete_used_utxo(&tx.hash)?;
+                log::info!("Delete: {}", tx.hash);
             }
             _ => {
                 log::info!("Event data is not a transaction");

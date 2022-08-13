@@ -1,8 +1,7 @@
-REGISTRY=drasil-docker
+REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
 PROJECT=drasil
-REPOSITORY=drasil-blockchain-dapp-framework
 IMAGE=geri
-VERSION=0.1
+VERSION=v1.0
 
 build:
 	cargo update
@@ -13,10 +12,10 @@ build:
 	cp -R ~/.cargo/git .cargo/git
 	cp -R ../murin .cargo/
 	cp -R ../murin .cargo/murin
-	docker build -t $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
+	docker build -t $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
 
 run:
 	docker run -t $(IMAGE):$(VERSION) $(IMAGE)
 
 push:
-	docker push $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION)
+	sudo docker push $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION)
