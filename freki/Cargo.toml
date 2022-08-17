@@ -18,18 +18,25 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-serde_json = { version = "1.0.79", features = ["preserve_order"]}
+serde_json = { version = "1.0.79", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 tracing = "0.1.31"
 dotenv = "0.15.0"
 structopt = "0.3.26"
 chrono = "0.4.19"
-bigdecimal = { version = "0.1.2", features = ["serde"] } # needs to be 0.1.2 otherwise not working -> dependency diesel
+bigdecimal = { version = "0.1.2", features = [
+    "serde",
+] } # needs to be 0.1.2 otherwise not working -> dependency diesel
+strum = "0.24"
+strum_macros = "0.24"
+pretty_env_logger = "0.4.0"
+log = "0.4"
 
-murin = { path = "../murin", version="0.1.0" }
-mimir = { path = "../mimir", version="0.1.0" }
-gungnir = { path = "../gungnir", version="0.1.0" }
-hugin = { path = "../hugin", version="0.1.0" }
+
+murin = { path = "../murin", version = "0.1.0" }
+mimir = { path = "../mimir", version = "0.1.0" }
+gungnir = { path = "../gungnir", version = "0.1.0" }
+hugin = { path = "../hugin", version = "0.1.0" }
 
 # Single repositories
 #murin = { git = "ssh://git@github.com/sbcdn/murin.git", branch="main" }

@@ -6,7 +6,9 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use bigdecimal::{BigDecimal, FromPrimitive};
+mod models;
+
+use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use std::str::*;
 use structopt::StructOpt;
@@ -84,61 +86,64 @@ impl TwlData {
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
+pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDecimal) -> Result<()> {
+    let gconn = gungnir::establish_connection()?;
+    let rewards = gungnir::Rewards::get_rewards_per_token(
+        &gconn,
+        stake_addr,
+        twd.contract_id,
+        twd.user_id,
+        &twd.fingerprint.clone(),
+    )?;
+
+    if rewards.len() == 1
+        && rewards[0].fingerprint == twd.fingerprint
+        && rewards[0].last_calc_epoch < twd.calc_epoch
+    {
+        let tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
+        log::info!("Earned: {:?}", tot_earned);
+        let stake_rwd = gungnir::Rewards::update_rewards(
+            &gconn,
+            &rewards[0].stake_addr,
+            &rewards[0].fingerprint,
+            &rewards[0].contract_id,
+            &rewards[0].user_id,
+            &tot_earned,
+            &twd.calc_epoch,
+        )?;
+        log::info!("Stake Rewards Added : {:?}", stake_rwd);
+    }
+    if rewards.is_empty() {
+        let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
+
+        let tot_earned = token_earned;
+        info!("Earned: {:?}", tot_earned);
+        let stake_rwd = gungnir::Rewards::create_rewards(
+            &gconn,
+            stake_addr,
+            &payment_addr,
+            &twd.fingerprint,
+            &twd.contract_id,
+            &twd.user_id,
+            tot_earned,
+            &BigDecimal::from_i32(0).unwrap(),
+            &false,
+            &twd.calc_epoch,
+        );
+        info!("Stake Rewards New: {:?}", stake_rwd);
+    }
+    Ok(())
+}
+
 pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result<()> {
     info!("Handle Stake Address: {:?}", stake.stake_addr);
-    let gconn = gungnir::establish_connection()?;
+    //let gconn = gungnir::establish_connection()?;
     //let lovelace = BigDecimal::from_i32(1000000).unwrap();
     match twd.mode {
         gungnir::Calculationmode::RelationalToADAStake => {
             info!("Calcualte with: RelationalToAdaStake");
-
             let token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
-            let rewards = gungnir::Rewards::get_rewards_per_token(
-                &gconn,
-                &stake.stake_addr,
-                twd.contract_id,
-                twd.user_id,
-                &twd.fingerprint.clone(),
-            )?;
-            info!("Rewards: {:?}", rewards);
-            if rewards.len() == 1
-                && rewards[0].fingerprint == twd.fingerprint
-                && rewards[0].last_calc_epoch < twd.calc_epoch
-            {
-                let tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
-
-                let stake_rwd = gungnir::Rewards::update_rewards(
-                    &gconn,
-                    &rewards[0].stake_addr,
-                    // payment addr
-                    &rewards[0].fingerprint,
-                    &rewards[0].contract_id,
-                    &rewards[0].user_id,
-                    &tot_earned,
-                    &twd.calc_epoch,
-                );
-                info!("Stake Rewards Update: {:?}", stake_rwd);
-            }
-            if rewards.is_empty() {
-                let tot_earned = token_earned;
-
-                let stake_rwd = gungnir::Rewards::create_rewards(
-                    &gconn,
-                    &stake.stake_addr,
-                    //TODO: retrieve payment addr
-                    &"payment_addr".to_string(),
-                    &twd.fingerprint,
-                    &twd.contract_id,
-                    &twd.user_id,
-                    &tot_earned,
-                    &BigDecimal::from_i32(0).unwrap(),
-                    &false,
-                    &twd.calc_epoch,
-                );
-                info!("Stake Rewards New: {:?}", stake_rwd);
-            }
-
-            return Ok(());
+            handle_rewards(&stake.stake_addr, twd, &token_earned)?;
         }
 
         gungnir::Calculationmode::FixedEndEpoch => {
@@ -152,57 +157,33 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
             let y = BigDecimal::from_str(&twd.equation)?;
             info!("Y: {:?}", y);
             let token_earned = y / x * stake.amount;
-            let rewards = gungnir::Rewards::get_rewards_per_token(
-                &gconn,
-                &stake.stake_addr,
-                twd.contract_id,
-                twd.user_id,
-                &twd.fingerprint.clone(),
-            )?;
-
-            if rewards.len() == 1
-                && rewards[0].fingerprint == twd.fingerprint
-                && rewards[0].last_calc_epoch < twd.calc_epoch
-            {
-                let tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
-                info!("Earned: {:?}", tot_earned);
-                let stake_rwd = gungnir::Rewards::update_rewards(
-                    &gconn,
-                    &rewards[0].stake_addr,
-                    &rewards[0].fingerprint,
-                    &rewards[0].contract_id,
-                    &rewards[0].user_id,
-                    &tot_earned,
-                    &twd.calc_epoch,
-                )?;
-                info!("Stake Rewards Added : {:?}", stake_rwd);
-            }
-            if rewards.is_empty() {
-                let tot_earned = token_earned;
-                info!("Earned: {:?}", tot_earned);
-                let stake_rwd = gungnir::Rewards::create_rewards(
-                    &gconn,
-                    &stake.stake_addr,
-                    // ToDo: retrieve payment Address !!
-                    &"payment_address".to_string(),
-                    &twd.fingerprint,
-                    &twd.contract_id,
-                    &twd.user_id,
-                    &tot_earned,
-                    &BigDecimal::from_i32(0).unwrap(),
-                    &false,
-                    &twd.calc_epoch,
-                );
-                info!("Stake Rewards New: {:?}", stake_rwd);
-            }
-            return Ok(());
+            handle_rewards(&stake.stake_addr, twd, &token_earned)?;
         }
 
         gungnir::Calculationmode::SimpleEquation => {}
 
         gungnir::Calculationmode::ModifactorAndEquation => {}
 
-        gungnir::Calculationmode::Custom => {}
+        gungnir::Calculationmode::Custom => {
+            use crate::models::*;
+            //Freeloaderz
+            match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
+                //R=(S-150)^0.6+50 where R=payout in FLZ per epoch and S=Stake Amount to the pool. Example
+                CustomCalculationTypes::Freeloaderz => {
+                    let param: FreeloaderzType =
+                        serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
+                    if stake.amount > BigDecimal::from_i32(param.min_stake).unwrap() {
+                        let token_earned = BigDecimal::from_f64(
+                            ((stake.amount.to_f64().unwrap().powf(param.flatten))
+                                + param.min_earned)
+                                .round(),
+                        )
+                        .unwrap();
+                        handle_rewards(&stake.stake_addr, twd, &token_earned)?;
+                    }
+                }
+            }
+        }
         gungnir::Calculationmode::AirDrop => {
             //Nothing to Do
         }

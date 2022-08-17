@@ -725,7 +725,7 @@ impl BuildMultiSig {
         log::debug!("Connect to platform db...");
         let drasildbcon = crate::database::drasildb::establish_connection()?;
         log::debug!("Check contract...");
-        let contract = TBContracts::get_drasil_liquidity_wallet(&drasildbcon)?;
+        let contract = TBContracts::get_liquidity_wallet(&self.customer_id())?;
         log::debug!("Try to determine additional data...");
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
             &drasildbcon,

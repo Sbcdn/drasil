@@ -10,6 +10,7 @@
 
 pub mod api;
 pub use api::*;
+use serde::Serialize;
 
 use crate::error::RWDError;
 
@@ -243,7 +244,7 @@ pub struct TokenWhitelistNew<'a> {
     pub modificator_equ: Option<&'a String>,
 }
 
-#[derive(Queryable, PartialEq, Debug, Clone)]
+#[derive(Queryable, PartialEq, Debug, Clone, Serialize)]
 pub struct TokenInfo {
     pub policy: String,
     pub tokenname: Option<String>,

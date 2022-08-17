@@ -6,23 +6,19 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-pub mod administration;
-pub mod airdrops;
-pub mod apiauth;
-pub mod contracts;
-pub mod minting;
-pub mod rewards;
-pub mod whitelist;
 
-pub use minting::*;
+use serde::{Deserialize, Serialize};
 
-pub mod error;
-pub use error::*;
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+use strum_macros::EnumString;
+
+#[derive(EnumString, Serialize, Deserialize, Debug, Clone)]
+pub(crate) enum CustomCalculationTypes {
+    Freeloaderz,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct FreeloaderzType {
+    pub min_stake: i32,
+    pub min_earned: f64,
+    pub flatten: f64,
 }

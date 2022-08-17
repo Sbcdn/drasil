@@ -12,14 +12,15 @@ use diesel::pg::upsert::on_constraint;
 use murin::MurinError;
 
 impl TBContracts {
-    pub fn get_drasil_liquidity_wallet(conn: &PgConnection) -> Result<TBContracts, MurinError> {
+    pub fn get_liquidity_wallet(user_id_in: &i64) -> Result<TBContracts, MurinError> {
         use crate::schema::contracts::dsl::*;
         let result = contracts
             .filter(
                 contract_type
                     .eq(&crate::datamodel::hephadata::ContractType::DrasilAPILiquidity.to_string()),
             )
-            .first::<TBContracts>(&*conn)?;
+            .filter(user_id.eq(user_id_in))
+            .first::<TBContracts>(&establish_connection()?)?;
         Ok(result)
     }
 
@@ -126,7 +127,7 @@ impl TBContracts {
         Ok(result?[0].clone())
     }
 
-    pub fn get_next_contract_id(user_id_in: i64) -> Result<i64, MurinError> {
+    pub fn get_next_contract_id(user_id_in: &i64) -> Result<i64, MurinError> {
         use crate::schema::contracts::dsl::*;
         let result = contracts
             .filter(user_id.eq(user_id_in))
@@ -343,7 +344,8 @@ impl TBDrasilUser {
         let user_id = match nuser_id {
             Ok(id) => id,
             Err(e) => {
-                if e.to_string() == *"Not User ID Found" {
+                log::error!("Error did not found any userid");
+                if e.to_string() == *"NotFound" {
                     0
                 } else {
                     return Err(e);

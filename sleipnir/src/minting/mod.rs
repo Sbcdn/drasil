@@ -104,7 +104,7 @@ pub async fn create_policy_script(
     let d = &format!("PolicyID:{}", hex::encode(policy_id.to_bytes()))[..];
     let description = Some(d);
 
-    let contract_id = TBContracts::get_next_contract_id(user_id)?;
+    let contract_id = TBContracts::get_next_contract_id(&user_id)?;
     let contract_type = "mint"; // &contract_type; //"mintft" || "mintnft" ;
     let _ = TBContracts::create_contract(
         &user_id,

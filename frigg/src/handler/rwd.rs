@@ -125,8 +125,7 @@ pub async fn entrp_add_token_sporwc(
         cparam.start_epoch,
         cparam.end_epoch,
         cparam.modificator_equ,
-    )
-    .await?;
+    )?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&token_listing), //

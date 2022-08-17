@@ -238,10 +238,22 @@ async fn main() {
 
     // Drasil Admin Routes
 
-    let admin_route = warp::path("adm")
-        .and(with_auth(Role::DrasilAdmin))
-        .and_then(admin_handler);
+    let admin_route = warp::path("adm").and(with_auth(Role::DrasilAdmin));
 
+    let _adm_get = admin_route.clone().and(warp::get());
+
+    let adm_post = admin_route.clone().and(warp::post());
+
+    // Create a new reward contract
+    let adm_post_create_lqdt_wallet = adm_post
+        .clone()
+        .and(warp::path("wal"))
+        .and(warp::path("cr"))
+        .and(warp::path("lqdt"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::adm::adm_create_lqdt);
+
+    let admin = adm_post_create_lqdt_wallet;
     // Routes
 
     let endpoints = login_route
@@ -250,7 +262,7 @@ async fn main() {
         .or(user)
         .or(enterprise)
         .or(retailer_route)
-        .or(admin_route)
+        .or(admin)
         .or(warp::get().and(warp::any().map(warp::reply)))
         .recover(error::handle_rejection);
 
@@ -329,7 +341,6 @@ pub async fn login_handler(body: LoginRequest) -> WebResult<impl Reply> {
 pub async fn register_handler(payload: RegisterRequest) -> WebResult<impl Reply> {
     let conn = hugin::drasildb::establish_connection()
         .map_err(|_| error::Error::Custom("Could not establish database connection".to_string()))?;
-    log::info!("Payload {:?}", payload);
     let new_user = TBDrasilUser::create_user(
         &conn,
         None,

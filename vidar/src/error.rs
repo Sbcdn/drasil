@@ -13,23 +13,25 @@ use warp::{http::StatusCode, Rejection, Reply};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
-pub enum Error {
+pub enum VError {
     #[error("wrong credentials")]
-    WrongCredentialsError,
-    #[error("jwt token not valid")]
     JWTTokenError,
     #[error("jwt token creation error")]
-    JWTTokenCreationError,
-    #[error("no auth header")]
     NoAuthHeaderError,
     #[error("invalid auth header")]
     InvalidAuthHeaderError,
     #[error("no permission")]
-    NoPermissionError,
-    #[error("Email is not verified, please verify your e-mail Address")]
-    EmailNotVerified,
-    #[error("internal error: {:?}", self)]
     Custom(String),
+    #[error(transparent)]
+    JWTError(#[from] jsonwebtoken::errors::Error),
+    #[error(transparent)]
+    ParseIntError(#[from] core::num::ParseIntError),
+}
+
+impl From<std::string::String> for VError {
+    fn from(err: std::string::String) -> Self {
+        VError::Custom(err)
+    }
 }
 
 #[derive(Serialize, Debug)]
@@ -38,20 +40,14 @@ struct ErrorResponse {
     status: String,
 }
 
-impl warp::reject::Reject for Error {}
+impl warp::reject::Reject for VError {}
 
-pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Infallible> {
+pub async fn _handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Infallible> {
     let (code, message) = if err.is_not_found() {
         (StatusCode::NOT_FOUND, "Not Found".to_string())
-    } else if let Some(e) = err.find::<Error>() {
+    } else if let Some(e) = err.find::<VError>() {
         match e {
-            Error::WrongCredentialsError => (StatusCode::FORBIDDEN, e.to_string()),
-            Error::NoPermissionError => (StatusCode::UNAUTHORIZED, e.to_string()),
-            Error::JWTTokenError => (StatusCode::UNAUTHORIZED, e.to_string()),
-            Error::JWTTokenCreationError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_string(),
-            ),
+            VError::JWTTokenError => (StatusCode::UNAUTHORIZED, e.to_string()),
             _ => (StatusCode::BAD_REQUEST, e.to_string()),
         }
     } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
@@ -73,21 +69,4 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
     });
 
     Ok(warp::reply::with_status(json, code))
-}
-
-impl From<std::string::String> for Error {
-    fn from(err: std::string::String) -> Self {
-        Error::Custom(err)
-    }
-}
-
-impl From<jsonwebtoken::errors::Error> for Error {
-    fn from(err: jsonwebtoken::errors::Error) -> Self {
-        Error::Custom(err.to_string())
-    }
-}
-impl From<core::num::ParseIntError> for Error {
-    fn from(err: core::num::ParseIntError) -> Self {
-        Error::Custom(err.to_string())
-    }
 }
