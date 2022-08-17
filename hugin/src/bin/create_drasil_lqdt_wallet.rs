@@ -39,7 +39,7 @@ async fn main() -> Result<(), MurinError> {
     let opt = Opt::from_args();
 
     let mut net_bytes = 0b0001;
-    if let Some(_) = opt.testnet {
+    if opt.testnet.is_some() {
         println!("Got testnet");
         net_bytes = 0b0000;
     }
@@ -53,15 +53,15 @@ async fn main() -> Result<(), MurinError> {
 
     let mut str_wallet = String::new();
     str_wallet.push_str(&hex::encode(wallet.0.as_bytes()));
-    str_wallet.push_str("|");
+    str_wallet.push('|');
     str_wallet.push_str(&hex::encode(wallet.1.as_bytes()));
-    str_wallet.push_str("|");
+    str_wallet.push('|');
     str_wallet.push_str(&hex::encode(wallet.2.as_bytes()));
-    str_wallet.push_str("|");
+    str_wallet.push('|');
     str_wallet.push_str(&hex::encode(wallet.3.to_bytes()));
-    str_wallet.push_str("|");
+    str_wallet.push('|');
     str_wallet.push_str(&wallet.4);
-    str_wallet.push_str("|");
+    str_wallet.push('|');
     str_wallet.push_str(&wallet.5);
 
     let mut password = rpassword::prompt_password_stdout("password:").unwrap();
@@ -81,8 +81,7 @@ async fn main() -> Result<(), MurinError> {
         &false,
     )?;
     password.zeroize();
-    let mut pvks = Vec::<String>::new();
-    pvks.push(hex::encode(wallet.0.as_bytes()));
+    let pvks = vec![hex::encode(wallet.0.as_bytes())];
 
     let _ = TBMultiSigLoc::create_multisig_keyloc(
         &opt.user,
@@ -96,7 +95,7 @@ async fn main() -> Result<(), MurinError> {
     )
     .await?;
 
-    if let Some(_) = opt.output {
+    if opt.output.is_some() {
         println!("Encrypted Wallet Data: {}", wallet_encr);
         println!("Wallet Address: {:?}", bech32_address);
         println!("Public Key: {:?}", hex::encode(wallet.3.to_bytes()));

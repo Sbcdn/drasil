@@ -84,14 +84,14 @@ pub async fn create_contract(
         user_id.clone()
     )[..];
     let description = Some(d);
-    let contract_id = TBContracts::get_next_contract_id(user_id)?;
+    let contract_id = TBContracts::get_next_contract_id(&user_id)?;
 
     let contract_type = "sporwc";
 
     let _ = TBContracts::create_contract(
         &user_id,
         &contract_id,
-        &contract_type,
+        contract_type,
         description,
         &0.1,
         &hex::encode(rwd_script.to_bytes()),
@@ -100,9 +100,7 @@ pub async fn create_contract(
         &false,
     )?;
 
-    let mut pvks = Vec::<String>::new();
-    pvks.push(pvk1_root_bytes);
-    pvks.push(pvk2_root_bytes);
+    let pvks = vec![pvk1_root_bytes, pvk2_root_bytes];
 
     let _kl = TBMultiSigLoc::create_multisig_keyloc(
         &user_id,
@@ -200,7 +198,7 @@ pub async fn reactivate_contract(
     Ok(json!(resp))
 }
 
-pub async fn create_token_whitelisting(
+pub fn create_token_whitelisting(
     user_id: i64,
     contract_id: i64,
     fingerprint: String,
@@ -283,10 +281,8 @@ pub async fn create_token_whitelisting(
     }
 
     log::debug!("Process modificator equiation...");
-    if let Some(_) = modificator_equ {
-        return Err(SleipnirError::new(&format!(
-            "Modificator equation not supported yet"
-        )));
+    if modificator_equ.is_some() {
+        return Err(SleipnirError::new("Modificator equation not supported yet"));
     }
 
     // Check token does not already exists -> database constraint ensures this already

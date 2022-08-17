@@ -35,7 +35,7 @@ fn main() -> Result<(), MurinError> {
     let opt = Opt::from_args();
 
     let conn = establish_connection()?;
-    let t = TBContracts::get_next_contract_id(opt.user_id)?;
+    let t = TBContracts::get_next_contract_id(&opt.user_id)?;
     println!("Established Connection Test: {:?}", t);
 
     let user = TBDrasilUser::create_user(

@@ -33,7 +33,4 @@ jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 thiserror = "1.0"
 
 hugin = { path = "../hugin", version = "0.1.0" }
-#sleipnir = { path = "../sleipnir", version="0.1.0" }
-
 #hugin = { git = "ssh://git@github.com/sbcdn/hugin.git", branch="main" }
-#sleipnir = { git = "ssh://git@github.com/sbcdn/sleipnir.git", branch="main" }

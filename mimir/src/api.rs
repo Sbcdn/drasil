@@ -28,6 +28,21 @@ pub fn get_utxo_tokens(conn: &PgConnection, utxo_id: i64) -> Result<Vec<UMultiAs
     Ok(multi_assets)
 }
 
+pub fn select_addr_of_first_transaction(stake_address_in: &str) -> Result<String, MurinError> {
+    let conn = establish_connection()?;
+    let resp = tx_out::table
+        .inner_join(tx::table.on(tx_out::tx_id.eq(tx::id)))
+        .inner_join(block::table.on(tx::block_id.eq(block::id)))
+        .left_join(
+            stake_address::table.on(tx_out::stake_address_id.eq(stake_address::id.nullable())),
+        )
+        .filter(stake_address::view.eq(stake_address_in))
+        .select(tx_out::address)
+        .order(block::slot_no.asc())
+        .first::<String>(&conn)?;
+    Ok(resp)
+}
+
 /// get all utxos of an address
 pub fn get_address_utxos(
     conn: &PgConnection,

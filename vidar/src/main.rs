@@ -7,6 +7,7 @@
 #################################################################################
 */
 extern crate pretty_env_logger;
+mod error;
 
 use std::env;
 use std::str;
@@ -70,6 +71,74 @@ async fn main() {
     warp::serve(routes).run(socket).await;
 }
 
+mod auth {
+    use crate::error::{self, VError};
+    use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+    use serde::{Deserialize, Serialize};
+    use warp::{
+        http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
+        reject, Rejection,
+    };
+
+    use hugin::client::connect;
+    use hugin::VerifyUser;
+
+    const BEARER: &str = "Bearer ";
+
+    #[derive(Debug, Deserialize, Serialize)]
+    struct ApiClaims {
+        sub: String,
+        exp: usize,
+    }
+
+    pub(crate) async fn authorize(headers: HeaderMap<HeaderValue>) -> Result<u64, Rejection> {
+        let publ = std::env::var("JWT_PUB_KEY")
+            .map_err(|_| VError::Custom("env jwt pub not existing".to_string()))?;
+        let publ = publ.into_bytes();
+        log::info!("checking login data ...");
+        match jwt_from_header(&headers) {
+            Ok(jwt) => {
+                let decoded = decode::<ApiClaims>(
+                    &jwt,
+                    &DecodingKey::from_ec_pem(&publ).unwrap(),
+                    &Validation::new(Algorithm::ES256),
+                )
+                .map_err(|_| reject::custom(VError::JWTTokenError))?;
+                log::info!("lookup user data ...");
+                let user_id = decoded.claims.sub.parse::<u64>().map_err(|_| {
+                    reject::custom(VError::Custom("Could not parse customer id".to_string()))
+                })?;
+                let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
+                let cmd = VerifyUser::new(user_id, jwt);
+                log::info!("try to verify user ...");
+                match client.build_cmd::<VerifyUser>(cmd).await {
+                    Ok(_) => {}
+                    Err(_) => {
+                        return Err(reject::custom(VError::JWTTokenError));
+                    }
+                };
+                Ok(user_id)
+            }
+            Err(e) => Err(reject::custom(e)),
+        }
+    }
+
+    fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String, error::VError> {
+        let header = match headers.get(AUTHORIZATION) {
+            Some(v) => v,
+            None => return Err(VError::NoAuthHeaderError),
+        };
+        let auth_header = match std::str::from_utf8(header.as_bytes()) {
+            Ok(v) => v,
+            Err(_) => return Err(VError::NoAuthHeaderError),
+        };
+        if !auth_header.starts_with(BEARER) {
+            return Err(VError::InvalidAuthHeaderError);
+        }
+        Ok(auth_header.trim_start_matches(BEARER).to_owned())
+    }
+}
+
 ///Filters
 mod filters {
     use super::handlers;
@@ -80,6 +149,7 @@ mod filters {
             .or(get_rewards_for_stake_addr())
             .or(get_claim_history_for_stake_addr_contr())
             .or(get_claim_history_for_stake_addr())
+            .or(get_token_info())
             .or(resp_option())
             .or(warp::get().and(warp::any().map(warp::reply)))
     }
@@ -106,8 +176,8 @@ mod filters {
         warp::path("rwd")
             .and(warp::path("all"))
             .and(warp::get())
-            .and(warp::path::param::<String>())
             .and(auth())
+            .and(warp::path::param::<String>())
             .and_then(handlers::handle_all_rewards_for_stake_addr)
     }
 
@@ -117,10 +187,9 @@ mod filters {
         warp::path("rwd")
             .and(warp::path("one"))
             .and(warp::get())
-            .and(warp::path::param::<u64>()) // customer id
+            .and(auth())
             .and(warp::path::param::<u64>()) // contract-id
             .and(warp::path::param::<String>()) //Stake_addr
-            .and(auth())
             .and_then(handlers::handle_rewards_for_stake_addr)
     }
 
@@ -130,10 +199,9 @@ mod filters {
         warp::path("rwd")
             .and(warp::path("history"))
             .and(warp::get())
-            .and(warp::path::param::<u64>()) // customer id
+            .and(auth())
             .and(warp::path::param::<u64>()) // contract-id
             .and(warp::path::param::<String>()) //Stake_addr
-            .and(auth())
             .and_then(handlers::handle_claim_history_for_stake_addr_contr)
     }
 
@@ -143,24 +211,30 @@ mod filters {
         warp::path("rwd")
             .and(warp::path("history"))
             .and(warp::get())
-            .and(warp::path::param::<String>()) //Stake_addr
             .and(auth())
+            .and(warp::path::param::<String>()) //Stake_addr
             .and_then(handlers::handle_claim_history_for_stake_addr)
     }
-    /*
-        pub fn get_token_info(
-        ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-            warp::path("token")
-                .and(warp::path("info"))
-                .and(warp::get())
-                .and(warp::path::param::<String>())//Stake_addr
-                .and(auth())
-                .and_then(handlers::handle_token_info)
-        }
-    */
-    fn auth() -> impl Filter<Extract = (), Error = warp::Rejection> + Clone {
-        // TODO : implement authorization via JWT
-        warp::header::exact("authorization", "***REMOVED***")
+
+    pub fn get_token_info(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("token")
+            .and(warp::path("info"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::path::param::<String>()) //fingerprint
+            .and_then(handlers::handle_token_info)
+    }
+
+    fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
+        use super::auth::authorize;
+        use warp::{
+            filters::header::headers_cloned,
+            http::header::{HeaderMap, HeaderValue},
+        };
+        headers_cloned()
+            .map(move |headers: HeaderMap<HeaderValue>| (headers))
+            .and_then(authorize)
     }
 }
 
@@ -271,6 +345,7 @@ mod handlers {
     }
 
     pub async fn handle_all_rewards_for_stake_addr(
+        _: u64,
         stake_addr: String,
     ) -> Result<impl warp::Reply, Infallible> {
         let bech32addr = match get_bech32_from_bytes(stake_addr) {
@@ -457,6 +532,7 @@ mod handlers {
 
     /// handle_claim_history_for_stake_addr and specific contract
     pub async fn handle_claim_history_for_stake_addr(
+        _: u64,
         stake_addr: String,
     ) -> Result<impl warp::Reply, Infallible> {
         let bech32addr = match get_bech32_from_bytes(stake_addr) {
@@ -512,6 +588,33 @@ mod handlers {
 
         Ok(warp::reply::with_status(
             response,
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    pub async fn handle_token_info(
+        _: u64,
+        fingerprint: String,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let gconn =
+            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
+        let response = match gungnir::TokenWhitelist::get_token_info_ft(&gconn, &fingerprint) {
+            Ok(t) => t,
+            Err(e) => {
+                log::info!(
+                    "Error: coudl not find token info for {:?}, {:?}",
+                    fingerprint,
+                    e
+                );
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&e.to_string())),
+                    warp::http::StatusCode::NOT_FOUND,
+                ));
+            }
+        };
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!(response)),
             warp::http::StatusCode::OK,
         ))
     }
