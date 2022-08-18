@@ -204,7 +204,8 @@ pub fn perform_listing(
     )?;
 
     let slot = gtxd.clone().get_current_slot() + hfn::get_ttl_tx(&gtxd.clone().get_network());
-    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, fee, Some(slot as u32)); //922321
+    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
+    txbody.set_ttl(&cutils::to_bignum(slot));
     info!("\nTxOutputs: {:?}\n", txbody.outputs());
     info!("\nTxInputs: {:?}\n", txbody.inputs());
 
