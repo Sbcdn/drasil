@@ -62,7 +62,7 @@ pub struct TBContractNew<'a> {
     pub external_lqdty: Option<&'a i64>,
 }
 
-#[derive(Queryable, PartialEq, Debug, Clone)]
+#[derive(Queryable, PartialEq, Eq, Debug, Clone)]
 pub struct TBDrasilUser {
     pub id: i64,
     pub user_id: i64,
@@ -89,7 +89,7 @@ pub struct TBDrasilUser {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, PartialEq, Eq, Debug, Clone)]
 #[table_name = "drasil_user"]
 pub struct TBDrasilUserNew<'a> {
     pub user_id: &'a i64,
@@ -187,3 +187,5 @@ pub struct TBEmailVerificationToken {
     pub expires_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }
+
+pub struct TBCaPayment {}

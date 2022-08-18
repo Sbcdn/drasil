@@ -35,7 +35,7 @@ impl TBContracts {
             .filter(user_id.eq(&uid))
             .filter(contract_type.eq(&ctype))
             .order(version.desc())
-            .load::<TBContracts>(&*conn)?;
+            .load::<TBContracts>(conn)?;
 
         let err = MurinError::new(&format!(
             "no contract found for user-id: '{}' and contract type '{}'",
@@ -71,7 +71,7 @@ impl TBContracts {
             .filter(contract_type.eq(&ctype))
             .filter(depricated.eq(false))
             .order(version.desc())
-            .load::<TBContracts>(&*conn)?;
+            .load::<TBContracts>(conn)?;
 
         let err = MurinError::new(&format!(
             "no contract found for user-id: '{}' and contract type '{}'",
@@ -145,7 +145,7 @@ impl TBContracts {
 
     pub fn get_contract_by_id(conn: &PgConnection, id_in: i64) -> Result<TBContracts, MurinError> {
         use crate::schema::contracts::dsl::*;
-        let result = contracts.find(id_in).first::<TBContracts>(&*conn)?;
+        let result = contracts.find(id_in).first::<TBContracts>(conn)?;
         Ok(result)
     }
 
@@ -258,7 +258,7 @@ impl TBMultiSigLoc {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .filter(version.eq(&version_in))
-            .load::<TBMultiSigLoc>(&*conn)?;
+            .load::<TBMultiSigLoc>(conn)?;
 
         let err = MurinError::new(&format!("no multisig key location found for contract-id: '{}' User-id: '{}'  , version: '{}'; \n Result: {:?}"
                 ,contract_id_in, user_id_in, version_in, result));
@@ -277,7 +277,7 @@ impl TBDrasilUser {
         let result = drasil_user
             .select(user_id)
             .order_by(user_id.desc())
-            .first::<i64>(&*conn)?;
+            .first::<i64>(conn)?;
         Ok(result + 1)
     }
 
@@ -288,7 +288,7 @@ impl TBDrasilUser {
         use crate::schema::drasil_user::dsl::*;
         let result = drasil_user
             .filter(email.eq(email_in))
-            .first::<TBDrasilUser>(&*conn)?;
+            .first::<TBDrasilUser>(conn)?;
         Ok(result)
     }
 
@@ -299,7 +299,7 @@ impl TBDrasilUser {
         use crate::schema::drasil_user::dsl::*;
         let result = drasil_user
             .filter(user_id.eq(user_id_in))
-            .first::<TBDrasilUser>(&*conn)?;
+            .first::<TBDrasilUser>(conn)?;
         Ok(result)
     }
 
