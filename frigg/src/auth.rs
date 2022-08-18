@@ -20,7 +20,7 @@ use warp::{
 
 const BEARER: &str = "Bearer ";
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Role {
     StandardUser,
     EnterpriseUser,

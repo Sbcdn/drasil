@@ -26,8 +26,8 @@ pub enum ADTokenType {
 impl ToString for ADTokenType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::FungibleToken => "FungibleToken".to_string(),
-            &Self::NonFungibleToken => "NonFungibleToken".to_string(),
+            ADTokenType::FungibleToken => "FungibleToken".to_string(),
+            ADTokenType::NonFungibleToken => "NonFungibleToken".to_string(),
         }
     }
 }
@@ -62,13 +62,13 @@ pub enum ADSelType {
 impl ToString for ADSelType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::ScanForHolders => "ScanForHolders".to_string(),
-            &Self::ScanForHoldersNFTMetaCond => "ScanForHoldersNFTMetaCond".to_string(),
-            &Self::WalletWhitelist => "WalletWhitelist".to_string(),
-            &Self::Custom => "Custom".to_string(),
-            &Self::DeligatorsOfStakePoolInEpochX => "DeligatorsOfStakePoolInEpochX".to_string(),
-            &Self::TokenPool => "TokenPool".to_string(),
-            &Self::Combination(comb) => {
+            ADSelType::ScanForHolders => "ScanForHolders".to_string(),
+            ADSelType::ScanForHoldersNFTMetaCond => "ScanForHoldersNFTMetaCond".to_string(),
+            ADSelType::WalletWhitelist => "WalletWhitelist".to_string(),
+            ADSelType::Custom => "Custom".to_string(),
+            ADSelType::DeligatorsOfStakePoolInEpochX => "DeligatorsOfStakePoolInEpochX".to_string(),
+            ADSelType::TokenPool => "TokenPool".to_string(),
+            ADSelType::Combination(comb) => {
                 let mut ret = String::new();
                 for c in comb {
                     ret = ret + &c.to_string() + "|";
@@ -91,13 +91,13 @@ impl std::str::FromStr for ADSelType {
             "DeligatorsOfStakePoolInEpochX" => Ok(ADSelType::DeligatorsOfStakePoolInEpochX),
             "TokenPool" => Ok(ADSelType::TokenPool),
             comb => {
-                if !comb.contains("|") {
+                if !comb.contains('|') {
                     return Err(SleipnirError::new(&format!(
                         "Cannot parse '{}' into AdSelType",
                         src
                     )));
                 }
-                let csplit: Vec<&str> = comb.split("|").collect();
+                let csplit: Vec<&str> = comb.split('|').collect();
                 let mut combi = Vec::<ADSelType>::new();
                 for c in csplit {
                     combi.push(ADSelType::from_str(c)?);
@@ -123,13 +123,15 @@ pub enum ADDistType {
 impl ToString for ADDistType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::StakeDependentOnPools => "StakeDendentOnPools".to_string(),
-            &Self::FixedAmoutPerDeligatorOnPools => "FixedAmoutPerDeligatorOnPools".to_string(),
-            &Self::Custom => "Custom".to_string(),
-            &Self::FixedAmoutPerToken => "FixedAmoutPerToken".to_string(),
-            &Self::FixedAmountDevidedByWallets => "FixedAmountDevidedByWallets".to_string(),
-            &Self::FixedAmountPerWallet => "FixedAmountPerWallet".to_string(),
-            &Self::TokenPool => "TokenPool".to_string(),
+            ADDistType::StakeDependentOnPools => "StakeDendentOnPools".to_string(),
+            ADDistType::FixedAmoutPerDeligatorOnPools => {
+                "FixedAmoutPerDeligatorOnPools".to_string()
+            }
+            ADDistType::Custom => "Custom".to_string(),
+            ADDistType::FixedAmoutPerToken => "FixedAmoutPerToken".to_string(),
+            ADDistType::FixedAmountDevidedByWallets => "FixedAmountDevidedByWallets".to_string(),
+            ADDistType::FixedAmountPerWallet => "FixedAmountPerWallet".to_string(),
+            ADDistType::TokenPool => "TokenPool".to_string(),
         }
     }
 }
@@ -196,7 +198,7 @@ pub async fn create_airdrop(
         ADTokenType::FungibleToken => {
             if let Some(name) = tokenname {
                 tn = name;
-                fingerprint = murin::make_fingerprint(&policy_id.clone(), &tn.clone())?;
+                fingerprint = murin::make_fingerprint(&policy_id.clone(), &tn)?;
             }
         }
         ADTokenType::NonFungibleToken => {
@@ -342,7 +344,7 @@ pub async fn create_airdrop(
     )?;
 
     // If possible for selected method determine rewards for airdrop
-    let rewards = determine_rewards(user_id, c_id, &airdrop_dist_type, &adparam)?;
+    determine_rewards(user_id, c_id, &airdrop_dist_type, &adparam)?;
 
     Ok(())
 }
