@@ -54,7 +54,7 @@ async fn main() -> Result<(), MurinError> {
     //let mut network = NetworkIdKind::Mainnet;
     //let mut prefix = "addr";
     let mut net_bytes = 0b0001;
-    if let Some(_) = opt.testnet {
+    if opt.testnet.is_some() {
         //  network = NetworkIdKind::Testnet;
         //  prefix = "addr_test";
         println!("Got testnet");
@@ -144,7 +144,7 @@ async fn main() -> Result<(), MurinError> {
     let _ = TBContracts::create_contract(
         &opt.user,
         &opt.contract_id,
-        &contract_type,
+        contract_type,
         description,
         &opt.version,
         &hex::encode(rwd_script.to_bytes()),
@@ -162,9 +162,7 @@ async fn main() -> Result<(), MurinError> {
         );
     }
 
-    let mut pvks = Vec::<String>::new();
-    pvks.push(pvk1_root_bytes);
-    pvks.push(pvk2_root_bytes);
+    let pvks = vec![pvk1_root_bytes, pvk2_root_bytes];
 
     let _ = TBMultiSigLoc::create_multisig_keyloc(
         &opt.user,
@@ -178,7 +176,7 @@ async fn main() -> Result<(), MurinError> {
     )
     .await?;
 
-    if let Some(_) = opt.output {
+    if opt.output.is_some() {
         println!("Script Hash: {:?}", hex::encode(script_hash.to_bytes()));
         println!("Script Address: {:?}", script_address_e.to_bech32(None)?);
         println!("Native Script: {:?}", hex::encode(rwd_script.to_bytes()));

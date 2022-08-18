@@ -19,7 +19,7 @@ impl Rewards {
         use crate::schema::rewards::dsl::*;
         let result = rewards
             .filter(stake_addr.eq(&stake_addr_in))
-            .load::<Rewards>(&*conn)?;
+            .load::<Rewards>(conn)?;
         Ok(result)
     }
 
@@ -34,7 +34,7 @@ impl Rewards {
             .filter(stake_addr.eq(&stake_addr_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<Rewards>(&*conn)?;
+            .load::<Rewards>(conn)?;
         Ok(result)
     }
 
@@ -51,7 +51,7 @@ impl Rewards {
             .filter(fingerprint.eq(&fingerprint_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<Rewards>(&*conn)?;
+            .load::<Rewards>(conn)?;
         Ok(result)
     }
 
@@ -70,7 +70,7 @@ impl Rewards {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .filter(tot_earned.gt(tot_claimed))
-            .load::<Rewards>(&*conn)?;
+            .load::<Rewards>(conn)?;
 
         let mut res = Vec::<Rewards>::new();
         for r in result {
@@ -113,7 +113,7 @@ impl Rewards {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .filter(fingerprint.eq(&fingerprint_in))
-            .load::<Rewards>(&*conn)?;
+            .load::<Rewards>(conn)?;
         Ok(result)
     }
 
@@ -132,7 +132,7 @@ impl Rewards {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .select((tot_earned, tot_claimed))
-            .first::<(BigDecimal, BigDecimal)>(&*conn)?;
+            .first::<(BigDecimal, BigDecimal)>(conn)?;
         log::info!("found rewards");
         let claim_sum = Claimed::get_token_claims_tot_amt(
             conn,
@@ -262,7 +262,7 @@ impl Rewards {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .select((tot_earned, tot_claimed))
-            .load::<(BigDecimal, BigDecimal)>(&*conn)?;
+            .load::<(BigDecimal, BigDecimal)>(conn)?;
         let lovelace = BigDecimal::from_i32(1000000).unwrap();
         let open_amt = ret.iter().map(|(x, y)| (x / &lovelace) - y).sum();
         Ok(open_amt)
@@ -282,7 +282,7 @@ impl Claimed {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .order(timestamp.asc())
-            .load::<Claimed>(&*conn)?;
+            .load::<Claimed>(conn)?;
         Ok(result)
     }
 
@@ -294,7 +294,7 @@ impl Claimed {
         let result = claimed
             .filter(stake_addr.eq(&stake_addr_in))
             .order(timestamp.asc())
-            .load::<Claimed>(&*conn)?;
+            .load::<Claimed>(conn)?;
         Ok(result)
     }
 
@@ -311,7 +311,7 @@ impl Claimed {
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
             .filter(fingerprint.eq(fingerprint_in))
-            .load::<Claimed>(&*conn)?;
+            .load::<Claimed>(conn)?;
         Ok(result)
     }
 
@@ -330,7 +330,7 @@ impl Claimed {
             .filter(fingerprint.eq(fingerprint_in))
             .filter(invalid.is_null())
             .select(amount)
-            .load::<BigDecimal>(&*conn)?;
+            .load::<BigDecimal>(conn)?;
 
         let sum = result.iter().map(|x| x.to_i64().unwrap()).sum();
 
@@ -531,7 +531,7 @@ impl Claimed {
 
 impl TokenWhitelist {
     pub fn get_whitelist(conn: &PgConnection) -> Result<Vec<TokenWhitelist>, RWDError> {
-        let result = token_whitelist::table.load::<TokenWhitelist>(&*conn)?;
+        let result = token_whitelist::table.load::<TokenWhitelist>(conn)?;
         Ok(result)
     }
 
@@ -608,7 +608,7 @@ impl TokenWhitelist {
             .filter(fingerprint.is_not_null())
             .filter(fingerprint.eq(&fingerprint_in))
             .select((policy_id, tokenname.nullable(), fingerprint.nullable()))
-            .first::<TokenInfo>(&*conn)?;
+            .first::<TokenInfo>(conn)?;
         Ok(result)
     }
 
@@ -624,13 +624,13 @@ impl TokenWhitelist {
                 .filter(fingerprint.is_not_null())
                 .filter(fingerprint.eq(&fin))
                 .select((policy_id, tokenname.nullable(), fingerprint.nullable()))
-                .first::<TokenInfo>(&*conn)?,
+                .first::<TokenInfo>(conn)?,
             None => match tokenname_in {
                 Some(tn) => token_whitelist
                     .filter(policy_id.eq(&policy_id_in))
                     .filter(tokenname.eq(&tn))
                     .select((policy_id, tokenname.nullable(), fingerprint.nullable()))
-                    .first::<TokenInfo>(&*conn)?,
+                    .first::<TokenInfo>(conn)?,
                 None => {
                     return Err(RWDError::new(
                         "No tokenName and no fingerprint provided to retrieve tokeninfo",
@@ -669,7 +669,7 @@ impl TokenWhitelist {
             .filter(fingerprint.eq(&fingerprint_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<TokenWhitelist>(&*conn)?;
+            .load::<TokenWhitelist>(conn)?;
         Ok(result)
     }
 
@@ -883,7 +883,7 @@ impl AirDropWhitelist {
         let result = airdrop_whitelist
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<AirDropWhitelist>(&*conn)?;
+            .load::<AirDropWhitelist>(conn)?;
         Ok(result)
     }
 
@@ -949,7 +949,7 @@ impl AirDropParameter {
         let result = airdrop_parameter
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<AirDropParameter>(&*conn)?;
+            .load::<AirDropParameter>(conn)?;
         Ok(result)
     }
 
@@ -957,7 +957,7 @@ impl AirDropParameter {
         use crate::schema::airdrop_parameter::dsl::*;
         let result = airdrop_parameter
             .find(id_in)
-            .first::<AirDropParameter>(&*conn)?;
+            .first::<AirDropParameter>(conn)?;
         Ok(result)
     }
 
@@ -1002,7 +1002,7 @@ impl AirDropParameter {
 impl WlAddresses {
     pub fn get_wladdress(conn: &PgConnection, id_in: i64) -> Result<WlAddresses, RWDError> {
         use crate::schema::wladdresses::dsl::*;
-        let result = wladdresses.find(id_in).first::<WlAddresses>(&*conn)?;
+        let result = wladdresses.find(id_in).first::<WlAddresses>(conn)?;
         Ok(result)
     }
 
@@ -1034,7 +1034,7 @@ impl WlAlloc {
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
             .select(wladdresses::payment_address)
-            .load::<String>(&*conn)?;
+            .load::<String>(conn)?;
         Ok(result)
     }
 
@@ -1073,7 +1073,7 @@ impl Whitelist {
     pub fn get_whitelist(conn: &PgConnection, id_in: i64) -> Result<Whitelist, RWDError> {
         let result = whitelist::table
             .filter(whitelist::id.eq(id_in))
-            .first::<Whitelist>(&*conn)?;
+            .first::<Whitelist>(conn)?;
         Ok(result)
     }
 
@@ -1111,7 +1111,7 @@ impl MintProject {
     pub fn get_mintproject_by_id(conn: &PgConnection, id_in: i64) -> Result<MintProject, RWDError> {
         let result = mint_projects::table
             .filter(mint_projects::id.eq(id_in))
-            .first::<MintProject>(&*conn)?;
+            .first::<MintProject>(conn)?;
         Ok(result)
     }
 
@@ -1123,7 +1123,7 @@ impl MintProject {
         let result = mint_projects::table
             .filter(mint_projects::user_id.eq(uid_in))
             .filter(mint_projects::contract_id.eq(cid_in))
-            .first::<MintProject>(&*conn)?;
+            .first::<MintProject>(conn)?;
         Ok(result)
     }
 
@@ -1178,7 +1178,7 @@ impl Nft {
     pub fn get_nfts_by_pid(conn: &PgConnection, id_in: i64) -> Result<Vec<Nft>, RWDError> {
         let result = nft_table::table
             .filter(nft_table::project_id.eq(id_in))
-            .load::<Nft>(&*conn)?;
+            .load::<Nft>(conn)?;
         Ok(result)
     }
 
@@ -1189,7 +1189,7 @@ impl Nft {
     ) -> Result<Nft, RWDError> {
         let result = nft_table::table
             .find((pid_in, assetname_in))
-            .first::<Nft>(&*conn)?;
+            .first::<Nft>(conn)?;
         Ok(result)
     }
 
@@ -1201,7 +1201,7 @@ impl Nft {
         let result = nft_table::table
             .filter(nft_table::project_id.eq(pid_in))
             .filter(nft_table::asset_name.eq(assetname_in))
-            .first::<Nft>(&*conn)?;
+            .first::<Nft>(conn)?;
         Ok(result)
     }
 
@@ -1216,7 +1216,7 @@ impl Nft {
             .filter(nft_table::minted.eq(false))
             .filter(nft_table::payment_addr.is_null())
             .filter(nft_table::tx_hash.is_null())
-            .load::<Nft>(&*conn)?;
+            .load::<Nft>(conn)?;
 
         let mut rng = thread_rng();
         let rnd: usize = rng.gen_range(0..=result.len());
@@ -1232,7 +1232,7 @@ impl Nft {
         let result = nft_table::table
             .filter(nft_table::project_id.eq(pid_in))
             .filter(nft_table::payment_addr.eq(payment_addr))
-            .load::<Nft>(&*conn)?;
+            .load::<Nft>(conn)?;
         Ok(result)
     }
 
@@ -1245,7 +1245,7 @@ impl Nft {
             .filter(nft_table::project_id.eq(pid_in))
             .filter(nft_table::payment_addr.eq(payment_addr))
             .filter(nft_table::minted.eq(false))
-            .load::<Nft>(&*conn)?;
+            .load::<Nft>(conn)?;
         Ok(result)
     }
 

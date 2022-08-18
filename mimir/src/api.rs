@@ -24,7 +24,7 @@ pub fn get_utxo_tokens(conn: &PgConnection, utxo_id: i64) -> Result<Vec<UMultiAs
             multi_asset::fingerprint,
             ma_tx_out::quantity,
         ))
-        .load::<UMultiAsset>(&*conn)?;
+        .load::<UMultiAsset>(conn)?;
     Ok(multi_assets)
 }
 
@@ -50,7 +50,7 @@ pub fn get_address_utxos(
 ) -> Result<murin::TransactionUnspentOutputs, MurinError> {
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::address.eq(addr))
-        .load::<UnspentUtxo>(&*conn)?;
+        .load::<UnspentUtxo>(conn)?;
     let mut utxos = murin::TransactionUnspentOutputs::new();
     for u in unspent {
         utxos.add(&u.to_txuo(conn)?);
@@ -66,7 +66,7 @@ pub fn get_stake_address_utxos(
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::stake_address.eq(stake_addr))
         .filter(unspent_utxos::address_has_script.eq(false))
-        .load::<UnspentUtxo>(&*conn)?;
+        .load::<UnspentUtxo>(conn)?;
     let mut utxos = murin::TransactionUnspentOutputs::new();
     for u in unspent {
         utxos.add(&u.to_txuo(conn)?);
@@ -81,7 +81,7 @@ pub fn get_slot(conn: &PgConnection) -> Result<i64, MurinError> {
         .select(block::slot_no)
         .order(block::slot_no.desc())
         .limit(1)
-        .load::<Option<i64>>(&*conn)?;
+        .load::<Option<i64>>(conn)?;
     match slot[0] {
         Some(s) => Ok(s),
         None => Err(murin::MurinError::new(
@@ -102,7 +102,7 @@ pub fn get_tot_stake_per_pool(
         .filter(pool_hash::view.eq(pool))
         .filter(epoch_stake::epoch_no.eq(epoch))
         .select((stake_address::view, epoch_stake::amount))
-        .load::<EpochStakeView>(&*conn)?;
+        .load::<EpochStakeView>(conn)?;
     Ok(pool_stake)
 }
 
@@ -125,7 +125,7 @@ pub fn get_deligations_per_pool_for_epochs(
             delegation::cert_index,
             delegation::active_epoch_no,
         ))
-        .load::<DelegationView>(&*conn)?;
+        .load::<DelegationView>(conn)?;
     Ok(deleg)
 }
 
@@ -139,7 +139,7 @@ pub fn get_pool_total_stake(
         .filter(pool_hash::view.eq(pool))
         .filter(epoch_stake::epoch_no.eq(epoch))
         .select(epoch_stake::amount)
-        .load::<BigDecimal>(&*conn)?;
+        .load::<BigDecimal>(conn)?;
 
     let tot_stake: u64 = pool_stake.iter().map(|x| x.to_u64().unwrap()).sum();
 
@@ -151,7 +151,7 @@ pub fn get_epoch(conn: &PgConnection) -> Result<i32, MurinError> {
         .filter(epoch_stake::epoch_no.is_not_null())
         .select(epoch_stake::epoch_no)
         .order(epoch_stake::epoch_no.desc())
-        .first::<i32>(&*conn)?;
+        .first::<i32>(conn)?;
 
     Ok(epoch)
 }
@@ -166,7 +166,7 @@ pub fn get_fingerprint(
         .filter(multi_asset::policy.eq(hex::decode(policy)?))
         .filter(multi_asset::name.eq(tokenname.as_bytes()))
         .select(multi_asset::fingerprint)
-        .first::<String>(&*conn)?;
+        .first::<String>(conn)?;
 
     Ok(fingerprint)
 }
@@ -185,7 +185,7 @@ pub fn get_token_info(
     let fingerprint = multi_asset::table
         .filter(multi_asset::fingerprint.eq(fingerprint_in))
         .select((multi_asset::policy, multi_asset::name))
-        .first::<(Vec<u8>, Vec<u8>)>(&*conn)?;
+        .first::<(Vec<u8>, Vec<u8>)>(conn)?;
 
     let policy = hex::encode(fingerprint.0);
     let tokenname = hex::encode(fingerprint.1);
@@ -215,7 +215,7 @@ pub fn stake_registration(
             stake_registration::epoch_no,
         ))
         .order(stake_registration::epoch_no.desc())
-        .load::<(String, Vec<u8>, i32, i32)>(&*conn)?;
+        .load::<(String, Vec<u8>, i32, i32)>(conn)?;
 
     Ok(registration)
 }
@@ -237,7 +237,7 @@ pub fn stake_deregistration(
             stake_deregistration::redeemer_id,
         ))
         .order(stake_deregistration::epoch_no.desc())
-        .load::<(String, Vec<u8>, i32, i32, Option<i64>)>(&*conn)?;
+        .load::<(String, Vec<u8>, i32, i32, Option<i64>)>(conn)?;
 
     Ok(deregistration)
 }

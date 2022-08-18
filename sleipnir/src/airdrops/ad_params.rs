@@ -127,8 +127,7 @@ pub enum AirdropDistributionParameter {
 
 impl AirdropDistributionParameter {
     pub fn to_string_vec(&self) -> Result<Vec<String>, SleipnirError> {
-        let mut out = Vec::<String>::new();
-        out.push("Not Implemented".to_string());
+        let out = vec!["Not Implemented".to_string()];
         Ok(out)
     }
 }
@@ -190,8 +189,7 @@ pub enum AirdropSelectionParameter {
 
 impl AirdropSelectionParameter {
     pub fn to_string_vec(&self) -> Result<Vec<String>, SleipnirError> {
-        let mut out = Vec::<String>::new();
-        out.push("Not Implemented".to_string());
+        let out = vec!["Not Implemented".to_string()];
         Ok(out)
     }
 }
@@ -238,8 +236,7 @@ pub struct AirdropTimingParameter {
 
 impl AirdropTimingParameter {
     pub fn to_string_vec(&self) -> Result<Vec<String>, SleipnirError> {
-        let mut out = Vec::<String>::new();
-        out.push("Not Implemented".to_string());
+        let out = vec!["Not Implemented".to_string()];
         Ok(out)
     }
 }

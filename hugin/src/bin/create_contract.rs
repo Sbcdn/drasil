@@ -34,8 +34,8 @@ fn main() -> Result<(), murin::MurinError> {
     stdin().read_line(&mut description_).unwrap();
     let description_ = &description_[..(description_.len() - 1)];
     let mut description: Option<&str> = None;
-    if description_ != "" {
-        description = Some(&description_)
+    if !description_.is_empty() {
+        description = Some(description_)
     }
 
     println!("Please provide contract version (f32):");
@@ -57,7 +57,7 @@ fn main() -> Result<(), murin::MurinError> {
     let contract = TBContracts::create_contract(
         &user_id,
         &contract_id,
-        &contract_type,
+        contract_type,
         description,
         &version,
         plutus,

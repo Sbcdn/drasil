@@ -29,7 +29,7 @@ fn main() -> Result<(), murin::MurinError> {
     stdin().read_line(&mut contract_id).unwrap();
     let contract_id_ = &contract_id[..(contract_id.len() - 1)];
     let mut contract_id = contract_org.contract_id;
-    if contract_id_ != "" {
+    if !contract_id_.is_empty() {
         contract_id = contract_id_.parse::<i64>()?;
     }
 
@@ -46,8 +46,8 @@ fn main() -> Result<(), murin::MurinError> {
         description = Some(&k);
     };
 
-    if description_ != "" {
-        description = Some(&description_)
+    if !description_.is_empty() {
+        description = Some(description_)
     }
 
     println!("You want to depricate the contract? (true / false):");
@@ -56,7 +56,7 @@ fn main() -> Result<(), murin::MurinError> {
     stdin().read_line(&mut depri_).unwrap();
     let depri_ = &depri_[..(depri_.len() - 1)];
     let mut depri = contract_org.depricated;
-    if depri_ != "" {
+    if !depri_.is_empty() {
         depri = depri_.parse::<bool>()?;
     }
     let contract =

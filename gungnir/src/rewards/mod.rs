@@ -35,7 +35,7 @@ pub fn establish_connection() -> Result<PgConnection, RWDError> {
     Ok(PgConnection::establish(&env::var("REWARDS_DB_URL")?)?)
 }
 
-#[derive(serde::Serialize, Debug, Clone, PartialEq, FromSqlRow, AsExpression, SqlType)] //FromSqlRow DbEnum
+#[derive(serde::Serialize, Debug, Clone, PartialEq, Eq, FromSqlRow, AsExpression, SqlType)] //FromSqlRow DbEnum
 #[sql_type = "Calculationmode"]
 #[postgres(type_name = "Calculationmode")]
 pub enum Calculationmode {
