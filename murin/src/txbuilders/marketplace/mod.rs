@@ -20,15 +20,6 @@ pub use cancel::*;
 pub use list::*;
 pub use update::*;
 
-macro_rules! pub_struct {
-    ($name:ident {$($field:ident: $t:ty,)*}) => {
-        #[derive(Serialize,Deserialize,Debug, Clone, PartialEq)] // ewww
-        pub struct $name {
-            $(pub $field: $t),*
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct MpTxData {
     tokens: Vec<TokenAsset>,

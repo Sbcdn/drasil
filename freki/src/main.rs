@@ -279,20 +279,22 @@ pub async fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     let current_epoch = mimir::get_epoch(&mimir::establish_connection()?)? as i64;
+    let calc_epoch = current_epoch - 2;
     info!("Current Epoch: {}", current_epoch);
-    if opt.epoch.is_some() && opt.epoch.unwrap() >= current_epoch {
+    if opt.epoch.is_some() && opt.epoch.unwrap() > calc_epoch {
         return Err(gungnir::RWDError::new(
             "It is not possible to calculate rewards for the current or future epochs",
         )
         .into());
     }
-    let mut i = current_epoch - 1;
+
+    let mut i = calc_epoch;
     if opt.epoch.is_some() {
         i = opt.epoch.unwrap();
     };
     if let Some(b) = opt.from {
-        while i < current_epoch && b {
-            let mut whitelist = get_token_whitelist(current_epoch).await?;
+        while i < calc_epoch && b {
+            let mut whitelist = get_token_whitelist(calc_epoch).await?;
             whitelist.retain(|w| w.start_epoch <= i);
             debug!("Whitelist: {:?}", whitelist);
             for mut entry in whitelist {
@@ -311,11 +313,10 @@ pub async fn main() -> Result<()> {
         }
         println!(
             "Rewards successfully calucalted for epochs {:?} to {:?}",
-            opt.epoch,
-            i - 1
+            opt.epoch, i
         );
     } else {
-        let mut whitelist = get_token_whitelist(current_epoch).await?;
+        let mut whitelist = get_token_whitelist(calc_epoch).await?;
         whitelist.retain(|w| w.start_epoch <= i);
         debug!("Whitelist: {:?}", whitelist);
         for mut entry in whitelist {
