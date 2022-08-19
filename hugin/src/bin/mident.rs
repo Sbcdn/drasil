@@ -29,12 +29,10 @@ struct Opt {
     a: String,
 }
 
-fn main() -> () {
+fn main() {
     let opt = Opt::from_args();
 
     let ident = mident(&opt.u, &opt.c, &opt.v, &opt.a);
 
     println!("{}", ident);
-
-    ()
 }

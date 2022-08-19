@@ -59,7 +59,7 @@ impl ToString for ContractType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum MarketplaceActions {
     List,
     Buy,
@@ -87,7 +87,7 @@ impl FromStr for MarketplaceActions {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum MultiSigType {
     SpoRewardClaim,
     NftVendor,
@@ -198,7 +198,7 @@ impl Signature {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ContractAction {
     MarketplaceActions(MarketplaceActions),
 }
@@ -708,7 +708,7 @@ impl ScriptSpecParams {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum WalletType {
     Nami,
     Eternl,
@@ -762,7 +762,7 @@ impl ReturnError {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnsignedTransaction {
     id: String,
     tx: String,
@@ -820,7 +820,7 @@ impl FromStr for UnsignedTransaction {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct TxHash {
     txhash: String,
 }

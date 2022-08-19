@@ -6,6 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+/*
 use crate::error::MurinError;
 use crate::hfn;
 use crate::htypes;
@@ -16,7 +17,7 @@ use cardano_serialization_lib::{
 };
 use clib::to_bytes;
 
-/*
+
 pub fn perform_buy(
     fee         : &cutils::BigNum,
     sc_scripts  : &String,

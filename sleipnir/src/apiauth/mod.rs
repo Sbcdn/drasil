@@ -53,9 +53,9 @@ pub struct ApiClaims {
 
 pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String, SleipnirError> {
     let dconn = hugin::establish_connection()?;
-    let user = hugin::database::TBDrasilUser::get_user_by_user_id(&dconn, &uid)?;
+    let user = hugin::database::TBDrasilUser::get_user_by_user_id(&dconn, uid)?;
 
-    if user.email_verified != true
+    if !user.email_verified
     //&& check_identification(u.identification)
     {
         return Err(SleipnirError::new("invalid user"));
@@ -72,7 +72,7 @@ pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String, SleipnirEr
         .timestamp();
 
     let claims = ApiClaims {
-        sub: uid.to_string().to_owned(),
+        sub: uid.to_string(),
         exp: expiration as usize,
     };
     let header = Header::new(Algorithm::ES256);

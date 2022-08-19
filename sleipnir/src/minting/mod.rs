@@ -109,7 +109,7 @@ pub async fn create_policy_script(
     let _ = TBContracts::create_contract(
         &user_id,
         &contract_id,
-        &contract_type,
+        contract_type,
         description,
         &1.0,
         &hex::encode(mint_script.to_bytes()),
@@ -118,9 +118,7 @@ pub async fn create_policy_script(
         &false,
     )?;
 
-    let mut pvks = Vec::<String>::new();
-    pvks.push(pvk1_root_bytes);
-    pvks.push(pvk2_root_bytes);
+    let pvks = vec![pvk1_root_bytes, pvk2_root_bytes];
 
     let mut signer = None;
     if let Some(signaddr) = mint_signer {

@@ -250,7 +250,8 @@ pub fn perform_update(
     )?;
 
     let slot = gtxd.get_current_slot() + 3000;
-    let mut txbody = clib::TransactionBody::new(&txins, &txouts_fin, fee, Some(slot as u32)); //922321
+    let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
+    txbody.set_ttl(&cutils::to_bignum(slot));
     debug!("\nTxOutputs: {:?}\n", txbody.outputs());
     debug!("\nTxInouts: {:?}\n", txbody.inputs());
 

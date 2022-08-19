@@ -8,7 +8,7 @@
 */
 use std::error::Error;
 use std::fmt::{self};
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MurinError {
     details: String,
 }
