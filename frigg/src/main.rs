@@ -339,10 +339,7 @@ pub async fn login_handler(body: LoginRequest) -> WebResult<impl Reply> {
 }
 
 pub async fn register_handler(payload: RegisterRequest) -> WebResult<impl Reply> {
-    let conn = hugin::drasildb::establish_connection()
-        .map_err(|_| error::Error::Custom("Could not establish database connection".to_string()))?;
     let new_user = TBDrasilUser::create_user(
-        &conn,
         None,
         &payload.username,
         &payload.email,
@@ -361,6 +358,7 @@ pub async fn register_handler(payload: RegisterRequest) -> WebResult<impl Reply>
         &Vec::<String>::new(),
         payload.cardano_wallet.as_ref(),
     )
+    .await
     .map_err(|e| error::Error::Custom(format!("Could not create new user: {:?}", e.to_string())))?;
 
     // Send verification Email to [new_user.email]

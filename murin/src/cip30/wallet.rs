@@ -257,3 +257,20 @@ pub fn create_wallet() -> (
         skey1,
     )
 }
+
+pub fn create_drslkeypair() -> (String, String, String) {
+    let root_key1: clib::crypto::Bip32PrivateKey =
+        clib::crypto::Bip32PrivateKey::generate_ed25519_bip32().unwrap();
+    let account_key1 = root_key1
+        .derive(crate::txbuilders::harden(2733u32))
+        .derive(crate::txbuilders::harden(2778u32))
+        .derive(crate::txbuilders::harden(0u32));
+    let ac1_private_key = account_key1.to_raw_key(); // for signatures
+    let ac1_public_key = account_key1.to_raw_key().to_public();
+    let ac1_public_key_hash = account_key1.to_raw_key().to_public().hash(); // for Native Script Input / Verification
+    (
+        ac1_private_key.to_bech32(),
+        ac1_public_key.to_bech32(),
+        hex::encode(ac1_public_key_hash.to_bytes()),
+    )
+}

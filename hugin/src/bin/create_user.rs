@@ -31,7 +31,8 @@ struct Opt {
     role: String,
 }
 
-fn main() -> Result<(), MurinError> {
+#[tokio::main]
+async fn main() -> Result<(), MurinError> {
     let opt = Opt::from_args();
 
     let conn = establish_connection()?;
@@ -57,7 +58,8 @@ fn main() -> Result<(), MurinError> {
         None,
         &Vec::<String>::new(),
         None,
-    )?;
+    )
+    .await?;
 
     println!("Created user: {:?}", user);
 

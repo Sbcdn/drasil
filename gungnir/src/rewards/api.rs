@@ -120,6 +120,7 @@ impl Rewards {
     pub fn get_available_rewards(
         conn: &PgConnection,
         stake_addr_in: &String,
+        payment_addr_in: &String,
         fingerprint_in: &String,
         contract_id_in: i64,
         user_id_in: i64,
@@ -131,9 +132,14 @@ impl Rewards {
             .filter(fingerprint.eq(&fingerprint_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .select((tot_earned, tot_claimed))
-            .first::<(BigDecimal, BigDecimal)>(conn)?;
+            .select((tot_earned, tot_claimed, payment_addr))
+            .first::<(BigDecimal, BigDecimal, String)>(conn)?;
         log::info!("found rewards");
+        if *payment_addr_in != result.2 {
+            return Err(RWDError::new(
+                "Reward Error: Missmatching Payment Addresses!",
+            ));
+        }
         let claim_sum = Claimed::get_token_claims_tot_amt(
             conn,
             stake_addr_in,

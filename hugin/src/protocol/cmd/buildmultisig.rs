@@ -151,7 +151,10 @@ impl BuildMultiSig {
                     || murin::wallet::get_stake_address(
                         &murin::decode_addr(&recipient_stake_addr).await?,
                     )? != murin::wallet::get_stake_address(
-                        &murin::decode_addr(&recipient_payment_addr).await?,
+                        &murin::decode_addr(&mimir::api::select_addr_of_first_transaction(
+                            &recipient_stake_addr,
+                        )?)
+                        .await?,
                     )?
                 {
                     return err;
@@ -172,6 +175,15 @@ impl BuildMultiSig {
             .unwrap()
             .into_rwd()
             .await?;
+        rwdtxd.set_payment_addr(
+            &murin::decode_addr(&mimir::api::select_addr_of_first_transaction(
+                &rwdtxd
+                    .get_stake_addr()
+                    .to_bech32(None)
+                    .expect("ERROR Could not construct bech32 address for stake address"),
+            )?)
+            .await?,
+        );
         let mut gtxd = self.transaction_pattern().into_txdata().await?;
         gtxd.set_user_id(self.customer_id);
 
@@ -207,6 +219,9 @@ impl BuildMultiSig {
                             &gcon,
                             &gtxd.get_stake_address().to_bech32(None).expect(
                                 "ERROR Could not construct bech32 address for stake address",
+                            ),
+                            &rwdtxd.get_payment_addr().to_bech32(None).expect(
+                                "ERROR Could not construct bech32 address for payment address",
                             ),
                             &fingerprint,
                             c.contract_id as i64,
@@ -304,6 +319,10 @@ impl BuildMultiSig {
                     .get_stake_address()
                     .to_bech32(None)
                     .expect("ERROR Could not construct bech32 address for stake address"),
+                &rwdtxd
+                    .get_payment_addr()
+                    .to_bech32(None)
+                    .expect("ERROR Could not construct bech32 address for payment address"),
                 &fingerprint,
                 contract.contract_id as i64,
                 self.customer_id() as i64,

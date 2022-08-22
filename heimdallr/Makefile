@@ -1,9 +1,7 @@
-REGISTRY=drasil-docker
+REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
 PROJECT=drasil
-REPOSITORY=drasil-blockchain-dapp-framework
 IMAGE=heimdallr
-VERSION=0.1
-
+VERSION=v1.0
 build:
 	cargo update
 	cargo fetch
@@ -15,10 +13,10 @@ build:
 	cp -R ../murin .cargo/murin
 	cp -R ../mimir .cargo/mimir
 	cp -R ../gungnir .cargo/gungnir
-	docker build -t $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
+	sudo docker build -t $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
 
 run:
 	docker run -t $(IMAGE):$(VERSION) $(IMAGE)
 
 push:
-	docker push $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION)
+	sudo docker push $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION)

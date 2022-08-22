@@ -309,21 +309,57 @@ pub fn check_utxo_used(txuo: &TransactionUnspentOutput) -> Result<bool, MurinErr
     Ok(false)
 }
 
+fn sismember(
+    con: &mut (
+        Option<redis::cluster::ClusterConnection>,
+        Option<redis::Connection>,
+    ),
+    key: &String,
+    utxos: &Vec<String>,
+) -> Vec<i64> {
+    match con {
+        (Some(ref mut c), None) => match redis::cmd("SMISMEMBER").arg(key).arg(&utxos).query(c) {
+            Ok(o) => o,
+            Err(e) => {
+                log::error!("Could not find used utxo members, error: {}", e.to_string());
+                vec![]
+            }
+        },
+        (None, Some(ref mut c)) => match redis::cmd("SMISMEMBER").arg(key).arg(&utxos).query(c) {
+            Ok(o) => o,
+            Err(e) => {
+                log::error!("Could not find used utxo members, error: {}", e.to_string());
+                vec![]
+            }
+        },
+        _ => {
+            vec![]
+        }
+    }
+}
 /// Return a list of valid utxos from a given utxos list
 pub fn get_valid_utxos_sif(utxos_in: &[String]) -> Result<Vec<String>, MurinError> {
     info!("check used utxos...");
     let mut con = redis_usedutxos_connection()?;
     let mut utxos = utxos_in.to_owned();
+
+    for i in &[0, 1, 2] {
+        let key = select_used_utxo_datastore(0, Some(*i))?;
+        if !key.0.is_empty() && key.1 > 0 {
+            debug!("Key: {:?}", key);
+            let response = sismember(&mut con, &key.0, &utxos);
+            debug!("\n\nResponse: {:?}", response);
+            for (j, i) in response.into_iter().enumerate() {
+                if i > 0 {
+                    utxos.remove(j);
+                }
+            }
+        }
+    }
+    /*
     let key0 = select_used_utxo_datastore(0, Some(0))?;
     debug!("Key: {:?}", key0);
-    let response: Vec<i64> = match con {
-        (Some(ref mut c), None) => redis::cmd("SMISMEMBER").arg(key0.0).arg(&utxos).query(c)?,
-        (None, Some(ref mut c)) => redis::cmd("SMISMEMBER").arg(key0.0).arg(&utxos).query(c)?,
-        _ => {
-            vec![]
-        }
-    };
-
+    let response = sismember(&mut con, &key0.0, &utxos);
     debug!("\n\nResponse: {:?}", response);
     for (j, i) in response.into_iter().enumerate() {
         if i > 0 {
@@ -335,14 +371,7 @@ pub fn get_valid_utxos_sif(utxos_in: &[String]) -> Result<Vec<String>, MurinErro
     // ToDO:: Make a function for these 3 requests
     let key1 = select_used_utxo_datastore(0, Some(1))?;
     if !key1.0.is_empty() && key1.1 > 0 {
-        let response: Vec<i64> = match con {
-            (Some(ref mut c), None) => redis::cmd("SMISMEMBER").arg(key1.0).arg(&utxos).query(c)?,
-            (None, Some(ref mut c)) => redis::cmd("SMISMEMBER").arg(key1.0).arg(&utxos).query(c)?,
-            _ => {
-                vec![]
-            }
-        };
-
+        let response = sismember(&mut con, &key1.0, &utxos);
         for (j, i) in response.into_iter().enumerate() {
             if i > 0 {
                 utxos.remove(j);
@@ -352,20 +381,14 @@ pub fn get_valid_utxos_sif(utxos_in: &[String]) -> Result<Vec<String>, MurinErro
 
     let key2 = select_used_utxo_datastore(0, Some(2))?;
     if !key2.0.is_empty() && key2.1 > 0 {
-        let response: Vec<i64> = match con {
-            (Some(ref mut c), None) => redis::cmd("SMISMEMBER").arg(key2.0).arg(&utxos).query(c)?,
-            (None, Some(ref mut c)) => redis::cmd("SMISMEMBER").arg(key2.0).arg(&utxos).query(c)?,
-            _ => {
-                vec![]
-            }
-        };
+        let response = sismember(&mut con, &key2.0, &utxos);
         for (j, i) in response.into_iter().enumerate() {
             if i > 0 {
                 utxos.remove(j);
             }
         }
     }
-
+    */
     Ok(utxos)
 }
 
@@ -385,6 +408,26 @@ pub fn check_any_utxo_used(
     }
     debug!("\n\nMembers: {:?}", members);
     let mut used_utxos = Vec::<UsedUtxo>::new();
+
+    for i in &[0, 1, 2] {
+        let key = select_used_utxo_datastore(0, Some(*i))?;
+        if !key.0.is_empty() && key.1 > 0 {
+            debug!("Key: {:?}", key);
+            let response = sismember(&mut con, &key.0, &members);
+            debug!("\n\nResponse: {:?}", response);
+            for (j, i) in response.into_iter().enumerate() {
+                if i > 0 {
+                    let u: Vec<&str> = members.get(j).unwrap().split('#').collect();
+                    used_utxos.push(UsedUtxo {
+                        txhash: u[0].to_string(),
+                        index: u[1].parse::<u32>()?,
+                    })
+                }
+            }
+        }
+    }
+
+    /*
     let key0 = select_used_utxo_datastore(0, Some(0))?;
     debug!("Key: {:?}", key0);
     let response: Vec<i64> = match con {
@@ -467,7 +510,7 @@ pub fn check_any_utxo_used(
             }
         }
     }
-
+     */
     if !used_utxos.is_empty() {
         Ok(Some(used_utxos))
     } else {

@@ -51,6 +51,7 @@ CREATE TABLE drasil_user (
     identification TEXT[] NOT NULL,
     email_verified BOOLEAN NOT NULL,
     cardano_wallet TEXT,
+    drslpubkey VARCHAR(150),
     cwallet_verified BOOLEAN NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
