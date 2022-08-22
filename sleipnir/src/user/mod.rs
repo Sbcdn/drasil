@@ -8,8 +8,8 @@
 */
 pub use crate::error::SleipnirError;
 use chrono::{DateTime, Utc};
-use hugin::database::TBDrasilUser;
 use hugin::encryption::vault_get;
+use hugin::{database::TBDrasilUser, encryption};
 use murin::clib::address::{EnterpriseAddress, StakeCredential};
 use zeroize::Zeroize;
 
@@ -17,8 +17,6 @@ pub async fn create_rev_payout(
     user_id: i64,
     contract_id: i64,
 ) -> Result<hugin::TBCaPayment, SleipnirError> {
-    //let dconn = hugin::establish_connection()?;
-    //let user = hugin::TBDrasilUser::get_user_by_user_id(&dconn, &user_id)?;
     let contract = hugin::TBContracts::get_contract_uid_cid(user_id, contract_id)?;
 
     let mconn = mimir::establish_connection()?;
@@ -78,20 +76,22 @@ pub async fn show_payouts(user_id: i64) -> Result<Vec<DispCaPayment>, SleipnirEr
     Ok(DispCaPayment::from_cap(caps))
 }
 
+// ToDO: TWO FACTOR AUTHENTICATION
 pub async fn approve_payout(
     user_id: &i64,
     payout_id: &i64,
-    pw: &String, // TWO FACTOR AUTHENTICATION
+    pw: &String,
+    mfa: &String,
 ) -> Result<(), SleipnirError> {
     let dconn = hugin::establish_connection()?;
-    let user = hugin::TBDrasilUser::get_user_by_user_id(&dconn, &user_id)?;
+    let user = hugin::TBDrasilUser::get_user_by_user_id(&dconn, user_id)?;
 
     let msg = hugin::TBCaPaymentHash::find_by_payid(payout_id)?[0]
         .payment_hash
         .clone();
     let payment = hugin::TBCaPayment::find(payout_id)?;
     if payment.user_id != *user_id || payment.hash()? != msg {
-        return Err(SleipnirError::new("Something went wrong"));
+        return Err(SleipnirError::new("Error: POT1201"));
     }
     let signature = user.approve(pw, &msg).await?;
 

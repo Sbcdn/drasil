@@ -476,13 +476,13 @@ impl TBDrasilUser {
         Ok(sign.to_hex())
     }
 
-    pub fn verify_approval(&self, msg: &str, sign: &str) -> Result<(), MurinError> {
+    pub fn verify_approval(&self, msg: &str, sign: &str) -> Result<bool, MurinError> {
         let pk = PublicKey::from_bech32(&self.drslpubkey)?;
         let sign = Ed25519Signature::from_hex(sign)?;
         if !pk.verify(msg.as_bytes(), &sign) {
-            return Err(MurinError::new("Approval verification failed"));
+            return Err(MurinError::new("Error: US0010"));
         }
-        Ok(())
+        Ok(true)
     }
 }
 
@@ -534,14 +534,7 @@ impl TBEmailVerificationToken {
                 false
             }
         };
-        /*
-        .on_conflict(email_verification_token::email)
-                   .do_update()
-                   .set((
-                       email_verification_token::id.eq(&token.id),
-                       email_verification_token::created_at.eq(&token.created_at),
-                       email_verification_token::expires_at.eq(&token.expires_at),
-                   )) */
+
         let token = diesel::insert_into(email_verification_token::table)
             .values(&token)
             .get_result(&conn)
@@ -604,14 +597,10 @@ impl TBCaPayment {
     }
 
     pub fn hash(&self) -> Result<String, MurinError> {
-        TBCaPaymentHash::hash(&self)
+        TBCaPaymentHash::hash(self)
     }
 
-    pub fn create(
-        user_id: &i64,
-        contract_id: &i64,
-        value: &CaValue, // String of CA Value json encoded
-    ) -> Result<Self, MurinError> {
+    pub fn create(user_id: &i64, contract_id: &i64, value: &CaValue) -> Result<Self, MurinError> {
         let conn = establish_connection()?;
         let value = &serde_json::to_string(value)?;
         let new_pa = TBCaPaymentNew {
@@ -673,13 +662,34 @@ impl TBCaPayment {
         Ok(cancel)
     }
 
-    pub fn execute(&self, txhash: &str) -> Result<Self, MurinError> {
+    // ToDO: build and submit payout transaction
+    pub async fn execute(&self, txhash: &str) -> Result<Self, MurinError> {
         TBCaPaymentHash::check(self)?;
         let conn = establish_connection()?;
+        let user = TBDrasilUser::get_user_by_user_id(&conn, &self.user_id)?;
+        let msg = TBCaPaymentHash::find_by_payid(&self.id)?[0]
+            .payment_hash
+            .clone();
+        match (
+            user.verify_approval(&msg, &self.user_appr.clone().expect("Error: POT1001"))?,
+            crate::admin::verify_approval_drsl(
+                &msg,
+                &self.drasil_appr.clone().expect("Error: POT1002"),
+            )
+            .await?,
+        ) {
+            (true, true) => (),
+            _ => return Err(MurinError::new("Error: POT1003")),
+        }
+
+        //ToDO:
+        //Trigger Build and submit payout transaction
+
+        // On Success update status
         let exec = diesel::update(ca_payment::table.find(&self.id))
             .set((
                 ca_payment::stauts_pa.eq("transfer in process"),
-                ca_payment::stauts_bl.eq("transaction submitted"),
+                ca_payment::stauts_bl.eq("transaction submit"),
                 ca_payment::tx_hash.eq(Some(txhash)),
             ))
             .get_result::<TBCaPayment>(&conn)?;
@@ -687,6 +697,7 @@ impl TBCaPayment {
         Ok(exec)
     }
 
+    // ToDo: Triggered by Monitoring Tool
     pub fn st_confirmed(&self) -> Result<Self, MurinError> {
         TBCaPaymentHash::check(self)?;
         let conn = establish_connection()?;
