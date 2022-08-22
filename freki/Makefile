@@ -15,7 +15,7 @@ build:
 	cp -R ../murin .cargo/murin
 	cp -R ../mimir .cargo/mimir
 	cp -R ../gungnir .cargo/gungnir
-	docker build -t $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
+	sudo docker build -t $(REGISTRY)/$(PROJECT)/$(REPOSITORY)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
 
 run:
 	docker run -t $(IMAGE):$(VERSION) $(IMAGE)

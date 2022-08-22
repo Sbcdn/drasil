@@ -10,11 +10,15 @@
 
 pub mod api;
 
-use crate::schema::{contracts, drasil_user, email_verification_token, multisig_keyloc, multisigs};
+use crate::schema::{
+    ca_payment, ca_payment_hash, contracts, drasil_user, email_verification_token, multisig_keyloc,
+    multisigs,
+};
 use chrono::{DateTime, Utc};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use dotenv::dotenv;
+use gungnir::{BigDecimal, FromPrimitive};
 use std::env;
 
 pub fn establish_connection() -> Result<PgConnection, murin::MurinError> {
@@ -85,6 +89,7 @@ pub struct TBDrasilUser {
     pub email_verified: bool,
     pub cardano_wallet: Option<String>,
     pub cwallet_verified: bool,
+    pub drslpubkey: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -112,6 +117,7 @@ pub struct TBDrasilUserNew<'a> {
     pub email_verified: &'a bool,
     pub cardano_wallet: Option<&'a String>,
     pub cwallet_verified: &'a bool,
+    pub drslpubkey: &'a String,
 }
 
 #[derive(Queryable, PartialEq, Debug, Clone)]
@@ -188,4 +194,59 @@ pub struct TBEmailVerificationToken {
     pub created_at: DateTime<Utc>,
 }
 
-pub struct TBCaPayment {}
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct CaValue {
+    pub ada_amount: gungnir::BigDecimal,
+    pub token: Vec<crate::Token>,
+}
+
+impl CaValue {
+    pub fn new(ada_amount: u64, token: Vec<crate::Token>) -> Self {
+        let ada_amount = BigDecimal::from_u64(ada_amount).unwrap();
+        CaValue { ada_amount, token }
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Queryable, PartialEq, Eq)]
+pub struct TBCaPayment {
+    pub id: i64,
+    pub user_id: i64,
+    pub contract_id: i64,
+    pub value: String, // String of CA Value json encoded
+    pub tx_hash: Option<String>,
+    pub user_appr: Option<String>,
+    pub drasil_appr: Option<String>,
+    pub stauts_bl: Option<String>,
+    pub stauts_pa: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[table_name = "ca_payment"]
+pub struct TBCaPaymentNew<'a> {
+    pub user_id: &'a i64,
+    pub contract_id: &'a i64,
+    pub value: &'a String, // String of CA Value json encoded
+    pub tx_hash: Option<&'a str>,
+    pub user_appr: Option<&'a str>,
+    pub drasil_appr: Option<&'a str>,
+    pub stauts_bl: Option<&'a str>,
+    pub stauts_pa: &'a str,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Queryable, PartialEq, Eq)]
+pub struct TBCaPaymentHash {
+    pub id: i64,
+    pub payment_id: i64,
+    pub payment_hash: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[table_name = "ca_payment_hash"]
+pub struct TBCaPaymentHashNew<'a> {
+    pub payment_id: &'a i64,
+    pub payment_hash: &'a str,
+}

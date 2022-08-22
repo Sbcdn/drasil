@@ -12,7 +12,7 @@ build:
 	cp -R ~/.cargo/git .cargo/git
 	cp -R ../murin .cargo/
 	cp -R ../murin .cargo/murin
-	docker build -t $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
+	sudo docker build -t $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
 
 run:
 	docker run -t $(IMAGE):$(VERSION) $(IMAGE)

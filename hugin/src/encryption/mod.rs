@@ -106,6 +106,26 @@ pub async fn generate_pph(ident: &str) -> String {
     password
 }
 
+pub async fn vault_store(ident: &str, key: &str, value: &str) {
+    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
+    let mut path = std::env::var("VPATH").unwrap();
+    let vault = vault_connect().await;
+    path.push_str(ident);
+    let mut data = HashMap::<&str, &str>::new();
+    data.insert(key, value);
+    let _set = vaultrs::kv2::set(&vault, &mount, &path, &data)
+        .await
+        .unwrap();
+}
+
+pub async fn vault_get(ident: &str) -> HashMap<String, String> {
+    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
+    let mut path = std::env::var("VPATH").unwrap();
+    let vault = vault_connect().await;
+    path.push_str(ident);
+    vaultrs::kv2::read(&vault, &mount, &path).await.unwrap()
+}
+
 pub async fn encrypt_pvks(source: &[String], ident: &str) -> Result<Vec<String>, MurinError> {
     let password = generate_pph(ident).await;
     let mut ret = Vec::<String>::new();

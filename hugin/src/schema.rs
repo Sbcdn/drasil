@@ -49,6 +49,7 @@ table! {
         email_verified -> Bool,
         cardano_wallet -> Nullable<Text>,
         cwallet_verified -> Bool,
+        drslpubkey -> Varchar,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -92,10 +93,38 @@ table! {
     }
 }
 
+table! {
+    ca_payment (id) {
+        id -> Int8,
+        user_id -> Int8,
+        contract_id -> Int8,
+        value -> Varchar,
+        tx_hash -> Nullable<Varchar>,
+        user_appr -> Nullable<Varchar>,
+        drasil_appr -> Nullable<Varchar>,
+        stauts_bl -> Nullable<Varchar>,
+        stauts_pa -> Varchar,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+table! {
+    ca_payment_hash (id) {
+        id -> Int8,
+        payment_id -> Int8,
+        payment_hash -> Varchar,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(
     contracts,
     drasil_user,
     multisig_keyloc,
     multisigs,
     email_verification_token,
+    ca_payment,
+    ca_payment_hash,
 );

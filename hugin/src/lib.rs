@@ -16,6 +16,7 @@ pub use crate::protocol::frame::*;
 use crate::protocol::parse::*;
 pub use crate::protocol::shutdown::*;
 
+pub mod authentication;
 pub mod encryption;
 
 pub mod database;

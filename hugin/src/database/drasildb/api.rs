@@ -7,9 +7,16 @@
 #################################################################################
 */
 use super::*;
-use crate::schema::{contracts, email_verification_token, multisig_keyloc};
+use crate::{
+    encryption::{decrypt, encrypt, vault_get, vault_store},
+    schema::{contracts, email_verification_token, multisig_keyloc},
+};
 use diesel::pg::upsert::on_constraint;
-use murin::MurinError;
+use murin::{
+    crypto::{Ed25519Signature, PrivateKey, PublicKey},
+    MurinError,
+};
+use sha2::Digest;
 
 impl TBContracts {
     pub fn get_liquidity_wallet(user_id_in: &i64) -> Result<TBContracts, MurinError> {
@@ -22,6 +29,13 @@ impl TBContracts {
             .filter(user_id.eq(user_id_in))
             .first::<TBContracts>(&establish_connection()?)?;
         Ok(result)
+    }
+
+    pub fn get_contract_liquidity(&self) -> murin::utils::BigNum {
+        let e = self.external_lqdty.unwrap_or(0);
+        let d = self.drasil_lqdty.unwrap_or(0);
+        let o = self.customer_lqdty.unwrap_or(0);
+        murin::utils::to_bignum((e + d + o) as u64)
     }
 
     pub fn get_contract_for_user(
@@ -106,6 +120,20 @@ impl TBContracts {
         let result = contracts
             .filter(user_id.eq(&(uid)))
             .filter(contract_type.eq(&ctype))
+            .order(contract_id.asc())
+            .load::<TBContracts>(&conn)?;
+
+        Ok(result)
+    }
+
+    pub fn get_all_contracts_for_user(uid: i64) -> Result<Vec<TBContracts>, MurinError> {
+        use crate::schema::contracts::dsl::*;
+
+        let conn = establish_connection()?;
+
+        let result = contracts
+            .filter(user_id.eq(&(uid)))
+            .filter(depricated.eq(false))
             .order(contract_id.asc())
             .load::<TBContracts>(&conn)?;
 
@@ -314,13 +342,23 @@ impl TBDrasilUser {
         Ok(user)
     }
 
+    pub fn verify_pw_userid(user_id: &i64, pwd: &String) -> Result<TBDrasilUser, MurinError> {
+        let conn = establish_connection()?;
+        use argon2::{
+            password_hash::{PasswordHash, PasswordVerifier},
+            Argon2,
+        };
+        let user = TBDrasilUser::get_user_by_user_id(&conn, user_id)?;
+        Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
+        Ok(user)
+    }
+
     #[allow(clippy::too_many_arguments)]
-    pub fn create_user<'a>(
-        conn: &PgConnection,
+    pub async fn create_user<'a>(
         api_pubkey: Option<&'a String>,
         uname: &'a String,
         email: &'a String,
-        pwd: &'a String, // needs to be hashed already at this stage
+        pwd: &'a String,
         role: &'a String,
         permissions: &'a Vec<String>,
         company_name: Option<&'a String>,
@@ -340,7 +378,8 @@ impl TBDrasilUser {
             password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
             Argon2,
         };
-        let nuser_id = TBDrasilUser::get_next_user_id(conn);
+        let conn = establish_connection()?;
+        let nuser_id = TBDrasilUser::get_next_user_id(&conn);
         let user_id = match nuser_id {
             Ok(id) => id,
             Err(e) => {
@@ -352,10 +391,13 @@ impl TBDrasilUser {
                 }
             }
         };
-        log::debug!("u1");
         let password_hash = Argon2::default()
             .hash_password(pwd.as_bytes(), &SaltString::generate(&mut OsRng))?
             .to_string();
+
+        let (privkey, pubkey, pubkeyhash) = murin::wallet::create_drslkeypair();
+        let privkey = encrypt(&privkey, pwd)?;
+        vault_store(&pubkeyhash, "prvkey", &privkey).await;
 
         let new_user = TBDrasilUserNew {
             user_id: &user_id,
@@ -378,9 +420,9 @@ impl TBDrasilUser {
             email_verified: &false,
             cardano_wallet,
             cwallet_verified: &false,
+            drslpubkey: &pubkey,
         };
-        log::debug!("u2");
-        let user = match TBDrasilUser::get_user_by_mail(conn, email) {
+        let user = match TBDrasilUser::get_user_by_mail(&conn, email) {
             Ok(u) => {
                 if u.email_verified {
                     return Err(MurinError::new("User exists and is verified already"));
@@ -391,9 +433,8 @@ impl TBDrasilUser {
                 .values(&new_user)
                 .on_conflict(on_constraint("unique_email"))
                 .do_nothing()
-                .get_result::<TBDrasilUser>(conn)?,
+                .get_result::<TBDrasilUser>(&conn)?,
         };
-        log::debug!("u3");
         Ok(user)
     }
 
@@ -421,6 +462,27 @@ impl TBDrasilUser {
             .get_result::<TBDrasilUser>(&conn)?;
 
         Ok(user_updated)
+    }
+
+    pub async fn approve(&self, pw: &String, msg: &str) -> Result<String, MurinError> {
+        let pk = PublicKey::from_bech32(&self.drslpubkey)?;
+        let pkh = hex::encode(PublicKey::from_bech32(&self.drslpubkey)?.hash().to_bytes());
+        let privkey = vault_get(&pkh).await;
+        let privkey = PrivateKey::from_bech32(&decrypt(privkey.get("prvkey").unwrap(), pw)?)?;
+
+        let sign = privkey.sign(msg.as_bytes());
+        let verify = pk.verify(msg.as_bytes(), &sign);
+        assert!(verify);
+        Ok(sign.to_hex())
+    }
+
+    pub fn verify_approval(&self, msg: &str, sign: &str) -> Result<(), MurinError> {
+        let pk = PublicKey::from_bech32(&self.drslpubkey)?;
+        let sign = Ed25519Signature::from_hex(sign)?;
+        if !pk.verify(msg.as_bytes(), &sign) {
+            return Err(MurinError::new("Approval verification failed"));
+        }
+        Ok(())
     }
 }
 
@@ -499,4 +561,227 @@ impl TBEmailVerificationToken {
     }
 }
 
-impl TBMultiSigs {}
+impl TBCaPayment {
+    pub fn find(id: &i64) -> Result<Self, MurinError> {
+        let conn = establish_connection()?;
+
+        let cap = ca_payment::table
+            .filter(ca_payment::id.eq(id))
+            .first(&conn)?;
+        Ok(cap)
+    }
+
+    pub fn find_all(user_id_in: &i64) -> Result<Vec<Self>, MurinError> {
+        let conn = establish_connection()?;
+
+        let cap = ca_payment::table
+            .filter(ca_payment::user_id.eq(user_id_in))
+            .load::<TBCaPayment>(&conn)?;
+        Ok(cap)
+    }
+
+    pub fn find_user_contract(
+        user_id_in: &i64,
+        contract_id_in: &i64,
+    ) -> Result<Vec<Self>, MurinError> {
+        let conn = establish_connection()?;
+
+        let cap = ca_payment::table
+            .filter(ca_payment::user_id.eq(user_id_in))
+            .filter(ca_payment::contract_id.eq(contract_id_in))
+            .load::<TBCaPayment>(&conn)?;
+        Ok(cap)
+    }
+
+    pub fn find_user_st_open(user_id_in: &i64) -> Result<Vec<Self>, MurinError> {
+        let conn = establish_connection()?;
+
+        let cap = ca_payment::table
+            .filter(ca_payment::user_id.eq(user_id_in))
+            .filter(ca_payment::stauts_pa.eq("open"))
+            .load::<TBCaPayment>(&conn)?;
+        Ok(cap)
+    }
+
+    pub fn hash(&self) -> Result<String, MurinError> {
+        TBCaPaymentHash::hash(&self)
+    }
+
+    pub fn create(
+        user_id: &i64,
+        contract_id: &i64,
+        value: &CaValue, // String of CA Value json encoded
+    ) -> Result<Self, MurinError> {
+        let conn = establish_connection()?;
+        let value = &serde_json::to_string(value)?;
+        let new_pa = TBCaPaymentNew {
+            user_id,
+            contract_id,
+            value,
+            tx_hash: None,
+            user_appr: None,
+            drasil_appr: None,
+            stauts_bl: None,
+            stauts_pa: "new",
+        };
+
+        let pa = diesel::insert_into(ca_payment::table)
+            .values(&new_pa)
+            .get_result(&conn)
+            .unwrap();
+
+        TBCaPaymentHash::create(&pa)?;
+
+        Ok(pa)
+    }
+
+    pub fn approve_user(&self, user_signature: &str) -> Result<Self, MurinError> {
+        TBCaPaymentHash::check(self)?;
+        let conn = establish_connection()?;
+        let user_approval = diesel::update(ca_payment::table.find(&self.id))
+            .set((
+                ca_payment::user_appr.eq(Some(user_signature)),
+                ca_payment::stauts_pa.eq("user approved"),
+            ))
+            .get_result::<TBCaPayment>(&conn)?;
+        TBCaPaymentHash::create(&user_approval)?;
+        Ok(user_approval)
+    }
+
+    pub fn approve_drasil(&self, drsl_signature: &str) -> Result<Self, MurinError> {
+        TBCaPaymentHash::check(self)?;
+        let conn = establish_connection()?;
+        let drasil_approval = diesel::update(ca_payment::table.find(&self.id))
+            .set((
+                ca_payment::drasil_appr.eq(Some(drsl_signature)),
+                ca_payment::stauts_pa.eq("fully approved"),
+            ))
+            .get_result::<TBCaPayment>(&conn)?;
+        TBCaPaymentHash::create(&drasil_approval)?;
+        Ok(drasil_approval)
+    }
+
+    pub fn cancel(&self) -> Result<Self, MurinError> {
+        let conn = establish_connection()?;
+        let cancel = diesel::update(ca_payment::table.find(&self.id))
+            .set((
+                ca_payment::stauts_pa.eq("canceled"),
+                ca_payment::drasil_appr.eq::<Option<String>>(None),
+                ca_payment::user_appr.eq::<Option<String>>(None),
+            ))
+            .get_result::<TBCaPayment>(&conn)?;
+        Ok(cancel)
+    }
+
+    pub fn execute(&self, txhash: &str) -> Result<Self, MurinError> {
+        TBCaPaymentHash::check(self)?;
+        let conn = establish_connection()?;
+        let exec = diesel::update(ca_payment::table.find(&self.id))
+            .set((
+                ca_payment::stauts_pa.eq("transfer in process"),
+                ca_payment::stauts_bl.eq("transaction submitted"),
+                ca_payment::tx_hash.eq(Some(txhash)),
+            ))
+            .get_result::<TBCaPayment>(&conn)?;
+        TBCaPaymentHash::create(&exec)?;
+        Ok(exec)
+    }
+
+    pub fn st_confirmed(&self) -> Result<Self, MurinError> {
+        TBCaPaymentHash::check(self)?;
+        let conn = establish_connection()?;
+        let confi = diesel::update(ca_payment::table.find(&self.id))
+            .set((
+                ca_payment::stauts_bl.eq("confirmed"),
+                ca_payment::stauts_bl.eq("transaction on chain"),
+            ))
+            .get_result::<TBCaPayment>(&conn)?;
+        Ok(confi)
+    }
+}
+
+impl TBCaPaymentHash {
+    pub fn find(&self) -> Result<Self, MurinError> {
+        let conn = establish_connection()?;
+        let caph = ca_payment_hash::table
+            .filter(ca_payment_hash::id.eq(&self.id))
+            .first(&conn)?;
+        Ok(caph)
+    }
+
+    pub fn find_by_payid(payment_id_in: &i64) -> Result<Vec<Self>, MurinError> {
+        let conn = establish_connection()?;
+        let caph = ca_payment_hash::table
+            .filter(ca_payment_hash::payment_id.eq(payment_id_in))
+            .order_by(ca_payment_hash::created_at.desc())
+            .load::<TBCaPaymentHash>(&conn)?;
+        Ok(caph)
+    }
+
+    pub fn hash(tbcapay: &TBCaPayment) -> Result<String, MurinError> {
+        // TODO: Get veriefied wallet address
+        todo!();
+
+        let last_hash = match TBCaPaymentHash::find_by_payid(&tbcapay.id) {
+            Ok(o) => Some(o[0].payment_hash.clone()),
+            Err(e) => {
+                if e.to_string() == "NotFound" {
+                    None
+                } else {
+                    return Err(MurinError::new(&e.to_string()));
+                }
+            }
+        };
+
+        let payout_addr =
+            TBDrasilUser::get_user_by_user_id(&establish_connection()?, &tbcapay.user_id)?
+                .cardano_wallet
+                .unwrap();
+
+        let mut hasher = sha2::Sha224::new();
+        if let Some(hash) = last_hash {
+            hasher.update((hash).as_bytes());
+        }
+        hasher.update(payout_addr.as_bytes());
+        hasher.update((tbcapay.id).to_ne_bytes());
+        hasher.update((tbcapay.user_id).to_ne_bytes());
+        hasher.update((tbcapay.contract_id).to_ne_bytes());
+        hasher.update((tbcapay.value).as_bytes());
+        if let Some(tx_hash) = tbcapay.tx_hash.as_ref() {
+            hasher.update(tx_hash.as_bytes());
+        }
+        if let Some(user_appr) = tbcapay.user_appr.as_ref() {
+            hasher.update(user_appr.as_bytes());
+        }
+        if let Some(drasil_appr) = tbcapay.drasil_appr.as_ref() {
+            hasher.update(drasil_appr.as_bytes());
+        }
+        hasher.update((tbcapay.created_at).to_string().as_bytes());
+        hasher.update((tbcapay.updated_at).to_string().as_bytes());
+        Ok(hex::encode(hasher.finalize()))
+    }
+
+    pub fn create(tbcapay: &TBCaPayment) -> Result<Self, MurinError> {
+        let conn = establish_connection()?;
+        let hash = TBCaPaymentHash::hash(tbcapay)?;
+        let new_pah = TBCaPaymentHashNew {
+            payment_id: &tbcapay.id,
+            payment_hash: &hash,
+        };
+
+        let pah = diesel::insert_into(ca_payment_hash::table)
+            .values(&new_pah)
+            .get_result(&conn)
+            .unwrap();
+        Ok(pah)
+    }
+
+    pub fn check(tbcapay: &TBCaPayment) -> Result<(), MurinError> {
+        let last_hash = &TBCaPaymentHash::find_by_payid(&tbcapay.id)?[0].payment_hash;
+        let hash = TBCaPaymentHash::hash(tbcapay)?;
+        if hash != *last_hash {
+            return Err(MurinError::new("PayoutHash changed, check failed!"));
+        };
+        Ok(())
+    }
+}

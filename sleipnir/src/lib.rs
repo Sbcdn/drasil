@@ -12,6 +12,7 @@ pub mod apiauth;
 pub mod contracts;
 pub mod minting;
 pub mod rewards;
+pub mod user;
 pub mod whitelist;
 
 pub use minting::*;
