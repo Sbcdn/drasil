@@ -314,9 +314,9 @@ checksum = "ec8a7b6a70fde80372154c65702f00a0f56f3e1c36abbc6c440484be248856db"
 
 [[package]]
 name = "cardano-serialization-lib"
-version = "11.0.1"
+version = "11.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a59b4defbad096d4ed3a2f11ee1d5c10e5b7957e14c1476dc190958b368c1dbb"
+checksum = "d3bbd1032fb373b049a3582f0c81f9a619b237958a4b6d097a5aa6a5b87daced"
 dependencies = [
  "bech32 0.7.3",
  "cbor_event",
@@ -480,9 +480,9 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1079fb8528d9f9c888b1e8aa651e6e079ade467323d58f75faf1d30b1808f540"
+checksum = "dc948ebb96241bb40ab73effeb80d9f93afaad49359d159a5e61be51619fe813"
 dependencies = [
  "libc",
 ]
@@ -816,7 +816,6 @@ dependencies = [
  "strum",
  "strum_macros",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -2665,6 +2664,8 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
+ "strum",
+ "strum_macros",
  "textnonce",
  "tokio",
  "warp",

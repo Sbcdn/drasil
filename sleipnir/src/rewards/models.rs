@@ -6,7 +6,6 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 

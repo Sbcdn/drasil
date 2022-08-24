@@ -7,6 +7,8 @@
 #################################################################################
 */
 pub use crate::error::SleipnirError;
+use crate::rewards::models::FreeloaderzType;
+mod models;
 
 use chrono::{NaiveDateTime, Utc};
 use hugin::database::*;
@@ -281,8 +283,12 @@ pub fn create_token_whitelisting(
     }
 
     log::debug!("Process modificator equiation...");
-    if modificator_equ.is_some() {
-        return Err(SleipnirError::new("Modificator equation not supported yet"));
+    if let Some(m) = &modificator_equ {
+        log::debug!("Modificator EQU found: {}", *m);
+        match serde_json::from_str(m) {
+            Ok(models::FreeloaderzType { .. }) => (),
+            _ => return Err(SleipnirError::new("Modificator equation not supported yet")),
+        };
     }
 
     // Check token does not already exists -> database constraint ensures this already
