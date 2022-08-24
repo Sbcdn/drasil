@@ -110,12 +110,13 @@ pub fn perform_rwd(
     //
     //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    let trade_owner = &gtxd.clone().get_senders_addresses();
-    if !trade_owner.contains(&recipient_address) {
-        return Err(MurinError::new(
-            "Error: RewardAddress is not contained in input addresses, this is mandatory",
-        ));
-    }
+    // TODO: FRONT-END HAVE TO SEND USED WALLET NOT UNUSED!
+    //let trade_owner = &gtxd.clone().get_senders_addresses();
+    //if !trade_owner.contains(&recipient_address) {
+    //    return Err(MurinError::new(
+    //        "Error: RewardAddress is not contained in input addresses, this is mandatory",
+    //    ));
+    //}
 
     let mut txouts = clib::TransactionOutputs::new();
     let zero_val = cutils::Value::new(&cutils::to_bignum(0u64));

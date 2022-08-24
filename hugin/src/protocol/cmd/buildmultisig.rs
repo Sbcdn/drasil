@@ -146,13 +146,16 @@ impl BuildMultiSig {
                 }
                 .into());
                 if reward_tokens.is_empty()
-                    || murin::decode_addr(&recipient_stake_addr).await.is_err()
-                    || murin::decode_addr(&recipient_payment_addr).await.is_err()
+                    || murin::b_decode_addr(&recipient_stake_addr).await.is_err()
+                    || murin::b_decode_addr(&recipient_payment_addr).await.is_err()
                     || murin::wallet::get_stake_address(
-                        &murin::decode_addr(&recipient_stake_addr).await?,
+                        &murin::b_decode_addr(&recipient_stake_addr).await?,
                     )? != murin::wallet::get_stake_address(
-                        &murin::decode_addr(&mimir::api::select_addr_of_first_transaction(
-                            &recipient_stake_addr,
+                        &murin::b_decode_addr(&mimir::api::select_addr_of_first_transaction(
+                            &murin::decode_addr(&recipient_stake_addr)
+                                .await?
+                                .to_bech32(None)
+                                .unwrap(),
                         )?)
                         .await?,
                     )?
@@ -176,7 +179,7 @@ impl BuildMultiSig {
             .into_rwd()
             .await?;
         rwdtxd.set_payment_addr(
-            &murin::decode_addr(&mimir::api::select_addr_of_first_transaction(
+            &murin::b_decode_addr(&mimir::api::select_addr_of_first_transaction(
                 &rwdtxd
                     .get_stake_addr()
                     .to_bech32(None)
@@ -863,17 +866,17 @@ impl BuildMultiSig {
         let mut t1 = Vec::<murin::MintTokenAsset>::new();
         let mta1: murin::txbuilders::MintTokenAsset = (
             None,
-            murin::clib::AssetName::new("tFLZC".as_bytes().to_vec()).unwrap(),
+            murin::clib::AssetName::new("ttFLZC".as_bytes().to_vec()).unwrap(),
             murin::clib::utils::to_bignum(138),
         );
         let mta2: murin::txbuilders::MintTokenAsset = (
             None,
-            murin::clib::AssetName::new("tSIL".as_bytes().to_vec()).unwrap(),
+            murin::clib::AssetName::new("ttSIL".as_bytes().to_vec()).unwrap(),
             murin::clib::utils::to_bignum(142),
         );
         let mta3: murin::txbuilders::MintTokenAsset = (
             None,
-            murin::clib::AssetName::new("tDRSL".as_bytes().to_vec()).unwrap(),
+            murin::clib::AssetName::new("ttDRSL".as_bytes().to_vec()).unwrap(),
             murin::clib::utils::to_bignum(63),
         );
         t1.push(mta1);
@@ -881,9 +884,9 @@ impl BuildMultiSig {
         t1.push(mta3);
 
         let mut metadataarray = Vec::<String>::new();
-        let m1 = "{\"assets\":[{\"name\":\"tFLZC\",\"tokenname\":\"tFLZC\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
-        let m2 = "{\"assets\":[{\"name\":\"tSIL\",\"tokenname\":\"tSIL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
-        let m3 = "{\"assets\":[{\"name\":\"tDRSL\",\"tokenname\":\"tDRSL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
+        let m1 = "{\"assets\":[{\"name\":\"ttFLZC\",\"tokenname\":\"tFLZC\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
+        let m2 = "{\"assets\":[{\"name\":\"ttSIL\",\"tokenname\":\"tSIL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
+        let m3 = "{\"assets\":[{\"name\":\"ttDRSL\",\"tokenname\":\"tDRSL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
         metadataarray.push(m1);
         metadataarray.push(m2);
         metadataarray.push(m3);
@@ -1084,11 +1087,12 @@ impl BuildMultiSig {
             let stake_rwd = gungnir::Rewards::create_rewards(
                 &gconn,
                 &gtxd.get_stake_address().to_bech32(None).unwrap(),
-                &gtxd
-                    .get_senders_address(None)
-                    .expect("No payment address found")
-                    .to_bech32(None)
-                    .unwrap(),
+                &mimir::api::select_addr_of_first_transaction(
+                    &gtxd
+                        .get_stake_address()
+                        .to_bech32(None)
+                        .expect("ERROR Could not construct bech32 address for stake address"),
+                )?,
                 &fingerprint,
                 &(sporwc_flz.contract_id as i64),
                 &(sporwc_flz.user_id as i64),

@@ -12,7 +12,6 @@ use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use std::str::*;
 use structopt::StructOpt;
-use tracing::{debug, info};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -29,6 +28,9 @@ struct Opt {
         about = "calc from the given epoch up to the latest possible one"
     )]
     from: Option<bool>,
+
+    #[structopt(short, long, about = "the epoch rewards should be calcualted for")]
+    t: Option<bool>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -101,7 +103,7 @@ pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDeci
         && rewards[0].last_calc_epoch < twd.calc_epoch
     {
         let tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
-        log::info!("Earned: {:?}", tot_earned);
+        println!("Earned: {:?}", tot_earned);
         let stake_rwd = gungnir::Rewards::update_rewards(
             &gconn,
             &rewards[0].stake_addr,
@@ -111,13 +113,13 @@ pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDeci
             &tot_earned,
             &twd.calc_epoch,
         )?;
-        log::info!("Stake Rewards Added : {:?}", stake_rwd);
+        println!("Stake Rewards Added : {:?}", stake_rwd);
     }
     if rewards.is_empty() {
         let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
 
         let tot_earned = token_earned;
-        info!("Earned: {:?}", tot_earned);
+        println!("Earned: {:?}", tot_earned);
         let stake_rwd = gungnir::Rewards::create_rewards(
             &gconn,
             stake_addr,
@@ -130,32 +132,32 @@ pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDeci
             &false,
             &twd.calc_epoch,
         );
-        info!("Stake Rewards New: {:?}", stake_rwd);
+        println!("Stake Rewards New: {:?}", stake_rwd);
     }
     Ok(())
 }
 
 pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result<()> {
-    info!("Handle Stake Address: {:?}", stake.stake_addr);
+    println!("Handle Stake Address: {:?}", stake.stake_addr);
     //let gconn = gungnir::establish_connection()?;
     //let lovelace = BigDecimal::from_i32(1000000).unwrap();
     match twd.mode {
         gungnir::Calculationmode::RelationalToADAStake => {
-            info!("Calcualte with: RelationalToAdaStake");
+            println!("Calcualte with: RelationalToAdaStake");
             let token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
             handle_rewards(&stake.stake_addr, twd, &token_earned)?;
         }
 
         gungnir::Calculationmode::FixedEndEpoch => {
-            info!("Calcualte with: FixedEndEpoch");
+            println!("Calcualte with: FixedEndEpoch");
             let x = if let Some(s) = twd.modificator_equ.clone() {
                 BigDecimal::from_str(&s)?
             } else {
                 BigDecimal::from_i32(1).unwrap()
             }; //total at stake
-            info!("X: {:?}", x);
+            println!("X: {:?}", x);
             let y = BigDecimal::from_str(&twd.equation)?;
-            info!("Y: {:?}", y);
+            println!("Y: {:?}", y);
             let token_earned = y / x * stake.amount;
             handle_rewards(&stake.stake_addr, twd, &token_earned)?;
         }
@@ -278,9 +280,22 @@ pub async fn main() -> Result<()> {
     dotenv::dotenv().ok();
     let opt = Opt::from_args();
 
+    if opt.t.is_some() {
+        let flz = models::CustomCalculationTypes::Freeloaderz;
+        let data = models::FreeloaderzType {
+            min_stake: 150,
+            min_earned: 50.0,
+            flatten: 0.6,
+        };
+        println!("ENUM: {}", flz.to_string());
+        println!("FLZType: \n{}", serde_json::json!(data).to_string());
+        return Ok(());
+    }
+
     let current_epoch = mimir::get_epoch(&mimir::establish_connection()?)? as i64;
     let calc_epoch = current_epoch - 2;
-    info!("Current Epoch: {}", current_epoch);
+    println!("Current Epoch: {}", current_epoch);
+    println!("Calculation Epoch: {}", calc_epoch);
     if opt.epoch.is_some() && opt.epoch.unwrap() > calc_epoch {
         return Err(gungnir::RWDError::new(
             "It is not possible to calculate rewards for the current or future epochs",
@@ -296,10 +311,10 @@ pub async fn main() -> Result<()> {
         while i < calc_epoch && b {
             let mut whitelist = get_token_whitelist(calc_epoch).await?;
             whitelist.retain(|w| w.start_epoch <= i);
-            debug!("Whitelist: {:?}", whitelist);
+            println!("Whitelist: {:?}", whitelist);
             for mut entry in whitelist {
                 if check_contract_is_active(&entry)? {
-                    debug!("Entered: {:?}", entry);
+                    println!("Entered: {:?}", entry);
                     handle_pools(&mut entry, i).await?
                     //   tokio::spawn(async move {
                     //       if let Err(err) = handle_pools(&mut entry,i).await {
@@ -318,7 +333,7 @@ pub async fn main() -> Result<()> {
     } else {
         let mut whitelist = get_token_whitelist(calc_epoch).await?;
         whitelist.retain(|w| w.start_epoch <= i);
-        debug!("Whitelist: {:?}", whitelist);
+        println!("Whitelist: {:?}", whitelist);
         for mut entry in whitelist {
             if check_contract_is_active(&entry)? {
                 handle_pools(&mut entry, i).await?
@@ -330,10 +345,7 @@ pub async fn main() -> Result<()> {
                 //});
             }
         }
-        println!(
-            "Rewards successfully calucalted for epochs {:?} to {:?}",
-            opt.epoch, i
-        );
+        println!("Rewards successfully calucalted for epoch: {:?}", i);
     }
 
     Ok(())
