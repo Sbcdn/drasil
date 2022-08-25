@@ -6,7 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use hugin::drasildb::{establish_connection, TBContracts, TBDrasilUser};
+use hugin::drasildb::{TBContracts, TBDrasilUser};
 use murin::chelper::*;
 
 use structopt::StructOpt;
@@ -34,13 +34,10 @@ struct Opt {
 #[tokio::main]
 async fn main() -> Result<(), MurinError> {
     let opt = Opt::from_args();
-
-    let conn = establish_connection()?;
     let t = TBContracts::get_next_contract_id(&opt.user_id)?;
     println!("Established Connection Test: {:?}", t);
 
     let user = TBDrasilUser::create_user(
-        &conn,
         None,
         &"dradmin".to_string(),
         &opt.email,

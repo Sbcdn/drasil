@@ -405,7 +405,7 @@ impl TBDrasilUser {
             uname,
             email,
             pwd: &password_hash,
-            role,
+            role: &"3".to_string(),
             permissions,
             company_name,
             address,
