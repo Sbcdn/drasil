@@ -10,6 +10,8 @@ mod models;
 
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
+use core::fmt;
+use csv::WriterBuilder;
 use std::str::*;
 use structopt::StructOpt;
 
@@ -33,7 +35,7 @@ struct Opt {
     t: Option<bool>,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct TwlData {
     pub fingerprint: String,
     pub policy_id: String,
@@ -83,12 +85,67 @@ impl TwlData {
             calc_epoch,
         }
     }
+
+    pub fn to_str_vec(&self) -> Vec<String> {
+        vec![
+            self.fingerprint.clone(),
+            self.policy_id.clone(),
+            self.tokenname.clone(),
+            self.contract_id.to_string(),
+            self.user_id.to_string(),
+            self.vesting_period.to_string(),
+            self.pool.to_string(),
+            self.mode.to_string(),
+            self.equation.clone(),
+            self.start_epoch.to_string(),
+            self.end_epoch.unwrap_or(0).to_string(),
+            self.modificator_equ
+                .clone()
+                .unwrap_or_else(|| (&"None").to_string()),
+            self.calc_epoch.to_string(),
+        ]
+    }
+}
+impl fmt::Display for TwlData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{},", self.fingerprint)?;
+        write!(f, "{},", self.policy_id)?;
+        write!(f, "{},", self.tokenname)?;
+        write!(f, "{},", self.contract_id)?;
+        write!(f, "{},", self.user_id)?;
+        write!(f, "{},", self.vesting_period)?;
+        write!(f, "{},", self.pool)?;
+        write!(f, "{},", self.mode.to_string())?;
+        write!(f, "{},", self.equation)?;
+        write!(f, "{},", self.start_epoch)?;
+        write!(f, "{},", self.end_epoch.unwrap_or(0))?;
+        write!(
+            f,
+            "{},",
+            self.modificator_equ.as_ref().unwrap_or(&"None".to_string())
+        )?;
+        write!(f, "{}", self.calc_epoch)
+    }
+}
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub(crate) struct RewardTable {
+    pub twldata: TwlData,
+    pub calc_date: DateTime<Utc>,
+    pub calc_epoch: i64,
+    pub current_epoch: i64,
+    pub earned_epoch: BigDecimal,
+    pub total_earned_epoch: BigDecimal,
 }
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDecimal) -> Result<()> {
+pub(crate) fn handle_rewards(
+    stake_addr: &String,
+    twd: &TwlData,
+    token_earned: &BigDecimal,
+    table: &mut Vec<RewardTable>,
+) -> Result<()> {
     let gconn = gungnir::establish_connection()?;
     let rewards = gungnir::Rewards::get_rewards_per_token(
         &gconn,
@@ -97,12 +154,12 @@ pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDeci
         twd.user_id,
         &twd.fingerprint.clone(),
     )?;
-
+    let mut tot_earned = BigDecimal::from_i32(0).unwrap();
     if rewards.len() == 1
         && rewards[0].fingerprint == twd.fingerprint
         && rewards[0].last_calc_epoch < twd.calc_epoch
     {
-        let tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
+        tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
         println!("Earned: {:?}", tot_earned);
         let stake_rwd = gungnir::Rewards::update_rewards(
             &gconn,
@@ -118,7 +175,7 @@ pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDeci
     if rewards.is_empty() {
         let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
 
-        let tot_earned = token_earned;
+        tot_earned = token_earned.to_owned();
         println!("Earned: {:?}", tot_earned);
         let stake_rwd = gungnir::Rewards::create_rewards(
             &gconn,
@@ -127,17 +184,37 @@ pub fn handle_rewards(stake_addr: &String, twd: &TwlData, token_earned: &BigDeci
             &twd.fingerprint,
             &twd.contract_id,
             &twd.user_id,
-            tot_earned,
+            &tot_earned,
             &BigDecimal::from_i32(0).unwrap(),
             &false,
             &twd.calc_epoch,
         );
         println!("Stake Rewards New: {:?}", stake_rwd);
     }
+    if rewards.len() > 1 {
+        return Err(murin::MurinError::new(
+            "More than one reward entry found on the same contract for the same token",
+        )
+        .into());
+    }
+    // Store reward calculation to csv
+    let table_entry = RewardTable {
+        twldata: twd.clone(),
+        calc_date: chrono::offset::Utc::now(),
+        calc_epoch: twd.calc_epoch,
+        current_epoch: twd.calc_epoch + 2,
+        earned_epoch: token_earned.clone(),
+        total_earned_epoch: tot_earned,
+    };
+    table.push(table_entry);
     Ok(())
 }
 
-pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result<()> {
+pub(crate) async fn handle_stake(
+    stake: mimir::EpochStakeView,
+    twd: &TwlData,
+    table: &mut Vec<RewardTable>,
+) -> Result<()> {
     println!("Handle Stake Address: {:?}", stake.stake_addr);
     //let gconn = gungnir::establish_connection()?;
     //let lovelace = BigDecimal::from_i32(1000000).unwrap();
@@ -145,7 +222,7 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
         gungnir::Calculationmode::RelationalToADAStake => {
             println!("Calcualte with: RelationalToAdaStake");
             let token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
-            handle_rewards(&stake.stake_addr, twd, &token_earned)?;
+            handle_rewards(&stake.stake_addr, twd, &token_earned, table)?;
         }
 
         gungnir::Calculationmode::FixedEndEpoch => {
@@ -159,7 +236,7 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
             let y = BigDecimal::from_str(&twd.equation)?;
             println!("Y: {:?}", y);
             let token_earned = y / x * stake.amount;
-            handle_rewards(&stake.stake_addr, twd, &token_earned)?;
+            handle_rewards(&stake.stake_addr, twd, &token_earned, table)?;
         }
 
         gungnir::Calculationmode::SimpleEquation => {}
@@ -172,16 +249,23 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 //R=(S-150)^0.6+50 where R=payout in FLZ per epoch and S=Stake Amount to the pool. Example
                 CustomCalculationTypes::Freeloaderz => {
+                    println!("Calculating Freeloaderz");
+                    let adastake = stake.amount.to_f64().unwrap() / 1000000.0;
+                    println!(
+                        "Ada Staked: {}, for addr: {} in epoch: {}",
+                        adastake, stake.stake_addr, twd.calc_epoch
+                    );
                     let param: FreeloaderzType =
                         serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
-                    if stake.amount > BigDecimal::from_i32(param.min_stake).unwrap() {
+                    if adastake > param.min_stake as f64 {
                         let token_earned = BigDecimal::from_f64(
-                            ((stake.amount.to_f64().unwrap().powf(param.flatten))
-                                + param.min_earned)
-                                .round(),
+                            ((adastake.powf(param.flatten)) + param.min_earned) * 1000000.0,
                         )
                         .unwrap();
-                        handle_rewards(&stake.stake_addr, twd, &token_earned)?;
+                        handle_rewards(&stake.stake_addr, twd, &token_earned, table)?;
+                        println!("Total earned: {}", token_earned);
+                    } else {
+                        println!("delegator below min stake");
                     }
                 }
             }
@@ -194,19 +278,27 @@ pub async fn handle_stake(stake: mimir::EpochStakeView, twd: &TwlData) -> Result
     Ok(())
 }
 
-pub async fn handle_pool(pool: gungnir::GPools, epoch: i64, twd: &mut TwlData) -> Result<()> {
-    //npools: usize
+pub(crate) async fn handle_pool(
+    pool: gungnir::GPools,
+    epoch: i64,
+    twd: &mut TwlData,
+    table: &mut Vec<RewardTable>,
+) -> Result<()> {
     println!("Handle pool: {:?}", pool);
     let conn = mimir::establish_connection()?;
     let pool_stake = mimir::get_tot_stake_per_pool(&conn, &pool.pool_id, epoch as i32)?;
     for stake in pool_stake {
-        handle_stake(stake, twd).await?;
+        handle_stake(stake, twd, table).await?;
     }
 
     Ok(())
 }
 
-pub async fn handle_pools(rwd_token: &mut gungnir::TokenWhitelist, epoch: i64) -> Result<()> {
+pub(crate) async fn handle_pools(
+    rwd_token: &mut gungnir::TokenWhitelist,
+    epoch: i64,
+    table: &mut Vec<RewardTable>,
+) -> Result<()> {
     let spools = rwd_token.pools.clone();
     let mut pools = Vec::<gungnir::GPools>::new();
     pools.extend(
@@ -215,8 +307,6 @@ pub async fn handle_pools(rwd_token: &mut gungnir::TokenWhitelist, epoch: i64) -
             .map(|n| gungnir::GPools::from_str(n).expect("Could not convert string to GPools")),
     );
     pools.retain(|p| p.first_valid_epoch <= epoch);
-
-    //let npools = pools.len();
 
     let conn = mimir::establish_connection()?;
 
@@ -253,7 +343,7 @@ pub async fn handle_pools(rwd_token: &mut gungnir::TokenWhitelist, epoch: i64) -
             rwd_token.modificator_equ.clone(),
             epoch,
         );
-        handle_pool(pool, epoch, &mut twd).await?; //npools
+        handle_pool(pool, epoch, &mut twd, table).await?; //npools
     }
 
     Ok(())
@@ -287,8 +377,8 @@ pub async fn main() -> Result<()> {
             min_earned: 50.0,
             flatten: 0.6,
         };
-        println!("ENUM: {}", flz.to_string());
-        println!("FLZType: \n{}", serde_json::json!(data).to_string());
+        println!("ENUM: {}", flz);
+        println!("FLZType: \n{}", serde_json::json!(data));
         return Ok(());
     }
 
@@ -307,6 +397,7 @@ pub async fn main() -> Result<()> {
     if opt.epoch.is_some() {
         i = opt.epoch.unwrap();
     };
+    let mut table = Vec::<RewardTable>::new();
     if let Some(b) = opt.from {
         while i < calc_epoch && b {
             let mut whitelist = get_token_whitelist(calc_epoch).await?;
@@ -315,7 +406,7 @@ pub async fn main() -> Result<()> {
             for mut entry in whitelist {
                 if check_contract_is_active(&entry)? {
                     println!("Entered: {:?}", entry);
-                    handle_pools(&mut entry, i).await?
+                    handle_pools(&mut entry, i, &mut table).await?
                     //   tokio::spawn(async move {
                     //       if let Err(err) = handle_pools(&mut entry,i).await {
                     //error!(cause = ?err, "calculation error for whitelist entry");
@@ -336,7 +427,7 @@ pub async fn main() -> Result<()> {
         println!("Whitelist: {:?}", whitelist);
         for mut entry in whitelist {
             if check_contract_is_active(&entry)? {
-                handle_pools(&mut entry, i).await?
+                handle_pools(&mut entry, i, &mut table).await?
                 //tokio::spawn(async move {
                 //    if let Err(err) = handle_pools(&mut entry,opt.epoch).await {
                 //        //error!(cause = ?err, "calculation error for whitelist entry");
@@ -347,6 +438,29 @@ pub async fn main() -> Result<()> {
         }
         println!("Rewards successfully calucalted for epoch: {:?}", i);
     }
+    let mut path =
+        std::env::var("CSV_PATH").expect("Could not open CSV path, environment variable not set");
+    path.push_str(&(calc_epoch.to_string() + "_"));
+    path.push_str(&chrono::offset::Utc::now().to_string());
+    let mut wtr = WriterBuilder::new().from_path(path + "{}")?;
+    let mut wtr2 = WriterBuilder::new().from_writer(vec![]);
+    for entry in table {
+        let mut e = entry.twldata.to_str_vec();
+        e.extend(
+            &mut vec![
+                entry.calc_date.to_string(),
+                entry.current_epoch.to_string(),
+                entry.earned_epoch.to_string(),
+                entry.total_earned_epoch.to_string(),
+            ]
+            .into_iter(),
+        );
+        wtr.write_record(&e)?;
+        wtr2.write_record(&e)?;
+    }
+    wtr.flush()?;
 
+    let data = String::from_utf8(wtr2.into_inner()?)?;
+    println!("{:?}", data);
     Ok(())
 }

@@ -1,0 +1,10 @@
+--#################################################################################
+--# See LICENSE.md for full license information.                                  #
+--# Software: Drasil Blockchain Application Framework                             #
+--# License: Drasil Source Available License v1.0                                 #
+--# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
+--#################################################################################
+DROP TABLE contracts;
+DROP TABLE drasil_user;
+DROP TABLE multisigs;
+DROP TABLE email_verification_token;

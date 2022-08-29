@@ -344,7 +344,6 @@ pub async fn register_handler(payload: RegisterRequest) -> WebResult<impl Reply>
         &payload.username,
         &payload.email,
         &payload.pwd,
-        &Role::StandardUser.to_string(),
         &Vec::<String>::new(),
         payload.company_name.as_ref(),
         payload.address.as_ref(),
