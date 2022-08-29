@@ -1,0 +1,41 @@
+#################################################################################
+# See LICENSE.md for full license information.                                  #
+# Software: Drasil Blockchain Application Framework                             #
+# License: Drasil Source Available License v1.0                                 #
+# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
+#################################################################################
+[package]
+name = "utxopti"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - UTxO Optimizer"
+repository = "https://github.com/Sbcdn/freki.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde_json = { version = "1.0.79", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+dotenv = "0.15.0"
+structopt = "0.3.26"
+chrono = "0.4.19"
+bigdecimal = { version = "0.1.2", features = [
+    "serde",
+] } # needs to be 0.1.2 otherwise not working -> dependency diesel
+strum = "0.24"
+strum_macros = "0.24"
+pretty_env_logger = "0.4.0"
+log = "0.4"
+csv = "1.1.6"
+thiserror = "1.0.32"
+hex = "0.4"
+
+murin = { path = "../murin", version = "0.1.0" }
+mimir = { path = "../mimir", version = "0.1.0" }
+gungnir = { path = "../gungnir", version = "0.1.0" }
+hugin = { path = "../hugin", version = "0.1.0" }

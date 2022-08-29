@@ -30,7 +30,7 @@ strum = "0.24"
 strum_macros = "0.24"
 pretty_env_logger = "0.4.0"
 log = "0.4"
-
+csv = "1.1.6"
 
 murin = { path = "../murin", version = "0.1.0" }
 mimir = { path = "../mimir", version = "0.1.0" }

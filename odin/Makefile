@@ -1,5 +1,5 @@
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
-PROJECT=drasil
+PROJECT=mdrsl
 IMAGE=odin
 VERSION=v1.0
 

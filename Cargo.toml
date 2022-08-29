@@ -11,5 +11,6 @@ members = [
     "murin",
     "odin",
     "sleipnir",
-    "vidar"
+    "vidar",
+    "utxopti",
 ]

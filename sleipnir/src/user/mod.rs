@@ -10,7 +10,6 @@ pub use crate::error::SleipnirError;
 use chrono::{DateTime, Utc};
 use hugin::encryption::vault_get;
 use hugin::{database::TBDrasilUser, encryption};
-use murin::clib::address::{EnterpriseAddress, StakeCredential};
 use zeroize::Zeroize;
 
 pub async fn create_rev_payout(
@@ -28,11 +27,7 @@ pub async fn create_rev_payout(
         murin::utils::from_bignum(&total_value.coin().checked_sub(&contract_lqdty)?),
         vec![],
     );
-    Ok(hugin::TBCaPayment::create(
-        &user_id,
-        &contract_id,
-        &payout_value,
-    )?)
+    Ok(hugin::TBCaPayment::create(&user_id, &contract_id, &payout_value).await?)
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
@@ -90,12 +85,12 @@ pub async fn approve_payout(
         .payment_hash
         .clone();
     let payment = hugin::TBCaPayment::find(payout_id)?;
-    if payment.user_id != *user_id || payment.hash()? != msg {
+    if payment.user_id != *user_id || payment.hash().await? != msg {
         return Err(SleipnirError::new("Error: POT1201"));
     }
     let signature = user.approve(pw, &msg).await?;
 
-    payment.approve_user(&signature)?;
+    payment.approve_user(&signature).await?;
 
     Ok(())
 }
