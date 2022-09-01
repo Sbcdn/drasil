@@ -96,6 +96,7 @@ pub enum MultiSigType {
     Mint,
     ClAPIOneShotMint,
     TestRewards,
+    UTxOpti,
     Other,
     CustomerPayout,
 }
@@ -115,6 +116,7 @@ impl FromStr for MultiSigType {
             "clapioneshotmint" => Ok(MultiSigType::ClAPIOneShotMint),
             "testrewards" => Ok(MultiSigType::TestRewards),
             "cpo" => Ok(MultiSigType::CustomerPayout),
+            "utxopti" => Ok(MultiSigType::UTxOpti),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
                 format!("Transaction Type {} does not exist", src),
@@ -134,11 +136,25 @@ impl ToString for MultiSigType {
             MultiSigType::ClAPIOneShotMint => "clapioneshotmint".to_string(),
             MultiSigType::TestRewards => "testrewards".to_string(),
             MultiSigType::CustomerPayout => "cpo".to_string(),
+            MultiSigType::UTxOpti => "utxopti".to_string(),
             MultiSigType::Other => "not implemented".to_string(),
         }
     }
 }
 
+pub struct Utxopti {}
+impl FromStr for Utxopti {
+    type Err = Error;
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        match src {
+            "utxoopti" => Ok(Utxopti{}),
+            _ => Err(Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Wrong Type"),
+            )),
+        }
+    }
+}
 /*
 // Depricated
 #[derive(Serialize, Deserialize,Debug,Clone)]

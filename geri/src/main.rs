@@ -347,8 +347,8 @@ pub fn main() -> Result<()> {
                 if use_stream_trimmer {
                     for stream in streams.clone() {
                         let maxlen = match &stream.clone()[..] {
-                            "transaction" => 2000000,
-                            "block" => 22000,
+                            "transaction" => 50000,
+                            "block" => 10000,
                             "rollback" => 1000,
                             _ => 5000,
                         };
