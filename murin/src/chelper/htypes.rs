@@ -512,6 +512,57 @@ impl TransactionUnspentOutputs {
         false
     }
 
+    pub fn filter_values(
+        &self,
+        value: &cutils::Value,
+        band: Option<i8>,
+    ) -> Result<TransactionUnspentOutputs, crate::MurinError> {
+        let mut min = value.clone();
+        let mut max = value.clone();
+        if let Some(b) = band {
+            (min, max) = TransactionUnspentOutputs::band_value(value, b);
+        }
+        let f: TransactionUnspentOutputs = self
+            .0
+            .iter()
+            .filter(|n| {
+                n.output().amount().compare(&min).unwrap_or(0) >= 0
+                    && n.output().amount().compare(&max).unwrap_or(0) <= 0
+            })
+            .collect();
+        Ok(f)
+    }
+
+    fn band_value(value: &cutils::Value, band: i8) -> (cutils::Value, cutils::Value) {
+        let coin = cutils::from_bignum(&value.coin());
+        let mut min_val = cutils::Value::new(&cutils::to_bignum(coin - (coin / 100 * band as u64)));
+        let mut max_val = cutils::Value::new(&cutils::to_bignum(coin + (coin / 100 * band as u64)));
+        if value.multiasset().is_some() {
+            let mut min_ma = clib::MultiAsset::new();
+            let mut max_ma = clib::MultiAsset::new();
+            let ma = value.multiasset().unwrap();
+            for i in 0..ma.keys().len() {
+                let policy = ma.keys().get(i);
+                let assets = ma.get(&policy).unwrap();
+                let mut min_assets = clib::Assets::new();
+                let mut max_assets = clib::Assets::new();
+                for j in 0..assets.keys().len() {
+                    let asset = assets.keys().get(j);
+                    let amt = cutils::from_bignum(&assets.get(&asset).unwrap());
+                    let min_amt = cutils::to_bignum(amt - (amt / 100 * band as u64));
+                    let max_amt = cutils::to_bignum(amt + (amt / 100 * band as u64));
+                    min_assets.insert(&asset, &min_amt);
+                    max_assets.insert(&asset, &max_amt);
+                }
+                min_ma.insert(&policy, &min_assets);
+                max_ma.insert(&policy, &max_assets);
+            }
+            min_val.set_multiasset(&min_ma);
+            max_val.set_multiasset(&max_ma);
+        }
+        (min_val, max_val)
+    }
+
     pub fn reverse(&mut self) {
         self.0.reverse();
     }
@@ -612,10 +663,13 @@ pub fn sum_unique_tokens(tokens: &Tokens) -> Tokens {
             shas.push((t.0.to_owned(), t.1.to_owned()))
         }
     }
+
     for t in shas {
         let mut tos = tokens.clone();
+
         tos.retain(|n| n.0 == t.0 && n.1 == t.1);
         let f = tos.iter().fold(0, |acc, n| acc + cutils::from_bignum(&n.2));
+
         out.push((t.0, t.1, cutils::to_bignum(f)))
     }
     out

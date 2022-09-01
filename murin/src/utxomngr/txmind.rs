@@ -208,9 +208,13 @@ pub fn store_raw_tx(payload: &RawTx) -> Result<String, MurinError> {
     let key = TxMindId::new(payload);
 
     let items = payload.to_redis_item();
-    redis::cmd("HMSET")
+    redis::cmd("HSET")
         .arg(&key.id)
         .arg(&items)
+        .query(&mut con)?;
+    redis::cmd("EXPIRE")
+        .arg(&key.id)
+        .arg("3600")
         .query(&mut con)?;
 
     Ok(key.id)

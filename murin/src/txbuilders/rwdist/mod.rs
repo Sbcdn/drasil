@@ -12,6 +12,8 @@ pub use build_rwd::*;
 pub mod finalize_rwd;
 pub use finalize_rwd::*;
 
+pub mod build_utxopti;
+
 use super::*;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};

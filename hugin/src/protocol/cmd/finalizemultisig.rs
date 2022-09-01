@@ -157,6 +157,19 @@ impl FinalizeMultiSig {
 
             MultiSigType::VestingWallet => {}
 
+            MultiSigType::UTxOpti => {
+                if let Err(e) = crate::Utxopti::from_str(raw_tx.get_tx_specific_rawdata()) {
+                    return Err(CmdError::Custom {
+                        str: format!(
+                            "ERROR Invalid Transaction Data, this is not UTxOpti transaction, {:?}",
+                            e.to_string()
+                        ),
+                    }
+                    .into());
+                };
+                ret = self.finalize_utxopti(raw_tx.clone()).await?;
+            }
+
             MultiSigType::Mint => {
                 if let Err(e) =
                     murin::minter::MinterTxData::from_str(raw_tx.get_tx_specific_rawdata())
@@ -250,6 +263,33 @@ impl FinalizeMultiSig {
         );
         let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
         let response = finalize_rwd(&self.get_signature(), raw_tx, pkvs).await?;
+        info!("Response: {}", response);
+        Ok(response)
+    }
+
+    async fn finalize_utxopti(&self, raw_tx: murin::RawTx) -> crate::Result<String> {
+        use crate::database::drasildb::*;
+        use murin::txbuilders::rwdist::build_utxopti::finalize_utxopti;
+
+        let drasildbcon = establish_connection()?;
+        let keyloc = TBMultiSigLoc::get_multisig_keyloc(
+            &drasildbcon,
+            &raw_tx.get_contract_id()?,
+            &(self.customer_id as i64),
+            &raw_tx.get_contract_version()?,
+        )?;
+        let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
+            self.customer_id as i64,
+            raw_tx.get_contract_id()?,
+        )?;
+        let ident = crate::encryption::mident(
+            &contract.user_id,
+            &contract.contract_id,
+            &contract.version,
+            &contract.address,
+        );
+        let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
+        let response = finalize_utxopti(raw_tx, pkvs).await?;
         info!("Response: {}", response);
         Ok(response)
     }

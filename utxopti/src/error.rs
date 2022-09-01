@@ -1,5 +1,3 @@
-use std::convert::Infallible;
-use std::fmt;
 /*
 #################################################################################
 # See LICENSE.md for full license information.                                  #
@@ -22,22 +20,25 @@ pub enum UOError {
     InvalidAuthHeaderError,
     #[error("no permission")]
     Custom(String),
+    #[error("Error on Odin request")]
+    OdinError(String),
     #[error(transparent)]
     ParseIntError(#[from] core::num::ParseIntError),
     #[error(transparent)]
     RWDError(#[from] gungnir::error::RWDError),
     #[error(transparent)]
     MurinError(#[from] murin::error::MurinError),
+    #[error(transparent)]
+    HexError(#[from] hex::FromHexError),
 }
-
-//impl fmt::Display for UOError {
-//    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//        write!(f, "{}", self.details)
-//    }
-//}
 
 impl From<murin::clib::error::JsError> for UOError {
     fn from(err: murin::clib::error::JsError) -> Self {
+        UOError::Custom(err.to_string())
+    }
+}
+impl From<murin::clib::error::DeserializeError> for UOError {
+    fn from(err: murin::clib::error::DeserializeError) -> Self {
         UOError::Custom(err.to_string())
     }
 }
