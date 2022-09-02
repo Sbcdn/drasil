@@ -11,7 +11,6 @@ use bc::Options;
 use bincode as bc;
 use std::io::{Error, ErrorKind};
 use tokio::net::{TcpStream, ToSocketAddrs};
-use tracing::debug;
 
 pub struct Client {
     pub connection: Connection,
@@ -41,7 +40,7 @@ impl Client {
     async fn read_response(&mut self) -> crate::Result<Frame> {
         let response = self.connection.read_frame().await?;
 
-        debug!(?response);
+        log::debug!("{:?}", response);
 
         match response {
             Some(Frame::Error(msg)) => Err(msg.into()),

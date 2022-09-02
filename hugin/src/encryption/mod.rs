@@ -10,7 +10,7 @@ use chacha20poly1305::{
     aead::{stream, NewAead},
     XChaCha20Poly1305,
 };
-use mimir::MurinError;
+use murin::MurinError;
 use rand::{rngs::OsRng, RngCore};
 
 use sha2::Digest;

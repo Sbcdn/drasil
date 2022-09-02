@@ -18,8 +18,8 @@ pub async fn create_rev_payout(
 ) -> Result<hugin::TBCaPayment, SleipnirError> {
     let contract = hugin::TBContracts::get_contract_uid_cid(user_id, contract_id)?;
 
-    let mconn = mimir::establish_connection()?;
-    let address_utxos = mimir::get_address_utxos(&mconn, &contract.address)?;
+    let mut mconn = mimir::establish_connection()?;
+    let address_utxos = mimir::get_address_utxos(&mut mconn, &contract.address)?;
 
     let total_value = address_utxos.calc_total_value()?;
     let contract_lqdty = contract.get_contract_liquidity();
@@ -78,8 +78,8 @@ pub async fn approve_payout(
     pw: &String,
     mfa: &String,
 ) -> Result<(), SleipnirError> {
-    let dconn = hugin::establish_connection()?;
-    let user = hugin::TBDrasilUser::get_user_by_user_id(&dconn, user_id)?;
+    let user =
+        hugin::TBDrasilUser::get_user_by_user_id(&mut hugin::establish_connection()?, user_id)?;
 
     let msg = hugin::TBCaPaymentHash::find_by_payid(payout_id)?[0]
         .payment_hash

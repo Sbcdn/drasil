@@ -58,8 +58,6 @@ fn perform_txbuild(
         info!("--------------------------------------------------------------------------------------------------------\n");
     }
 
-    dotenv::dotenv().ok();
-
     let cwallet_address = match gtxd.get_senders_address(None) {
         Some(a) => a,
         None => {

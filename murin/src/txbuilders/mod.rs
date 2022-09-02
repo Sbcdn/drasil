@@ -1406,8 +1406,6 @@ pub async fn submit_endpoint(
 }
 
 pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<String, MurinError> {
-    dotenv::dotenv().ok();
-
     let submit1 = std::env::var("TX_SUBMIT_ENDPOINT1")?;
     let submit2 = std::env::var("TX_SUBMIT_ENDPOINT2")?;
     let submit3 = std::env::var("TX_SUBMIT_ENDPOINT3")?;

@@ -7,6 +7,7 @@
 #################################################################################
 */
 use crate::datamodel::{MultiSigType, OneShotReturn, ScriptSpecParams, TransactionPattern};
+use crate::error::SystemDBError;
 use crate::{CmdError, Parse, TBContracts};
 use crate::{Connection, Frame, IntoFrame};
 
@@ -14,11 +15,9 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 //use gungnir::schema::whitelist;
-use mimir::MurinError;
-use serde_json::json;
-use tracing::{debug, instrument};
-
+use murin::MurinError;
 use rand::Rng;
+use serde_json::json;
 
 #[derive(Debug, Clone)]
 pub struct BuildMultiSig {
@@ -65,14 +64,12 @@ impl BuildMultiSig {
         })
     }
 
-    #[instrument(skip(self, dst))]
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        dotenv::dotenv().ok();
         let mut response =
             Frame::Simple("ERROR: Could not build multisignature transaction".to_string());
         if self.multisig_type() != MultiSigType::ClAPIOneShotMint {
             if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
-                debug!(?response);
+                log::debug!("{:?}", response);
                 response = Frame::Simple(e.to_string());
                 dst.write_frame(&response).await?;
             }
@@ -120,7 +117,7 @@ impl BuildMultiSig {
                 .with_varint_encoding()
                 .serialize(&ret)?,
         ));
-        debug!(?response);
+        log::debug!("{:?}", response);
         dst.write_frame(&response).await?;
 
         Ok(())
@@ -191,8 +188,8 @@ impl BuildMultiSig {
         gtxd.set_user_id(self.customer_id);
 
         info!("establish database connections...");
-        let drasildbcon = crate::database::drasildb::establish_connection()?;
-        let gcon = gungnir::establish_connection()?;
+        let mut drasildbcon = crate::database::drasildb::establish_connection()?;
+        let mut gcon = gungnir::establish_connection()?;
 
         info!("determine contract...");
         let mut contract = determine_contract(gtxd.get_contract_id(), self.customer_id as i64)?;
@@ -219,7 +216,7 @@ impl BuildMultiSig {
                     if has_wl {
                         // Check if whitelist token on contract also has available rewards
                         gungnir::Rewards::get_available_rewards(
-                            &gcon,
+                            &mut gcon,
                             &gtxd.get_stake_address().to_bech32(None).expect(
                                 "ERROR Could not construct bech32 address for stake address",
                             ),
@@ -317,7 +314,7 @@ impl BuildMultiSig {
             );
             log::debug!("{:?}", self.customer_id() as i64);
             match gungnir::Rewards::get_available_rewards(
-                &gcon,
+                &mut gcon,
                 &gtxd
                     .get_stake_address()
                     .to_bech32(None)
@@ -352,7 +349,7 @@ impl BuildMultiSig {
 
         info!("lookup additional data...");
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &contract.contract_id,
             &contract.user_id,
             &contract.version,
@@ -372,11 +369,11 @@ impl BuildMultiSig {
         let ns_version = contract.version.to_string();
 
         info!("retrieve blockchain data...");
-        let dbsync = mimir::establish_connection()?;
-        let slot = mimir::get_slot(&dbsync)?;
+        let mut dbsync = mimir::establish_connection()?;
+        let slot = mimir::get_slot(&mut dbsync)?;
         gtxd.set_current_slot(slot as u64);
 
-        let reward_wallet_utxos = mimir::get_address_utxos(&dbsync, &ns_addr)?;
+        let reward_wallet_utxos = mimir::get_address_utxos(&mut dbsync, &ns_addr)?;
         if reward_wallet_utxos.is_empty() {
             // ToDO :
             // Send Email to Admin that not enough tokens are available on the script
@@ -501,11 +498,11 @@ impl BuildMultiSig {
             .expect("Could not find valid contract");
 
         log::debug!("Try to establish database connection...");
-        let drasildbcon = crate::database::drasildb::establish_connection()?;
+        let mut drasildbcon = crate::database::drasildb::establish_connection()?;
 
         log::debug!("Try to determine additional data...");
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &contract.contract_id,
             &contract.user_id,
             &contract.version,
@@ -537,17 +534,16 @@ impl BuildMultiSig {
         let ns_version = contract.version.to_string();
 
         log::debug!("Try to determine nft data...");
-        let gcon = gungnir::establish_connection()?;
+        let mut gcon = gungnir::establish_connection()?;
         let mint_project = gungnir::MintProject::get_mintproject_by_uid_cid(
-            &gcon,
+            &mut gcon,
             self.customer_id as i64,
             contract.contract_id,
         )?;
-        let _whitelist: Option<gungnir::Whitelist>;
-        if let Some(wid) = mint_project.whitelist_id {
-            _whitelist = Some(gungnir::Whitelist::get_whitelist(&gcon, wid)?);
+        let _whitelist = if let Some(wid) = mint_project.whitelist_id {
+            Some(gungnir::Whitelist::get_whitelist(&mut gcon, wid)?)
         } else {
-            _whitelist = None
+            None
         };
 
         let policy_id = contract
@@ -560,7 +556,7 @@ impl BuildMultiSig {
         let mut eligable_nfts = Vec::<gungnir::Nft>::new();
         if mint_project.reward_minter {
             nfts_to_mint =
-                gungnir::Nft::get_nft_by_payaddr(&gcon, mint_project.id, &payment_addr_bech32)?;
+                gungnir::Nft::get_nft_by_payaddr(&mut gcon, mint_project.id, &payment_addr_bech32)?;
             nfts_to_mint.retain(|n| !n.minted);
             if nfts_to_mint.is_empty() {
                 return Err(CmdError::Custom {
@@ -571,7 +567,7 @@ impl BuildMultiSig {
             for nft in &nfts_to_mint {
                 let fingerprint = murin::chelper::make_fingerprint(&policy_id, &nft.asset_name)?;
                 let rewards = gungnir::Rewards::get_avail_specific_asset_reward(
-                    &gcon,
+                    &mut gcon,
                     &payment_addr_bech32,
                     &murin::cip30::get_bech32_stake_address_from_str(&payment_addr_bech32)?,
                     &fingerprint,
@@ -588,7 +584,7 @@ impl BuildMultiSig {
             }
         } else {
             let claimed = gungnir::Claimed::get_claims(
-                &gcon,
+                &mut gcon,
                 &murin::cip30::get_bech32_stake_address_from_str(&payment_addr_bech32)?,
                 contract.contract_id,
                 self.customer_id(),
@@ -606,7 +602,7 @@ impl BuildMultiSig {
             }
             for _ in 0..max_nfts {
                 nfts_to_mint.extend(
-                    gungnir::Nft::get_random_unminted_nft(&gcon, mint_project.id)?.into_iter(),
+                    gungnir::Nft::get_random_unminted_nft(&mut gcon, mint_project.id)?.into_iter(),
                 )
             }
             //eligable_nfts = nfts_to_mint.clone();
@@ -631,7 +627,7 @@ impl BuildMultiSig {
         minttxd.set_metadata(metadata);
 
         log::debug!("Try to determine slot...");
-        let dbsync = match mimir::establish_connection() {
+        let mut dbsync = match mimir::establish_connection() {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -640,7 +636,7 @@ impl BuildMultiSig {
                 .into());
             }
         };
-        let slot = match mimir::get_slot(&dbsync) {
+        let slot = match mimir::get_slot(&mut dbsync) {
             Ok(s) => s,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -716,7 +712,7 @@ impl BuildMultiSig {
         log::debug!("Try to create general transaction data...");
         let mut gtxd = txp.into_txdata().await?;
         log::debug!("Connect to dbsync...");
-        let dbsync = match mimir::establish_connection() {
+        let mut dbsync = match mimir::establish_connection() {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -726,7 +722,7 @@ impl BuildMultiSig {
             }
         };
         log::debug!("Get Slot...");
-        let slot = match mimir::get_slot(&dbsync) {
+        let slot = match mimir::get_slot(&mut dbsync) {
             Ok(s) => s,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -745,12 +741,12 @@ impl BuildMultiSig {
         let oneshotpolicy = murin::minter::create_onshot_policy(&oneshotwallet.3, slot as u64);
 
         log::debug!("Connect to platform db...");
-        let drasildbcon = crate::database::drasildb::establish_connection()?;
+        let mut drasildbcon = crate::database::drasildb::establish_connection()?;
         log::debug!("Check contract...");
         let contract = TBContracts::get_liquidity_wallet(&self.customer_id())?;
         log::debug!("Try to determine additional data...");
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &contract.contract_id,
             &contract.user_id,
             &contract.version,
@@ -770,7 +766,7 @@ impl BuildMultiSig {
         // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
 
         log::debug!("Set utxos for input...");
-        gtxd.set_inputs(mimir::get_address_utxos(&dbsync, &contract.address)?);
+        gtxd.set_inputs(mimir::get_address_utxos(&mut dbsync, &contract.address)?);
 
         log::debug!("Try to build transactions...");
         let bld_tx = match murin::minter::build_oneshot_mint::build_oneshot_mint_multisig(
@@ -904,7 +900,7 @@ impl BuildMultiSig {
         let sporwc_user_id = 0;
 
         log::info!("Created raw data!");
-        let drasildbcon = crate::database::drasildb::establish_connection()?;
+        let mut drasildbcon = crate::database::drasildb::establish_connection()?;
         log::info!("Established connection!!");
         let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
             t_minter_user_id,
@@ -932,7 +928,7 @@ impl BuildMultiSig {
         );
 
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &contract.contract_id,
             &contract.user_id,
             &contract.version,
@@ -965,7 +961,7 @@ impl BuildMultiSig {
         let ns_script = contract.plutus.clone();
         let ns_version = contract.version.to_string();
 
-        let dbsync = match mimir::establish_connection() {
+        let mut dbsync = match mimir::establish_connection() {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -974,7 +970,7 @@ impl BuildMultiSig {
                 .into());
             }
         };
-        let slot = match mimir::get_slot(&dbsync) {
+        let slot = match mimir::get_slot(&mut dbsync) {
             Ok(s) => s,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -991,7 +987,7 @@ impl BuildMultiSig {
         //ToDO:
         // - Function to check and split utxos when for size >5kB (cal_min_ada panics on utxos >5kB)
         // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
-        let policy_script_utxos = mimir::get_address_utxos(&dbsync, &contract.address)?;
+        let policy_script_utxos = mimir::get_address_utxos(&mut dbsync, &contract.address)?;
 
         gtxd.set_inputs(policy_script_utxos);
 
@@ -1041,7 +1037,7 @@ impl BuildMultiSig {
         use gungnir::FromPrimitive;
 
         // Create reward entry
-        let gconn = gungnir::establish_connection()?;
+        let mut gconn = gungnir::establish_connection()?;
         let policy = hex::encode(
             murin::clib::NativeScript::from_bytes(hex::decode(contract.plutus).unwrap())
                 .unwrap()
@@ -1050,13 +1046,13 @@ impl BuildMultiSig {
         );
         let fingerprint = murin::make_fingerprint(&policy, &tns[i])?;
         let rewards = gungnir::Rewards::get_rewards_per_token(
-            &gconn,
+            &mut gconn,
             &gtxd.get_stake_address().to_bech32(None).unwrap(),
             sporwc_flz.contract_id as i64,
             sporwc_flz.user_id as i64,
             &fingerprint,
         )?;
-        let current_epoch = mimir::get_epoch(&mimir::establish_connection()?)? as i64;
+        let current_epoch = mimir::get_epoch(&mut mimir::establish_connection()?)? as i64;
         println!("Rewards: {:?}", rewards);
         if rewards.len() == 1 && rewards[0].fingerprint == fingerprint {
             let tot_earned = rewards[0].tot_earned.clone()
@@ -1067,7 +1063,7 @@ impl BuildMultiSig {
                     * gungnir::BigDecimal::from_u64(1000000).unwrap());
 
             let stake_rwd = gungnir::Rewards::update_rewards(
-                &gconn,
+                &mut gconn,
                 &rewards[0].stake_addr,
                 &rewards[0].fingerprint,
                 &rewards[0].contract_id,
@@ -1085,7 +1081,7 @@ impl BuildMultiSig {
                 * gungnir::BigDecimal::from_u64(1000000).unwrap();
 
             let stake_rwd = gungnir::Rewards::create_rewards(
-                &gconn,
+                &mut gconn,
                 &gtxd.get_stake_address().to_bech32(None).unwrap(),
                 &mimir::api::select_addr_of_first_transaction(
                     &gtxd
@@ -1125,7 +1121,7 @@ impl BuildMultiSig {
         let mut gtxd = self.transaction_pattern().into_txdata().await?;
 
         info!("establish database connections...");
-        let drasildbcon = crate::database::drasildb::establish_connection()?;
+        let mut drasildbcon = crate::database::drasildb::establish_connection()?;
 
         let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
             cpo_data.get_user_id(),
@@ -1136,7 +1132,7 @@ impl BuildMultiSig {
 
         info!("retrieve additional data...");
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &contract.contract_id,
             &contract.user_id,
             &contract.version,
@@ -1147,7 +1143,7 @@ impl BuildMultiSig {
         let _ns_script = contract.plutus.clone();
         let _ns_version = contract.version.to_string();
 
-        let dbsync = match mimir::establish_connection() {
+        let mut dbsync = match mimir::establish_connection() {
             Ok(conn) => conn,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -1156,7 +1152,7 @@ impl BuildMultiSig {
                 .into());
             }
         };
-        let slot = match mimir::get_slot(&dbsync) {
+        let slot = match mimir::get_slot(&mut dbsync) {
             Ok(s) => s,
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -1177,7 +1173,7 @@ impl BuildMultiSig {
 
         // - Function to check and split utxos when for size >5kB (cal_min_ada panics on utxos >5kB)
         // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
-        let contract_utxos = mimir::get_address_utxos(&dbsync, &contract.address)?;
+        let contract_utxos = mimir::get_address_utxos(&mut dbsync, &contract.address)?;
 
         gtxd.set_inputs(contract_utxos);
 
@@ -1235,7 +1231,7 @@ impl IntoFrame for BuildMultiSig {
 pub fn determine_contract(
     contract_id: Option<u64>,
     customer_id: i64,
-) -> Result<Option<crate::drasildb::TBContracts>, MurinError> {
+) -> Result<Option<crate::drasildb::TBContracts>, SystemDBError> {
     let u_customer_id = customer_id;
     if let Some(contract_id) = contract_id {
         log::debug!("Get defined contract {:?}...", contract_id);

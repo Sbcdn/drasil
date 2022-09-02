@@ -147,10 +147,10 @@ impl FromStr for Utxopti {
     type Err = Error;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
-            "utxoopti" => Ok(Utxopti{}),
+            "utxoopti" => Ok(Utxopti {}),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Wrong Type"),
+                "Wrong Type".to_string(),
             )),
         }
     }

@@ -190,7 +190,6 @@ fn run_stream_trimmer(stream: String, maxlen: i32) -> Result<()> {
 pub fn main() -> Result<()> {
     use std::{thread, time};
     pretty_env_logger::init();
-    dotenv::dotenv().ok();
     //let worker_count_per_stream = 3;
 
     let use_stream_trimmer = std::env::var("STREAM_TRIMMER")?.parse::<bool>()?;

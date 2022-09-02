@@ -10,8 +10,6 @@ struct Opt {}
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
-    dotenv::dotenv().ok();
-
     // Do Optimization for
     let addr = &"addr_test1wr84fwh5mt0usmwewfmzz5l0qyxrxa897eswwmrtcxz3mls9mwcxy".to_string();
     let uid = 0;

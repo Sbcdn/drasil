@@ -28,7 +28,8 @@ RUN adduser \
 FROM base as builder
 WORKDIR /freki-build
 ENV CARGO_HOME=/freki-build/.cargo
-COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./Cargo.toml ./                 
+#./Cargo.lock      
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./src ./src

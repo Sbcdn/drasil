@@ -111,3 +111,15 @@ impl From<std::num::ParseFloatError> for SleipnirError {
 }
 
 impl warp::reject::Reject for SleipnirError {}
+
+impl From<mimir::MimirError> for SleipnirError {
+    fn from(err: mimir::MimirError) -> Self {
+        SleipnirError::new(&err.to_string())
+    }
+}
+
+impl From<hugin::error::SystemDBError> for SleipnirError {
+    fn from(err: hugin::error::SystemDBError) -> Self {
+        SleipnirError::new(&err.to_string())
+    }
+}

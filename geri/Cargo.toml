@@ -19,14 +19,13 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 
 [dependencies]
 #tokio = { version = "1", features = ["full"] }
-redis = { version ="0.21.5",  features = ["cluster"] } # "tokio-comp",
+redis = { version = "0.21.5", features = ["cluster"] } # "tokio-comp",
 #redis_cluster_async = "0.7.0"
-serde_json = { version = "1.0.79", features = ["preserve_order"]}
+serde_json = { version = "1.0.79", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-dotenv = "0.15.0"
 strum_macros = "0.24"
 merge = "0.1.0"
 pretty_env_logger = "0.4.0"
 log = "0.4"
-murin = { path = "../murin", version="0.1.0" }
+murin = { path = "../murin", version = "0.1.0" }
 #murin = { git = "ssh://git@github.com/sbcdn/murin.git", branch="main" }

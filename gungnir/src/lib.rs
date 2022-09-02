@@ -13,7 +13,6 @@ pub mod error;
 pub mod rewards;
 pub mod schema;
 
-extern crate dotenv;
 extern crate pretty_env_logger;
 
 pub use api::*;

@@ -15,6 +15,9 @@ use csv::WriterBuilder;
 use std::str::*;
 use structopt::StructOpt;
 
+use s3::bucket::Bucket;
+use s3::creds::Credentials;
+
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "Reward Calculator",
@@ -146,23 +149,22 @@ pub(crate) fn handle_rewards(
     token_earned: &BigDecimal,
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
-    let gconn = gungnir::establish_connection()?;
+    let mut gconn = gungnir::establish_connection()?;
     let rewards = gungnir::Rewards::get_rewards_per_token(
-        &gconn,
+        &mut gconn,
         stake_addr,
         twd.contract_id,
         twd.user_id,
         &twd.fingerprint.clone(),
     )?;
+    println!("Rewards: {:?}", rewards[0].tot_earned);
+    println!("Token earned in handle rewards: {:?}", token_earned);
     let mut tot_earned = BigDecimal::from_i32(0).unwrap();
-    if rewards.len() == 1
-        && rewards[0].fingerprint == twd.fingerprint
-        && rewards[0].last_calc_epoch < twd.calc_epoch
-    {
+    if rewards.len() == 1 && rewards[0].last_calc_epoch < twd.calc_epoch {
         tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
-        println!("Earned: {:?}", tot_earned);
+        println!("Earned add: {:?}", tot_earned);
         let stake_rwd = gungnir::Rewards::update_rewards(
-            &gconn,
+            &mut gconn,
             &rewards[0].stake_addr,
             &rewards[0].fingerprint,
             &rewards[0].contract_id,
@@ -176,9 +178,9 @@ pub(crate) fn handle_rewards(
         let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
 
         tot_earned = token_earned.to_owned();
-        println!("Earned: {:?}", tot_earned);
+        println!("Earned new: {:?}", tot_earned);
         let stake_rwd = gungnir::Rewards::create_rewards(
-            &gconn,
+            &mut gconn,
             stake_addr,
             &payment_addr,
             &twd.fingerprint,
@@ -261,9 +263,11 @@ pub(crate) async fn handle_stake(
                         let token_earned = BigDecimal::from_f64(
                             ((adastake.powf(param.flatten)) + param.min_earned) * 1000000.0,
                         )
-                        .unwrap();
+                        .unwrap()
+                        .round(0);
+                        println!("Token earned before reward handle: {}", token_earned);
                         handle_rewards(&stake.stake_addr, twd, &token_earned, table)?;
-                        println!("Total earned: {}", token_earned);
+                        println!("Token earned after reward handle: {}", token_earned);
                     } else {
                         println!("delegator below min stake");
                     }
@@ -285,8 +289,8 @@ pub(crate) async fn handle_pool(
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
     println!("Handle pool: {:?}", pool);
-    let conn = mimir::establish_connection()?;
-    let pool_stake = mimir::get_tot_stake_per_pool(&conn, &pool.pool_id, epoch as i32)?;
+    let mut conn = mimir::establish_connection()?;
+    let pool_stake = mimir::get_tot_stake_per_pool(&mut conn, &pool.pool_id, epoch as i32)?;
     for stake in pool_stake {
         handle_stake(stake, twd, table).await?;
     }
@@ -308,7 +312,7 @@ pub(crate) async fn handle_pools(
     );
     pools.retain(|p| p.first_valid_epoch <= epoch);
 
-    let conn = mimir::establish_connection()?;
+    let mut conn = mimir::establish_connection()?;
 
     // Get total Ada staked from all participating pools
     match rwd_token.mode.clone() {
@@ -316,7 +320,7 @@ pub(crate) async fn handle_pools(
             let mut total_pools_stake = 0;
             for pool in pools.clone() {
                 total_pools_stake +=
-                    mimir::get_pool_total_stake(&conn, &pool.pool_id, epoch as i32)? / 1000000
+                    mimir::get_pool_total_stake(&mut conn, &pool.pool_id, epoch as i32)? / 1000000
             }
             rwd_token.modificator_equ = Some(total_pools_stake.to_string());
         }
@@ -367,7 +371,6 @@ fn check_contract_is_active(twle: &gungnir::TokenWhitelist) -> Result<bool> {
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
-    dotenv::dotenv().ok();
     let opt = Opt::from_args();
 
     if opt.t.is_some() {
@@ -382,7 +385,7 @@ pub async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let current_epoch = mimir::get_epoch(&mimir::establish_connection()?)? as i64;
+    let current_epoch = mimir::get_epoch(&mut mimir::establish_connection()?)? as i64;
     let calc_epoch = current_epoch - 2;
     println!("Current Epoch: {}", current_epoch);
     println!("Calculation Epoch: {}", calc_epoch);
@@ -440,9 +443,14 @@ pub async fn main() -> Result<()> {
     }
     let mut path =
         std::env::var("CSV_PATH").expect("Could not open CSV path, environment variable not set");
+    let mut bpath = "/".to_string();
     path.push_str(&(calc_epoch.to_string() + "_"));
+    bpath.push_str(&(calc_epoch.to_string() + "_"));
     path.push_str(&chrono::offset::Utc::now().to_string());
-    let mut wtr = WriterBuilder::new().from_path(path + "{}")?;
+    bpath.push_str(&chrono::offset::Utc::now().to_string());
+    bpath.push_str(".csv");
+
+    let mut wtr = WriterBuilder::new().from_path(path)?;
     let mut wtr2 = WriterBuilder::new().from_writer(vec![]);
     for entry in table {
         let mut e = entry.twldata.to_str_vec();
@@ -459,8 +467,18 @@ pub async fn main() -> Result<()> {
         wtr2.write_record(&e)?;
     }
     wtr.flush()?;
-
     let data = String::from_utf8(wtr2.into_inner()?)?;
     println!("{:?}", data);
+
+    let bucket_name = "freki-protocols";
+    let region = "us-east-2".parse().unwrap();
+    //#[cfg(feature = "http-credentials")]
+    let credentials = Credentials::default().unwrap();
+
+    let bucket = Bucket::new(bucket_name, region, credentials)?;
+    //#[cfg(feature = "sync")]
+    let response_data = bucket.put_object(bpath, data.as_bytes()).await?;
+    println!("S3 Response: {:?}", response_data.1);
+
     Ok(())
 }

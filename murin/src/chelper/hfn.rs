@@ -12,15 +12,12 @@ use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{
     address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
 };
-use std::io::{self, BufRead, BufWriter, Write};
+use std::io::{self, BufRead};
 
 use crate::txbuilders;
 use cryptoxide::blake2b::Blake2b;
 use std::env;
-use std::fs;
-use std::fs::File;
 use std::str;
-use tempdir::TempDir;
 //use emurgo_message_signing::{ utils::FromBytes as msfrom_bytes, utils::ToBytes as msto_bytes};
 //use emurgo_message_signing as ms;
 
@@ -469,7 +466,7 @@ pub fn get_payment_address(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
     //info!("Payment Addres: {:?}\n",hex::encode(payment_cred_key.to_bytes()));
     payment_cred_key
 }
-
+/*
 pub fn make_cardano_cli_tx(tx: String, tx_hash: String, submit: String, node_ok: bool) {
     let cli_tx = SmartContract {
         r#type: "Tx AlonzoEra".to_string(),
@@ -524,7 +521,7 @@ pub fn make_cardano_cli_tx(tx: String, tx_hash: String, submit: String, node_ok:
         serde_json::to_writer(&io::stdout(), &cli_tx).unwrap();
     }
 }
-
+ */
 pub fn _api_sign_tx(message: clib::TransactionBody) -> ccrypto::Vkeywitness {
     // TODO Working with private keys
     let api_priv_key =

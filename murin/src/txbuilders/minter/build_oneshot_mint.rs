@@ -48,8 +48,6 @@ pub fn perform_mint(
         info!("--------------------------------------------------------------------------------------------------------\n");
     }
 
-    dotenv::dotenv().ok();
-
     let receiving_address: caddr::Address = minttxd.get_payment_addr();
 
     let receiving_address_bech32 = receiving_address.to_bech32(None)?;

@@ -6,9 +6,10 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use hugin::drasildb::{TBContracts, TBDrasilUser};
-use murin::chelper::*;
-
+use hugin::{
+    drasildb::{TBContracts, TBDrasilUser},
+    error::SystemDBError,
+};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -23,16 +24,10 @@ struct Opt {
     user_id: i64,
     #[structopt(short, long, about = "email")]
     email: String,
-    #[structopt(
-        short,
-        long,
-        about = "DrasilAdmin | Retailer | EnterpriseUser | StandardUser"
-    )]
-    role: String,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), MurinError> {
+async fn main() -> Result<(), SystemDBError> {
     let opt = Opt::from_args();
     let t = TBContracts::get_next_contract_id(&opt.user_id)?;
     println!("Established Connection Test: {:?}", t);
@@ -42,7 +37,6 @@ async fn main() -> Result<(), MurinError> {
         &"dradmin".to_string(),
         &opt.email,
         &opt.password,
-        &opt.role,
         &Vec::<String>::new(),
         None,
         None,

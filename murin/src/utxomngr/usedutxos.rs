@@ -669,7 +669,6 @@ pub async fn delete_used_utxos_hashmap_async(
 /// Select a data stroe for used utxos, selects first one if enough free space otherwise tries 2 and 3
 fn select_used_utxo_datastore(len: usize, get_ds: Option<u8>) -> Result<(String, i64), MurinError> {
     info!("Select datastore...");
-    dotenv::dotenv().ok();
     let datastores = vec![
         std::env::var("USED_UTXO_DATASTORE_1").unwrap_or_else(|_| "usedutxos1".to_string()),
         std::env::var("USED_UTXO_DATASTORE_2").unwrap_or_else(|_| "usedutxos2".to_string()),
@@ -715,7 +714,6 @@ fn _select_pending_tx_datastore(
     len: usize,
     get_ds: Option<u8>,
 ) -> Result<(String, i64), MurinError> {
-    dotenv::dotenv().ok();
     let datastores = vec![
         std::env::var("PENDING_TX_DATASTORE_1").unwrap_or_else(|_| "pendingtx1".to_string()),
         std::env::var("PENDING_TX_DATASTORE_2").unwrap_or_else(|_| "pendingtx2".to_string()),

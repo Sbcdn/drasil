@@ -52,8 +52,6 @@ pub fn perform_mint(
         info!("--------------------------------------------------------------------------------------------------------\n");
     }
 
-    dotenv::dotenv().ok();
-
     //let rwd_system_fee = env::var("SYSTEM_FEE_MINT")?.parse::<u64>()?;
     //let rwd_system_fee_wallet = caddr::Address::from_bech32(&env::var("SYSTEM_FEE_WALLET")?)?;
     let mut vendor_script_address: caddr::Address = minttxd.get_payment_addr();

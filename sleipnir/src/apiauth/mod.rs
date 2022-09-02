@@ -52,8 +52,8 @@ pub struct ApiClaims {
 }
 
 pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String, SleipnirError> {
-    let dconn = hugin::establish_connection()?;
-    let user = hugin::database::TBDrasilUser::get_user_by_user_id(&dconn, uid)?;
+    let mut dconn = hugin::establish_connection()?;
+    let user = hugin::database::TBDrasilUser::get_user_by_user_id(&mut dconn, uid)?;
 
     if !user.email_verified
     //&& check_identification(u.identification)
