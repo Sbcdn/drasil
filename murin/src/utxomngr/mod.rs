@@ -6,7 +6,6 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-extern crate dotenv;
 extern crate redis;
 
 pub mod txmind;
@@ -16,12 +15,9 @@ pub mod usedutxos;
 pub use usedutxos::*;
 
 use crate::MurinError;
-use dotenv::dotenv;
 use std::env;
 
 pub fn redis_txmind_connection() -> Result<redis::cluster::ClusterConnection, MurinError> {
-    dotenv().ok();
-
     let redis_db = env::var("REDIS_DB")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
     let client = redis::cluster::ClusterClient::open(vec![redis_db])?; // redis://127.0.0.1/
     Ok(client.get_connection()?)
@@ -34,8 +30,6 @@ pub fn redis_usedutxos_connection() -> Result<
     ),
     MurinError,
 > {
-    dotenv().ok();
-
     let cluster = env::var("REDIS_CLUSTER")?.parse::<bool>()?;
     let redis_db = env::var("REDIS_DB_URL_UTXOMIND")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
 
@@ -69,8 +63,6 @@ pub fn redis_usedutxos_connection() -> Result<
 }
 
 pub fn redis_replica_connection() -> Result<redis::cluster::ClusterConnection, MurinError> {
-    dotenv().ok();
-
     let redis_db = env::var("REDIS_DB_URL_REPLICA")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
     let client = redis::cluster::ClusterClient::open(vec![redis_db])?; // redis://127.0.0.1/
     Ok(client.get_connection()?)

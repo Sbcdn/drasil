@@ -17,7 +17,6 @@ use bincode as bc;
 use bytes::Bytes;
 use murin::MIN_ADA;
 use std::str::FromStr;
-use tracing::{debug, instrument};
 
 #[derive(Debug, Clone)]
 pub struct BuildContract {
@@ -82,12 +81,11 @@ impl BuildContract {
         })
     }
 
-    #[instrument(skip(self, dst))]
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response = Frame::Simple("OK".to_string());
 
         if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
-            debug!(?response);
+            log::debug!("{:?}", response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
         }
@@ -120,7 +118,7 @@ impl BuildContract {
                 .with_varint_encoding()
                 .serialize(&ret.to_string())?,
         ));
-        debug!(?response);
+        log::debug!("{:?}", response);
         dst.write_frame(&response).await?;
         Ok(())
     }
@@ -172,8 +170,8 @@ impl BuildContract {
             .into_mp(gtxd.clone().get_inputs())
             .await?;
         gtxd.set_user_id(self.customer_id as u64);
-        let dbsync = mimir::establish_connection()?;
-        let slot = mimir::get_slot(&dbsync)?;
+        let mut dbsync = mimir::establish_connection()?;
+        let slot = mimir::get_slot(&mut dbsync)?;
         gtxd.set_current_slot(slot as u64);
 
         let ret: String;
@@ -184,9 +182,9 @@ impl BuildContract {
                         use crate::database::drasildb::*;
                         use murin::txbuilders::marketplace::list::*;
                         //build a listing and send the repsonse to the sender
-                        let drasildbcon = establish_connection()?;
+                        let mut drasildbcon = establish_connection()?;
                         let contract = TBContracts::get_active_contract_for_user(
-                            &drasildbcon,
+                            &mut drasildbcon,
                             self.customer_id as i64,
                             self.ctype.to_string(),
                             None,
@@ -195,8 +193,8 @@ impl BuildContract {
                         let sc_addr = contract.address.to_string();
                         let sc_version = contract.version.to_string();
 
-                        let dbsync = mimir::establish_connection()?;
-                        let slot = mimir::get_slot(&dbsync)?;
+                        let mut dbsync = mimir::establish_connection()?;
+                        let slot = mimir::get_slot(&mut dbsync)?;
                         gtxd.set_current_slot(slot as u64);
 
                         let res = build_mp_listing(&gtxd, &mptxd, &sc_addr, &sc_version).await?;

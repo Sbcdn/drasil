@@ -13,7 +13,7 @@ use bigdecimal::{FromPrimitive, ToPrimitive};
 
 impl Rewards {
     pub fn get_rewards_stake_addr(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: String,
     ) -> Result<Vec<Rewards>, RWDError> {
         use crate::schema::rewards::dsl::*;
@@ -24,7 +24,7 @@ impl Rewards {
     }
 
     pub fn get_rewards(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: String,
         contract_id_in: i64,
         user_id_in: i64,
@@ -39,7 +39,7 @@ impl Rewards {
     }
 
     pub fn get_specific_asset_reward(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         payment_addr_in: &String,
         fingerprint_in: &String,
         contract_id_in: i64,
@@ -56,7 +56,7 @@ impl Rewards {
     }
 
     pub fn get_avail_specific_asset_reward(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         payment_addr_in: &String,
         stake_addr_in: &String,
         fingerprint_in: &String,
@@ -101,7 +101,7 @@ impl Rewards {
     }
 
     pub fn get_rewards_per_token(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &String,
         contract_id_in: i64,
         user_id_in: i64,
@@ -118,7 +118,7 @@ impl Rewards {
     }
 
     pub fn get_available_rewards(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &String,
         payment_addr_in: &String,
         fingerprint_in: &String,
@@ -166,7 +166,7 @@ impl Rewards {
 
     #[allow(clippy::too_many_arguments)]
     pub fn create_rewards<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr: &'a String,
         payment_addr: &'a String,
         fingerprint: &'a String,
@@ -195,7 +195,7 @@ impl Rewards {
     }
 
     pub fn update_rewards<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &'a String,
         fingerprint_in: &'a String,
         contract_id_in: &'a i64,
@@ -221,7 +221,7 @@ impl Rewards {
     }
 
     pub fn update_claimed<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &'a String,
         fingerprint_in: &'a String,
         contract_id_in: &'a i64,
@@ -259,7 +259,7 @@ impl Rewards {
     }
 
     pub fn get_tot_rewards_to_deliver(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         contract_id_in: i64,
         user_id_in: i64,
     ) -> Result<BigDecimal, RWDError> {
@@ -277,7 +277,7 @@ impl Rewards {
 
 impl Claimed {
     pub fn get_claims(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &String,
         contract_id_in: i64,
         user_id_in: i64,
@@ -293,7 +293,7 @@ impl Claimed {
     }
 
     pub fn get_all_claims(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &String,
     ) -> Result<Vec<Claimed>, RWDError> {
         use crate::schema::claimed::dsl::*;
@@ -305,7 +305,7 @@ impl Claimed {
     }
 
     pub fn get_token_claims(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &String,
         contract_id_in: i64,
         user_id_in: i64,
@@ -322,7 +322,7 @@ impl Claimed {
     }
 
     pub fn get_token_claims_tot_amt(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &String,
         fingerprint_in: &String,
         contract_id_in: i64,
@@ -345,7 +345,7 @@ impl Claimed {
 
     #[allow(clippy::too_many_arguments)]
     pub fn create_claim<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr: &'a String,
         payment_addr: &'a String,
         fingerprint: &'a String,
@@ -374,7 +374,7 @@ impl Claimed {
     }
 
     pub fn invalidate_claim<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         stake_addr_in: &'a String,
         fingerprint_in: &'a String,
         contract_id_in: &'a i64,
@@ -402,7 +402,7 @@ impl Claimed {
         fingerprint_in: Option<String>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let gconn = establish_connection()?;
+        let mut gconn = establish_connection()?;
 
         let result = match fingerprint_in {
             Some(f) => {
@@ -414,7 +414,7 @@ impl Claimed {
                     .distinct_on(txhash)
                     .group_by((user_id, txhash, timestamp))
                     //.count()
-                    .load::<i64>(&gconn)?; //(i64,String,DateTime<Utc>)
+                    .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
 
                 result.len() as i64
             }
@@ -426,7 +426,7 @@ impl Claimed {
                     .distinct_on(txhash)
                     .group_by((user_id, txhash, timestamp))
                     //.count()
-                    .load::<i64>(&gconn)?; //(i64,String,DateTime<Utc>)
+                    .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
 
                 result.len() as i64
             }
@@ -442,7 +442,7 @@ impl Claimed {
         to: DateTime<Utc>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let gconn = establish_connection()?;
+        let mut gconn = establish_connection()?;
 
         let result = claimed
             .select(diesel::dsl::count_star())
@@ -453,7 +453,7 @@ impl Claimed {
             .distinct_on(txhash)
             .group_by((user_id, txhash, timestamp))
             //.count()
-            .load::<i64>(&gconn)?; //(i64,String,DateTime<Utc>)
+            .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
         Ok(result.len() as i64)
     }
 
@@ -465,7 +465,7 @@ impl Claimed {
         to: DateTime<Utc>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let gconn = establish_connection()?;
+        let mut gconn = establish_connection()?;
 
         let result = match fingerprint_in {
             Some(f) => {
@@ -479,7 +479,7 @@ impl Claimed {
                     .distinct_on(txhash)
                     .group_by((user_id, txhash, timestamp))
                     //.count()
-                    .load::<i64>(&gconn)?; //(i64,String,DateTime<Utc>)
+                    .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
 
                 result.len() as i64
             }
@@ -492,7 +492,7 @@ impl Claimed {
                     .filter(timestamp.le(to))
                     .distinct_on(txhash)
                     .group_by((user_id, txhash, timestamp))
-                    .load::<i64>(&gconn)?;
+                    .load::<i64>(&mut gconn)?;
 
                 result.len() as i64
             }
@@ -502,14 +502,14 @@ impl Claimed {
 
     pub fn get_stat_count_all_tx_user(user_id_in: &i64) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let gconn = establish_connection()?;
+        let mut gconn = establish_connection()?;
 
         let result = claimed
             .select((user_id, txhash))
             .distinct_on(txhash)
             .filter(user_id.eq(user_id_in))
             .count()
-            .first::<i64>(&gconn);
+            .first::<i64>(&mut gconn);
 
         Ok(result?)
     }
@@ -520,7 +520,7 @@ impl Claimed {
         to: &DateTime<Utc>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let gconn = establish_connection()?;
+        let mut gconn = establish_connection()?;
 
         let result = claimed
             .select(diesel::dsl::count_star())
@@ -529,14 +529,14 @@ impl Claimed {
             .filter(timestamp.le(to))
             .distinct_on(txhash)
             .group_by((user_id, txhash, timestamp))
-            .load::<i64>(&gconn)?;
+            .load::<i64>(&mut gconn)?;
 
         Ok(result.len() as i64)
     }
 }
 
 impl TokenWhitelist {
-    pub fn get_whitelist(conn: &PgConnection) -> Result<Vec<TokenWhitelist>, RWDError> {
+    pub fn get_whitelist(conn: &mut PgConnection) -> Result<Vec<TokenWhitelist>, RWDError> {
         let result = token_whitelist::table.load::<TokenWhitelist>(conn)?;
         Ok(result)
     }
@@ -545,10 +545,10 @@ impl TokenWhitelist {
         current_epoch: i64,
     ) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
         let mut result = token_whitelist
             .filter(start_epoch.le(current_epoch))
-            .load::<TokenWhitelist>(&conn)?;
+            .load::<TokenWhitelist>(&mut conn)?;
 
         result.retain(|r| {
             if let Some(end) = r.end_epoch {
@@ -566,13 +566,13 @@ impl TokenWhitelist {
         user_id_in: i64,
     ) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
         let current_date = chrono::Utc::now();
         let result = token_whitelist
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
             .filter(vesting_period.gt(current_date))
-            .load::<TokenWhitelist>(&conn)?;
+            .load::<TokenWhitelist>(&mut conn)?;
 
         Ok(result)
     }
@@ -583,14 +583,14 @@ impl TokenWhitelist {
         fingerprint_in: &String,
     ) -> Result<bool, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
         let current_date = chrono::Utc::now();
         let result = match token_whitelist
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
             .filter(fingerprint.eq(fingerprint_in))
             .filter(vesting_period.lt(current_date))
-            .first::<TokenWhitelist>(&conn)
+            .first::<TokenWhitelist>(&mut conn)
         {
             Ok(o) => {
                 println!("O: {:?}", o);
@@ -606,7 +606,7 @@ impl TokenWhitelist {
     }
 
     pub fn get_token_info_ft(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         fingerprint_in: &String,
     ) -> Result<TokenInfo, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
@@ -619,7 +619,7 @@ impl TokenWhitelist {
     }
 
     pub fn get_token_info_nft(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         fingerprint_in: &Option<String>,
         policy_id_in: String,
         tokenname_in: Option<String>,
@@ -653,11 +653,11 @@ impl TokenWhitelist {
     ) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
 
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
         let mut result = token_whitelist
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<TokenWhitelist>(&conn)?;
+            .load::<TokenWhitelist>(&mut conn)?;
 
         result.retain(|t| t.mode != Calculationmode::AirDrop);
 
@@ -665,7 +665,7 @@ impl TokenWhitelist {
     }
 
     pub fn get_whitelist_entry(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         fingerprint_in: &String,
         contract_id_in: i64,
         user_id_in: i64,
@@ -681,7 +681,7 @@ impl TokenWhitelist {
 
     #[allow(clippy::too_many_arguments)]
     pub fn create_twl_entry<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         fingerprint: &'a String,
         policy_id: &'a String,
         tokenname: &'a String,
@@ -720,7 +720,7 @@ impl TokenWhitelist {
 
     #[allow(clippy::too_many_arguments)]
     pub fn update_twl<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         fingerprint_in: &'a String,
         contract_id_in: &'a i64,
         user_id_in: &'a i64,
@@ -757,7 +757,7 @@ impl TokenWhitelist {
         user_id_in: &'a i64,
     ) -> Result<TokenWhitelist, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
 
         let result = diesel::delete(
             token_whitelist
@@ -765,7 +765,7 @@ impl TokenWhitelist {
                 .filter(contract_id.eq(contract_id_in))
                 .filter(user_id.eq(user_id_in)),
         )
-        .get_result::<TokenWhitelist>(&conn)?;
+        .get_result::<TokenWhitelist>(&mut conn)?;
 
         Ok(result)
     }
@@ -777,13 +777,13 @@ impl TokenWhitelist {
     ) -> Result<Vec<GPools>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
         use std::str::FromStr;
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
         let result = token_whitelist
             .filter(fingerprint.eq(&fingerprint_in))
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
             .select(pools)
-            .first::<Vec<String>>(&conn)?;
+            .first::<Vec<String>>(&mut conn)?;
         let mut resp = Vec::<GPools>::new();
         resp.extend(
             result
@@ -804,9 +804,9 @@ impl TokenWhitelist {
         use itertools::Itertools;
         use std::str::FromStr;
 
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
         let twl = TokenWhitelist::get_whitelist_entry(
-            &conn,
+            &mut conn,
             fingerprint_in,
             *contract_id_in,
             *user_id_in,
@@ -832,7 +832,7 @@ impl TokenWhitelist {
                 .filter(user_id.eq(user_id_in)),
         )
         .set(pools.eq(spools))
-        .get_result::<TokenWhitelist>(&conn)?;
+        .get_result::<TokenWhitelist>(&mut conn)?;
 
         Ok(result)
     }
@@ -846,9 +846,9 @@ impl TokenWhitelist {
         use crate::schema::token_whitelist::dsl::*;
         use std::str::FromStr;
 
-        let conn = establish_connection()?;
+        let mut conn = establish_connection()?;
         let twl = TokenWhitelist::get_whitelist_entry(
-            &conn,
+            &mut conn,
             fingerprint_in,
             *contract_id_in,
             *user_id_in,
@@ -873,7 +873,7 @@ impl TokenWhitelist {
                 .filter(user_id.eq(user_id_in)),
         )
         .set(pools.eq(spools.clone()))
-        .get_result::<TokenWhitelist>(&conn)?;
+        .get_result::<TokenWhitelist>(&mut conn)?;
 
         Ok(result)
     }
@@ -881,7 +881,7 @@ impl TokenWhitelist {
 
 impl AirDropWhitelist {
     pub fn get_all_whitelist_entrys(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         contract_id_in: i64,
         user_id_in: i64,
     ) -> Result<Vec<AirDropWhitelist>, RWDError> {
@@ -894,7 +894,7 @@ impl AirDropWhitelist {
     }
 
     pub fn create_awl_entry<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         contract_id: &'a i64,
         user_id: &'a i64,
     ) -> Result<AirDropWhitelist, RWDError> {
@@ -910,7 +910,7 @@ impl AirDropWhitelist {
     }
 
     pub fn use_awl<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         contract_id_in: &'a i64,
         user_id_in: &'a i64,
     ) -> Result<AirDropWhitelist, RWDError> {
@@ -927,7 +927,7 @@ impl AirDropWhitelist {
     }
 
     pub fn remove_awl<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         contract_id_in: &'a i64,
         user_id_in: &'a i64,
     ) -> Result<usize, RWDError> {
@@ -947,7 +947,7 @@ impl AirDropWhitelist {
 
 impl AirDropParameter {
     pub fn get_ad_parameters_for_contract(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         contract_id_in: i64,
         user_id_in: i64,
     ) -> Result<Vec<AirDropParameter>, RWDError> {
@@ -959,7 +959,10 @@ impl AirDropParameter {
         Ok(result)
     }
 
-    pub fn get_ad_parameter(conn: &PgConnection, id_in: i64) -> Result<AirDropParameter, RWDError> {
+    pub fn get_ad_parameter(
+        conn: &mut PgConnection,
+        id_in: i64,
+    ) -> Result<AirDropParameter, RWDError> {
         use crate::schema::airdrop_parameter::dsl::*;
         let result = airdrop_parameter
             .find(id_in)
@@ -969,7 +972,7 @@ impl AirDropParameter {
 
     #[allow(clippy::too_many_arguments)]
     pub fn create_airdrop_parameter<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         contract_id: &'a i64,
         user_id: &'a i64,
         airdrop_token_type: &'a String,
@@ -997,7 +1000,10 @@ impl AirDropParameter {
             .get_result::<AirDropParameter>(conn)?)
     }
 
-    pub fn remove_airdrop_parameter(conn: &PgConnection, id_in: i64) -> Result<usize, RWDError> {
+    pub fn remove_airdrop_parameter(
+        conn: &mut PgConnection,
+        id_in: i64,
+    ) -> Result<usize, RWDError> {
         use crate::schema::airdrop_parameter::dsl::*;
         let result = diesel::delete(airdrop_parameter.find(id_in)).execute(conn)?;
 
@@ -1006,14 +1012,14 @@ impl AirDropParameter {
 }
 
 impl WlAddresses {
-    pub fn get_wladdress(conn: &PgConnection, id_in: i64) -> Result<WlAddresses, RWDError> {
+    pub fn get_wladdress(conn: &mut PgConnection, id_in: i64) -> Result<WlAddresses, RWDError> {
         use crate::schema::wladdresses::dsl::*;
         let result = wladdresses.find(id_in).first::<WlAddresses>(conn)?;
         Ok(result)
     }
 
     pub fn create_wladdress(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         address: &String,
     ) -> Result<WlAddresses, RWDError> {
         let new_entry = WlAddressesNew {
@@ -1026,7 +1032,7 @@ impl WlAddresses {
             .get_result::<WlAddresses>(conn)?)
     }
 
-    pub fn remove_wladdress(conn: &PgConnection, id_in: i64) -> Result<usize, RWDError> {
+    pub fn remove_wladdress(conn: &mut PgConnection, id_in: i64) -> Result<usize, RWDError> {
         use crate::schema::wladdresses::dsl::*;
         let result = diesel::delete(wladdresses.find(id_in)).execute(conn)?;
 
@@ -1035,7 +1041,7 @@ impl WlAddresses {
 }
 
 impl WlAlloc {
-    pub fn get_whitelist(conn: &PgConnection, id_in: i64) -> Result<Vec<String>, RWDError> {
+    pub fn get_whitelist(conn: &mut PgConnection, id_in: i64) -> Result<Vec<String>, RWDError> {
         let result = wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
@@ -1045,7 +1051,7 @@ impl WlAlloc {
     }
 
     pub fn create_alloc<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         wl_in: &'a i64,
         addr_in: &'a i64,
     ) -> Result<WlAlloc, RWDError> {
@@ -1060,7 +1066,7 @@ impl WlAlloc {
     }
 
     pub fn remove_wlentry<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         wl_in: &'a i64,
         addr_in: &'a i64,
     ) -> Result<usize, RWDError> {
@@ -1069,14 +1075,14 @@ impl WlAlloc {
         Ok(result)
     }
 
-    pub fn remove_wl(conn: &PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
+    pub fn remove_wl(conn: &mut PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
         let result = diesel::delete(wlalloc::table.filter(wlalloc::wl.eq(wl_in))).execute(conn)?;
         Ok(result)
     }
 }
 
 impl Whitelist {
-    pub fn get_whitelist(conn: &PgConnection, id_in: i64) -> Result<Whitelist, RWDError> {
+    pub fn get_whitelist(conn: &mut PgConnection, id_in: i64) -> Result<Whitelist, RWDError> {
         let result = whitelist::table
             .filter(whitelist::id.eq(id_in))
             .first::<Whitelist>(conn)?;
@@ -1084,7 +1090,7 @@ impl Whitelist {
     }
 
     pub fn create_wladdress(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         max_addr_repeat: &i32,
     ) -> Result<Whitelist, RWDError> {
         let new_entry = WhitelistNew { max_addr_repeat };
@@ -1095,7 +1101,7 @@ impl Whitelist {
     }
 
     pub fn add_to_wl<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         wl_in: &'a i64,
         address: &'a String,
     ) -> Result<WlAlloc, RWDError> {
@@ -1104,7 +1110,7 @@ impl Whitelist {
         Ok(ralloc)
     }
 
-    pub fn remove_wl(conn: &PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
+    pub fn remove_wl(conn: &mut PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
         let _result = WlAlloc::remove_wl(conn, wl_in)?;
 
         let result =
@@ -1114,7 +1120,10 @@ impl Whitelist {
 }
 
 impl MintProject {
-    pub fn get_mintproject_by_id(conn: &PgConnection, id_in: i64) -> Result<MintProject, RWDError> {
+    pub fn get_mintproject_by_id(
+        conn: &mut PgConnection,
+        id_in: i64,
+    ) -> Result<MintProject, RWDError> {
         let result = mint_projects::table
             .filter(mint_projects::id.eq(id_in))
             .first::<MintProject>(conn)?;
@@ -1122,7 +1131,7 @@ impl MintProject {
     }
 
     pub fn get_mintproject_by_uid_cid(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         uid_in: i64,
         cid_in: i64,
     ) -> Result<MintProject, RWDError> {
@@ -1135,7 +1144,7 @@ impl MintProject {
 
     #[allow(clippy::too_many_arguments)]
     pub fn create_mintproject<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         customer_name: &'a String,
         project_name: &'a String,
         user_id: &'a i64,
@@ -1173,7 +1182,7 @@ impl MintProject {
             .get_result::<MintProject>(conn)?)
     }
 
-    pub fn remove_mintproject(conn: &PgConnection, id_in: &i64) -> Result<usize, RWDError> {
+    pub fn remove_mintproject(conn: &mut PgConnection, id_in: &i64) -> Result<usize, RWDError> {
         let result = diesel::delete(mint_projects::table.find(id_in)).execute(conn)?;
 
         Ok(result)
@@ -1181,7 +1190,7 @@ impl MintProject {
 }
 
 impl Nft {
-    pub fn get_nfts_by_pid(conn: &PgConnection, id_in: i64) -> Result<Vec<Nft>, RWDError> {
+    pub fn get_nfts_by_pid(conn: &mut PgConnection, id_in: i64) -> Result<Vec<Nft>, RWDError> {
         let result = nft_table::table
             .filter(nft_table::project_id.eq(id_in))
             .load::<Nft>(conn)?;
@@ -1189,7 +1198,7 @@ impl Nft {
     }
 
     pub fn get_nft_by_assetnameb(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         pid_in: i64,
         assetname_in: Vec<u8>,
     ) -> Result<Nft, RWDError> {
@@ -1200,7 +1209,7 @@ impl Nft {
     }
 
     pub fn get_nft_by_assetname_str(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         pid_in: i64,
         assetname_in: &String,
     ) -> Result<Nft, RWDError> {
@@ -1212,7 +1221,7 @@ impl Nft {
     }
 
     pub fn get_random_unminted_nft(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         pid_in: i64,
     ) -> Result<Option<Nft>, RWDError> {
         use rand::{thread_rng, Rng};
@@ -1231,7 +1240,7 @@ impl Nft {
     }
 
     pub fn get_nft_by_payaddr(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         pid_in: i64,
         payment_addr: &String,
     ) -> Result<Vec<Nft>, RWDError> {
@@ -1243,7 +1252,7 @@ impl Nft {
     }
 
     pub fn get_nft_by_payaddr_unminted(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         pid_in: i64,
         payment_addr: &String,
     ) -> Result<Vec<Nft>, RWDError> {
@@ -1257,7 +1266,7 @@ impl Nft {
 
     #[allow(clippy::too_many_arguments)]
     pub fn create_nft<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         project_id: &'a i64,
         assetname_b: &'a Vec<u8>,
         asset_name: &'a String,
@@ -1294,7 +1303,7 @@ impl Nft {
     }
 
     pub fn set_nft_minted<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         id_in: &'a i64,
         assetnameb: &'a Vec<u8>,
         txhash_in: &'a String,
@@ -1310,7 +1319,7 @@ impl Nft {
     }
 
     pub fn set_nft_confirmed<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         id_in: &'a i64,
         assetnameb: &'a Vec<u8>,
         txhash_in: &'a String,
@@ -1329,7 +1338,7 @@ impl Nft {
     }
 
     pub fn set_nft_payment_addr<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         id_in: &'a i64,
         assetnameb: &'a Vec<u8>,
         payment_addr_in: &'a String,
@@ -1342,7 +1351,7 @@ impl Nft {
     }
 
     pub fn set_nft_ipfs<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         id_in: &'a i64,
         assetnameb: &'a Vec<u8>,
         ipfs: &'a String,
@@ -1355,7 +1364,7 @@ impl Nft {
     }
 
     pub fn set_nft_metadata<'a>(
-        conn: &PgConnection,
+        conn: &mut PgConnection,
         id_in: &'a i64,
         assetnameb: &'a Vec<u8>,
         metadata: &'a String,

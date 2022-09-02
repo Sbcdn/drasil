@@ -7,7 +7,7 @@
 #################################################################################
 */
 extern crate tokio;
-use hugin::database::drasildb::{TBContracts, TBMultiSigLoc};
+use hugin::database::drasildb::{error::SystemDBError, TBContracts, TBMultiSigLoc};
 use murin::*;
 use structopt::StructOpt;
 use zeroize::Zeroize;
@@ -35,7 +35,7 @@ pub fn harden(num: u32) -> u32 {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), MurinError> {
+async fn main() -> Result<(), SystemDBError> {
     let opt = Opt::from_args();
 
     let mut net_bytes = 0b0001;

@@ -1,4 +1,3 @@
-extern crate diesel;
 extern crate pretty_env_logger;
 use hugin::protocol::{connection::Connection, Shutdown};
 use hugin::Command;

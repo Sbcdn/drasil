@@ -21,12 +21,9 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 tokio = { version = "1", features = ["full"] }
 serde_json = { version = "1.0.79", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-dotenv = "0.15.0"
 structopt = "0.3.26"
 chrono = "0.4.19"
-bigdecimal = { version = "0.1.2", features = [
-    "serde",
-] } # needs to be 0.1.2 otherwise not working -> dependency diesel
+bigdecimal = { version = "0.3.0", features = ["serde"] }
 strum = "0.24"
 strum_macros = "0.24"
 pretty_env_logger = "0.4.0"

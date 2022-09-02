@@ -14,7 +14,6 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 use std::str::FromStr;
-use tracing::{debug, instrument};
 
 #[derive(Debug, Clone)]
 pub struct FinalizeContract {
@@ -98,7 +97,6 @@ impl FinalizeContract {
         })
     }
 
-    #[instrument(skip(self, dst))]
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response = Frame::Simple("Error: something went wrong".to_string());
         let raw_tx = murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;
@@ -139,7 +137,7 @@ impl FinalizeContract {
         // store tx into permanent storage (drasildb)
         // delete tx from redis
 
-        debug!(?response);
+        log::debug!("{:?}", response);
         dst.write_frame(&response).await?;
         Ok(())
     }

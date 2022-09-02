@@ -32,8 +32,6 @@ pub use crate::client::Client;
 pub mod schema;
 pub use schema::*;
 
-extern crate dotenv;
-
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;

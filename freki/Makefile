@@ -1,5 +1,5 @@
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
-PROJECT=mdrsl
+PROJECT=drasil
 IMAGE=freki
 VERSION=v1.0
 

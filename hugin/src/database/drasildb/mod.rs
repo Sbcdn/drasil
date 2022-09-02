@@ -9,7 +9,7 @@
 #![allow(clippy::extra_unused_lifetimes)]
 
 pub mod api;
-
+pub mod error;
 use crate::schema::{
     ca_payment, ca_payment_hash, contracts, drasil_user, email_verification_token, multisig_keyloc,
     multisigs,
@@ -17,13 +17,11 @@ use crate::schema::{
 use chrono::{DateTime, Utc};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use dotenv::dotenv;
+use error::SystemDBError;
 use gungnir::{BigDecimal, FromPrimitive, ToPrimitive};
-use mimir::MurinError;
 use std::env;
 
-pub fn establish_connection() -> Result<PgConnection, murin::MurinError> {
-    dotenv().ok();
+pub fn establish_connection() -> Result<PgConnection, SystemDBError> {
     log::debug!("Establishing Drasil DB connection...");
     let database_url = env::var("PLATFORM_DB_URL")?;
     let dbcon = PgConnection::establish(&database_url)?;
@@ -207,7 +205,7 @@ impl CaValue {
         CaValue { ada_amount, token }
     }
 
-    pub fn into_cvalue(&self) -> Result<murin::clib::utils::Value, MurinError> {
+    pub fn into_cvalue(&self) -> Result<murin::clib::utils::Value, SystemDBError> {
         let coin = murin::clib::utils::to_bignum(self.ada_amount.to_u64().unwrap());
         let mut value = murin::clib::utils::Value::new(&coin);
         let mut ma = murin::clib::MultiAsset::new();

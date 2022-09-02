@@ -13,7 +13,6 @@ use crate::{Connection, Frame, IntoFrame};
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
-use tracing::{debug, instrument};
 
 #[derive(Debug, Clone)]
 pub struct BuildStdTx {
@@ -60,14 +59,12 @@ impl BuildStdTx {
         })
     }
 
-    #[instrument(skip(self, dst))]
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        dotenv::dotenv().ok();
         let mut response =
             Frame::Simple("ERROR: Could not build multisignature transaction".to_string());
 
         if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
-            debug!(?response);
+            log::debug!("{:?}", response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
         }
@@ -84,7 +81,7 @@ impl BuildStdTx {
                 .with_varint_encoding()
                 .serialize(&ret)?,
         ));
-        debug!(?response);
+        log::debug!("{:?}", response);
         dst.write_frame(&response).await?;
 
         Ok(())
@@ -114,8 +111,8 @@ impl BuildStdTx {
         let mut gtxd = self.transaction_pattern().into_txdata().await?;
         gtxd.set_user_id(self.customer_id);
 
-        let dbsync = mimir::establish_connection()?;
-        let slot = mimir::get_slot(&dbsync)?;
+        let mut dbsync = mimir::establish_connection()?;
+        let slot = mimir::get_slot(&mut dbsync)?;
         gtxd.set_current_slot(slot as u64);
 
         let bech32_stake_addr = match gtxd.get_stake_address().to_bech32(None) {

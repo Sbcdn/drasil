@@ -18,18 +18,27 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-diesel = { version = "1.4.8", features = ["postgres","numeric","chrono","64-column-tables","r2d2"] }
-chrono = { version="0.4.19", features = ["serde"]}
-bigdecimal = { version = "0.1.2", features = ["serde"] } # needs to be 0.1.2 otherwise not working -> dependency diesel
+diesel = { version = "2.0.0", features = [
+    "postgres",
+    "numeric",
+    "chrono",
+    "64-column-tables",
+    "r2d2",
+] }
+diesel-derive-enum = { version = "2.0.0-rc.0", features = ["postgres"] }
+chrono = { version = "0.4.19", features = ["serde"] }
+bigdecimal = { version = "0.3.0", features = [
+    "serde",
+] } # needs to be 0.1.2 otherwise not working -> dependency diesel
 dotenv = "0.15.0"
 pretty_env_logger = "0.4.0"
 log = "0.4"
 hex = "0.4"
+thiserror = "1.0.32"
 
-murin = { path = "../murin", version="0.1.0" }
+murin = { path = "../murin", version = "0.1.0" }
 #murin = { git = "ssh://git@github.com/sbcdn/murin.git", branch="main" }
 
 
 [dev-dependencies]
 tokio-test = "*"
-

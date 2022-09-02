@@ -6,6 +6,13 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+
+pub mod sql_types {
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "Calculationmode"))]
+    pub struct Calculationmode;
+}
+
 table! {
     airdrop_parameter (id) {
         id -> Int8,
@@ -69,6 +76,7 @@ table! {
 }
 
 table! {
+
     token_whitelist (id) {
         id -> Int8,
         fingerprint -> Nullable<Varchar>,
@@ -78,7 +86,7 @@ table! {
         user_id -> Int8,
         vesting_period -> Timestamptz,
         pools -> Array<Text>,
-        mode -> crate::Calculationmode,
+        mode -> crate::schema::sql_types::Calculationmode,
         equation -> Text,
         start_epoch -> Int8,
         end_epoch -> Nullable<Int8>,

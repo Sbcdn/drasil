@@ -119,7 +119,7 @@ impl Command {
         Ok(())
     }
 
-    pub(crate) fn get_name(&self) -> &str {
+    pub(crate) fn _get_name(&self) -> &str {
         match self {
             Command::BuildContract(_) => "bct",
             Command::BuildMultiSig(_) => "bms",

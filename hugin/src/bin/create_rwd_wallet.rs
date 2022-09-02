@@ -1,3 +1,4 @@
+use hugin::error::SystemDBError;
 /*
 #################################################################################
 # See LICENSE.md for full license information.                                  #
@@ -48,7 +49,7 @@ pub fn harden(num: u32) -> u32 {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), MurinError> {
+async fn main() -> Result<(), SystemDBError> {
     let opt = Opt::from_args();
 
     //let mut network = NetworkIdKind::Mainnet;

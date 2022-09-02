@@ -7,13 +7,13 @@
 #################################################################################
 */
 #![warn(unused_assignments)]
-use hugin::database::drasildb::*;
+use hugin::{database::drasildb::*, error::SystemDBError};
 
 extern crate diesel;
 use std::io::stdin;
 
-fn main() -> Result<(), murin::MurinError> {
-    let connection = establish_connection()?;
+fn main() -> Result<(), SystemDBError> {
+    let mut connection = establish_connection()?;
 
     println!("Please provide id (i64):");
     let mut db_id = String::new();
@@ -21,7 +21,7 @@ fn main() -> Result<(), murin::MurinError> {
     let db_id = &db_id[..(db_id.len() - 1)];
     let db_id = db_id.parse::<i64>()?;
 
-    let contract_org = TBContracts::get_contract_by_id(&connection, db_id)?;
+    let contract_org = TBContracts::get_contract_by_id(&mut connection, db_id)?;
 
     println!("Please provide contract-id (i64):");
     println!("Leave empty to keep current value.");
@@ -35,20 +35,9 @@ fn main() -> Result<(), murin::MurinError> {
 
     println!("Please provide a description (optional):");
     println!("Leave empty to keep current value.");
-    let mut description_ = String::new();
-    stdin().read_line(&mut description_).unwrap();
-    let description_ = &description_[..(description_.len() - 1)];
-
-    let mut description: Option<&str> = None;
-    let mut k = String::new();
-    if let Some(org_description) = contract_org.description {
-        k = org_description;
-        description = Some(&k);
-    };
-
-    if !description_.is_empty() {
-        description = Some(description_)
-    }
+    let mut description = String::new();
+    stdin().read_line(&mut description).unwrap();
+    let description = &description[..(description.len() - 1)];
 
     println!("You want to depricate the contract? (true / false):");
     println!("Leave empty to keep current value.");
@@ -59,8 +48,17 @@ fn main() -> Result<(), murin::MurinError> {
     if !depri_.is_empty() {
         depri = depri_.parse::<bool>()?;
     }
-    let contract =
-        TBContracts::update_contract(&connection, &db_id, &contract_id, description, &depri)?;
+    let contract = TBContracts::update_contract(
+        &mut connection,
+        &db_id,
+        &contract_id,
+        contract_org
+            .description
+            .as_ref()
+            .map(|x| Some(&**x))
+            .unwrap_or(Some(description)),
+        &depri,
+    )?;
 
     println!("\n\n Success! updated: \n {:?}", contract.id);
     Ok(())

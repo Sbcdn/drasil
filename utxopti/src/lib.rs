@@ -18,8 +18,8 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, UOError>;
 
 pub async fn optimize(addr: &String, uid: i64, cid: i64) -> Result<()> {
-    let dbsconn = mimir::establish_connection()?;
-    let contract_utxos = mimir::get_address_utxos(&dbsconn, addr)?;
+    let mut dbsconn = mimir::establish_connection()?;
+    let contract_utxos = mimir::get_address_utxos(&mut dbsconn, addr)?;
 
     let ada_utxos = contract_utxos.get_coin_only();
     let mut t_utxos = contract_utxos.get_token_only();
@@ -385,7 +385,7 @@ fn finalize_tx(
     let a = murin::clib::utils::to_bignum(44u64);
     let b = murin::clib::utils::to_bignum(155381u64);
 
-    let slot = mimir::get_slot(&mimir::establish_connection()?)? as u64 + 3600;
+    let slot = mimir::get_slot(&mut mimir::establish_connection()?)? as u64 + 3600;
     let network = match addr.network_id()? {
         1 => murin::clib::NetworkId::mainnet(),
         _ => murin::clib::NetworkId::testnet(),

@@ -14,7 +14,6 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 use std::str::FromStr;
-use tracing::{debug, instrument};
 
 #[derive(Debug, Clone)]
 pub struct FinalizeMultiSig {
@@ -98,7 +97,6 @@ impl FinalizeMultiSig {
         })
     }
 
-    #[instrument(skip(self, dst))]
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response = Frame::Simple("Error: something went wrong".to_string());
         let raw_tx = murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;
@@ -116,14 +114,14 @@ impl FinalizeMultiSig {
                 let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
                 let rwd_data = murin::RWDTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
 
-                let gcon = gungnir::establish_connection()?;
+                let mut gcon = gungnir::establish_connection()?;
                 for token in rwd_data.get_reward_tokens() {
                     let fingerprint = murin::chelper::make_fingerprint(
                         &hex::encode(token.0.to_bytes()),
                         &hex::encode(token.1.name()),
                     )?;
                     gungnir::Claimed::create_claim(
-                        &gcon,
+                        &mut gcon,
                         &tx_data
                             .get_stake_address()
                             .to_bech32(None)
@@ -141,7 +139,7 @@ impl FinalizeMultiSig {
                         None,
                     )?;
                     gungnir::Rewards::update_claimed(
-                        &gcon,
+                        &mut gcon,
                         &tx_data.get_stake_address().to_bech32(None).unwrap(),
                         &fingerprint,
                         &(raw_tx.get_contract_id()? as i64),
@@ -186,10 +184,13 @@ impl FinalizeMultiSig {
             }
 
             _ => {
-                return Err(CmdError::Custom {
-                    str: format!("ERROR MultiSigType does not exist: '{:?}'", self.mtype),
-                }
-                .into());
+                log::debug!("{:?}", response);
+                dst.write_frame(&response).await?;
+                return Ok(());
+                //return Err(CmdError::Custom {
+                //    str: format!("ERROR MultiSigType does not exist: '{:?}'", self.mtype),
+                //}
+                //.into());
             }
         }
 
@@ -207,7 +208,7 @@ impl FinalizeMultiSig {
                 .with_varint_encoding()
                 .serialize(&ret)?,
         ));
-        debug!(?response);
+        log::debug!("{:?}", response);
         dst.write_frame(&response).await?;
         Ok(())
     }
@@ -216,9 +217,9 @@ impl FinalizeMultiSig {
         use crate::database::drasildb::*;
         use murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
 
-        let drasildbcon = establish_connection()?;
+        let mut drasildbcon = establish_connection()?;
         let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &raw_tx.get_contract_id()?,
             &(self.customer_id as i64),
             &raw_tx.get_contract_version()?,
@@ -244,9 +245,9 @@ impl FinalizeMultiSig {
         use crate::database::drasildb::*;
         use murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
 
-        let drasildbcon = establish_connection()?;
+        let mut drasildbcon = establish_connection()?;
         let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &raw_tx.get_contract_id()?,
             &(self.customer_id as i64),
             &raw_tx.get_contract_version()?,
@@ -271,9 +272,9 @@ impl FinalizeMultiSig {
         use crate::database::drasildb::*;
         use murin::txbuilders::rwdist::build_utxopti::finalize_utxopti;
 
-        let drasildbcon = establish_connection()?;
+        let mut drasildbcon = establish_connection()?;
         let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-            &drasildbcon,
+            &mut drasildbcon,
             &raw_tx.get_contract_id()?,
             &(self.customer_id as i64),
             &raw_tx.get_contract_version()?,

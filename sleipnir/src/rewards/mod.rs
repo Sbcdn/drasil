@@ -123,8 +123,12 @@ pub async fn depricate_contract(
     user_id: i64,
     contract_id: i64,
 ) -> Result<serde_json::Value, SleipnirError> {
-    let dconn = hugin::database::establish_connection()?;
-    let resp = hugin::TBContracts::depricate_contract(&dconn, &(user_id), &(contract_id), &true)?;
+    let resp = hugin::TBContracts::depricate_contract(
+        &mut hugin::database::establish_connection()?,
+        &(user_id),
+        &(contract_id),
+        &true,
+    )?;
 
     Ok(json!(resp))
 }
@@ -194,8 +198,12 @@ pub async fn reactivate_contract(
     user_id: i64,
     contract_id: i64,
 ) -> Result<serde_json::Value, SleipnirError> {
-    let dconn = hugin::database::establish_connection()?;
-    let resp = hugin::TBContracts::depricate_contract(&dconn, &(user_id), &(contract_id), &false)?;
+    let resp = hugin::TBContracts::depricate_contract(
+        &mut hugin::database::establish_connection()?,
+        &(user_id),
+        &(contract_id),
+        &false,
+    )?;
 
     Ok(json!(resp))
 }
@@ -221,14 +229,13 @@ pub fn create_token_whitelisting(
         );
     }
     log::debug!("Retrieve token information...");
-    let mconn = mimir::establish_connection()?;
-    let ti = mimir::get_token_info(&mconn, &fingerprint)?;
+    let mut mconn = mimir::establish_connection()?;
+    let ti = mimir::get_token_info(&mut mconn, &fingerprint)?;
 
     //Check Data is valid
     // Epochs
     log::debug!("Process epochs...");
-    let mconn = mimir::establish_connection()?;
-    let current_epoch = mimir::get_epoch(&mconn)? as i64;
+    let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
     let mut start_epoch = start_epoch_in;
     if start_epoch < current_epoch {
         log::error!(
@@ -293,10 +300,10 @@ pub fn create_token_whitelisting(
 
     // Check token does not already exists -> database constraint ensures this already
     log::debug!("Establish connection to rwd database...");
-    let gconn = gungnir::establish_connection()?;
+    let mut gconn = gungnir::establish_connection()?;
     log::debug!("Try to create twl...");
     let resp = match gungnir::TokenWhitelist::create_twl_entry(
-        &gconn,
+        &mut gconn,
         &fingerprint,
         &ti.policy,
         &ti.tokenname,
@@ -348,8 +355,8 @@ pub async fn add_pools(
     pools: Vec<String>,
 ) -> Result<serde_json::Value, SleipnirError> {
     // Pools
-    let mconn = mimir::establish_connection()?;
-    let current_epoch = mimir::get_epoch(&mconn)? as i64;
+    let mut mconn = mimir::establish_connection()?;
+    let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
     let mut spools = Vec::<gungnir::GPools>::new();
     spools.extend(pools.iter().map(|p| gungnir::GPools {
         pool_id: p.clone(),

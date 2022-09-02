@@ -354,16 +354,16 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let gconn =
+        let mut gconn =
             gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let rewards = gungnir::Rewards::get_rewards_stake_addr(&gconn, bech32addr);
+        let rewards = gungnir::Rewards::get_rewards_stake_addr(&mut gconn, bech32addr);
         println!("Rewards: {:?}", rewards);
         let lovelace = BigDecimal::from_i32(1000000).unwrap();
         let response = match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<RewardResponse>::new();
                 for rwd in rwds {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&gconn, &rwd.fingerprint) {
+                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
                         Ok(ti) => {
                             ret.push(RewardResponse::new(
                                 rwd.stake_addr,
@@ -412,10 +412,10 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let gconn =
+        let mut gconn =
             gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
         let rewards = gungnir::Rewards::get_rewards(
-            &gconn,
+            &mut gconn,
             bech32addr,
             contract_id as i64,
             customer_id as i64,
@@ -426,7 +426,7 @@ mod handlers {
                 let mut ret = Vec::<RewardResponse>::new();
                 let lovelace = BigDecimal::from_i32(1000000).unwrap();
                 for rwd in rwds {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&gconn, &rwd.fingerprint) {
+                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
                         Ok(ti) => {
                             ret.push(RewardResponse::new(
                                 rwd.stake_addr,
@@ -475,10 +475,10 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let gconn =
+        let mut gconn =
             gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
         let claims = gungnir::Claimed::get_claims(
-            &gconn,
+            &mut gconn,
             &bech32addr,
             contract_id as i64,
             customer_id as i64,
@@ -487,7 +487,7 @@ mod handlers {
             Ok(clms) => {
                 let mut ret = Vec::<ClaimedResponse>::new();
                 for clm in clms {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&gconn, &clm.fingerprint) {
+                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
                         Ok(cl) => ret.push(ClaimedResponse::new(
                             clm.stake_addr,
                             clm.payment_addr,
@@ -541,15 +541,15 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let gconn =
+        let mut gconn =
             gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let claims = gungnir::Claimed::get_all_claims(&gconn, &bech32addr);
+        let claims = gungnir::Claimed::get_all_claims(&mut gconn, &bech32addr);
 
         let response = match claims {
             Ok(clms) => {
                 let mut ret = Vec::<ClaimedResponse>::new();
                 for clm in clms {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&gconn, &clm.fingerprint) {
+                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
                         Ok(cl) => ret.push(ClaimedResponse::new(
                             clm.stake_addr,
                             clm.payment_addr,
@@ -596,9 +596,9 @@ mod handlers {
         _: u64,
         fingerprint: String,
     ) -> Result<impl warp::Reply, Infallible> {
-        let gconn =
+        let mut gconn =
             gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let response = match gungnir::TokenWhitelist::get_token_info_ft(&gconn, &fingerprint) {
+        let response = match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &fingerprint) {
             Ok(t) => t,
             Err(e) => {
                 log::info!(

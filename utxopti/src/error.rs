@@ -30,6 +30,10 @@ pub enum UOError {
     MurinError(#[from] murin::error::MurinError),
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
+    #[error(transparent)]
+    DBSyncError(#[from] mimir::MimirError),
+    #[error(transparent)]
+    HuginError(#[from] hugin::error::SystemDBError),
 }
 
 impl From<murin::clib::error::JsError> for UOError {

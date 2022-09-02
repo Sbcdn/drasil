@@ -20,21 +20,15 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 warp = { version = "0.3", features = ["tls"] }
-tower = { version = "0.4.12", features = ["full"] }
-tower-http = { version = "0.2.5", features = ["full"] }
-hyper = "0.14.18"
 bytes = "1"
 pretty_env_logger = "0.4.0"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.79"
-bigdecimal = { version = "0.1.2", features = ["serde"] }
-dotenv = "0.15.0"
-cardano-serialization-lib = "11.0.0"
-tracing = "0.1.32"
+bigdecimal = { version = "0.3.0", features = ["serde"] }
+cardano-serialization-lib = "11.0.5"
 hex = "0.4"
 chrono = { version = "0.4.19", features = ["serde"] }
-num = "0.4.0"
 jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 thiserror = "1.0.32"
 

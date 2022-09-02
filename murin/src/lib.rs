@@ -6,7 +6,6 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-extern crate diesel;
 pub mod chelper;
 pub mod cip30;
 pub mod error;
@@ -24,16 +23,6 @@ pub use utxomngr::*;
 
 pub use cryptoxide::*;
 
-extern crate dotenv;
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
-
-macro_rules! pub_struct {
-    ($name:ident {$($field:ident: $t:ty,)*}) => {
-        #[derive(Serialize,Deserialize,Debug, Clone, PartialEq)] // ewww
-        pub struct $name {
-            $(pub $field: $t),*
-        }
-    }
-}

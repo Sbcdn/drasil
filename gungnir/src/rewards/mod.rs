@@ -17,9 +17,8 @@ use crate::error::RWDError;
 use bigdecimal::BigDecimal;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
-use dotenv::dotenv;
-use std::env; //ToPrimitive
-              //use diesel_derive_enum::*;
+use diesel_derive_enum::*;
+use std::env;
 
 use chrono::serde::ts_seconds::serialize as to_ts;
 use chrono::{DateTime, Utc};
@@ -31,7 +30,6 @@ use crate::schema::{
 };
 
 pub fn establish_connection() -> Result<PgConnection, RWDError> {
-    dotenv().ok();
     Ok(PgConnection::establish(&env::var("REWARDS_DB_URL")?)?)
 }
 
@@ -42,25 +40,31 @@ pub fn establish_connection() -> Result<PgConnection, RWDError> {
     Clone,
     PartialEq,
     Eq,
-    FromSqlRow,
-    AsExpression,
-    SqlType,
-)] //FromSqlRow DbEnum
-#[sql_type = "Calculationmode"]
-#[postgres(type_name = "Calculationmode")]
+    //FromSqlRow,
+    //AsExpression,
+    //SqlType,
+    DbEnum,
+)]
+#[DieselTypePath = "crate::schema::sql_types::Calculationmode"]
 pub enum Calculationmode {
+    #[db_rename = "custom"]
     Custom,
+    #[db_rename = "modifactorandequation"]
     ModifactorAndEquation,
+    #[db_rename = "simpleequation"]
     SimpleEquation,
+    #[db_rename = "fixedendepoch"]
     FixedEndEpoch,
+    #[db_rename = "relationaltoadastake"]
     RelationalToADAStake,
+    #[db_rename = "airdrop"]
     AirDrop,
 }
-
+/*
 impl diesel::serialize::ToSql<Calculationmode, diesel::pg::Pg> for Calculationmode {
-    fn to_sql<W: std::io::Write>(
+    fn to_sql(
         &self,
-        out: &mut diesel::serialize::Output<W, diesel::pg::Pg>,
+        out: &mut diesel::serialize::Output<diesel::pg::Pg>,
     ) -> diesel::serialize::Result {
         match *self {
             Calculationmode::Custom => out.write_all(b"custom")?,
@@ -74,9 +78,10 @@ impl diesel::serialize::ToSql<Calculationmode, diesel::pg::Pg> for Calculationmo
     }
 }
 impl diesel::deserialize::FromSql<Calculationmode, diesel::pg::Pg> for Calculationmode {
-    fn from_sql(bytes: Option<&[u8]>) -> diesel::deserialize::Result<Self> {
-        match not_none!(bytes) {
-            b"custom" => Ok(Calculationmode::Custom),
+    fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
+        match bytes {
+            //not_none!
+            diesel::pg::PgValue<'_> b"custom" => Ok(Calculationmode::Custom),
             b"modifactorandequation" => Ok(Calculationmode::ModifactorAndEquation),
             b"simpleequation" => Ok(Calculationmode::SimpleEquation),
             b"fixedendepoch" => Ok(Calculationmode::FixedEndEpoch),
@@ -85,8 +90,17 @@ impl diesel::deserialize::FromSql<Calculationmode, diesel::pg::Pg> for Calculati
             _ => Err("Unrecognized enum variant".into()),
         }
     }
-}
 
+    fn from_nullable_sql(
+        bytes: Option<diesel::backend::RawValue<'_, diesel::pg::Pg>>,
+    ) -> diesel::deserialize::Result<Self> {
+        match bytes {
+            Some(bytes) => Self::from_sql(bytes),
+            None => Err(Box::new(diesel::result::UnexpectedNullError)),
+        }
+    }
+}
+ */
 impl ToString for Calculationmode {
     fn to_string(&self) -> String {
         match self {

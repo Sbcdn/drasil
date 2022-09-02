@@ -6,6 +6,24 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+pub mod sql_types {
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "Syncstatetype"))]
+    pub struct Syncstatetype;
+
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "Scriptpurposetype"))]
+    pub struct Scriptpurposetype;
+
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "Rewardtype"))]
+    pub struct Rewardtype;
+
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "Scripttype"))]
+    pub struct Scripttype;
+}
+
 table! {
     unspent_utxos (id){
         id -> Int8,
@@ -183,7 +201,7 @@ table! {
         id -> Int8,
         no -> Int8,
         seconds -> Int8,
-        state -> crate::Syncstatetype,
+        state -> crate::schema::sql_types::Syncstatetype,
     }
 }
 
@@ -366,7 +384,7 @@ table! {
         unit_mem -> Int8,
         unit_steps -> Int8,
         fee -> Numeric,
-        purpose -> crate::Scriptpurposetype,
+        purpose -> crate::schema::sql_types::Scriptpurposetype,
         index -> Int4,
         script_hash -> Nullable<Bytea>,
         datum_id -> Int8,
@@ -396,7 +414,7 @@ table! {
         id -> Int8,
         addr_id -> Int8,
         #[sql_name = "type"]
-        type_ -> crate::Rewardtype,
+        type_ -> crate::schema::sql_types::Rewardtype,
         amount -> Numeric,
         earned_epoch -> Int8,
         spendable_epoch -> Int8,
@@ -419,7 +437,7 @@ table! {
         tx_id -> Int8,
         hash -> Bytea,
         #[sql_name = "type"]
-        type_ -> crate::Scripttype,
+        type_ -> crate::schema::sql_types::Scripttype,
         json -> Nullable<Jsonb>,
         bytes -> Nullable<Bytea>,
         serialised_size -> Nullable<Int4>,

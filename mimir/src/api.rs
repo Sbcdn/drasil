@@ -8,12 +8,15 @@
 */
 use super::*;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
-use murin::MurinError;
+use error::MimirError;
 
 /// get all tokens of an utxo
-pub fn get_utxo_tokens(conn: &PgConnection, utxo_id: i64) -> Result<Vec<UMultiAsset>, MurinError> {
+pub fn get_utxo_tokens(
+    conn: &mut PgConnection,
+    utxo_id: i64,
+) -> Result<Vec<UMultiAsset>, MimirError> {
     let multi_assets = multi_asset::table
-        .left_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+        .inner_join(ma_tx_out::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .left_join(unspent_utxos::table.on(ma_tx_out::tx_out_id.eq(unspent_utxos::id)))
         .filter(unspent_utxos::id.eq(utxo_id))
         //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
@@ -28,12 +31,12 @@ pub fn get_utxo_tokens(conn: &PgConnection, utxo_id: i64) -> Result<Vec<UMultiAs
     Ok(multi_assets)
 }
 
-pub fn select_addr_of_first_transaction(stake_address_in: &str) -> Result<String, MurinError> {
+pub fn select_addr_of_first_transaction(stake_address_in: &str) -> Result<String, MimirError> {
     log::debug!(
         "Try to find first address used by this stake address: {}",
         stake_address_in
     );
-    let conn = establish_connection()?;
+    let mut conn = establish_connection()?;
     let resp = tx_out::table
         .left_join(tx::table.on(tx_out::tx_id.eq(tx::id)))
         .left_join(block::table.on(tx::block_id.eq(block::id)))
@@ -43,7 +46,7 @@ pub fn select_addr_of_first_transaction(stake_address_in: &str) -> Result<String
         .filter(stake_address::view.eq(stake_address_in))
         .select(tx_out::address)
         .order(block::slot_no.asc())
-        .first::<String>(&conn);
+        .first::<String>(&mut conn);
     log::debug!("Found address: {:?}", resp);
     let resp = resp?;
     Ok(resp)
@@ -51,9 +54,9 @@ pub fn select_addr_of_first_transaction(stake_address_in: &str) -> Result<String
 
 /// get all utxos of an address
 pub fn get_address_utxos(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     addr: &String,
-) -> Result<murin::TransactionUnspentOutputs, MurinError> {
+) -> Result<murin::TransactionUnspentOutputs, MimirError> {
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::address.eq(addr))
         .load::<UnspentUtxo>(conn)?;
@@ -66,9 +69,9 @@ pub fn get_address_utxos(
 
 /// Get all utxos of a stake address
 pub fn get_stake_address_utxos(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     stake_addr: &String,
-) -> Result<murin::TransactionUnspentOutputs, MurinError> {
+) -> Result<murin::TransactionUnspentOutputs, MimirError> {
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::stake_address.eq(stake_addr))
         .filter(unspent_utxos::address_has_script.eq(false))
@@ -81,7 +84,7 @@ pub fn get_stake_address_utxos(
     Ok(utxos)
 }
 
-pub fn get_slot(conn: &PgConnection) -> Result<i64, MurinError> {
+pub fn get_slot(conn: &mut PgConnection) -> Result<i64, MimirError> {
     let slot = block::table
         .filter(block::block_no.is_not_null())
         .select(block::slot_no)
@@ -90,17 +93,17 @@ pub fn get_slot(conn: &PgConnection) -> Result<i64, MurinError> {
         .load::<Option<i64>>(conn)?;
     match slot[0] {
         Some(s) => Ok(s),
-        None => Err(murin::MurinError::new(
-            "ERROR: Could not find slot number in DBsync",
+        None => Err(MimirError::Custom(
+            "ERROR: Could not find slot number in DBsync".to_string(),
         )),
     }
 }
 
 pub fn get_tot_stake_per_pool(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     pool: &String,
     epoch: i32,
-) -> Result<Vec<EpochStakeView>, MurinError> {
+) -> Result<Vec<EpochStakeView>, MimirError> {
     //let query_alias = alias!(pool_hash::table.filter(pool_hash::view.eq(pool)).select(pool_hash::view) as get_pool_view);
     let pool_stake = epoch_stake::table
         .inner_join(pool_hash::table.on(pool_hash::id.eq(epoch_stake::pool_id)))
@@ -113,11 +116,11 @@ pub fn get_tot_stake_per_pool(
 }
 
 pub fn get_deligations_per_pool_for_epochs(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     pool: &String,
     start_epoch: i64,
     end_epoch: i64,
-) -> Result<Vec<DelegationView>, MurinError> {
+) -> Result<Vec<DelegationView>, MimirError> {
     let deleg = delegation::table
         .inner_join(pool_hash::table.on(pool_hash::id.eq(delegation::pool_hash_id)))
         .inner_join(stake_address::table.on(delegation::addr_id.eq(stake_address::id)))
@@ -136,10 +139,10 @@ pub fn get_deligations_per_pool_for_epochs(
 }
 
 pub fn get_pool_total_stake(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     pool: &String,
     epoch: i32,
-) -> Result<u64, MurinError> {
+) -> Result<u64, MimirError> {
     let pool_stake = epoch_stake::table
         .inner_join(pool_hash::table.on(pool_hash::id.eq(epoch_stake::pool_id)))
         .filter(pool_hash::view.eq(pool))
@@ -152,7 +155,7 @@ pub fn get_pool_total_stake(
     Ok(tot_stake)
 }
 
-pub fn get_epoch(conn: &PgConnection) -> Result<i32, MurinError> {
+pub fn get_epoch(conn: &mut PgConnection) -> Result<i32, MimirError> {
     let epoch = epoch_stake::table
         .filter(epoch_stake::epoch_no.is_not_null())
         .select(epoch_stake::epoch_no)
@@ -164,10 +167,10 @@ pub fn get_epoch(conn: &PgConnection) -> Result<i32, MurinError> {
 
 /// Use fingerprint hasher in murin !! This is just for CLI tools which has no access to murin
 pub fn get_fingerprint(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     policy: &String,
     tokenname: &String,
-) -> Result<String, MurinError> {
+) -> Result<String, MimirError> {
     let fingerprint = multi_asset::table
         .filter(multi_asset::policy.eq(hex::decode(policy)?))
         .filter(multi_asset::name.eq(tokenname.as_bytes()))
@@ -185,9 +188,9 @@ pub struct TokenInfo {
 }
 
 pub fn get_token_info(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     fingerprint_in: &String,
-) -> Result<TokenInfo, MurinError> {
+) -> Result<TokenInfo, MimirError> {
     let fingerprint = multi_asset::table
         .filter(multi_asset::fingerprint.eq(fingerprint_in))
         .select((multi_asset::policy, multi_asset::name))
@@ -207,9 +210,9 @@ pub fn get_token_info(
 
 #[allow(clippy::type_complexity)]
 pub fn stake_registration(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     stake_addr_in: &String,
-) -> Result<Vec<(String, Vec<u8>, i32, i32)>, MurinError> {
+) -> Result<Vec<(String, Vec<u8>, i32, i32)>, MimirError> {
     let registration = stake_registration::table
         .inner_join(stake_address::table.on(stake_registration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_registration::tx_id.eq(tx::id)))
@@ -228,9 +231,9 @@ pub fn stake_registration(
 
 #[allow(clippy::type_complexity)]
 pub fn stake_deregistration(
-    conn: &PgConnection,
+    conn: &mut PgConnection,
     stake_addr_in: &String,
-) -> Result<Vec<(String, Vec<u8>, i32, i32, Option<i64>)>, MurinError> {
+) -> Result<Vec<(String, Vec<u8>, i32, i32, Option<i64>)>, MimirError> {
     let deregistration = stake_deregistration::table
         .inner_join(stake_address::table.on(stake_deregistration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_deregistration::tx_id.eq(tx::id)))
@@ -248,8 +251,8 @@ pub fn stake_deregistration(
     Ok(deregistration)
 }
 
-pub fn check_stakeaddr_registered(stake_addr_in: &String) -> Result<bool, MurinError> {
-    let conn = crate::establish_connection()?;
+pub fn check_stakeaddr_registered(stake_addr_in: &String) -> Result<bool, MimirError> {
+    let mut conn = crate::establish_connection()?;
 
     let registration = stake_registration::table
         .inner_join(stake_address::table.on(stake_registration::addr_id.eq(stake_address::id)))
@@ -262,7 +265,7 @@ pub fn check_stakeaddr_registered(stake_addr_in: &String) -> Result<bool, MurinE
             stake_registration::epoch_no,
         ))
         .order(stake_registration::epoch_no.desc())
-        .load::<(String, Vec<u8>, i32, i32)>(&conn)?;
+        .load::<(String, Vec<u8>, i32, i32)>(&mut conn)?;
 
     let deregistration = stake_deregistration::table
         .inner_join(stake_address::table.on(stake_deregistration::addr_id.eq(stake_address::id)))
@@ -275,7 +278,7 @@ pub fn check_stakeaddr_registered(stake_addr_in: &String) -> Result<bool, MurinE
             stake_deregistration::epoch_no,
         ))
         .order(stake_deregistration::epoch_no.desc())
-        .load::<(String, Vec<u8>, i32, i32)>(&conn)?;
+        .load::<(String, Vec<u8>, i32, i32)>(&mut conn)?;
 
     match registration.len() {
         0 => Ok(false),
@@ -302,17 +305,17 @@ pub struct EligableWallet {
 pub fn lookup_token_holders(
     fingerprint_in: &String,
     min_amount: Option<&i64>,
-) -> Result<Vec<EligableWallet>, MurinError> {
-    let conn = crate::establish_connection()?;
+) -> Result<Vec<EligableWallet>, MimirError> {
+    let mut conn = crate::establish_connection()?;
 
     let mut holders = unspent_utxos::table
-        .left_join(ma_tx_out::table.on(unspent_utxos::id.eq(ma_tx_out::tx_out_id)))
+        .inner_join(ma_tx_out::table.on(unspent_utxos::id.eq(ma_tx_out::tx_out_id)))
         .left_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .filter(multi_asset::fingerprint.eq(fingerprint_in))
         .filter(unspent_utxos::stake_address.is_not_null())
         //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
         .select((unspent_utxos::stake_address.nullable(), ma_tx_out::quantity))
-        .load::<(Option<String>, BigDecimal)>(&conn)?;
+        .load::<(Option<String>, BigDecimal)>(&mut conn)?;
 
     if let Some(amt) = min_amount {
         let a = BigDecimal::from_i64(*amt).unwrap();
@@ -331,19 +334,19 @@ pub fn lookup_token_holders(
     Ok(ret)
 }
 
-pub fn lookup_nft_token_holders(policy: &String) -> Result<Vec<EligableWallet>, MurinError> {
-    let conn = crate::establish_connection()?;
+pub fn lookup_nft_token_holders(policy: &String) -> Result<Vec<EligableWallet>, MimirError> {
+    let mut conn = crate::establish_connection()?;
 
     let pbyte = hex::decode(&policy)?;
 
     let mut holders = unspent_utxos::table
-        .left_join(ma_tx_out::table.on(unspent_utxos::id.eq(ma_tx_out::tx_out_id)))
+        .inner_join(ma_tx_out::table.on(unspent_utxos::id.eq(ma_tx_out::tx_out_id)))
         .left_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .filter(multi_asset::policy.eq(pbyte))
         .filter(unspent_utxos::stake_address.is_not_null())
         //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
         .select((unspent_utxos::stake_address.nullable(), ma_tx_out::quantity))
-        .load::<(Option<String>, BigDecimal)>(&conn)?;
+        .load::<(Option<String>, BigDecimal)>(&mut conn)?;
 
     holders.retain(|p| p.0.is_some());
 
@@ -360,7 +363,7 @@ pub fn lookup_nft_token_holders(policy: &String) -> Result<Vec<EligableWallet>, 
 /*
 pub fn lookup_mint_metadata_condition(
     policy  : &String,
-) -> Result<Option<Vec::<EligableWallet>>,MurinError> {
+) -> Result<Option<Vec::<EligableWallet>>,MimirError> {
     let conn = crate::establish_connection()?;
 
     let pbyte = hex::decode(&policy)?;
@@ -387,15 +390,15 @@ pub fn lookup_mint_metadata_condition(
 }
 */
 
-pub fn find_avail_pool(pool_id: &String) -> Result<bool, MurinError> {
-    let conn = establish_connection()?;
+pub fn find_avail_pool(pool_id: &String) -> Result<bool, MimirError> {
+    let mut conn = establish_connection()?;
     let pool_stake = pool_hash::table
         .filter(pool_hash::view.eq(pool_id))
-        .first::<PoolHash>(&conn)?;
+        .first::<PoolHash>(&mut conn)?;
 
     let pool_retire = pool_retire::table
         .filter(pool_retire::id.eq(&pool_stake.id))
-        .load::<PoolRetire>(&conn)?;
+        .load::<PoolRetire>(&mut conn)?;
 
     if !pool_retire.is_empty() {
         return Ok(false);
@@ -404,8 +407,8 @@ pub fn find_avail_pool(pool_id: &String) -> Result<bool, MurinError> {
     Ok(true)
 }
 
-pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MurinError> {
-    let conn = establish_connection()?;
+pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MimirError> {
+    let mut conn = establish_connection()?;
     let txh_b = hex::decode(txhash)?;
     let tx = tx_out::table
         .inner_join(tx::table.on(tx::id.eq(tx_out::tx_id)))
@@ -417,7 +420,7 @@ pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MurinError> {
         .select((tx::hash, tx_out::index))
         .filter(tx_in::tx_in_id.is_not_null())
         .filter(tx::hash.eq(txh_b))
-        .load::<(Vec<u8>, i16)>(&conn)?;
+        .load::<(Vec<u8>, i16)>(&mut conn)?;
     if !tx.is_empty() {
         Ok(true)
     } else {

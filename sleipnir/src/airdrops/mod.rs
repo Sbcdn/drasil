@@ -206,8 +206,8 @@ pub async fn create_airdrop(
         }
     }
 
-    let mconn = mimir::establish_connection()?;
-    let current_epoch = mimir::get_epoch(&mconn)? as i64;
+    let mut mconn = mimir::establish_connection()?;
+    let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
     if start_epoch < current_epoch {
         return Err(SleipnirError::new(&format!(
             "Start epoch: {} cannot be smaller than the current epoch: : {:?}",
@@ -301,9 +301,9 @@ pub async fn create_airdrop(
     //                            },
     let args3 = ad_timing_params.to_string_vec();
 
-    let gconn = gungnir::establish_connection()?;
+    let mut gconn = gungnir::establish_connection()?;
     let adparam = gungnir::AirDropParameter::create_airdrop_parameter(
-        &gconn,
+        &mut gconn,
         &c_id,
         &user_id,
         &airdrop_token_type.to_string(),
@@ -318,7 +318,7 @@ pub async fn create_airdrop(
     //start epoch defines when the airdrop can happen / end epoch accordingly restricts the airdrop on epochs
 
     let twl = gungnir::TokenWhitelist::create_twl_entry(
-        &gconn,
+        &mut gconn,
         &fingerprint,
         &policy_id,
         &tn,

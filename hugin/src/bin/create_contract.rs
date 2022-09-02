@@ -7,11 +7,12 @@
 #################################################################################
 */
 use hugin::database::drasildb::*;
+use hugin::drasildb::error::SystemDBError;
 
 extern crate diesel;
 use std::io::stdin;
 
-fn main() -> Result<(), murin::MurinError> {
+fn main() -> Result<(), SystemDBError> {
     println!("Please provide user-id (i64):");
     let mut user_id = String::new();
     stdin().read_line(&mut user_id).unwrap();

@@ -45,8 +45,6 @@ fn perform_delegation(
     }
 
     log::info!("\nThis user is registered: {}\n", registered);
-    dotenv::dotenv().ok();
-
     let owner_address = match gtxd.get_senders_address(None) {
         Some(a) => a,
         None => {

@@ -13,7 +13,6 @@ use crate::htypes::*;
 use crate::wallet::*;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
-use dotenv::dotenv;
 use std::str::from_utf8;
 
 #[allow(clippy::too_many_arguments)]
@@ -46,8 +45,6 @@ pub fn perform_rwd(
         info!("-----------------------------------------Build Transaction----------------------------------------------");
         info!("--------------------------------------------------------------------------------------------------------\n");
     }
-
-    dotenv().ok();
 
     //let rwd_system_fee = env::var("SYSTEM_FEE_RWD")?.parse::<u64>()?;
     //let rwd_system_fee_wallet = caddr::Address::from_bech32(&env::var("SYSTEM_FEE_WALLET")?)?;

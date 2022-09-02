@@ -13,10 +13,11 @@ use schema::*;
 
 pub mod models;
 pub use models::*;
+pub(crate) mod error;
+pub use error::MimirError;
 
 pub mod api;
 pub use api::*;
-pub use murin::error::MurinError;
 
 use diesel::prelude::*;
 //use diesel::sql_types::{BigInt};
@@ -29,7 +30,7 @@ extern crate dotenv;
 extern crate pretty_env_logger;
 //#[macro_use] extern crate log;
 
-pub fn establish_connection() -> Result<PgConnection, murin::MurinError> {
+pub fn establish_connection() -> Result<PgConnection, error::MimirError> {
     dotenv().ok();
 
     let database_url = env::var("DBSYNC_DB_URL")?;
