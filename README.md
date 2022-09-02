@@ -8,8 +8,6 @@ Drasil is made for Orechstration, can run in native or managed Kubernetes, on na
 
 Visit us at [drasil.io](https://www.drasil.io)
 
-We also work with [Maestro](https://www.gomaestro.org) for infrastructure and managed Drasil systems. 
-
 * [Documentation](https://docs.drasil.io/)
 
 * [License]( https://www.drasil.io/licenses/LICENSE-1.0)
