@@ -149,9 +149,11 @@ mod filters {
             .or(get_rewards_for_stake_addr())
             .or(get_claim_history_for_stake_addr_contr())
             .or(get_claim_history_for_stake_addr())
+            .or(get_total_rewards())
             .or(get_token_info())
+            .or(get_user_tokens())
             .or(resp_option())
-            .or(warp::get().and(warp::any().map(warp::reply)))
+        // .or(warp::get().and(warp::any().map(warp::reply)))
     }
 
     pub fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
@@ -224,6 +226,23 @@ mod filters {
             .and(auth())
             .and(warp::path::param::<String>()) //fingerprint
             .and_then(handlers::handle_token_info)
+    }
+
+    pub fn get_user_tokens(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("tokens")
+            .and(warp::get())
+            .and(auth())
+            .and_then(handlers::handle_tokens)
+    }
+
+    pub fn get_total_rewards(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::get()
+            .and(warp::path("tokens"))
+            .and(warp::path("rwd"))
+            .and(auth())
+            .and_then(handlers::handle_total_rewards)
     }
 
     fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
@@ -596,16 +615,50 @@ mod handlers {
         _: u64,
         fingerprint: String,
     ) -> Result<impl warp::Reply, Infallible> {
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let response = match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &fingerprint) {
+        let response = match mimir::get_mint_metadata(&fingerprint) {
             Ok(t) => t,
             Err(e) => {
                 log::info!(
-                    "Error: coudl not find token info for {:?}, {:?}",
+                    "Error: could not find token info for {:?}, {:?}",
                     fingerprint,
                     e
                 );
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&e.to_string())),
+                    warp::http::StatusCode::NOT_FOUND,
+                ));
+            }
+        };
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!(response)),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    pub async fn handle_tokens(user_id: u64) -> Result<impl warp::Reply, Infallible> {
+        let response = match gungnir::TokenWhitelist::get_user_tokens(&user_id) {
+            Ok(t) => t,
+            Err(e) => {
+                log::info!("Error: could not find any tokens");
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&e.to_string())),
+                    warp::http::StatusCode::NOT_FOUND,
+                ));
+            }
+        };
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&serde_json::json!(response)),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    pub async fn handle_total_rewards(user_id: u64) -> Result<impl warp::Reply, Infallible> {
+        let response = match gungnir::Rewards::get_total_rewards_token(user_id as i64) {
+            Ok(t) => t,
+            Err(e) => {
+                log::info!("Error: could not find any tokens");
                 return Ok(warp::reply::with_status(
                     warp::reply::json(&ReturnError::new(&e.to_string())),
                     warp::http::StatusCode::NOT_FOUND,

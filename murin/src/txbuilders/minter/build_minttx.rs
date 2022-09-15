@@ -260,11 +260,11 @@ pub fn perform_mint(
     txbody.set_mint(&mint);
 
     // Set network Id
-    if gtxd.get_network() == clib::NetworkIdKind::Testnet {
-        txbody.set_network_id(&clib::NetworkId::testnet());
-    } else {
-        txbody.set_network_id(&clib::NetworkId::mainnet());
-    }
+    //if gtxd.get_network() == clib::NetworkIdKind::Testnet {
+    //    txbody.set_network_id(&clib::NetworkId::testnet());
+    //} else {
+    //    txbody.set_network_id(&clib::NetworkId::mainnet());
+    //}
 
     //let req_signer = native_script.get_required_signers();
     //info!("Len Req SIgner: {:?}",req_signer.len());

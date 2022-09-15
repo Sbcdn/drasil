@@ -522,12 +522,13 @@ impl TransactionUnspentOutputs {
         if let Some(b) = band {
             (min, max) = TransactionUnspentOutputs::band_value(value, b);
         }
+        println!("Band Values: Min: {:?}; Max: {:?}", min, max);
         let f: TransactionUnspentOutputs = self
             .0
             .iter()
             .filter(|n| {
-                n.output().amount().compare(&min).unwrap_or(0) >= 0
-                    && n.output().amount().compare(&max).unwrap_or(0) <= 0
+                n.output().amount().compare(&min).unwrap_or(-1) >= 0
+                    && n.output().amount().compare(&max).unwrap_or(1) <= 0
             })
             .collect();
         Ok(f)

@@ -85,3 +85,4 @@ ALTER TABLE contracts ADD CONSTRAINT unique_address UNIQUE(address);
 ALTER TABLE drasil_user ADD CONSTRAINT unique_email UNIQUE(email);
 ALTER TABLE drasil_user ADD CONSTRAINT unique_user_id UNIQUE(user_id);
 ALTER TABLE drasil_user ADD CONSTRAINT unique_api_key UNIQUE(api_pubkey);
+ALTER TABLE drasil_user ADD CONSTRAINT unique_passwords UNIQUE(pwd);

@@ -504,7 +504,7 @@ pub fn create_onshot_policy(
         pub_key_hash,
     )));
 
-    let slot = cutils::to_bignum(current_slot + 1800);
+    let slot = cutils::to_bignum(current_slot + 9000);
     native_scripts.add(&NativeScript::new_timelock_expiry(
         &clib::TimelockExpiry::new_timelockexpiry(&slot),
     ));

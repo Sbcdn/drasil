@@ -1,3 +1,5 @@
+use std::ops::Div;
+
 /*
 #################################################################################
 # See LICENSE.md for full license information.                                  #
@@ -115,6 +117,38 @@ impl Rewards {
             .filter(fingerprint.eq(&fingerprint_in))
             .load::<Rewards>(conn)?;
         Ok(result)
+    }
+
+    pub fn get_total_rewards_token(
+        user_id_in: i64,
+    ) -> Result<Vec<(i64, String, BigDecimal)>, RWDError> {
+        use crate::schema::rewards::dsl::*;
+        let conn = &mut establish_connection()?;
+        let twl = TokenWhitelist::get_user_tokens(&(user_id_in as u64))?;
+
+        let mut out = Vec::<(i64, String, BigDecimal)>::new();
+
+        for i in twl {
+            let twl_rewards: Vec<Rewards> = rewards
+                .filter(contract_id.eq(&i.contract_id))
+                .filter(user_id.eq(&user_id_in))
+                .filter(fingerprint.eq(&i.fingerprint.clone().unwrap_or_else(|| "".to_string())))
+                .load::<Rewards>(conn)?;
+
+            let sum: BigDecimal = twl_rewards.iter().fold(
+                bigdecimal::FromPrimitive::from_u64(0).unwrap(),
+                |acc, n| {
+                    acc + (n
+                        .tot_earned
+                        .clone()
+                        .div(&bigdecimal::FromPrimitive::from_u64(1000000).unwrap()))
+                        - n.tot_claimed.clone()
+                },
+            );
+            out.push((i.contract_id, i.fingerprint.clone().unwrap(), sum))
+        }
+
+        Ok(out)
     }
 
     pub fn get_available_rewards(
@@ -657,6 +691,19 @@ impl TokenWhitelist {
         let mut result = token_whitelist
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
+            .load::<TokenWhitelist>(&mut conn)?;
+
+        result.retain(|t| t.mode != Calculationmode::AirDrop);
+
+        Ok(result)
+    }
+
+    pub fn get_user_tokens(user_id_in: &u64) -> Result<Vec<TokenWhitelist>, RWDError> {
+        use crate::schema::token_whitelist::dsl::*;
+
+        let mut conn = establish_connection()?;
+        let mut result = token_whitelist
+            .filter(user_id.eq(&(*user_id_in as i64)))
             .load::<TokenWhitelist>(&mut conn)?;
 
         result.retain(|t| t.mode != Calculationmode::AirDrop);

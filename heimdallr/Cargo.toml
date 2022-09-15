@@ -30,6 +30,7 @@ serde_bytes = "0.11.5"
 structopt = "0.3.26"
 jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 thiserror = "1.0"
+bytes = "1"
 
 hugin = { path = "../hugin", version = "0.1.0" }
 #hugin = { git = "ssh://git@github.com/sbcdn/hugin.git", branch="main" }

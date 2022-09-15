@@ -41,18 +41,15 @@ pub async fn optimize(addr: &String, uid: i64, cid: i64) -> Result<()> {
         }
     }
     // ToDo: Check if conditions for reallocation are met or to return without working
-
-    let transactions = match ada_on_token_utxos
-        >= murin::clib::utils::from_bignum(&contract.get_contract_liquidity())
-    {
-        true => reallocate_tokens(&mut t_utxos, &tokens_on_contract, &addr, ns)?,
+    let liquidity = murin::clib::utils::from_bignum(&contract.get_contract_liquidity());
+    let difference = liquidity as i64 - ada_on_token_utxos as i64;
+    let transactions = match difference <= 0 {
+        true => reallocate_tokens(&mut t_utxos, &tokens_on_contract, &addr, ns, liquidity)?,
         false => {
-            let difference = murin::clib::utils::from_bignum(&contract.get_contract_liquidity())
-                - ada_on_token_utxos;
             let additional_utxos =
-                ada_utxos.coin_value_subset(murin::clib::utils::to_bignum(difference), None);
+                ada_utxos.coin_value_subset(murin::clib::utils::to_bignum(difference as u64), None);
             t_utxos.merge(additional_utxos);
-            reallocate_tokens(&mut t_utxos, &tokens_on_contract, &addr, ns)?
+            reallocate_tokens(&mut t_utxos, &tokens_on_contract, &addr, ns, liquidity)?
         }
     };
     let mut txhs = Vec::<String>::new();
@@ -126,19 +123,21 @@ fn reallocate_tokens(
     tokens: &murin::Tokens,
     addr: &murin::clib::address::Address,
     script: &murin::clib::NativeScript,
+    liquidity: u64,
 ) -> Result<Vec<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>> {
     let mut out = Vec::<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>::new();
     let ada = t_utxos.coin_sum();
-    let (std_value, minutxo, utxo_count) = get_values_and_tamt_per_utxo(tokens, ada);
+    let (std_value, minutxo, utxo_count) = get_values_and_tamt_per_utxo(tokens, liquidity);
+    println!("\n\nTUTXO: BEFORE FILTER: \n{:?}\n\n", t_utxos);
+    let set = t_utxos.filter_values(&std_value, Some(20))?;
+    let utxo_count = (utxo_count as usize - set.len()) as u64;
+    t_utxos.delete_set(&set);
+    println!("\n\nTUTXO: After FILTER: \n{:?}\n\n", t_utxos);
+
     println!("Std Value: {:?}", std_value);
     println!("Min UTxO value: {:?}", minutxo);
     println!("UTxO Count: {:?}", utxo_count);
-    println!("\n\nTUTXO: BEFORE FILTER: \n{:?}\n\n", t_utxos);
 
-    // ToDo: Filter all utxos larger or equal std_value and repeat to find new utxo count
-    let set = t_utxos.filter_values(&std_value, Some(20))?;
-    t_utxos.delete_set(&set);
-    println!("\n\nTUTXO: After FILTER: \n{:?}\n\n", t_utxos);
     // ToDo: Build recursive transactions
     txbuilder(t_utxos, &std_value, utxo_count, &mut out, addr, script)?;
     Ok(out)

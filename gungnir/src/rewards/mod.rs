@@ -60,47 +60,7 @@ pub enum Calculationmode {
     #[db_rename = "airdrop"]
     AirDrop,
 }
-/*
-impl diesel::serialize::ToSql<Calculationmode, diesel::pg::Pg> for Calculationmode {
-    fn to_sql(
-        &self,
-        out: &mut diesel::serialize::Output<diesel::pg::Pg>,
-    ) -> diesel::serialize::Result {
-        match *self {
-            Calculationmode::Custom => out.write_all(b"custom")?,
-            Calculationmode::ModifactorAndEquation => out.write_all(b"modifactorandequation")?,
-            Calculationmode::SimpleEquation => out.write_all(b"simpleequation")?,
-            Calculationmode::FixedEndEpoch => out.write_all(b"fixedendepoch")?,
-            Calculationmode::RelationalToADAStake => out.write_all(b"relationaltoadastake")?,
-            Calculationmode::AirDrop => out.write_all(b"airdrop")?,
-        }
-        Ok(diesel::serialize::IsNull::No)
-    }
-}
-impl diesel::deserialize::FromSql<Calculationmode, diesel::pg::Pg> for Calculationmode {
-    fn from_sql(bytes: diesel::pg::PgValue<'_>) -> diesel::deserialize::Result<Self> {
-        match bytes {
-            //not_none!
-            diesel::pg::PgValue<'_> b"custom" => Ok(Calculationmode::Custom),
-            b"modifactorandequation" => Ok(Calculationmode::ModifactorAndEquation),
-            b"simpleequation" => Ok(Calculationmode::SimpleEquation),
-            b"fixedendepoch" => Ok(Calculationmode::FixedEndEpoch),
-            b"relationaltoadastake" => Ok(Calculationmode::RelationalToADAStake),
-            b"airdrop" => Ok(Calculationmode::AirDrop),
-            _ => Err("Unrecognized enum variant".into()),
-        }
-    }
 
-    fn from_nullable_sql(
-        bytes: Option<diesel::backend::RawValue<'_, diesel::pg::Pg>>,
-    ) -> diesel::deserialize::Result<Self> {
-        match bytes {
-            Some(bytes) => Self::from_sql(bytes),
-            None => Err(Box::new(diesel::result::UnexpectedNullError)),
-        }
-    }
-}
- */
 impl ToString for Calculationmode {
     fn to_string(&self) -> String {
         match self {
@@ -168,7 +128,7 @@ impl PartialEq for GPools {
 #[derive(
     Queryable, Identifiable, PartialEq, Debug, Clone, serde::Serialize, serde::Deserialize,
 )]
-#[table_name = "rewards"]
+#[diesel(table_name = rewards)]
 pub struct Rewards {
     pub id: i64,
     pub stake_addr: String,
@@ -187,7 +147,7 @@ pub struct Rewards {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "rewards"]
+#[diesel(table_name = rewards)]
 pub struct RewardsNew<'a> {
     pub stake_addr: &'a String,
     pub payment_addr: &'a String,
@@ -201,7 +161,7 @@ pub struct RewardsNew<'a> {
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[table_name = "claimed"]
+#[diesel(table_name = claimed)]
 pub struct Claimed {
     pub id: i64,
     pub stake_addr: String,
@@ -218,7 +178,7 @@ pub struct Claimed {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "claimed"]
+#[diesel(table_name = claimed)]
 pub struct ClaimedNew<'a> {
     pub stake_addr: &'a String,
     pub payment_addr: &'a String,
@@ -232,7 +192,7 @@ pub struct ClaimedNew<'a> {
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone, serde::Serialize)]
-#[table_name = "token_whitelist"]
+#[diesel(table_name = token_whitelist)]
 pub struct TokenWhitelist {
     pub id: i64,
     pub fingerprint: Option<String>,
@@ -252,7 +212,7 @@ pub struct TokenWhitelist {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "token_whitelist"]
+#[diesel(table_name = token_whitelist)]
 pub struct TokenWhitelistNew<'a> {
     pub fingerprint: &'a String,
     pub policy_id: &'a String,
@@ -276,7 +236,7 @@ pub struct TokenInfo {
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[table_name = "airdrop_whitelist"]
+#[diesel(table_name = airdrop_whitelist)]
 pub struct AirDropWhitelist {
     pub id: i64,
     pub contract_id: i64,
@@ -287,7 +247,7 @@ pub struct AirDropWhitelist {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "airdrop_whitelist"]
+#[diesel(table_name = airdrop_whitelist)]
 pub struct AirDropWhitelistNew<'a> {
     pub contract_id: &'a i64,
     pub user_id: &'a i64,
@@ -295,7 +255,7 @@ pub struct AirDropWhitelistNew<'a> {
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[table_name = "airdrop_parameter"]
+#[diesel(table_name = airdrop_parameter)]
 pub struct AirDropParameter {
     pub id: i64,
     pub contract_id: i64,
@@ -312,7 +272,7 @@ pub struct AirDropParameter {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "airdrop_parameter"]
+#[diesel(table_name = airdrop_parameter)]
 pub struct AirDropParameterNew<'a> {
     pub contract_id: &'a i64,
     pub user_id: &'a i64,
@@ -326,35 +286,35 @@ pub struct AirDropParameterNew<'a> {
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[table_name = "wladdresses"]
+#[diesel(table_name = wladdresses)]
 pub struct WlAddresses {
     pub id: i64,
     pub payment_address: String,
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "wladdresses"]
+#[diesel(table_name = wladdresses)]
 pub struct WlAddressesNew<'a> {
     pub payment_address: &'a String,
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[primary_key(wl, addr)]
-#[table_name = "wlalloc"]
+#[diesel(primary_key(wl, addr))]
+#[diesel(table_name = wlalloc)]
 pub struct WlAlloc {
     pub wl: i64,
     pub addr: i64,
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "wlalloc"]
+#[diesel(table_name = wlalloc)]
 pub struct WlAllocNew<'a> {
     pub wl: &'a i64,
     pub addr: &'a i64,
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[table_name = "whitelist"]
+#[diesel(table_name = whitelist)]
 pub struct Whitelist {
     pub id: i64,
     pub max_addr_repeat: i32,
@@ -363,13 +323,13 @@ pub struct Whitelist {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "whitelist"]
+#[diesel(table_name = whitelist)]
 pub struct WhitelistNew<'a> {
     pub max_addr_repeat: &'a i32,
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[table_name = "mint_projects"]
+#[diesel(table_name = mint_projects)]
 pub struct MintProject {
     pub id: i64,
     pub customer_name: String,
@@ -391,7 +351,7 @@ pub struct MintProject {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "mint_projects"]
+#[diesel(table_name = mint_projects)]
 pub struct MintProjectNew<'a> {
     pub customer_name: &'a String,
     pub project_name: &'a String,
@@ -410,8 +370,8 @@ pub struct MintProjectNew<'a> {
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[table_name = "nft_table"]
-#[primary_key(project_id, asset_name_b)]
+#[diesel(table_name = nft_table)]
+#[diesel(primary_key(project_id, asset_name_b))]
 pub struct Nft {
     pub project_id: i64,
     pub asset_name_b: Vec<u8>,
@@ -431,7 +391,7 @@ pub struct Nft {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "nft_table"]
+#[diesel(table_name = nft_table)]
 pub struct NftNew<'a> {
     pub project_id: &'a i64,
     pub asset_name_b: &'a Vec<u8>,

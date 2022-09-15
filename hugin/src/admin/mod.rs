@@ -9,6 +9,7 @@
 
 use crate::drasildb::error::SystemDBError;
 use crate::TBDrasilUser;
+use dvltath::vault::kv::vault_get;
 
 // ToDO: TWO FACTOR AUTHENTICATION
 pub async fn approve_payout_drsl(
@@ -17,7 +18,7 @@ pub async fn approve_payout_drsl(
     _mfa: &str,
 ) -> Result<(), SystemDBError> {
     let mut dconn = crate::establish_connection()?;
-    let user_id = crate::encryption::vault_get(&std::env::var("ADM_USER").expect("Error: A1201"))
+    let user_id = vault_get(&std::env::var("ADM_USER").expect("Error: A1201"))
         .await
         .get("user")
         .expect("Error: A1202")
@@ -40,7 +41,7 @@ pub async fn approve_payout_drsl(
 
 pub async fn verify_approval_drsl(msg: &str, sign: &str) -> Result<bool, SystemDBError> {
     let mut dconn = crate::establish_connection()?;
-    let user_id = crate::encryption::vault_get(&std::env::var("ADM_USER").expect("Error: A1201"))
+    let user_id = vault_get(&std::env::var("ADM_USER").expect("Error: A1201"))
         .await
         .get("user")
         .expect("Error: A1202")
@@ -59,7 +60,7 @@ pub async fn verify_approval_drsl(msg: &str, sign: &str) -> Result<bool, SystemD
 pub async fn get_vaddr(user: &i64) -> Result<String, SystemDBError> {
     let user = TBDrasilUser::get_user_by_user_id(&mut crate::establish_connection()?, user)?;
 
-    let vaddr = crate::encryption::vault_get(&user.drslpubkey)
+    let vaddr = vault_get(&user.drslpubkey)
         .await
         .get("vaddr")
         .expect("Error: A1205: Could not retrieve verified address")

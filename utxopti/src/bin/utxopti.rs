@@ -11,7 +11,7 @@ struct Opt {}
 #[tokio::main]
 pub async fn main() -> Result<()> {
     // Do Optimization for
-    let addr = &"addr_test1wr84fwh5mt0usmwewfmzz5l0qyxrxa897eswwmrtcxz3mls9mwcxy".to_string();
+    let addr = &"addr1wy95d9ts6ut0fwjfcfyvkfkrs04x8g5xlvakjgs06u00z0sejufrj".to_string();
     let uid = 0;
     let cid = 1;
 

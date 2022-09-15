@@ -28,7 +28,7 @@ RUN adduser \
 FROM base as builder
 WORKDIR /vidar-build
 ENV CARGO_HOME=/vidar-build/.cargo
-COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./Cargo.toml ./                       
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./src ./src
@@ -36,6 +36,7 @@ COPY ./.cargo/gungnir /gungnir
 COPY ./.cargo/hugin /hugin
 COPY ./.cargo/murin /murin
 COPY ./.cargo/mimir /mimir
+COPY ./.cargo/dvltath /dvltath
 RUN cargo build --release --target x86_64-unknown-linux-gnu
 
 FROM gcr.io/distroless/cc as vidar

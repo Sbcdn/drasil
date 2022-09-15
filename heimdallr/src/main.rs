@@ -87,9 +87,7 @@ async fn main() {
 mod filters {
     use super::handlers;
     use crate::clientapi::filter::api_endpoints;
-    use hugin::datamodel::hephadata::{
-        ContractType, MultiSigType, Signature, StdTxType, TransactionPattern,
-    };
+    use hugin::datamodel::hephadata::{ContractType, MultiSigType, StdTxType, TXPWrapper};
     use warp::Filter;
 
     pub fn endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -136,10 +134,10 @@ mod filters {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path("cn")
             .and(warp::post())
-            .and(auth())
             .and(warp::path::param::<ContractType>())
             .and(warp::path::param::<String>())
-            .and(json_body_build())
+            .and(auth())
+            // .and(json_body_build())
             .and_then(handlers::contract_exec_build)
     }
 
@@ -149,10 +147,10 @@ mod filters {
         warp::path("cn")
             .and(warp::path("fn"))
             .and(warp::post())
-            .and(auth())
             .and(warp::path::param::<ContractType>())
             .and(warp::path::param::<String>())
-            .and(json_body_finalize())
+            .and(auth())
+            //.and(json_body_finalize())
             .and_then(handlers::contract_exec_finalize)
     }
 
@@ -161,33 +159,33 @@ mod filters {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path("ms")
             .and(warp::post())
-            .and(auth())
             .and(warp::path::param::<MultiSigType>())
-            .and(json_body_build())
+            .and(auth())
+            //.and(json_body_build())
             .and_then(handlers::multisig_exec_build)
     }
 
-    /// Build a MultiSig transaction
+    /// Finalize a MultiSig transaction
     pub fn exec_finalize_multisig(
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        warp::path("ms")
+        warp::post()
+            .and(warp::path("ms"))
             .and(warp::path("fn"))
-            .and(warp::post())
-            .and(auth())
             .and(warp::path::param::<MultiSigType>())
             .and(warp::path::param::<String>())
-            .and(json_body_finalize())
+            .and(auth())
+            //.and(json_body_finalize())
             .and_then(handlers::multisig_exec_finalize)
     }
 
-    /// Build a MultiSig transaction
+    /// Build a standard transaction
     pub fn exec_build_stdtx(
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path("tx")
             .and(warp::post())
-            .and(auth())
             .and(warp::path::param::<StdTxType>())
-            .and(json_body_build())
+            .and(auth())
+            //.and(json_body_build())
             .and_then(handlers::stdtx_exec_build)
     }
 
@@ -197,31 +195,35 @@ mod filters {
         warp::path("tx")
             .and(warp::path("fn"))
             .and(warp::post())
-            .and(auth())
             .and(warp::path::param::<StdTxType>())
             .and(warp::path::param::<String>())
-            .and(json_body_finalize())
+            .and(auth())
+            //.and(json_body_finalize())
             .and_then(handlers::stdtx_exec_finalize)
     }
 
-    fn json_body_build(
-    ) -> impl Filter<Extract = (TransactionPattern,), Error = warp::Rejection> + Clone {
-        warp::body::content_length_limit(100 * 1024).and(warp::body::json())
-    }
+    /*
+       fn json_body_build(
+       ) -> impl Filter<Extract = (TransactionPattern,), Error = warp::Rejection> + Clone {
+           warp::body::content_length_limit(100 * 1024).and(warp::body::json())
+       }
 
-    fn json_body_finalize() -> impl Filter<Extract = (Signature,), Error = warp::Rejection> + Clone
-    {
-        warp::body::content_length_limit(10 * 1024).and(warp::body::json())
-    }
-
-    fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
+       fn json_body_finalize() -> impl Filter<Extract = (Signature,), Error = warp::Rejection> + Clone
+       {
+           warp::body::content_length_limit(10 * 1024).and(warp::body::json())
+       }
+    */
+    pub(crate) fn auth(
+    ) -> impl Filter<Extract = ((u64, TXPWrapper),), Error = warp::Rejection> + Clone {
         use super::auth::authorize;
         use warp::{
+            filters::body::bytes,
             filters::header::headers_cloned,
             http::header::{HeaderMap, HeaderValue},
         };
         headers_cloned()
             .map(move |headers: HeaderMap<HeaderValue>| (headers))
+            .and(bytes().map(move |body: bytes::Bytes| (body)))
             .and_then(authorize)
     }
 }
@@ -235,8 +237,8 @@ mod auth {
         reject, Rejection,
     };
 
-    use hugin::client::connect;
-    use hugin::VerifyUser;
+    use hugin::{client::connect, OneShotMintPayload, TXPWrapper, TransactionPattern};
+    use hugin::{Signature, VerifyUser};
 
     const BEARER: &str = "Bearer ";
 
@@ -246,11 +248,28 @@ mod auth {
         exp: usize,
     }
 
-    pub(crate) async fn authorize(headers: HeaderMap<HeaderValue>) -> Result<u64, Rejection> {
+    pub(crate) async fn authorize(
+        headers: HeaderMap<HeaderValue>,
+        body: bytes::Bytes,
+    ) -> Result<(u64, TXPWrapper), Rejection> {
         let publ = std::env::var("JWT_PUB_KEY")
             .map_err(|_| Error::Custom("env jwt pub not existing".to_string()))?;
         let publ = publ.into_bytes();
         log::info!("checking login data ...");
+        let b = Vec::<u8>::from(body);
+        let txp_out = if let Ok(txp) =
+            serde_json::from_str::<TransactionPattern>(std::str::from_utf8(&b).unwrap())
+        {
+            TXPWrapper::TransactionPattern(Box::new(txp))
+        } else if let Ok(s) = serde_json::from_str::<Signature>(std::str::from_utf8(&b).unwrap()) {
+            TXPWrapper::Signature(s)
+        } else {
+            TXPWrapper::OneShotMinter(
+                serde_json::from_str::<OneShotMintPayload>(std::str::from_utf8(&b).unwrap())
+                    .unwrap(),
+            )
+        };
+        println!("\n\nBody: {:?}\n\n", b);
         match jwt_from_header(&headers) {
             Ok(jwt) => {
                 let decoded = decode::<ApiClaims>(
@@ -272,9 +291,17 @@ mod auth {
                         return Err(reject::custom(Error::JWTTokenError));
                     }
                 };
-                Ok(user_id)
+                println!(
+                    "Authentication successful: User_id: {:?}; txp: {:?}",
+                    user_id, txp_out
+                );
+                Ok((user_id, txp_out))
             }
-            Err(e) => Err(reject::custom(e)),
+
+            Err(e) => {
+                println!("Authentication not successful");
+                Err(reject::custom(e))
+            }
         }
     }
 
@@ -298,11 +325,12 @@ mod auth {
 mod handlers {
     use hugin::client::{connect, Client};
     use hugin::datamodel::hephadata::{
-        ContractAction, ContractType, MarketplaceActions, MultiSigType, ReturnError, Signature,
-        StdTxType, TransactionPattern, TxHash, UnsignedTransaction,
+        ContractAction, ContractType, MarketplaceActions, MultiSigType, ReturnError, StdTxType,
+        TxHash, UnsignedTransaction,
     };
     use hugin::{
-        BuildContract, BuildMultiSig, BuildStdTx, FinalizeContract, FinalizeMultiSig, FinalizeStdTx,
+        BuildContract, BuildMultiSig, BuildStdTx, FinalizeContract, FinalizeMultiSig,
+        FinalizeStdTx, TXPWrapper,
     };
     use std::env;
     use std::{convert::Infallible, str::FromStr};
@@ -326,10 +354,9 @@ mod handlers {
     }
 
     pub async fn contract_exec_build(
-        customer_id: u64,
         contract: ContractType,
         action: String,
-        payload: TransactionPattern,
+        (customer_id, payload): (u64, TXPWrapper),
     ) -> Result<impl warp::Reply, Infallible> {
         let badreq =
             warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
@@ -357,9 +384,13 @@ mod handlers {
                 return Ok(badreq);
             }
         }
+        let payload = match payload {
+            TXPWrapper::TransactionPattern(txp) => txp,
+            _ => return Ok(badreq),
+        };
         let mut client = connect_odin().await;
         let action = ContractAction::from_str(&action).unwrap();
-        let cmd = BuildContract::new(customer_id, contract.clone(), action, payload.clone());
+        let cmd = BuildContract::new(customer_id, contract.clone(), action, *payload.clone());
         let response = match client.build_cmd::<BuildContract>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
                 Ok(resp) => warp::reply::json(&resp),
@@ -375,9 +406,8 @@ mod handlers {
     }
 
     pub async fn multisig_exec_build(
-        customer_id: u64,
         multisig_type: MultiSigType,
-        payload: TransactionPattern,
+        (customer_id, payload): (u64, TXPWrapper),
     ) -> Result<impl warp::Reply, Infallible> {
         let badreq =
             warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
@@ -394,9 +424,12 @@ mod handlers {
                 return Ok(badreq);
             }
         }
-
+        let payload = match payload {
+            TXPWrapper::TransactionPattern(txp) => txp,
+            _ => return Ok(badreq),
+        };
         let mut client = connect_odin().await;
-        let cmd = BuildMultiSig::new(customer_id, multisig_type.clone(), payload.clone());
+        let cmd = BuildMultiSig::new(customer_id, multisig_type.clone(), *payload.clone());
         let response = match client.build_cmd::<BuildMultiSig>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
                 Ok(resp) => warp::reply::json(&resp),
@@ -411,20 +444,22 @@ mod handlers {
     }
 
     pub async fn stdtx_exec_build(
-        customer_id: u64,
         tx_type: StdTxType,
-        payload: TransactionPattern,
+        (customer_id, payload): (u64, TXPWrapper),
     ) -> Result<impl warp::Reply, Infallible> {
-        let _badreq =
+        let badreq =
             warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
 
         match tx_type {
             StdTxType::DelegateStake => {}
         }
-
+        let payload = match payload {
+            TXPWrapper::TransactionPattern(txp) => txp,
+            _ => return Ok(badreq),
+        };
         let mut client = connect_odin().await;
 
-        let cmd = BuildStdTx::new(customer_id, tx_type.clone(), payload.clone());
+        let cmd = BuildStdTx::new(customer_id, tx_type.clone(), *payload.clone());
 
         let response = match client.build_cmd::<BuildStdTx>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
@@ -440,11 +475,16 @@ mod handlers {
     }
 
     pub async fn contract_exec_finalize(
-        customer_id: u64,
         contract: ContractType,
         tx_id: String,
-        payload: Signature,
+        (customer_id, payload): (u64, TXPWrapper),
     ) -> Result<impl warp::Reply, Infallible> {
+        let badreq =
+            warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
+        let payload = match payload {
+            TXPWrapper::Signature(txp) => txp,
+            _ => return Ok(badreq),
+        };
         let mut client = connect_odin().await;
         let cmd = FinalizeContract::new(
             customer_id,
@@ -464,11 +504,17 @@ mod handlers {
     }
 
     pub async fn multisig_exec_finalize(
-        customer_id: u64,
         multisig_type: MultiSigType,
         tx_id: String,
-        payload: Signature,
+        (customer_id, payload): (u64, TXPWrapper),
     ) -> Result<impl warp::Reply, Infallible> {
+        let badreq =
+            warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
+        println!("Multisig exec finalize...");
+        let payload = match payload {
+            TXPWrapper::Signature(txp) => txp,
+            _ => return Ok(badreq),
+        };
         let mut client = connect_odin().await;
         let cmd = FinalizeMultiSig::new(
             customer_id,
@@ -488,11 +534,16 @@ mod handlers {
     }
 
     pub async fn stdtx_exec_finalize(
-        customer_id: u64,
         txtype: StdTxType,
         tx_id: String,
-        payload: Signature,
+        (customer_id, payload): (u64, TXPWrapper),
     ) -> Result<impl warp::Reply, Infallible> {
+        let badreq =
+            warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
+        let payload = match payload {
+            TXPWrapper::Signature(txp) => txp,
+            _ => return Ok(badreq),
+        };
         let mut client = connect_odin().await;
         let cmd = FinalizeStdTx::new(customer_id, txtype.clone(), tx_id, payload.get_signature());
         let response = match client.build_cmd(cmd).await {

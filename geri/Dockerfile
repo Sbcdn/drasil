@@ -28,7 +28,7 @@ RUN adduser \
 FROM base as builder
 WORKDIR /geri-build
 ENV CARGO_HOME=/geri-build/.cargo
-COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./Cargo.toml ./                       
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./.cargo/murin /murin

@@ -54,6 +54,7 @@ pub fn perform_mint(
     debug!("Recipent Address: {:?}", receiving_address_bech32);
 
     let mintpolicy = native_script.hash();
+    debug!("Policy ID: {:?}", hex::encode(mintpolicy.to_bytes()));
     let minttokens = mintasset_into_tokenasset(minttxd.get_mint_tokens(), mintpolicy.clone());
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +89,6 @@ pub fn perform_mint(
     // Inputs
     let mut input_txuos = gtxd.clone().get_inputs();
 
-    info!("\n Before USED UTXOS");
     // Check if some utxos in inputs are in use and remove them
     if let Some(used_utxos) = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)? {
         info!("\n\n");
@@ -100,12 +100,7 @@ pub fn perform_mint(
     let k = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)?;
     info!("K: {:?}", k);
 
-    let collateral_input_txuo = gtxd.clone().get_collateral();
-    debug!("\nCollateral Input: {:?}", collateral_input_txuo);
-
     // Balance TX
-    debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
-    debug!("Before Balance: Transaction Outputs: {:?}", txouts);
 
     let mut fee_paied = false;
     let mut first_run = true;
@@ -122,10 +117,6 @@ pub fn perform_mint(
     let mut needed_value = cutils::Value::new(&needed_value.coin());
 
     debug!("Needed Value: {:?}", needed_value);
-    debug!(
-        "\n\n\n\n\nTxIns Before selection:\n {:?}\n\n\n\n\n",
-        input_txuos
-    );
 
     //let mut signers_address_utxos = (TransactionUnspentOutputs::new(),TransactionUnspentOutputs::new());
     //if let Some(signer) = minttxd.get_signer() {
@@ -164,13 +155,8 @@ pub fn perform_mint(
     }
      */
     let saved_input_txuos = input_txuos.clone();
-    info!("Saved Inputs: {:?}", saved_input_txuos);
 
-    let vkey_counter = get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 1; // +1 dues to signature in finalize
-    debug!(
-        "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
-        input_txuos
-    );
+    let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
 
     // ToDo:
     let mut mint_val_zero_coin = mint_val.clone();
@@ -211,8 +197,6 @@ pub fn perform_mint(
     );
     let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&slot);
-    info!("\nTxOutputs: {:?}\n", txbody.outputs());
-    debug!("\nTxInputs: {:?}\n", txbody.inputs());
 
     txbody.set_auxiliary_data_hash(&aux_data_hash);
 
@@ -225,11 +209,11 @@ pub fn perform_mint(
         txbody.set_network_id(&clib::NetworkId::mainnet());
     }
 
-    //let req_signer = native_script.get_required_signers();
-    //info!("Len Req SIgner: {:?}",req_signer.len());
-    //for i in 0..req_signer.len() {
-    //    info!("Required Signer: {:?}" ,req_signer.get(i).to_bech32("pkh_")) //req_signer.len()
-    //}
+    let req_signer = native_script.get_required_signers();
+    info!("Len Req SIgner: {:?}", req_signer.len());
+    for i in 0..req_signer.len() {
+        info!("Required Signer: {:?}", req_signer.get(i).to_bech32("pkh_")) //req_signer.len()
+    }
 
     let mut txwitness = clib::TransactionWitnessSet::new();
     let mut native_scripts = clib::NativeScripts::new();

@@ -324,6 +324,13 @@ pub enum Network {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum TXPWrapper {
+    TransactionPattern(Box<TransactionPattern>),
+    Signature(Signature),
+    OneShotMinter(OneShotMintPayload),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionPattern {
     user: String,
     contract_id: Option<u64>,

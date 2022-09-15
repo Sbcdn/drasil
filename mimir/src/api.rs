@@ -84,6 +84,30 @@ pub fn get_stake_address_utxos(
     Ok(utxos)
 }
 
+/// Get all utxos of a stake address
+pub fn get_asset_utxos_on_addr(
+    conn: &mut PgConnection,
+    addr: &String,
+) -> Result<murin::TransactionUnspentOutputs, MimirError> {
+    let unspent_assets = unspent_utxos::table
+        .inner_join(ma_tx_out::table.on(ma_tx_out::tx_out_id.eq(unspent_utxos::id)))
+        .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
+        .select((multi_asset::fingerprint, ma_tx_out::quantity))
+        .filter(unspent_utxos::address.eq(addr))
+        .load::<(String, BigDecimal)>(conn)?;
+    let mut utxos = murin::TransactionUnspentOutputs::new();
+
+    let mut out = Vec::<(String, BigDecimal)>::new();
+    let mut worker = Vec::<String>::new();
+    for u in unspent_assets {
+        if worker.contains(&u.0) {
+            let index: usize = worker.iter().enumerate().find(|&r| *r.1 == u.0).unwrap().0;
+        }
+    }
+
+    Ok(utxos)
+}
+
 pub fn get_slot(conn: &mut PgConnection) -> Result<i64, MimirError> {
     let slot = block::table
         .filter(block::block_no.is_not_null())
@@ -358,6 +382,53 @@ pub fn lookup_nft_token_holders(policy: &String) -> Result<Vec<EligableWallet>, 
     }));
 
     Ok(ret)
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct TokenInfoMint {
+    fingerprint: String,
+    policy: String,
+    tokenname: String,
+    meta_key: i64,
+    json: Option<serde_json::Value>,
+    txhash: String,
+}
+
+pub fn get_mint_metadata(fingerprint_in: &String) -> Result<TokenInfoMint, MimirError> {
+    let mut conn = crate::establish_connection()?;
+
+    let metadata = ma_tx_mint::table
+        .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_mint::ident)))
+        .inner_join(tx_metadata::table.on(tx_metadata::tx_id.eq(ma_tx_mint::tx_id)))
+        .inner_join(tx::table.on(ma_tx_mint::tx_id.eq(tx::id)))
+        .inner_join(block::table.on(tx::block_id.eq(block::id)))
+        .filter(multi_asset::fingerprint.eq(fingerprint_in))
+        .order_by(block::slot_no.desc())
+        .select((
+            multi_asset::fingerprint,
+            multi_asset::policy,
+            multi_asset::name,
+            tx_metadata::key,
+            tx_metadata::json.nullable(),
+            tx::hash,
+        ))
+        .first::<(
+            String,
+            Vec<u8>,
+            Vec<u8>,
+            BigDecimal,
+            Option<serde_json::Value>,
+            Vec<u8>,
+        )>(&mut conn)?;
+
+    Ok(TokenInfoMint {
+        fingerprint: metadata.0,
+        policy: hex::encode(metadata.1),
+        tokenname: String::from_utf8(metadata.2)?,
+        meta_key: metadata.3.to_i64().unwrap(),
+        json: metadata.4,
+        txhash: hex::encode(metadata.5),
+    })
 }
 
 /*

@@ -157,8 +157,8 @@ pub(crate) fn handle_rewards(
         twd.user_id,
         &twd.fingerprint.clone(),
     )?;
-    println!("Rewards: {:?}", rewards[0].tot_earned);
-    println!("Token earned in handle rewards: {:?}", token_earned);
+    //println!("Rewards: {:?}", rewards[0].tot_earned);
+    //println!("Token earned in handle rewards: {:?}", token_earned);
     let mut tot_earned = BigDecimal::from_i32(0).unwrap();
     if rewards.len() == 1 && rewards[0].last_calc_epoch < twd.calc_epoch {
         tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
@@ -441,16 +441,16 @@ pub async fn main() -> Result<()> {
         }
         println!("Rewards successfully calucalted for epoch: {:?}", i);
     }
-    let mut path =
-        std::env::var("CSV_PATH").expect("Could not open CSV path, environment variable not set");
+    // let mut path =
+    //   std::env::var("CSV_PATH").expect("Could not open CSV path, environment variable not set");
     let mut bpath = "/".to_string();
-    path.push_str(&(calc_epoch.to_string() + "_"));
+    // path.push_str(&(calc_epoch.to_string() + "_"));
     bpath.push_str(&(calc_epoch.to_string() + "_"));
-    path.push_str(&chrono::offset::Utc::now().to_string());
+    // path.push_str(&chrono::offset::Utc::now().to_string());
     bpath.push_str(&chrono::offset::Utc::now().to_string());
     bpath.push_str(".csv");
 
-    let mut wtr = WriterBuilder::new().from_path(path)?;
+    //let mut wtr = WriterBuilder::new().from_path(path)?;
     let mut wtr2 = WriterBuilder::new().from_writer(vec![]);
     for entry in table {
         let mut e = entry.twldata.to_str_vec();
@@ -463,12 +463,11 @@ pub async fn main() -> Result<()> {
             ]
             .into_iter(),
         );
-        wtr.write_record(&e)?;
+        //wtr.write_record(&e)?;
         wtr2.write_record(&e)?;
     }
-    wtr.flush()?;
+    //wtr.flush()?;
     let data = String::from_utf8(wtr2.into_inner()?)?;
-    println!("{:?}", data);
 
     let bucket_name = "freki-protocols";
     let region = "us-east-2".parse().unwrap();

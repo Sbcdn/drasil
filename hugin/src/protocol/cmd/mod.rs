@@ -190,18 +190,19 @@ pub fn create_response(
     raw_tx: &murin::utxomngr::RawTx,
     wallet_type: Option<&crate::datamodel::hephadata::WalletType>,
 ) -> Result<crate::datamodel::hephadata::UnsignedTransaction, murin::MurinError> {
-    debug!("RawTx: {:?}", raw_tx);
+    debug!("Try to store raw tx...");
     let tx_id = murin::utxomngr::txmind::store_raw_tx(raw_tx)?;
+    debug!("Try to create response...");
     let mut response = crate::datamodel::hephadata::UnsignedTransaction::new(
         Some(&bld_tx.get_tx_unsigned()),
         &tx_id,
     );
-
+    debug!("Determine wallet specific settings...");
     if let Some(wallet) = wallet_type {
         if *wallet == crate::datamodel::hephadata::WalletType::Yoroi {
             response.set_tx(&bld_tx.get_tx_unsigned())
         }
     }
-
+    debug!("Sending response...");
     Ok(response)
 }

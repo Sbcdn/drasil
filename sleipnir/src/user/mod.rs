@@ -8,7 +8,7 @@
 */
 pub use crate::error::SleipnirError;
 use chrono::{DateTime, Utc};
-use hugin::encryption::vault_get;
+use dvltath::vault::kv::vault_get;
 use hugin::{database::TBDrasilUser, encryption};
 use zeroize::Zeroize;
 

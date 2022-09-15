@@ -29,7 +29,7 @@ pub fn establish_connection() -> Result<PgConnection, SystemDBError> {
 }
 
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone, serde::Serialize)]
-#[table_name = "contracts"]
+#[diesel(table_name = contracts)]
 pub struct TBContracts {
     pub id: i64,
     pub user_id: i64,
@@ -49,7 +49,7 @@ pub struct TBContracts {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "contracts"]
+#[diesel(table_name = contracts)]
 pub struct TBContractNew<'a> {
     pub user_id: &'a i64,
     pub contract_id: &'a i64,
@@ -94,7 +94,7 @@ pub struct TBDrasilUser {
 }
 
 #[derive(Insertable, PartialEq, Eq, Debug, Clone)]
-#[table_name = "drasil_user"]
+#[diesel(table_name = drasil_user)]
 pub struct TBDrasilUserNew<'a> {
     pub user_id: &'a i64,
     pub api_pubkey: Option<&'a String>,
@@ -133,7 +133,7 @@ pub struct TBMultiSigs {
 }
 
 #[derive(Insertable, PartialEq, Debug, Clone)]
-#[table_name = "multisigs"]
+#[diesel(table_name = multisigs)]
 pub struct TBMultiSigsNew {
     pub user_id: i64,
     pub contract_id: i64,
@@ -158,7 +158,7 @@ pub struct TBMultiSigLoc {
 }
 
 #[derive(Insertable, Debug, Clone)]
-#[table_name = "multisig_keyloc"]
+#[diesel(table_name = multisig_keyloc)]
 pub struct TBMultiSigLocNew<'a> {
     pub user_id: &'a i64,
     pub contract_id: &'a i64,
@@ -185,7 +185,7 @@ impl TBEmailVerificationTokenMessage {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Queryable, Insertable)]
-#[table_name = "email_verification_token"]
+#[diesel(table_name = email_verification_token)]
 pub struct TBEmailVerificationToken {
     pub id: Vec<u8>,
     pub email: String,
@@ -240,7 +240,7 @@ pub struct TBCaPayment {
 }
 
 #[derive(Insertable, Debug, Clone)]
-#[table_name = "ca_payment"]
+#[diesel(table_name = ca_payment)]
 pub struct TBCaPaymentNew<'a> {
     pub user_id: &'a i64,
     pub contract_id: &'a i64,
@@ -262,7 +262,7 @@ pub struct TBCaPaymentHash {
 }
 
 #[derive(Insertable, Debug, Clone)]
-#[table_name = "ca_payment_hash"]
+#[diesel(table_name = ca_payment_hash)]
 pub struct TBCaPaymentHashNew<'a> {
     pub payment_id: &'a i64,
     pub payment_hash: &'a str,
