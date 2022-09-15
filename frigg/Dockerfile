@@ -1,15 +1,15 @@
 FROM rust:1.61.0-slim-bullseye as base
 RUN apt update -y
 RUN apt install -y --no-install-recommends \
-        ca-certificates \
-        gcc \
-        libc6-dev \
-        libpq-dev \
-        libasn1-8-heimdal \
-        libtasn1-6 \
-        libhdb9-heimdal \
-        nettle-dev \
-        libhogweed6
+    ca-certificates \
+    gcc \
+    libc6-dev \
+    libpq-dev \
+    libasn1-8-heimdal \
+    libtasn1-6 \
+    libhdb9-heimdal \
+    nettle-dev \
+    libhogweed6
 
 RUN apt clean -y
 
@@ -28,7 +28,7 @@ RUN adduser \
 FROM base as builder
 WORKDIR /frigg-build
 ENV CARGO_HOME=/frigg-build/.cargo
-COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./Cargo.toml ./                       
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./src ./src
@@ -37,6 +37,7 @@ COPY ./.cargo/murin /murin
 COPY ./.cargo/gungnir /gungnir
 COPY ./.cargo/mimir /mimir
 COPY ./.cargo/sleipnir /sleipnir
+COPY ./.cargo/dvltath /dvltath
 RUN cargo build --release --target x86_64-unknown-linux-gnu
 
 FROM gcr.io/distroless/cc as frigg

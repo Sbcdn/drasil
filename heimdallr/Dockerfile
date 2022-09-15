@@ -28,7 +28,7 @@ RUN adduser \
 FROM base as builder
 WORKDIR /heimdallr-build
 ENV CARGO_HOME=/heimdallr-build/.cargo
-COPY ./Cargo.toml ./Cargo.lock ./                       
+COPY ./Cargo.toml ./                       
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./src ./src

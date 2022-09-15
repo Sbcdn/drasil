@@ -7,7 +7,6 @@
 #################################################################################
 */
 use super::handler;
-use hugin::datamodel::hephadata::OneShotMintPayload;
 use warp::Filter;
 
 pub fn api_endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -36,23 +35,13 @@ pub fn oneshot_minter_api(
         .and(warp::path("mint"))
         .and(warp::path("oneshot"))
         .and(warp::post())
-        .and(auth())
-        .and(json_oneshot_minter_body())
+        .and(crate::filters::auth())
+        //.and(json_oneshot_minter_body())
         .and_then(handler::hnd_oneshot_minter_api)
 }
-
+/*
 fn json_oneshot_minter_body(
 ) -> impl Filter<Extract = (OneShotMintPayload,), Error = warp::Rejection> + Clone {
     warp::body::content_length_limit(100 * 1024).and(warp::body::json())
 }
-
-fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
-    use crate::auth::authorize;
-    use warp::{
-        filters::header::headers_cloned,
-        http::header::{HeaderMap, HeaderValue},
-    };
-    headers_cloned()
-        .map(move |headers: HeaderMap<HeaderValue>| (headers))
-        .and_then(authorize)
-}
+ */

@@ -37,6 +37,7 @@ COPY ./.cargo/gungnir /gungnir
 COPY ./.cargo/hugin /hugin
 COPY ./.cargo/murin /murin
 COPY ./.cargo/mimir /mimir
+COPY ./.cargo/dvltath /dvltath
 RUN cargo build --bin utxopti --release --target x86_64-unknown-linux-gnu
 
 FROM gcr.io/distroless/cc as utxopti

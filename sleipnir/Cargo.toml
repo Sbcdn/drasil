@@ -39,6 +39,7 @@ murin = { path = "../murin", version = "0.1.0" }
 mimir = { path = "../mimir", version = "0.1.0" }
 gungnir = { path = "../gungnir", version = "0.1.0" }
 hugin = { path = "../hugin", version = "0.1.0" }
+dvltath = { path = "../dvltath", version = "0.1.0" }
 
 #gungnir = { git = "ssh://git@github.com/sbcdn/gungnir.git", branch="main" }
 #mimir = { git = "ssh://git@github.com/sbcdn/mimir.git", branch="main" }

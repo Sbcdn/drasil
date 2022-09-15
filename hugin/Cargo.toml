@@ -46,6 +46,7 @@ sha2 = "0.10.2"
 murin = { path = "../murin", version = "0.1.0" }
 mimir = { path = "../mimir", version = "0.1.0" }
 gungnir = { path = "../gungnir", version = "0.1.0" }
+dvltath = { path = "../dvltath", version = "0.1.0" }
 
 #murin = { git = "ssh://git@github.com/maestro-org/murin.git", branch="main" }
 #mimir = { git = "ssh://git@github.com/maestro-org/mimir.git", branch="main" }

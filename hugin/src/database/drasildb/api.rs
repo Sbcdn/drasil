@@ -9,10 +9,11 @@
 use super::*;
 use crate::{
     admin::get_vaddr,
-    encryption::{decrypt, encrypt, vault_get, vault_store},
+    encryption::{decrypt, encrypt},
     schema::{contracts, email_verification_token, multisig_keyloc},
 };
 use diesel::pg::upsert::on_constraint;
+use dvltath::vault::kv::{vault_get, vault_store};
 use error::SystemDBError;
 use murin::{
     crypto::{Ed25519Signature, PrivateKey, PublicKey},
@@ -381,8 +382,8 @@ impl TBDrasilUser {
         let user_id = match nuser_id {
             Ok(id) => id,
             Err(e) => {
-                log::error!("Error did not found any userid");
-                if e.to_string() == *"NotFound" {
+                log::error!("Error did not found any userid: {:?}", e.to_string());
+                if e.to_string() == *"Record not found" {
                     0
                 } else {
                     return Err(e);

@@ -711,6 +711,7 @@ impl BuildMultiSig {
         log::debug!("Transaction Patter: {:?}\n", &txp);
         log::debug!("Try to create general transaction data...");
         let mut gtxd = txp.into_txdata().await?;
+        log::debug!("General TX Data: {:?}", gtxd);
         log::debug!("Connect to dbsync...");
         let mut dbsync = match mimir::establish_connection() {
             Ok(conn) => conn,
@@ -737,6 +738,7 @@ impl BuildMultiSig {
         gtxd.set_current_slot(slot as u64);
 
         log::debug!("Create Oneshot policy...");
+        log::debug!("Current Slot: {:?}", slot);
         let oneshotwallet = murin::wallet::create_wallet();
         let oneshotpolicy = murin::minter::create_onshot_policy(&oneshotwallet.3, slot as u64);
 
@@ -772,7 +774,7 @@ impl BuildMultiSig {
         let bld_tx = match murin::minter::build_oneshot_mint::build_oneshot_mint_multisig(
             &gtxd,
             &minttxd,
-            &pkvs,
+            &[hex::encode(oneshotwallet.0.as_bytes())],
             &ns_script,
             &murin::cip30::b_decode_addr(&contract.address).await?,
         )
@@ -807,7 +809,7 @@ impl BuildMultiSig {
         let txh = murin::finalize_rwd(
             &hex::encode(&murin::clib::TransactionWitnessSet::new().to_bytes()),
             tx,
-            vec!["".to_string(), hex::encode(oneshotwallet.0.as_bytes())],
+            vec!["".to_string(), pkvs[0].clone()],
         )
         .await?;
 

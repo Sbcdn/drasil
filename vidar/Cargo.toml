@@ -34,5 +34,7 @@ thiserror = "1.0.32"
 
 gungnir = { path = "../gungnir", version = "0.1.0" }
 hugin = { path = "../hugin", version = "0.1.0" }
+
+mimir = { path = "../mimir", version = "0.1.0" }
 #gungnir = { git = "ssh://git@github.com/maestro-org/gungnir.git", branch="main" }
 #hugin = { git = "ssh://git@github.com/sbcdn/hugin.git", branch="main" }

@@ -208,14 +208,22 @@ pub fn store_raw_tx(payload: &RawTx) -> Result<String, MurinError> {
     let key = TxMindId::new(payload);
 
     let items = payload.to_redis_item();
-    redis::cmd("HSET")
-        .arg(&key.id)
-        .arg(&items)
-        .query(&mut con)?;
-    redis::cmd("EXPIRE")
-        .arg(&key.id)
-        .arg("3600")
-        .query(&mut con)?;
+
+    match con {
+        (Some(ref mut c), None) => {
+            redis::cmd("HSET").arg(&key.id).arg(&items).query(c)?;
+            redis::cmd("EXPIRE").arg(&key.id).arg("3600").query(c)?;
+        }
+        (None, Some(ref mut c)) => {
+            redis::cmd("HSET").arg(&key.id).arg(&items).query(c)?;
+            redis::cmd("EXPIRE").arg(&key.id).arg("3600").query(c)?;
+        }
+        _ => {
+            return Err(MurinError::new(
+                "Could not establish single nor cluster redis connection",
+            ));
+        }
+    };
 
     Ok(key.id)
 }
@@ -223,7 +231,16 @@ pub fn store_raw_tx(payload: &RawTx) -> Result<String, MurinError> {
 pub fn read_raw_tx(key: &String) -> Result<RawTx, MurinError> {
     let mut con = redis_txmind_connection()?;
 
-    let response: HashMap<String, String> = redis::cmd("HGETALL").arg(key).query(&mut con)?;
+    let response: HashMap<String, String> = match con {
+        (Some(ref mut c), None) => redis::cmd("HGETALL").arg(key).query(c)?,
+        (None, Some(ref mut c)) => redis::cmd("HGETALL").arg(key).query(c)?,
+        _ => {
+            return Err(MurinError::new(
+                "Could not establish single nor cluster redis connection",
+            ));
+        }
+    };
+
     let err = MurinError::new(&format!(
         "Error in decoding Redis Data for 'RawTx' : {:?}",
         response

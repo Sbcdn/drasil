@@ -8,7 +8,7 @@
 */
 use hugin::client::{connect, Client};
 use hugin::datamodel::hephadata::{
-    MultiSigType, OneShotMintPayload, OneShotReturn, ReturnError, TransactionPattern,
+    MultiSigType, OneShotReturn, ReturnError, TXPWrapper, TransactionPattern,
 };
 use hugin::BuildMultiSig;
 use std::convert::Infallible;
@@ -19,12 +19,15 @@ async fn connect_odin() -> Client {
 }
 
 pub async fn hnd_oneshot_minter_api(
-    customer_id: u64,
-    payload: OneShotMintPayload,
+    (customer_id, payload): (u64, TXPWrapper),
 ) -> Result<impl warp::Reply, Infallible> {
     let badreq =
         warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
     log::info!("Build Oneshot Minter Transaction....");
+    let payload = match payload {
+        TXPWrapper::OneShotMinter(p) => p,
+        _ => return Ok(badreq),
+    };
 
     if payload.tokennames().len() != payload.amounts().len() {
         return Ok(badreq);

@@ -18,4 +18,6 @@ members = [
     "sleipnir",
     "vidar",
     "utxopti",
+    "pauther",
+    "dvltath",
 ]

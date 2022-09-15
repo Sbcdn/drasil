@@ -1,7 +1,7 @@
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
-PROJECT=drasil
+PROJECT=mdrsl
 IMAGE=frigg
-VERSION=v1.0
+VERSION=v1.1
 
 build:
 	cargo update
@@ -15,6 +15,7 @@ build:
 	cp -R ../mimir .cargo/mimir
 	cp -R ../gungnir .cargo/gungnir
 	cp -R ../sleipnir .cargo/sleipnir
+	cp -R ../dvltath .cargo/dvltath
 	sudo docker build -t $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
 
 run:

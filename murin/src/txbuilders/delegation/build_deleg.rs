@@ -68,25 +68,18 @@ fn perform_delegation(
 
     let mut certs = clib::Certificates::new();
 
-    let stake_delegation =
-        clib::StakeDelegation::new(&deleg_stake_creds, &pooltxd.get_poolkeyhash());
-    let deleg_cert = clib::Certificate::new_stake_delegation(&stake_delegation);
-    certs.add(&deleg_cert);
-
     if !*registered {
         let stake_reg = clib::StakeRegistration::new(&deleg_stake_creds);
         let reg_cert = clib::Certificate::new_stake_registration(&stake_reg);
         certs.add(&reg_cert);
     }
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    //Auxiliary Data
-    //  Plutus Script and Metadata
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    let aux_data = clib::metadata::AuxiliaryData::new();
-    //let aux_data_hash = cutils::hash_auxiliary_data(&aux_data);
+    let stake_delegation =
+        clib::StakeDelegation::new(&deleg_stake_creds, &pooltxd.get_poolkeyhash());
+    let deleg_cert = clib::Certificate::new_stake_delegation(&stake_delegation);
+    certs.add(&deleg_cert);
 
+    let aux_data = clib::metadata::AuxiliaryData::new();
     //////////////////////////////////////////////////////////////////////////////////////////////////////
     //Add Inputs and Outputs
     //
@@ -95,12 +88,11 @@ fn perform_delegation(
 
     let mut txouts = clib::TransactionOutputs::new();
     // ATTENTION DIFFERENT VALUES FOR PREVIEW / PREPROD / MAINNET
-    let deposit_val = cutils::Value::new(&cutils::to_bignum(400000));
+    let deposit_val = cutils::Value::new(&cutils::to_bignum(2000000));
 
     // Inputs
     let mut input_txuos = gtxd.clone().get_inputs();
 
-    info!("\n Before USED UTXOS");
     // Check if some utxos in inputs are in use and remove them
     if let Some(used_utxos) = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)? {
         info!("\n\n");
@@ -112,13 +104,7 @@ fn perform_delegation(
     let k = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)?;
     info!("K: {:?}", k);
 
-    let collateral_input_txuo = gtxd.clone().get_collateral();
-    debug!("\nCollateral Input: {:?}", collateral_input_txuo);
-
     // Balance TX
-    debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
-    debug!("Before Balance: Transaction Outputs: {:?}", txouts);
-
     let mut fee_paied = false;
     let mut first_run = true;
     let mut txos_paied = false;
@@ -141,35 +127,17 @@ fn perform_delegation(
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
     let mut needed_value = cutils::Value::new(&needed_value.coin());
 
-    debug!("Needed Value: {:?}", needed_value);
-    debug!(
-        "\n\n\n\n\nTxIns Before selection:\n {:?}\n\n\n\n\n",
-        input_txuos
-    );
-
-    // !!!! CHeck if input selection just tries to find ADA!!!!
-    let (txins, mut input_txuos) = input_selection(
-        None,
-        &mut needed_value,
-        &input_txuos,
-        gtxd.clone().get_collateral(),
-        None, //Some(native_script_address).as_ref(),
-    )?;
+    let (txins, mut input_txuos) =
+        input_selection(None, &mut needed_value, &input_txuos, None, None)?;
 
     let saved_input_txuos = input_txuos.clone();
-    info!("Saved Inputs: {:?}", saved_input_txuos);
-
-    let vkey_counter = get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 1; // +1 dues to signature in finalize
-    debug!(
-        "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
-        input_txuos
-    );
+    let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
 
     let txouts_fin = balance_tx(
         &mut input_txuos,
         &Tokens::new(),
         &mut txouts,
-        None, // but not the ADA!!!!
+        None,
         fee,
         &mut fee_paied,
         &mut first_run,
@@ -185,18 +153,14 @@ fn perform_delegation(
     let slot = gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network());
     let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&cutils::to_bignum(slot));
-    info!("\nTxOutputs: {:?}\n", txbody.outputs());
-    debug!("\nTxInputs: {:?}\n", txbody.inputs());
-
-    //txbody.set_auxiliary_data_hash(&aux_data_hash);
     txbody.set_certs(&certs);
 
     // Set network Id
-    if gtxd.get_network() == clib::NetworkIdKind::Testnet {
-        txbody.set_network_id(&clib::NetworkId::testnet());
-    } else {
-        txbody.set_network_id(&clib::NetworkId::mainnet());
-    }
+    //if gtxd.get_network() == clib::NetworkIdKind::Testnet {
+    //    txbody.set_network_id(&clib::NetworkId::testnet());
+    //} else {
+    //    txbody.set_network_id(&clib::NetworkId::mainnet());
+    //}
 
     let txwitness = clib::TransactionWitnessSet::new();
 
@@ -226,7 +190,7 @@ pub async fn build_delegation_tx(
     //
 
     //Create Tx
-    let (txbody_, mut txwitness_, aux_data_, _, vkey_counter) = perform_delegation(
+    let (txbody_, mut txwitness_, _, _, vkey_counter) = perform_delegation(
         &cutils::to_bignum(2000000),
         gtxd,
         delegtxd,
@@ -238,7 +202,7 @@ pub async fn build_delegation_tx(
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
-    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
+    let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, None);
 
     let calculated_fee = calc_txfee(
         &transaction_,
@@ -252,7 +216,7 @@ pub async fn build_delegation_tx(
     let (txbody, txwitness, aux_data, used_utxos, vkey_counter_2) =
         perform_delegation(&calculated_fee, gtxd, delegtxd, registered, true)?;
 
-    let transaction2 = clib::Transaction::new(&txbody, &txwitness_, Some(aux_data.clone()));
+    let transaction2 = clib::Transaction::new(&txbody, &txwitness_, None);
 
     if vkey_counter_2 != vkey_counter
         || transaction2.to_bytes().len() != transaction_.to_bytes().len()

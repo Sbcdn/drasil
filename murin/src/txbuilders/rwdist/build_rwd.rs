@@ -78,6 +78,9 @@ pub fn perform_rwd(
     debug!("Datum Metadata: {:?}\n", raw_metadata);
 
     let mut metalist = clib::metadata::MetadataList::new();
+    metalist.add(&clib::metadata::TransactionMetadatum::new_text(
+        "smartclaimz.io".to_string(),
+    )?);
     for dat in raw_metadata {
         debug!("Datum Metadata Iterator: {:?}", dat);
         metalist.add(&clib::metadata::TransactionMetadatum::new_bytes(
@@ -178,15 +181,8 @@ pub fn perform_rwd(
         contract_fee += f;
     }
 
-    // Add SystemFee
-    //if *apply_system_fee {
-    //    contract_fee = contract_fee + rwd_system_fee;
-    //}
-
     let fee_val = cutils::Value::new(&cutils::to_bignum(contract_fee));
-    debug!("\n\nFee Value: {:?}", fee_val);
 
-    debug!("\n\nrwd_utxo_selection: {:?}", rwd_utxo_selection);
     if !rwd_utxo_selection.is_empty() {
         let mut zcoin_rval = rwd_val.clone();
         zcoin_rval.set_coin(&cutils::to_bignum(0u64));
@@ -251,16 +247,7 @@ pub fn perform_rwd(
 
     debug!("\n Added reward utxos to inputs\n {:?}", rwd_utxo_selection);
 
-    let collateral_input_txuo = gtxd.clone().get_collateral();
-
-    //cutils::TransactionUnspentOutput::from_bytes(hex::decode(&txd.collateral_input).unwrap()).unwrap();
-
-    debug!("\nCollateral Input: {:?}", collateral_input_txuo);
-
     // Balance TX
-    debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
-    debug!("Before Balance: Transaction Outputs: {:?}", txouts);
-
     let mut fee_paied = false;
     let mut first_run = true;
     let mut txos_paied = false;
@@ -276,10 +263,6 @@ pub fn perform_rwd(
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
     debug!("Needed Value: {:?}", needed_value);
-    debug!(
-        "\n\n\n\n\nTxIns Before selection:\n {:?}\n\n\n\n\n",
-        input_txuos
-    );
 
     let (txins, mut input_txuos) = super::input_selection(
         None,
@@ -289,22 +272,9 @@ pub fn perform_rwd(
         Some(native_script_address).as_ref(),
     )?;
     let saved_input_txuos = input_txuos.clone();
-    debug!("Saved Inputs: {:?}", saved_input_txuos);
 
-    let mut vkey_counter = hfn::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 1; // +1 dues to signature in finalize
-    debug!(
-        "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
-        input_txuos
-    );
+    let mut vkey_counter = hfn::get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
 
-    // ToDo:
-    // Need to rewrite balancing, we have two change addresses, reward tokens and the minAda on it needs to go back to the
-    // reward wallet, the rest user input needs to go back to the users walet, am besten in zwei schritten,
-    // erst Outputs für Reward wallet hinzufügen und dann auf user wallet wechseln.
-    // -> Should be solved with the value substraction above -> Check
-    //let mut already_balanced = cutils::Value::new(&rwd_utxo_tot_val.coin());
-    //already_balanced.set_multiasset(multiasset: &MultiAsset);
-    debug!("\n\nRWD Tot Value: {:?}", rwd_utxo_tot_val);
     let txouts_fin = hfn::balance_tx(
         &mut input_txuos,
         &rwdtxd.get_reward_tokens(),
@@ -327,17 +297,15 @@ pub fn perform_rwd(
     );
     let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&slot);
-    debug!("\nTxOutputs: {:?}\n", txbody.outputs());
-    debug!("\nTxInputs: {:?}\n", txbody.inputs());
 
     txbody.set_auxiliary_data_hash(&aux_data_hash);
 
     // Set network Id
-    if gtxd.get_network() == clib::NetworkIdKind::Testnet {
-        txbody.set_network_id(&clib::NetworkId::testnet());
-    } else {
-        txbody.set_network_id(&clib::NetworkId::mainnet());
-    }
+    //if gtxd.get_network() == clib::NetworkIdKind::Testnet {
+    //    txbody.set_network_id(&clib::NetworkId::testnet());
+    //} else {
+    //    txbody.set_network_id(&clib::NetworkId::mainnet());
+    //}
     /*
     let mut req_signers = clib::Ed25519KeyHashes::new();
     let pkh1 = clib::crypto::PrivateKey::from_bech32(&pvks.get(0).unwrap())?.to_public().hash();

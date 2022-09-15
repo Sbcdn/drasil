@@ -14,9 +14,8 @@ use murin::MurinError;
 use rand::{rngs::OsRng, RngCore};
 
 use sha2::Digest;
-use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
-use vaultrs::{api::AuthInfo, client::Client};
 
+use dvltath::vault::auth::vault_connect;
 use std::{
     collections::HashMap,
     io::{BufWriter, Read, Write},
@@ -44,49 +43,6 @@ fn get_secure_key_from_pwd(pwd: &String) -> (Vec<u8>, [u8; 32]) {
     (key, salt)
 }
 
-async fn vault_auth(client: &VaultClient) -> AuthInfo {
-    let secret_id = std::env::var("VSECRET_ID").unwrap();
-    let role_id = std::env::var("V_ROLE_ID").unwrap();
-    vaultrs::auth::approle::login(client, "approle", &role_id, &secret_id)
-        .await
-        .unwrap()
-}
-
-pub async fn vault_connect() -> VaultClient {
-    let address = std::env::var("VAULT_ADDR").unwrap();
-    let namespace = std::env::var("VAULT_NAMESPACE").unwrap();
-    let mut client = VaultClient::new(
-        VaultClientSettingsBuilder::default()
-            .address(address)
-            .set_namespace(namespace)
-            .token("")
-            .timeout(Some(core::time::Duration::from_secs(30)))
-            .build()
-            .unwrap(),
-    )
-    .unwrap();
-
-    let token = match std::env::var("VAULT_TOKEN") {
-        Ok(o) => {
-            client.set_token(&o);
-            match vaultrs::token::lookup_self(&client).await {
-                Ok(lr) => {
-                    if lr.ttl > 30 {
-                        o
-                    } else {
-                        vault_auth(&client).await.client_token
-                    }
-                }
-                Err(_) => vault_auth(&client).await.client_token,
-            }
-        }
-        Err(_) => vault_auth(&client).await.client_token,
-    };
-    client.set_token(&token);
-    std::env::set_var("VAULT_TOKEN", &token);
-    client
-}
-
 pub async fn generate_pph(ident: &str) -> String {
     let mut password = [0u8; 1024];
     OsRng.fill_bytes(&mut password);
@@ -104,26 +60,6 @@ pub async fn generate_pph(ident: &str) -> String {
         .await
         .unwrap();
     password
-}
-
-pub async fn vault_store(ident: &str, key: &str, value: &str) {
-    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
-    let mut path = std::env::var("VPATH").unwrap();
-    let vault = vault_connect().await;
-    path.push_str(ident);
-    let mut data = HashMap::<&str, &str>::new();
-    data.insert(key, value);
-    let _set = vaultrs::kv2::set(&vault, &mount, &path, &data)
-        .await
-        .unwrap();
-}
-
-pub async fn vault_get(ident: &str) -> HashMap<String, String> {
-    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
-    let mut path = std::env::var("VPATH").unwrap();
-    let vault = vault_connect().await;
-    path.push_str(ident);
-    vaultrs::kv2::read(&vault, &mount, &path).await.unwrap()
 }
 
 pub async fn encrypt_pvks(source: &[String], ident: &str) -> Result<Vec<String>, MurinError> {

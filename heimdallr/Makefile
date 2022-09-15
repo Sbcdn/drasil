@@ -1,7 +1,7 @@
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
-PROJECT=drasil
+PROJECT=mdrsl
 IMAGE=heimdallr
-VERSION=v1.0
+VERSION=v1.1
 build:
 	cargo update
 	cargo fetch
