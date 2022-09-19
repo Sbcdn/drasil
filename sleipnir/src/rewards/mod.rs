@@ -294,7 +294,10 @@ pub fn create_token_whitelisting(
         log::debug!("Modificator EQU found: {}", *m);
         match serde_json::from_str(m) {
             Ok(models::FreeloaderzType { .. }) => (),
-            _ => return Err(SleipnirError::new("Modificator equation not supported yet")),
+            _ => match serde_json::from_str(m) {
+                Ok(models::FreeloaderzType { .. }) => (),
+                _ => return Err(SleipnirError::new("Modificator equation not supported yet")),
+            },
         };
     }
 

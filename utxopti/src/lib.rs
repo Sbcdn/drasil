@@ -322,7 +322,7 @@ fn add_utxos(
             &transaction.body().fee(),
             script,
         )?;
-        if stmptx.to_bytes().len() > 15800 {
+        if stmptx.to_bytes().len() > 15000 {
             break;
         }
     }
@@ -337,7 +337,7 @@ fn add_utxos(
     )?;
     let std_tokens = value_to_tokens(std_value)?;
     let r = find_token_utxos_na(utxos, std_tokens, None);
-    if tmp_tx.to_bytes().len() > 15800
+    if tmp_tx.to_bytes().len() > 15000
         || utxos.is_empty()
         || (utxo_amt - outputs.len() as u64) == 0
         || r.is_err()
