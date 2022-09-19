@@ -161,6 +161,7 @@ impl Rewards {
         claim_request: i64,
     ) -> Result<i64, RWDError> {
         use crate::schema::rewards::dsl::*;
+        log::info!("Try to find existing rewards...");
         let result = rewards
             .filter(stake_addr.eq(&stake_addr_in))
             .filter(fingerprint.eq(&fingerprint_in))
@@ -174,13 +175,23 @@ impl Rewards {
                 "Reward Error: Missmatching Payment Addresses!",
             ));
         }
-        let claim_sum = Claimed::get_token_claims_tot_amt(
+        let claim_sum = match Claimed::get_token_claims_tot_amt(
             conn,
             stake_addr_in,
             fingerprint_in,
             contract_id_in,
             user_id_in,
-        )?;
+        ) {
+            Ok(i) => i,
+            Err(e) => {
+                if e.to_string() == *"Record not found" {
+                    0
+                } else {
+                    println!("Other error..");
+                    return Err(e);
+                }
+            }
+        };
         log::info!("found claims");
         let lovelace = BigDecimal::from_i32(1000000).unwrap();
         match ((result.0 / lovelace) - result.1.clone()).to_i64() {

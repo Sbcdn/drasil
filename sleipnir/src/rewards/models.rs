@@ -12,6 +12,8 @@ use strum_macros::{Display, EnumString};
 #[derive(EnumString, Display, Serialize, Deserialize, Debug, Clone)]
 pub(crate) enum CustomCalculationTypes {
     Freeloaderz,
+    FixedAmountPerEpoch,
+    FixedAmountPerEpochNonAcc,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -19,4 +21,10 @@ pub(crate) struct FreeloaderzType {
     pub min_stake: i32,
     pub min_earned: f64,
     pub flatten: f64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct FixedAmountPerEpochType {
+    pub min_stake: Option<f64>,
+    pub amount: u64,
 }
