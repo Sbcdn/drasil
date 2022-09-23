@@ -25,45 +25,26 @@ enum Connection {
     Cluster(redis::cluster::ClusterConnection),
     Single(redis::Connection),
 }
-/*
-impl Connection {
-    pub fn get_cluster_con(&self) -> Result<redis::cluster::ClusterConnection> {
-        match self {
-            Connection::Cluster(c) => Ok(c),
-            _ => Err(murin::MurinError::new("Not a redis cluster connection").into())
-        }
-    }
-    pub fn get_con(&self) -> Result<redis::Connection> {
-        match self {
-            Connection::Single(c) => Ok(c),
-            _ => Err(murin::MurinError::new("Not a redis single connection").into())
-        }
-    }
-}
- */
 
-fn connect_cluster() -> Result<Connection> {
+fn connect() -> Result<Connection> {
     log::debug!("Try to connect to redis cluster...");
 
     let redis_cluster = std::env::var("REDIS_CLUSTER")?.parse::<bool>()?;
 
     if redis_cluster {
-        let redis_db = std::env::var("REDIS_DB")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
+        let redis_db = std::env::var("REDIS_DB")?;
         let con = redis::cluster::ClusterClient::open(vec![redis_db])?.get_connection()?;
 
         Ok(Connection::Cluster(con))
     } else {
-        let redis_db = std::env::var("REDIS_DB")?; // redis://[<username>][:<password>@]<hostname>[:port][/<db>]
+        let redis_db = std::env::var("REDIS_DB")?;
         let con = redis::Client::open(redis_db)?.get_connection()?;
 
         Ok(Connection::Single(con))
     }
 }
 pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8> {
-    //shutdown: Shutdown
-
-    let con = connect_cluster()?;
-
+    let con = connect()?;
     let worker = StreamWorker {
         stream: stream.clone(),
         consumer_group: stream.clone() + "_grp",
@@ -102,13 +83,11 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
         new_message
     );
 
-    //let ack : i64 = redis::cmd("ACK").arg(&stream.clone()).arg(&consumer_group.clone()).arg(MESSAGE_ID);
     if new_message.is_empty() {
         Ok(2)
     } else if new_message[0][0].is_empty() {
         Ok(1)
     } else {
-        // We got data
         let data_vec = &new_message[0][0][0][0];
         let id = &data_vec.0;
         log::info!("ID:\n {:?} \n", id);
@@ -126,45 +105,12 @@ pub fn run_worker(stream: String, worker_number: usize, id: String) -> Result<u8
             }
         }
 
-        //log::info!("TxData Data :\n {:?} \n",tx_data);
-        /*
-        match tx_data.data {
-            EventData::Transaction(TransactionRecord{
-                hash,
-                fee,
-                ttl,
-                validity_interval_start,
-                network_id,
-                input_count,
-                output_count,
-                mint_count,
-                total_output,
-
-                // include_details
-                metadata,
-                inputs,
-                outputs,
-                mint,
-            }) => {
-                if let Some(ins) = inputs {
-                    for i in ins {
-                        let t = i.tx_id+"#"+&i.index.to_string();
-                        delete_used_utxo(&t)?;
-                    }
-                }
-            },
-            _ => {}
-
-        }
-        */
-        //
-
         Ok(0)
     }
 }
 
 fn run_stream_trimmer(stream: String, maxlen: i32) -> Result<()> {
-    let con = connect_cluster()?;
+    let con = connect()?;
     match con {
         Connection::Cluster(mut c) => {
             redis::cmd("XTRIM")
@@ -190,7 +136,6 @@ fn run_stream_trimmer(stream: String, maxlen: i32) -> Result<()> {
 pub fn main() -> Result<()> {
     use std::{thread, time};
     pretty_env_logger::init();
-    //let worker_count_per_stream = 3;
 
     let use_stream_trimmer = std::env::var("STREAM_TRIMMER")?.parse::<bool>()?;
     let streams = std::env::var("STREAMS")?;
@@ -201,7 +146,7 @@ pub fn main() -> Result<()> {
 
     log::debug!("Trying to establish first connection....");
     let timeout = std::env::var("TIMEOUT")?;
-    let mut last_id: String; //store in file and read on startup
+    let mut last_id: String;
     let mut read_backlog = true;
 
     let mut id: String;
@@ -211,7 +156,7 @@ pub fn main() -> Result<()> {
     for i in 0..streams.len() {
         log::info!("Try to get groups....");
         if init {
-            let mcon = connect_cluster()?;
+            let mcon = connect()?;
             match mcon {
                 Connection::Cluster(mut c) => {
                     match redis::cmd("XINFO")
@@ -219,7 +164,6 @@ pub fn main() -> Result<()> {
                         .arg(streams[i].clone())
                         .query(&mut c)
                     {
-                        // parse groups into data structure to get latest id
                         Err(e) => {
                             log::info!("Got Err: {:?}", e.to_string());
                             let resp: String = redis::cmd("XGROUP")
@@ -250,7 +194,6 @@ pub fn main() -> Result<()> {
                             .arg(streams[i].clone() + "_grp")
                             .arg("$")
                             .query(&mut c)?;
-                        //groups = redis::cmd("XINFO").arg("GROUPS").arg(streams[i].clone()).query(&mut c)?;
                         log::info!("Create Group: {:?}", resp);
                     }
                 }
@@ -291,7 +234,6 @@ pub fn main() -> Result<()> {
                             .arg(streams[i].clone() + "_grp")
                             .arg("$")
                             .query(&mut c)?;
-                        //groups = redis::cmd("XINFO").arg("GROUPS").arg(streams[i].clone()).query(&mut c)?;
                         log::info!("Create Group: {:?}", resp);
                     }
                 }
@@ -304,7 +246,7 @@ pub fn main() -> Result<()> {
 
         log::info!("Worker loop....");
         for i in 0..streams.len() {
-            match connect_cluster()? {
+            match connect()? {
                 Connection::Cluster(mut c) => {
                     groups = redis::cmd("XINFO")
                         .arg("GROUPS")
