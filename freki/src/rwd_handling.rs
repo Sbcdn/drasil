@@ -198,7 +198,7 @@ pub(crate) async fn handle_lists(
             rwd_token.modificator_equ.clone(),
             epoch,
         );
-        handle_pool(pool, epoch, &mut twd, table).await?; //npools
+        handle_pool(pool, epoch, &mut twd, table).await?;
     }
 
     Ok(())

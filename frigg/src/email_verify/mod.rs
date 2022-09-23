@@ -76,32 +76,24 @@ impl Email {
         self.html = html.into();
         self
     }
-    // TODO : ADD AWS SES for email submission
     pub async fn send(self) -> Result<String, Error> {
         let ses_client = SesClient::new(rusoto_core::Region::UsEast2);
-        //let client = reqwest::Client::new();
         let mut rname = String::new();
         if let Some(name) = self.recipient.name {
             rname = name;
         }
         let email = Message::builder()
-            // Addresses can be specified by the tuple (email, alias)
             .to((rname + "<" + &self.recipient.email + ">").parse().unwrap())
-            // ... or by an address only
             .from(std::env::var("FROM_EMAIL").unwrap().parse().unwrap())
             .subject(self.subject)
             .body(self.html)
             .unwrap();
 
         let raw_email = email.formatted();
-        //let creds = Credentials::new(SMTP_USER.to_string(), SMTP_PW.to_string());
-        //let creds = Credentials::new("***REMOVED***".to_string(), "***REMOVED***".to_string());
-
         let ses_request = SendRawEmailRequest {
             raw_message: RawMessage {
                 data: base64::encode(raw_email).into(),
             },
-            //from_arn : Some("arn:aws:iam::942111480887:user/ses-smtp-user.20220426-214954".to_string()),
             source_arn: Some(std::env::var("EMAIL_API_KEY").unwrap()),
             ..Default::default()
         };

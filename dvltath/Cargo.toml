@@ -9,7 +9,6 @@ documentation = "https://docs.drasil.io"
 license = "LICENSE.md"
 readme = "README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -24,7 +23,6 @@ thiserror = "1.0.32"
 hex = "0.4"
 vaultrs = { git = "https://github.com/Sbcdn/vaultrs.git", branch = "master" } #"0.6.2"
 lazy_static = "1.4.0"
-# HTTP Requests
 http = "0.2.6"
 futures = "0.3.21"
 hyperlocal = "0.8"

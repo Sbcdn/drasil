@@ -32,7 +32,7 @@ pub(crate) async fn handle_stake(
                 BigDecimal::from_str(&s)?
             } else {
                 BigDecimal::from_i32(1).unwrap()
-            }; //total at stake
+            };
             println!("X: {:?}", x);
             let y = BigDecimal::from_str(&twd.equation)?;
             println!("Y: {:?}", y);
@@ -41,9 +41,7 @@ pub(crate) async fn handle_stake(
         }
 
         gungnir::Calculationmode::Custom => {
-            //Freeloaderz
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
-                //R=(S-150)^0.6+50 where R=payout in FLZ per epoch and S=Stake Amount to the pool. Example
                 CustomCalculationTypes::Freeloaderz => {
                     println!("Calculating Freeloaderz");
                     let adastake = stake.amount.to_f64().unwrap() / 1000000.0;

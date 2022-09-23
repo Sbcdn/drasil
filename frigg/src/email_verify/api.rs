@@ -43,7 +43,7 @@ pub async fn invite(body: TBEmailVerificationTokenMessage) -> crate::WebResult<i
         None => "Drasil User".to_string(),
     };
 
-    let link = std::env::var("VERIFICATION_LINK").unwrap(); //"https://frigg-drasil.apps.testnet.drasil.org/verema";
+    let link = std::env::var("VERIFICATION_LINK").unwrap();
 
     Email::new(Contact::new("verify@drasil.io", "Drasil E-Mail Verification"), Contact::new(body.email.clone(), uname.clone()))
         .set_subject("Confirm Your Email")

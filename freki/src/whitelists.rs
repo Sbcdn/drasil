@@ -35,7 +35,6 @@ pub(crate) async fn handle_whitelist_address(
             //            serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
         }
         gungnir::Calculationmode::Custom => {
-            //Freeloaderz
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::FixedAmountPerEpoch => {
                     println!("Whitelist calcualte with: FixedAmountPerEpoch");
