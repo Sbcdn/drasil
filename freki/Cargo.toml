@@ -42,6 +42,7 @@ murin = { path = "../murin", version = "0.1.0" }
 mimir = { path = "../mimir", version = "0.1.0" }
 gungnir = { path = "../gungnir", version = "0.1.0" }
 hugin = { path = "../hugin", version = "0.1.0" }
+sleipnir = { path = "../sleipnir", version = "0.1.0" }
 
 # Single repositories
 #murin = { git = "ssh://git@github.com/sbcdn/murin.git", branch="main" }

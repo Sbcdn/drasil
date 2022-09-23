@@ -10,6 +10,7 @@
 use crate::models::*;
 use crate::rwd_handling::handle_rewards;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
+use sleipnir::rewards::models::*;
 use std::str::*;
 
 pub(crate) async fn handle_stake(
@@ -40,7 +41,6 @@ pub(crate) async fn handle_stake(
         }
 
         gungnir::Calculationmode::Custom => {
-            use crate::models::*;
             //Freeloaderz
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 //R=(S-150)^0.6+50 where R=payout in FLZ per epoch and S=Stake Amount to the pool. Example
@@ -146,6 +146,7 @@ pub(crate) async fn handle_stake(
                         false,
                     )?;
                 }
+                CustomCalculationTypes::Airdrop => {}
             }
         }
         _ => {

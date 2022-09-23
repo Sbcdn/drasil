@@ -7,10 +7,11 @@
 #################################################################################
 */
 
-use super::models::*;
+use crate::models::*;
 use crate::stake::handle_pool;
 use crate::whitelists::handle_whitelist;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
+use sleipnir::rewards::models::*;
 use std::str::*;
 
 pub async fn get_token_whitelist(current_epoch: i64) -> Result<Vec<gungnir::TokenWhitelist>> {
