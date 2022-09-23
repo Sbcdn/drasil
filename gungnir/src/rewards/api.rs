@@ -1,5 +1,3 @@
-use std::ops::Div;
-
 /*
 #################################################################################
 # See LICENSE.md for full license information.                                  #
@@ -12,6 +10,7 @@ use super::*;
 use crate::error::RWDError;
 use crate::schema::*;
 use bigdecimal::{FromPrimitive, ToPrimitive};
+use std::ops::Div;
 
 impl Rewards {
     pub fn get_rewards_stake_addr(
@@ -458,8 +457,7 @@ impl Claimed {
                     .filter(user_id.eq(user_id_in))
                     .distinct_on(txhash)
                     .group_by((user_id, txhash, timestamp))
-                    //.count()
-                    .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
+                    .load::<i64>(&mut gconn)?;
 
                 result.len() as i64
             }
@@ -470,8 +468,7 @@ impl Claimed {
                     .filter(user_id.eq(user_id_in))
                     .distinct_on(txhash)
                     .group_by((user_id, txhash, timestamp))
-                    //.count()
-                    .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
+                    .load::<i64>(&mut gconn)?;
 
                 result.len() as i64
             }
@@ -497,8 +494,7 @@ impl Claimed {
             .filter(timestamp.le(to))
             .distinct_on(txhash)
             .group_by((user_id, txhash, timestamp))
-            //.count()
-            .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
+            .load::<i64>(&mut gconn)?;
         Ok(result.len() as i64)
     }
 
@@ -523,8 +519,7 @@ impl Claimed {
                     .filter(timestamp.le(to))
                     .distinct_on(txhash)
                     .group_by((user_id, txhash, timestamp))
-                    //.count()
-                    .load::<i64>(&mut gconn)?; //(i64,String,DateTime<Utc>)
+                    .load::<i64>(&mut gconn)?;
 
                 result.len() as i64
             }

@@ -20,8 +20,6 @@ use structopt::StructOpt;
     about = "Creates a Whitelisting for a token in a contract"
 )]
 struct Opt {
-    //#[structopt(short, long, about="for stdout output set true")]
-    //output: Option<bool>,
     #[structopt(short, long, about = "user id as integer")]
     user: i32,
 
@@ -63,23 +61,7 @@ struct Opt {
     modificator: Option<String>,
 }
 
-/*
-    pub fingerprint         : String,
-    pub policy_id           : String,
-    pub tokenname           : String,
-    pub contract_id         : i64,
-    pub user_id             : i64,
-    pub vesting_period      : DateTime<Utc>,
-    pub pools               : Vec::<String>,
-    pub mode                : Calculationmode,
-    pub equation            : String,
-    pub start_epoch         : i64,
-    pub end_epoch           : Option<i64>,
-    pub modificator_equ     : Option<String>,
-*/
 fn main() -> Result<(), RWDError> {
-    //dotenv::dotenv().ok();
-    //let database_url = env::var("REWARDS_DB_URL")?;
     let opt = Opt::from_args();
 
     let mconn = mimir::establish_connection()?;
@@ -100,9 +82,8 @@ fn main() -> Result<(), RWDError> {
         );
     }
 
-    let gconn = gungnir::establish_connection()?;
     gungnir::TokenWhitelist::create_twl_entry(
-        &gconn,
+        &mut gungnir::establish_connection()?,
         &fingerprint,
         &opt.policy_id,
         &tn,
