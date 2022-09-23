@@ -1,4 +1,3 @@
-/// Hugin Connection
 use super::frame::{self, Frame};
 use async_recursion::async_recursion;
 use bytes::{Buf, BytesMut};
@@ -26,14 +25,6 @@ impl Connection {
             if let Some(frame) = self.parse_frame().await? {
                 return Ok(Some(frame));
             }
-            /*
-            match self.parse_frame().await? {
-                Ok(hf) => if let Some(frame) = hf {
-                    return Ok(Some(frame));
-                },
-                Err(e) => Err(e.into())
-            }
-            */
             if 0 == self.stream.read_buf(&mut self.buffer).await? {
                 if self.buffer.is_empty() {
                     return Ok(None);
@@ -89,11 +80,6 @@ impl Connection {
 
     async fn write_value(&mut self, frame: &Frame) -> io::Result<()> {
         match frame {
-            //  Frame::Header{method, uri, version, token} => {
-            //      self.stream.write_u8(b'?').await?;
-            //      let header_in_byte = 5; //get_header_bytes(method,uri,version,token);
-            //      self.write_decimal(header_in_byte); //.len());
-            //  },
             Frame::Simple(val) => {
                 self.stream.write_u8(b'+').await?;
                 self.stream.write_all(val.as_bytes()).await?;

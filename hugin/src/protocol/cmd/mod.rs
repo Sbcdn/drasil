@@ -135,7 +135,6 @@ impl Command {
     }
 }
 
-// ToDO: Make different pattern checks for API | MultiSIg | Smart Contract
 async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     let empty_vec = Vec::<String>::new();
     // Check if user is valid
@@ -153,8 +152,8 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
         .into());
     }
 
-    if txp.collateral().is_some() && //txp.collateral().is_none() ||
-         (hex::decode(txp.collateral().unwrap()).is_err() || txp.collateral().unwrap() == "")
+    if txp.collateral().is_some()
+        && (hex::decode(txp.collateral().unwrap()).is_err() || txp.collateral().unwrap() == "")
     {
         return Err(CmdError::Custom {
             str: "ERROR no collateral provided".to_string(),

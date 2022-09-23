@@ -85,21 +85,6 @@ impl Frame {
 
     pub fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, Error> {
         match get_u8(src)? {
-            /*  b'?' => {
-                let len = get_decimal(src)?.try_into()?;
-                let n = len + 2;
-
-                if src.remaining() < n {
-                    return Err(Error::Incomplete);
-                }
-
-                let mut raw_data = Bytes::copy_from_slice(&src.chunk()[..len]);
-                let data = parse_header( &mut raw_data)?;
-                // skip that number of bytes + 2 (\r\n).
-                skip(src, n)?;
-
-                Ok(Frame::Header{method : data.0, uri : data.1, version : data.2, token : (data.3,data.4)})
-            } */
             b'+' => {
                 let line = get_line(src)?.to_vec();
                 let string = String::from_utf8(line)?;
@@ -166,8 +151,6 @@ impl fmt::Display for Frame {
         use std::str;
 
         match self {
-            //  Frame::Header{method,uri,version,token} =>
-            //      write!(fmt, "method: {}, uri: {}, version: {}, user: {}, hash: {}",method,uri,version,token.0,token.1),
             Frame::Simple(response) => response.fmt(fmt),
             Frame::Error(msg) => write!(fmt, "error: {}", msg),
             Frame::Integer(num) => num.fmt(fmt),

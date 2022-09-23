@@ -187,10 +187,6 @@ impl FinalizeMultiSig {
                 log::debug!("{:?}", response);
                 dst.write_frame(&response).await?;
                 return Ok(());
-                //return Err(CmdError::Custom {
-                //    str: format!("ERROR MultiSigType does not exist: '{:?}'", self.mtype),
-                //}
-                //.into());
             }
         }
 

@@ -386,18 +386,6 @@ impl BuildMultiSig {
 
         rwdtxd.set_reward_utxos(&Some(reward_wallet_utxos.clone()));
 
-        //For Debugging:  Lookup specific transaction hash in input utxos
-        /*let myp = reward_wallet_utxos.find_utxo_by_txhash(&"a739902b7bc0eca2aabb431f8ddbe17c2d4de560c1b025321dcd2855b0660305".to_string(), 1);
-        match myp {
-            Some(y) => {
-                info!("The UTXO: {:?}",reward_wallet_utxos.get(y));
-            }
-            None => {
-                info!("Could not find the Utxo :(")
-            }
-        }
-        */
-
         //ToDO:
         // - Function to check and split utxos when for size >5kB (cal_min_ada panics on utxos >5kB)
         // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
@@ -605,7 +593,6 @@ impl BuildMultiSig {
                     gungnir::Nft::get_random_unminted_nft(&mut gcon, mint_project.id)?.into_iter(),
                 )
             }
-            //eligable_nfts = nfts_to_mint.clone();
         }
 
         // create MintTokenAsset datatype for all nfts to be minted

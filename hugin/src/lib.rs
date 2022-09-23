@@ -36,17 +36,5 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
-//Temporär
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
-/// A specialized `Result` type for hugin library .
-/// This is defined as a convenience.
 pub type Result<T> = std::result::Result<T, Error>;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
