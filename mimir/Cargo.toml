@@ -38,8 +38,6 @@ hex = "0.4"
 thiserror = "1.0.32"
 
 murin = { path = "../murin", version = "0.1.0" }
-#murin = { git = "ssh://git@github.com/sbcdn/murin.git", branch="main" }
-
 
 [dev-dependencies]
 tokio-test = "*"

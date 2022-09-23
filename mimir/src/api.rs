@@ -89,21 +89,30 @@ pub fn get_asset_utxos_on_addr(
     conn: &mut PgConnection,
     addr: &String,
 ) -> Result<murin::TransactionUnspentOutputs, MimirError> {
-    let unspent_assets = unspent_utxos::table
+    let unspent_assets: Vec<UnspentUtxo> = unspent_utxos::table
         .inner_join(ma_tx_out::table.on(ma_tx_out::tx_out_id.eq(unspent_utxos::id)))
         .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
-        .select((multi_asset::fingerprint, ma_tx_out::quantity))
+        .select((
+            unspent_utxos::id,
+            unspent_utxos::tx_id,
+            unspent_utxos::hash,
+            unspent_utxos::index,
+            unspent_utxos::address,
+            unspent_utxos::value,
+            unspent_utxos::data_hash,
+            unspent_utxos::address_has_script,
+            unspent_utxos::stake_address,
+        ))
         .filter(unspent_utxos::address.eq(addr))
-        .load::<(String, BigDecimal)>(conn)?;
+        .load::<UnspentUtxo>(conn)?;
+    let con = &mut establish_connection()?;
     let mut utxos = murin::TransactionUnspentOutputs::new();
-
-    let mut out = Vec::<(String, BigDecimal)>::new();
-    let mut worker = Vec::<String>::new();
-    for u in unspent_assets {
-        if worker.contains(&u.0) {
-            let index: usize = worker.iter().enumerate().find(|&r| *r.1 == u.0).unwrap().0;
-        }
-    }
+    unspent_assets.iter().for_each(|n| {
+        utxos.add(
+            &n.to_txuo(con)
+                .expect("Could not convert into TransactionUnspentOutput"),
+        )
+    });
 
     Ok(utxos)
 }
@@ -128,7 +137,6 @@ pub fn get_tot_stake_per_pool(
     pool: &String,
     epoch: i32,
 ) -> Result<Vec<EpochStakeView>, MimirError> {
-    //let query_alias = alias!(pool_hash::table.filter(pool_hash::view.eq(pool)).select(pool_hash::view) as get_pool_view);
     let pool_stake = epoch_stake::table
         .inner_join(pool_hash::table.on(pool_hash::id.eq(epoch_stake::pool_id)))
         .inner_join(stake_address::table.on(epoch_stake::addr_id.eq(stake_address::id)))
@@ -189,7 +197,6 @@ pub fn get_epoch(conn: &mut PgConnection) -> Result<i32, MimirError> {
     Ok(epoch)
 }
 
-/// Use fingerprint hasher in murin !! This is just for CLI tools which has no access to murin
 pub fn get_fingerprint(
     conn: &mut PgConnection,
     policy: &String,
@@ -337,7 +344,6 @@ pub fn lookup_token_holders(
         .left_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .filter(multi_asset::fingerprint.eq(fingerprint_in))
         .filter(unspent_utxos::stake_address.is_not_null())
-        //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
         .select((unspent_utxos::stake_address.nullable(), ma_tx_out::quantity))
         .load::<(Option<String>, BigDecimal)>(&mut conn)?;
 
@@ -368,7 +374,6 @@ pub fn lookup_nft_token_holders(policy: &String) -> Result<Vec<EligableWallet>, 
         .left_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_out::ident)))
         .filter(multi_asset::policy.eq(pbyte))
         .filter(unspent_utxos::stake_address.is_not_null())
-        //.select((multi_asset::id,multi_asset::policy,multi_asset::name,multi_asset::fingerprint))
         .select((unspent_utxos::stake_address.nullable(), ma_tx_out::quantity))
         .load::<(Option<String>, BigDecimal)>(&mut conn)?;
 
