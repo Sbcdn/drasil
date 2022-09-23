@@ -78,12 +78,6 @@ pub async fn main() -> Result<()> {
         for mut entry in whitelist {
             if check_contract_is_active(&entry)? {
                 handle_lists(&mut entry, i, &mut table).await?
-                //tokio::spawn(async move {
-                //    if let Err(err) = handle_pools(&mut entry,opt.epoch).await {
-                //        //error!(cause = ?err, "calculation error for whitelist entry");
-                //        panic!("calculation error for whitelist entry: {:?}",err);
-                //    }
-                //});
             }
         }
         println!("Rewards successfully calucalted for epoch: {:?}", i);

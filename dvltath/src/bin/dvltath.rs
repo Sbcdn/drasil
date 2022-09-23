@@ -74,7 +74,6 @@ async fn main() {
     warp::serve(routes).run_incoming(incoming).await;
 }
 
-///Filters
 mod filters {
     use crate::handlers;
     use warp::Filter;
@@ -85,7 +84,6 @@ mod filters {
 
     pub fn endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         get_secret().or(resp_option())
-        // .or(warp::get().and(warp::any().map(warp::reply)))
     }
 
     pub fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
@@ -104,7 +102,7 @@ mod filters {
                     .body(""))
             })
     }
-    /// Get all available rewards for a stake address
+
     pub fn get_secret() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
     {
         warp::path("auth")
@@ -130,9 +128,7 @@ mod filters {
 mod handlers {
     use std::convert::Infallible;
     pub async fn handle_get_secret(_: (), role_id: String) -> Result<impl warp::Reply, Infallible> {
-        log::info!("Try to obtain secret for role: {:?}", role_id);
         dvltath::vault::auth::store_wrapped_secret(&role_id).await;
-
         Ok(warp::reply::with_status(
             role_id,
             warp::http::StatusCode::ACCEPTED,

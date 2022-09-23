@@ -77,7 +77,7 @@ pub fn create_jwt(uid: &str, role: &Role) -> Result<String> {
     let header = Header::new(Algorithm::ES256);
     let key = std::env::var("JWT_KEY")
         .map_err(|_| Error::Custom("env jwt key path not existing".to_string()))?;
-    let key = key.into_bytes(); //std::fs::read(key).expect("Could not read jwt key file");
+    let key = key.into_bytes();
     encode(&header, &claims, &EncodingKey::from_ec_pem(&key).unwrap())
         .map_err(|_| Error::JWTTokenCreationError)
 }

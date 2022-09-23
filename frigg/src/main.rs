@@ -39,7 +39,6 @@ pub struct LoginResponse {
     pub token: String,
 }
 
-// ToDo: ORT fehlt
 #[derive(Deserialize, Debug)]
 pub struct RegisterRequest {
     username: String,
@@ -65,20 +64,16 @@ async fn main() {
     if env::var_os("RUST_LOG").is_none() {
         env::set_var("RUST_LOG", "info");
     }
-
-    //let cli = Cli::from_args();
-    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
-    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
+    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
+    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
 
     let login_route = warp::path!("login")
         .and(warp::post())
-        // .and(with_users(users.clone()))
         .and(warp::body::json())
         .and_then(login_handler);
 
     let register_route = warp::path!("register")
         .and(warp::post())
-        // .and(with_users(users.clone()))
         .and(warp::body::json())
         .and_then(register_handler);
 
@@ -304,23 +299,11 @@ async fn main() {
 
     // Warp-Server
     let api = endpoints;
-    // view access logs by setting RUST_LOG=hepha
     let routes = api.with(cors).with(warp::log("frigg"));
 
     let server = host.to_string() + ":" + &port;
     let socket: std::net::SocketAddr = server.parse().expect("Unable to parse socket address");
-
-    //dotenv::dotenv().ok();
-    //let cert_path = env::var("TLS_CERT_PATH").unwrap();
-    //let key_path = env::var("TLS_KEY_PATH").unwrap();
-
-    warp::serve(routes).run(socket).await; //
-
-    //if host == "127.0.0.1" {
-    //    warp::serve(routes).run(socket).await; //
-    //} else {
-    //    warp::serve(routes).tls().cert_path(Path::new(&cert_path)).key_path(Path::new(&key_path)).run(socket).await; //
-    //}
+    warp::serve(routes).run(socket).await;
 }
 
 pub async fn login_handler(body: LoginRequest) -> WebResult<impl Reply> {

@@ -21,14 +21,11 @@ pub async fn create_contract(
     user_id: i64,
     fee: Option<i64>,
 ) -> Result<i64, SleipnirError> {
-    // create rwd wallet  & contract
-
     let mut net_bytes = 0b0001;
     if network == murin::clib::NetworkIdKind::Testnet {
         net_bytes = 0b0000;
     }
 
-    // create key1
     let root_key1: clib::crypto::Bip32PrivateKey =
         clib::crypto::Bip32PrivateKey::generate_ed25519_bip32()?;
     let pvk1_root_bytes = hex::encode(root_key1.as_bytes());
@@ -47,7 +44,6 @@ pub async fn create_contract(
             + &hex::encode(ac1_publick_key.as_bytes())
             + &hex::encode(ac1_chaincode)); // .vkey
 
-    // create key2
     let root_key2: clib::crypto::Bip32PrivateKey =
         clib::crypto::Bip32PrivateKey::generate_ed25519_bip32()?;
     let pvk2_root_bytes = hex::encode(root_key2.as_bytes());
@@ -221,8 +217,6 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
     let mut mconn = mimir::establish_connection()?;
     let ti = mimir::get_token_info(&mut mconn, &twl.fingerprint)?;
 
-    //Check Data is valid
-    // Epochs
     log::debug!("Process epochs...");
     let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
     let mut start_epoch = twl.start_epoch_in;
@@ -231,7 +225,6 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
             "Start epoch cannot be smaller as current epoch, current epoch set as start epoch..."
         );
         start_epoch = current_epoch;
-        //return Err(SleipnirError::new(&format!("Start epoch: {} cannot be smaller than the current epoch: : {:?}",start_epoch, current_epoch)))
     }
     if let Some(endepoch) = twl.end_epoch {
         if endepoch <= current_epoch || endepoch <= start_epoch {
@@ -297,7 +290,6 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
         };
     }
 
-    // Check token does not already exists -> database constraint ensures this already
     log::debug!("Establish connection to rwd database...");
     let mut gconn = gungnir::establish_connection()?;
     log::debug!("Try to create twl...");
@@ -375,7 +367,6 @@ pub async fn rm_pools(
     pools: Vec<String>,
 ) -> Result<serde_json::Value, SleipnirError> {
     let mut spools = Vec::<gungnir::GPools>::new();
-    // We can set first valid epoch to zero here as for remove we just compare the pool_ids
     spools.extend(pools.iter().map(|p| gungnir::GPools {
         pool_id: p.clone(),
         first_valid_epoch: 0,
