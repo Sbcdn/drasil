@@ -36,12 +36,5 @@ pub fn oneshot_minter_api(
         .and(warp::path("oneshot"))
         .and(warp::post())
         .and(crate::filters::auth())
-        //.and(json_oneshot_minter_body())
         .and_then(handler::hnd_oneshot_minter_api)
 }
-/*
-fn json_oneshot_minter_body(
-) -> impl Filter<Extract = (OneShotMintPayload,), Error = warp::Rejection> + Clone {
-    warp::body::content_length_limit(100 * 1024).and(warp::body::json())
-}
- */

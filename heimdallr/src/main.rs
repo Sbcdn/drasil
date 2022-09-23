@@ -16,7 +16,6 @@ use warp::Filter;
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: &str = "4000";
-//const MAX_CONNECTIONS: usize = 1000;
 
 #[tokio::main]
 async fn main() {
@@ -24,8 +23,8 @@ async fn main() {
         env::set_var("RUST_LOG", "info");
     }
 
-    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
-    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
+    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
+    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
 
     pretty_env_logger::init();
 
@@ -64,23 +63,10 @@ async fn main() {
         ]);
 
     let api = filters::endpoints();
-    // view access logs by setting RUST_LOG=hepha
     let routes = api.with(cors).with(warp::log("heimdallr"));
-    // Start Server
     let server = host.clone() + ":" + &port;
     let socket: std::net::SocketAddr = server.parse().expect("Unable to parse socket address");
-
-    //dotenv::dotenv().ok();
-    //let cert_path = env::var("CERT_PATH").unwrap();
-    //let key_path = env::var("KEY_PATH").unwrap();
-
-    warp::serve(routes).run(socket).await; //
-
-    //if host == "127.0.0.1".to_string() && false {
-    //warp::serve(routes).run(socket).await; //
-    //} else {
-    //warp::serve(routes).tls().cert_path(Path::new(&cert_path)).key_path(Path::new(&key_path)).run(socket).await; //
-    //}
+    warp::serve(routes).run(socket).await;
 }
 
 ///Filters
@@ -124,7 +110,6 @@ mod filters {
     pub fn list_contracts(
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("lcn")
-            //     .and(auth())
             .and(warp::get())
             .and_then(handlers::contracts_list)
     }
@@ -137,7 +122,6 @@ mod filters {
             .and(warp::path::param::<ContractType>())
             .and(warp::path::param::<String>())
             .and(auth())
-            // .and(json_body_build())
             .and_then(handlers::contract_exec_build)
     }
 
@@ -150,7 +134,6 @@ mod filters {
             .and(warp::path::param::<ContractType>())
             .and(warp::path::param::<String>())
             .and(auth())
-            //.and(json_body_finalize())
             .and_then(handlers::contract_exec_finalize)
     }
 
@@ -161,7 +144,6 @@ mod filters {
             .and(warp::post())
             .and(warp::path::param::<MultiSigType>())
             .and(auth())
-            //.and(json_body_build())
             .and_then(handlers::multisig_exec_build)
     }
 
@@ -174,7 +156,6 @@ mod filters {
             .and(warp::path::param::<MultiSigType>())
             .and(warp::path::param::<String>())
             .and(auth())
-            //.and(json_body_finalize())
             .and_then(handlers::multisig_exec_finalize)
     }
 
@@ -185,7 +166,6 @@ mod filters {
             .and(warp::post())
             .and(warp::path::param::<StdTxType>())
             .and(auth())
-            //.and(json_body_build())
             .and_then(handlers::stdtx_exec_build)
     }
 
@@ -198,21 +178,9 @@ mod filters {
             .and(warp::path::param::<StdTxType>())
             .and(warp::path::param::<String>())
             .and(auth())
-            //.and(json_body_finalize())
             .and_then(handlers::stdtx_exec_finalize)
     }
 
-    /*
-       fn json_body_build(
-       ) -> impl Filter<Extract = (TransactionPattern,), Error = warp::Rejection> + Clone {
-           warp::body::content_length_limit(100 * 1024).and(warp::body::json())
-       }
-
-       fn json_body_finalize() -> impl Filter<Extract = (Signature,), Error = warp::Rejection> + Clone
-       {
-           warp::body::content_length_limit(10 * 1024).and(warp::body::json())
-       }
-    */
     pub(crate) fn auth(
     ) -> impl Filter<Extract = ((u64, TXPWrapper),), Error = warp::Rejection> + Clone {
         use super::auth::authorize;
