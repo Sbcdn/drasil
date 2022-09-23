@@ -96,7 +96,6 @@ pub fn store_used_utxos(
     for utxo in used.get_used_utxos() {
         payload.push(utxo.to_string())
     }
-    //let key2 = select_pending_tx_datastore(None)?;
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -356,39 +355,6 @@ pub fn get_valid_utxos_sif(utxos_in: &[String]) -> Result<Vec<String>, MurinErro
             }
         }
     }
-    /*
-    let key0 = select_used_utxo_datastore(0, Some(0))?;
-    debug!("Key: {:?}", key0);
-    let response = sismember(&mut con, &key0.0, &utxos);
-    debug!("\n\nResponse: {:?}", response);
-    for (j, i) in response.into_iter().enumerate() {
-        if i > 0 {
-            utxos.remove(j);
-        }
-    }
-
-    // Repeat for other datastrores if they exist
-    // ToDO:: Make a function for these 3 requests
-    let key1 = select_used_utxo_datastore(0, Some(1))?;
-    if !key1.0.is_empty() && key1.1 > 0 {
-        let response = sismember(&mut con, &key1.0, &utxos);
-        for (j, i) in response.into_iter().enumerate() {
-            if i > 0 {
-                utxos.remove(j);
-            }
-        }
-    }
-
-    let key2 = select_used_utxo_datastore(0, Some(2))?;
-    if !key2.0.is_empty() && key2.1 > 0 {
-        let response = sismember(&mut con, &key2.0, &utxos);
-        for (j, i) in response.into_iter().enumerate() {
-            if i > 0 {
-                utxos.remove(j);
-            }
-        }
-    }
-    */
     Ok(utxos)
 }
 
@@ -426,91 +392,6 @@ pub fn check_any_utxo_used(
             }
         }
     }
-
-    /*
-    let key0 = select_used_utxo_datastore(0, Some(0))?;
-    debug!("Key: {:?}", key0);
-    let response: Vec<i64> = match con {
-        (Some(ref mut c), None) => redis::cmd("SMISMEMBER")
-            .arg(key0.0)
-            .arg(&members)
-            .query(c)?,
-        (None, Some(ref mut c)) => redis::cmd("SMISMEMBER")
-            .arg(key0.0)
-            .arg(&members)
-            .query(c)?,
-        _ => {
-            vec![]
-        }
-    };
-
-    debug!("\n\nResponse: {:?}", response);
-    for (j, i) in response.into_iter().enumerate() {
-        if i > 0 {
-            let u: Vec<&str> = members.get(j).unwrap().split('#').collect();
-            used_utxos.push(UsedUtxo {
-                txhash: u[0].to_string(),
-                index: u[1].parse::<u32>()?,
-            })
-        }
-    }
-
-    // Repeat for other datastrores if they exist
-    // ToDO:: Make a function for these 3 requests
-    let key1 = select_used_utxo_datastore(0, Some(1))?;
-    if !key1.0.is_empty() && key1.1 > 0 {
-        let response: Vec<i64> = match con {
-            (Some(ref mut c), None) => redis::cmd("SMISMEMBER")
-                .arg(key1.0)
-                .arg(&members)
-                .query(c)?,
-            (None, Some(ref mut c)) => redis::cmd("SMISMEMBER")
-                .arg(key1.0)
-                .arg(&members)
-                .query(c)?,
-            _ => {
-                vec![]
-            }
-        };
-
-        for (j, i) in response.into_iter().enumerate() {
-            if i > 0 {
-                let u: Vec<&str> = members.get(j).unwrap().split('#').collect();
-                used_utxos.push(UsedUtxo {
-                    txhash: u[0].to_string(),
-                    index: u[1].parse::<u32>()?,
-                })
-            }
-        }
-    }
-
-    let key2 = select_used_utxo_datastore(0, Some(2))?;
-    if !key2.0.is_empty() && key2.1 > 0 {
-        let response: Vec<i64> = match con {
-            (Some(ref mut c), None) => redis::cmd("SMISMEMBER")
-                .arg(key2.0)
-                .arg(&members)
-                .query(c)?,
-            (None, Some(ref mut c)) => redis::cmd("SMISMEMBER")
-                .arg(key2.0)
-                .arg(&members)
-                .query(c)?,
-            _ => {
-                vec![]
-            }
-        };
-
-        for (j, i) in response.into_iter().enumerate() {
-            if i > 0 {
-                let u: Vec<&str> = members.get(j).unwrap().split('#').collect();
-                used_utxos.push(UsedUtxo {
-                    txhash: u[0].to_string(),
-                    index: u[1].parse::<u32>()?,
-                })
-            }
-        }
-    }
-     */
     if !used_utxos.is_empty() {
         Ok(Some(used_utxos))
     } else {
@@ -666,7 +547,7 @@ pub async fn delete_used_utxos_hashmap_async(
     Ok(())
 }
 
-/// Select a data stroe for used utxos, selects first one if enough free space otherwise tries 2 and 3
+/// Select a data store for used utxos, selects first one if enough free space otherwise tries 2 and 3
 fn select_used_utxo_datastore(len: usize, get_ds: Option<u8>) -> Result<(String, i64), MurinError> {
     info!("Select datastore...");
     let datastores = vec![
