@@ -9,6 +9,7 @@
 use crate::models::*;
 use crate::rwd_handling::handle_rewards;
 use bigdecimal::{BigDecimal, FromPrimitive};
+use sleipnir::rewards::models::*;
 use std::str::*;
 
 pub(crate) async fn handle_whitelist_address(
@@ -34,7 +35,6 @@ pub(crate) async fn handle_whitelist_address(
             //            serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
         }
         gungnir::Calculationmode::Custom => {
-            use crate::models::*;
             //Freeloaderz
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::FixedAmountPerEpoch => {

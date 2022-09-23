@@ -7,11 +7,11 @@
 #################################################################################
 */
 pub use crate::error::SleipnirError;
-use crate::rewards::models::FreeloaderzType;
-mod models;
+pub mod models;
 
 use chrono::{NaiveDateTime, Utc};
 use hugin::database::*;
+use models::NewTWL;
 use murin::*;
 use serde_json::json;
 use std::str::FromStr;
@@ -208,21 +208,10 @@ pub async fn reactivate_contract(
     Ok(json!(resp))
 }
 
-pub fn create_token_whitelisting(
-    user_id: i64,
-    contract_id: i64,
-    fingerprint: String,
-    vesting_period: Option<String>,
-    pools: Option<Vec<String>>,
-    mode: String,
-    equation: String,
-    start_epoch_in: i64,
-    end_epoch: Option<i64>,
-    modificator_equ: Option<String>,
-) -> Result<serde_json::Value, SleipnirError> {
+pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, SleipnirError> {
     log::debug!("Process vesting period...");
     let mut vd = chrono::Utc::now();
-    if let Some(date) = vesting_period {
+    if let Some(date) = twl.vesting_period {
         vd = chrono::DateTime::<Utc>::from_utc(
             NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
@@ -230,13 +219,13 @@ pub fn create_token_whitelisting(
     }
     log::debug!("Retrieve token information...");
     let mut mconn = mimir::establish_connection()?;
-    let ti = mimir::get_token_info(&mut mconn, &fingerprint)?;
+    let ti = mimir::get_token_info(&mut mconn, &twl.fingerprint)?;
 
     //Check Data is valid
     // Epochs
     log::debug!("Process epochs...");
     let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
-    let mut start_epoch = start_epoch_in;
+    let mut start_epoch = twl.start_epoch_in;
     if start_epoch < current_epoch {
         log::error!(
             "Start epoch cannot be smaller as current epoch, current epoch set as start epoch..."
@@ -244,7 +233,7 @@ pub fn create_token_whitelisting(
         start_epoch = current_epoch;
         //return Err(SleipnirError::new(&format!("Start epoch: {} cannot be smaller than the current epoch: : {:?}",start_epoch, current_epoch)))
     }
-    if let Some(endepoch) = end_epoch {
+    if let Some(endepoch) = twl.end_epoch {
         if endepoch <= current_epoch || endepoch <= start_epoch {
             return Err(SleipnirError::new(&format!(
                 "End epoch: {}, needs to be in future and after start epoch: {:?}",
@@ -255,9 +244,9 @@ pub fn create_token_whitelisting(
     log::debug!("Process pools...");
     // Pools
     let mut spools = Vec::<gungnir::GPools>::new();
-    if let Some(ps) = pools {
+    if let Some(ps) = twl.pools {
         for pool in &ps {
-            if !mimir::find_avail_pool(pool)? {
+            if !mimir::find_avail_pool(pool)? || models::WhitelistLink::is_wl_link(pool) {
                 return Err(SleipnirError::new(&format!(
                     "One of the pools is not existing or retired: {}",
                     pool
@@ -272,31 +261,38 @@ pub fn create_token_whitelisting(
 
     //Mode
     log::debug!("Process calculation mode...");
-    match gungnir::Calculationmode::from_str(&mode)? {
+    match gungnir::Calculationmode::from_str(&twl.mode)? {
         gungnir::Calculationmode::FixedEndEpoch => {
-            equation.parse::<u64>()?;
+            twl.equation.parse::<u64>()?;
         }
         gungnir::Calculationmode::RelationalToADAStake => {
-            equation.parse::<f32>()?;
+            twl.equation.parse::<f32>()?;
         }
         gungnir::Calculationmode::Custom => {}
         gungnir::Calculationmode::AirDrop => {}
         _ => {
             return Err(SleipnirError::new(&format!(
                 "Calculation Mode is invalid: {:?}",
-                mode
+                twl.mode
             )))
         }
     }
 
     log::debug!("Process modificator equiation...");
-    if let Some(m) = &modificator_equ {
+    if let Some(m) = &twl.modificator_equ {
         log::debug!("Modificator EQU found: {}", *m);
         match serde_json::from_str(m) {
             Ok(models::FreeloaderzType { .. }) => (),
             _ => match serde_json::from_str(m) {
-                Ok(models::FreeloaderzType { .. }) => (),
-                _ => return Err(SleipnirError::new("Modificator equation not supported yet")),
+                Ok(models::FixedAmountPerEpochType { .. }) => (),
+                _ => match serde_json::from_str(m) {
+                    Ok(models::ThresholdType { .. }) => (),
+                    Err(_) => {
+                        return Err(SleipnirError::new(
+                            "Modificator equation type not recognized",
+                        ))
+                    }
+                },
             },
         };
     }
@@ -307,18 +303,18 @@ pub fn create_token_whitelisting(
     log::debug!("Try to create twl...");
     let resp = match gungnir::TokenWhitelist::create_twl_entry(
         &mut gconn,
-        &fingerprint,
+        &twl.fingerprint,
         &ti.policy,
         &ti.tokenname,
-        &(contract_id),
-        &(user_id),
+        &(twl.contract_id),
+        &(twl.user_id),
         &vd,
         &spools,
-        &gungnir::Calculationmode::from_str(&mode)?,
-        &equation,
+        &gungnir::Calculationmode::from_str(&twl.mode)?,
+        &twl.equation,
         &start_epoch,
-        end_epoch.as_ref(),
-        modificator_equ.as_ref(),
+        twl.end_epoch.as_ref(),
+        twl.modificator_equ.as_ref(),
     ) {
         Ok(o) => {
             json!(o)

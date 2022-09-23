@@ -10,11 +10,8 @@
 use chrono::{DateTime, Utc};
 
 use bigdecimal::BigDecimal;
-use murin::MurinError;
-use serde::{Deserialize, Serialize};
+use sleipnir::rewards::models::WhitelistLink;
 use std::fmt;
-use std::str::FromStr;
-use strum_macros::{Display, EnumString};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub(crate) enum AddrSrc {
@@ -138,62 +135,3 @@ pub(crate) struct RewardTable {
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
-
-#[derive(EnumString, Display, Serialize, Deserialize, Debug, Clone)]
-pub(crate) enum CustomCalculationTypes {
-    Freeloaderz,
-    FixedAmountPerEpoch,
-    FixedAmountPerEpochNonAcc,
-    Threshold,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct ThresholdType {
-    pub stake_threshold: f64,
-    pub lower_rwd: u64,
-    pub upper_rwd: u64,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct FreeloaderzType {
-    pub min_stake: i32,
-    pub min_earned: f64,
-    pub flatten: f64,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct FixedAmountPerEpochType {
-    pub min_stake: Option<f64>,
-    pub amount: u64,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub(crate) struct WhitelistLink {
-    pub id: i64,
-}
-
-impl fmt::Display for WhitelistLink {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Whitelist,")?;
-        write!(f, "{}", self.id)
-    }
-}
-
-impl std::str::FromStr for WhitelistLink {
-    type Err = Error;
-    fn from_str(src: &str) -> Result<Self> {
-        let split: Vec<&str> = src.split(':').collect();
-        if split[0] == "Whitelist" && split[1].parse::<i64>().is_ok() {
-            return Ok(WhitelistLink {
-                id: split[1].parse::<i64>().unwrap(),
-            });
-        }
-        Err(MurinError::new("Could not convert string to WhitelistLink").into())
-    }
-}
-
-impl WhitelistLink {
-    pub fn is_wl_link(str: &str) -> bool {
-        matches!(WhitelistLink::from_str(str), Ok(_))
-    }
-}

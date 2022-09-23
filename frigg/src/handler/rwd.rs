@@ -113,19 +113,20 @@ pub async fn entrp_add_token_sporwc(
             )))
         }
     }
+    let arg = sleipnir::rewards::models::NewTWL {
+        user_id: user,
+        contract_id: cparam.contract_id,
+        fingerprint: cparam.fingerprint,
+        vesting_period: cparam.vesting_period,
+        pools: cparam.pools,
+        mode: cparam.mode,
+        equation: cparam.equation,
+        start_epoch_in: cparam.start_epoch,
+        end_epoch: cparam.end_epoch,
+        modificator_equ: cparam.modificator_equ,
+    };
     log::debug!("Try to create TokenWhitelisting...");
-    let token_listing = sleipnir::rewards::create_token_whitelisting(
-        user,
-        cparam.contract_id,
-        cparam.fingerprint,
-        cparam.vesting_period,
-        cparam.pools,
-        cparam.mode,
-        cparam.equation,
-        cparam.start_epoch,
-        cparam.end_epoch,
-        cparam.modificator_equ,
-    )?;
+    let token_listing = sleipnir::rewards::create_token_whitelisting(arg)?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&token_listing), //
