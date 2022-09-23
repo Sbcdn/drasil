@@ -8,6 +8,7 @@
 */
 pub mod build_minttx;
 pub mod build_oneshot_mint;
+use super::PerformTxb;
 use crate::MurinError;
 use crate::{MintTokenAsset, TokenAsset};
 use cardano_serialization_lib as clib;
@@ -17,8 +18,6 @@ use clib::crypto::{Ed25519KeyHash, ScriptHash};
 use clib::{NativeScript, NativeScripts, ScriptAll, ScriptPubkey};
 use serde::{Deserialize, Serialize};
 use std::str;
-
-pub use build_minttx::build_mint_multisig;
 
 #[derive(Debug, Clone)]
 pub struct MinterTxData {

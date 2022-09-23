@@ -6,7 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::htypes;
+use crate::{hfn, htypes};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use clib::NetworkIdKind;
@@ -22,13 +22,112 @@ pub mod rwdist;
 pub mod stdtx;
 
 pub use delegation::DelegTxData;
-
-pub use minter::build_minttx::build_mint_multisig;
-
 pub use marketplace::*;
 pub use rwdist::*;
 
 use crate::{TransactionUnspentOutput, TransactionUnspentOutputs};
+
+type TxBO = (
+    clib::TransactionBody,
+    clib::TransactionWitnessSet,
+    clib::metadata::AuxiliaryData,
+    TransactionUnspentOutputs,
+    usize,
+);
+
+pub trait PerformTxb<T> {
+    fn new(t: T) -> Self;
+
+    fn perform_txb(
+        &self,
+        fee: &clib::utils::BigNum,
+        gtxd: &TxData,
+        pvks: &[String],
+        fcrun: bool,
+    ) -> std::result::Result<TxBO, MurinError>;
+}
+
+#[derive(Debug, Clone)]
+pub struct TxBuilder {
+    pub gtxd: TxData,
+    pub pvks: Vec<String>,
+}
+
+impl TxBuilder {
+    pub fn new(gtxd: &TxData, pvks: &Vec<String>) -> Self {
+        TxBuilder {
+            gtxd: gtxd.clone(),
+            pvks: pvks.to_owned(),
+        }
+    }
+
+    pub async fn build<P, A: PerformTxb<P>>(
+        &self,
+        app_type: &A,
+    ) -> Result<crate::BuildOutput, MurinError> {
+        // Temp until Protocol Parameters fixed
+        let mem = cutils::to_bignum(7000000u64);
+        let steps = cutils::to_bignum(2500000000u64);
+        let ex_unit_price: htypes::ExUnitPrice = crate::ExUnitPrice {
+            priceSteps: 7.21e-5,
+            priceMemory: 5.77e-2,
+        };
+        let a = cutils::to_bignum(44u64);
+        let b = cutils::to_bignum(155381u64);
+
+        //Create first Tx
+        let mut tx_ =
+            app_type.perform_txb(&cutils::to_bignum(2000000), &self.gtxd, &self.pvks, true)?;
+
+        let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(tx_.4);
+        tx_.1.set_vkeys(&dummy_vkeywitnesses);
+
+        // Build and encode dummy transaction
+        let transaction_ = clib::Transaction::new(&tx_.0, &tx_.1, Some(tx_.2));
+
+        let calculated_fee = hfn::calc_txfee(
+            &transaction_,
+            &a,
+            &b,
+            ex_unit_price.clone(),
+            &steps,
+            &mem,
+            true,
+        );
+        // (txbody, txwitness, aux_data, used_utxos, vkey_counter_2)
+        let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
+
+        let transaction2 = clib::Transaction::new(&tx.0, &tx_.1, Some(tx.2.clone()));
+
+        if tx.4 != tx_.4 || transaction2.to_bytes().len() != transaction_.to_bytes().len() {
+            let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(tx.4);
+            tx_.1.set_vkeys(&dummy_vkeywitnesses);
+
+            let calculated_fee =
+                hfn::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
+            let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
+            info!("Fee: {:?}", calculated_fee);
+            Ok(hfn::tx_output_data(
+                tx.0,
+                tx.1,
+                tx.2,
+                tx.3.to_hex()?,
+                0u64,
+                false,
+            )?)
+        } else {
+            info!("Fee: {:?}", calculated_fee);
+            Ok(hfn::tx_output_data(
+                tx.0,
+                tx.1,
+                tx.2,
+                tx.3.to_hex()?,
+                0u64,
+                false,
+            )?)
+        }
+    }
+}
 
 pub type TokenAsset = (clib::PolicyID, clib::AssetName, cutils::BigNum);
 pub type MintTokenAsset = (Option<clib::PolicyID>, clib::AssetName, cutils::BigNum);
