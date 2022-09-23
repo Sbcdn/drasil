@@ -40,9 +40,6 @@ pub fn establish_connection() -> Result<PgConnection, RWDError> {
     Clone,
     PartialEq,
     Eq,
-    //FromSqlRow,
-    //AsExpression,
-    //SqlType,
     DbEnum,
 )]
 #[DieselTypePath = "crate::schema::sql_types::Calculationmode"]
