@@ -103,11 +103,8 @@ impl TBContracts {
             if let Some(r) = result.get(0) {
                 return Ok(r.clone());
             };
-        } else {
-            // get latest Version
-            if let Some(r) = result.get(0) {
-                return Ok(r.clone());
-            };
+        } else if let Some(r) = result.get(0) {
+            return Ok(r.clone());
         }
         Err(err)
     }

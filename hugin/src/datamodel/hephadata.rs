@@ -155,13 +155,6 @@ impl FromStr for Utxopti {
         }
     }
 }
-/*
-// Depricated
-#[derive(Serialize, Deserialize,Debug,Clone)]
-pub enum MultiSigAction {
-
-}
-*/
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StdTxType {
@@ -188,20 +181,6 @@ impl ToString for StdTxType {
         }
     }
 }
-
-/*
-// Depricated
-
-#[derive(Serialize, Deserialize,Debug)]
-pub enum PayloadWrapper {
-    U64(u64),
-    MultiSigType(MultiSigType),
-    ContractType(ContractType),
-    TransactionPattern(TransactionPattern),
-    Signature(Signature),
-    TransactionId(String),
-}
- */
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Signature {
@@ -437,9 +416,6 @@ impl TransactionPattern {
             None => None,
         };
 
-        // This is a data library and we should not make a database connection here
-        //let dbsync = mimir::establish_connection()?;
-        //let slot = mimir::get_slot(&dbsync)?;
         let mut txd = TxData::new(
             self.contract_id(),
             murin::wallet::decode_addresses(&self.sending_wal_addrs()).await?,
@@ -451,7 +427,7 @@ impl TransactionPattern {
             )
             .await?,
             murin::wallet::get_network_kind(self.network).await?,
-            0u64, //slot as u64, //Is set int build contract / build multisig
+            0u64,
         )?;
 
         if let Some(outputs) = self.outputs() {
@@ -480,8 +456,6 @@ pub enum ScriptSpecParams {
         reward_tokens: Vec<Token>,
         recipient_stake_addr: String,
         recipient_payment_addr: String,
-        //reward_wallet_addr      : String,
-        //reward_utxos            : Option<Vec::<String>>,
     },
     NftVendor {},
     Marketplace {
@@ -517,7 +491,6 @@ pub enum ScriptSpecParams {
     StakeDelegation {
         poolhash: String,
     },
-    //CustomerPayout
     CPO {
         contract_id: i64,
         user_id: i64,
@@ -550,8 +523,6 @@ impl ScriptSpecParams {
                 let assets = Token::for_all_into_asset(tokens)?;
                 let token_utxos =
                     murin::txbuilders::find_token_utxos(avail_inputs, assets.clone()).await?;
-
-                // Transform tokens to TokenAsset (flattend Value)
 
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
@@ -586,31 +557,12 @@ impl ScriptSpecParams {
                 reward_tokens,
                 recipient_stake_addr,
                 recipient_payment_addr,
-                // reward_wallet_addr,
-                // reward_utxos,
             } => {
                 let assets = Token::for_all_into_asset(reward_tokens)?;
                 let stake_addr = murin::decode_addr(recipient_stake_addr).await?;
                 let payment_addr = murin::decode_addr(recipient_payment_addr).await?;
-                // let rwd_addr = murin::decode_addr(&reward_wallet_addr).await?;
-                // let mut utxos = murin::TransactionUnspentOutputs::new();
-                // if let Some(rwdutxo) = reward_utxos {
-                //     utxos = murin::wallet::get_transaction_unspent_outputs(&rwdutxo, None, None).await?;
-                // }
 
-                // let rwd_utxos = if utxos.is_empty() {
-                //     None
-                // } else {
-                //     Some(utxos)
-                // };
-
-                Ok(RWDTxData::new(
-                    &assets,
-                    &stake_addr,
-                    &payment_addr,
-                    //       &rwd_addr,
-                    //       &rwd_utxos
-                ))
+                Ok(RWDTxData::new(&assets, &stake_addr, &payment_addr))
             }
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this contract",

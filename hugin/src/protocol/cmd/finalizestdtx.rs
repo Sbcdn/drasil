@@ -90,7 +90,6 @@ impl FinalizeStdTx {
     }
 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        //let mut response = Frame::Simple("Error: something went wrong".to_string());
         let raw_tx = murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;
 
         let used_utxos = raw_tx.get_usedutxos().clone();
@@ -102,17 +101,7 @@ impl FinalizeStdTx {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a standard transaction, {:?}",e.to_string())}.into());
                 };
                 self.finalize_delegation(raw_tx.clone()).await?
-            } /*
-              _ => {
-                  log::debug!("{:?}", response);
-                  dst.write_frame(&response).await?;
-                  return Ok(());
-                  //return Err(CmdError::Custom {
-                  //    str: format!("ERROR MultiSigType does not exist: '{:?}'", self.txtype),
-                  //}
-                  //.into());
-              }
-               */
+            }
         };
 
         // store used Utxos into utxo manager and store txhash for ovserver
