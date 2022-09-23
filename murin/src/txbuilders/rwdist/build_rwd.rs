@@ -24,7 +24,6 @@ pub fn perform_rwd(
     gtxd: &super::TxData,
     rwdtxd: &super::RWDTxData,
     pvks: &[String],
-    //    apply_system_fee: &bool,
     dummy: bool,
 ) -> Result<
     (
@@ -388,7 +387,6 @@ pub async fn build_rwd_multisig(
         gtxd,
         rwdtxd,
         pvks,
-        //    apply_system_fee,
         true,
     )?;
 
@@ -415,7 +413,6 @@ pub async fn build_rwd_multisig(
         gtxd,
         rwdtxd,
         pvks,
-        //    apply_system_fee,
         false,
     )?;
 
@@ -437,7 +434,6 @@ pub async fn build_rwd_multisig(
             gtxd,
             rwdtxd,
             pvks,
-            //        apply_system_fee,
             false,
         )?;
         info!("Fee: {:?}", calculated_fee);

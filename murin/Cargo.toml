@@ -31,7 +31,6 @@ ed25519-bip32 = "0.4.1"
 encoding_rs = "0.8.30"
 #emurgo-message-signing = { path= "utils/message-signing/rust" }
 num = "0.4.0"
-#tempdir = "0.3.7"
 redis = { version = "0.21.5", features = ["tokio-comp", "cluster"] }
 sha2 = "0.10.2"
 reqwest = { version = "0.11", default-features = false, features = [

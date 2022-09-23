@@ -428,27 +428,21 @@ pub fn find_token_utxos_na(
 ) -> Result<TransactionUnspentOutputs, MurinError> {
     let mut out = TransactionUnspentOutputs::new();
     let ins = inputs.clone();
-    //info!("Find UTXO Inputs: {:?}",inputs);
     if !inputs.is_empty() && !assets.is_empty() {
         for asset in assets.clone() {
             let mut needed_amt = asset.2;
             debug!("Set Needed Amount: {:?}", needed_amt);
-            //ins.sort_by_asset_amount(&asset.0, &asset.1);
             for i in 0..ins.len() {
                 let unspent_output = ins.get(i);
                 if let Some(addr) = on_addr {
                     if unspent_output.output().address().to_bytes() != addr.to_bytes() {
                         continue;
                     }
-                    //info!("1:{:?}",unspent_output.output().address().to_bech32(None));
-                    //info!("2:{:?}",addr.to_bech32(None));
-                    //info!("");
                 };
                 let value = unspent_output.output().amount();
                 if let Some(multi) = value.multiasset() {
                     if let Some(toks) = multi.get(&asset.0) {
                         if let Some(amt) = toks.get(&asset.1) {
-                            // for tok in 0..toks.len()  {
                             if needed_amt.compare(&cutils::to_bignum(0)) > 0 {
                                 log::debug!(
                                     "Found a utxo containing {} tokens {}.{}!",
@@ -459,7 +453,6 @@ pub fn find_token_utxos_na(
                                 if !out.contains_tx(&unspent_output) {
                                     out.add(&unspent_output);
                                     needed_amt = needed_amt.clamped_sub(&amt);
-                                    //info!("Sub Needed Amount: {:?}",needed_amt);
                                 } else {
                                     needed_amt = needed_amt.clamped_sub(&amt);
                                 }
@@ -482,7 +475,7 @@ pub fn find_token_utxos_na(
         ));
     }
 
-    out.optimize_on_assets(assets)?; // Does not work yet as expected
+    out.optimize_on_assets(assets)?;
     Ok(out)
 }
 
@@ -524,7 +517,6 @@ pub fn input_selection(
             }
         }
     }
-    //let mut missing_value = needed_value.clone(); needed to search for multiassets
 
     if let Some(cutxo) = collateral {
         debug!("Col: {:?}", cutxo);
@@ -586,7 +578,7 @@ pub fn input_selection(
         }
     }
 
-    multiassets.sort_by_coin(); //.sort_by_multi_amount();
+    multiassets.sort_by_coin();
     purecoinassets.sort_by_coin();
 
     debug!("\n\nMULTIASSETS: {:?}\n\n", multiassets);
@@ -744,7 +736,6 @@ impl Persona {
         }
 
         self.change = self.change.checked_add(&other.change)?;
-        // ToDo ensure there are no double entires in receive (unique does not work needs to be doen by hand)
         self.receive.extend(other.receive.iter().cloned());
         self.used_inputs.merge(other.used_inputs.to_owned());
 
@@ -891,7 +882,7 @@ impl Persona {
                         avail_input_utxos,
                         assets,
                         Some(payer.get_payer()).as_ref(),
-                    )?; // ToDo: is paying address just from script or also wallet (stake key?)
+                    )?;
 
                     input_utxos.delete_set(&utxo_selection);
 
@@ -1325,11 +1316,7 @@ pub fn bundle_size(value: &cutils::Value, osc: &htypes::OutputSizeConstants) -> 
                 quot(b + 7, 8)
             }
 
-            osc.k1
-                + (
-                    roundup_bytes_to_words((num_assets * osc.k2) + anl + (osc.k3 * pil))
-                    // + (osc.k4 - 1))/osc.k4
-                )
+            osc.k1 + (roundup_bytes_to_words((num_assets * osc.k2) + anl + (osc.k3 * pil)))
         }
 
         None => osc.k0,

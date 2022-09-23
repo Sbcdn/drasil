@@ -60,20 +60,6 @@ impl From<std::env::VarError> for MurinError {
     }
 }
 
-/*
-impl From<diesel::ConnectionError> for MurinError {
-    fn from(err: diesel::ConnectionError) -> Self {
-        MurinError::new(&err.to_string())
-    }
-}
-
-
-impl From<diesel::result::Error> for MurinError {
-    fn from(err: diesel::result::Error) -> Self {
-        MurinError::new(&err.to_string())
-    }
-}
- */
 impl From<std::num::ParseIntError> for MurinError {
     fn from(err: std::num::ParseIntError) -> Self {
         MurinError::new(&err.to_string())
