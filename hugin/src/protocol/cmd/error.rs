@@ -19,6 +19,11 @@ impl From<&str> for CmdError {
         src.to_string().into()
     }
 }
+impl From<murin::clib::error::DeserializeError> for CmdError {
+    fn from(src: murin::clib::error::DeserializeError) -> CmdError {
+        src.to_string().into()
+    }
+}
 
 impl std::error::Error for CmdError {}
 

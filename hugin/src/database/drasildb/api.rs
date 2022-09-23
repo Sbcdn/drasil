@@ -15,6 +15,7 @@ use crate::{
 use diesel::pg::upsert::on_constraint;
 use dvltath::vault::kv::{vault_get, vault_store};
 use error::SystemDBError;
+use murin::PerformTxb;
 use murin::{
     crypto::{Ed25519Signature, PrivateKey, PublicKey},
     get_network_from_address, TransactionUnspentOutputs, TxData,
@@ -730,9 +731,18 @@ impl TBCaPayment {
         let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
 
         log::debug!("Try to build transaction...");
-        let bld_tx =
-            murin::stdtx::build_cpo::build_payment_tx(&gtxd, &pkvs, &txo_values, &contract.plutus)
-                .await?;
+
+        let txb_param: murin::txbuilders::stdtx::build_cpo::AtCPOParams = (
+            txo_values,
+            murin::clib::NativeScript::from_bytes(hex::decode(&contract.plutus)?)
+                .map_err::<crate::CmdError, _>(|_| crate::CmdError::Custom {
+                    str: "could not convert string to native script".to_string(),
+                })?,
+        );
+        let cpo = murin::txbuilders::stdtx::build_cpo::AtCPOBuilder::new(txb_param);
+        let builder = murin::TxBuilder::new(&gtxd, &pkvs);
+        let bld_tx = builder.build(&cpo).await?;
+
         log::debug!("Try to create raw tx...");
         let tx = murin::utxomngr::RawTx::new(
             &bld_tx.get_tx_body(),

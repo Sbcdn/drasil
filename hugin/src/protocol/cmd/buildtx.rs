@@ -6,8 +6,9 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::datamodel::{ScriptSpecParams, StdTxType, TransactionPattern};
-use crate::{CmdError, Parse};
+use crate::datamodel::{StdTxType, TransactionPattern};
+use crate::protocol::stdtx;
+use crate::Parse;
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
@@ -30,8 +31,8 @@ impl BuildStdTx {
         }
     }
 
-    pub fn customer_id(&self) -> u64 {
-        self.customer_id
+    pub fn customer_id(&self) -> i64 {
+        self.customer_id as i64
     }
 
     pub fn tx_type(&self) -> StdTxType {
@@ -70,7 +71,7 @@ impl BuildStdTx {
         }
 
         let ret = match self.tx_type() {
-            StdTxType::DelegateStake => match self.handle_stake_delegation().await {
+            StdTxType::DelegateStake => match stdtx::handle_stake_delegation(&self).await {
                 Ok(s) => s,
                 Err(e) => e.to_string(),
             },
@@ -85,73 +86,6 @@ impl BuildStdTx {
         dst.write_frame(&response).await?;
 
         Ok(())
-    }
-
-    async fn handle_stake_delegation(&self) -> crate::Result<String> {
-        match self
-            .transaction_pattern()
-            .script()
-            .ok_or("ERROR: No specific contract data supplied")?
-        {
-            ScriptSpecParams::StakeDelegation { .. } => (),
-            _ => {
-                return Err(CmdError::Custom {
-                    str: format!("ERROR wrong data provided for '{:?}'", self.tx_type()),
-                }
-                .into());
-            }
-        }
-
-        let delegtxd = self
-            .transaction_pattern()
-            .script()
-            .unwrap()
-            .into_stake_delegation()
-            .await?;
-        let mut gtxd = self.transaction_pattern().into_txdata().await?;
-        gtxd.set_user_id(self.customer_id);
-
-        let mut dbsync = mimir::establish_connection()?;
-        let slot = mimir::get_slot(&mut dbsync)?;
-        gtxd.set_current_slot(slot as u64);
-
-        let bech32_stake_addr = match gtxd.get_stake_address().to_bech32(None) {
-            Ok(ba) => ba,
-            Err(e) => {
-                return Err(CmdError::Custom {
-                    str: format!("Could not convert Stake Address;' {:?}'", e),
-                }
-                .into());
-            }
-        };
-
-        let registered = mimir::check_stakeaddr_registered(&bech32_stake_addr)?;
-
-        let bld_tx = murin::delegation::build_delegation_tx(&gtxd, &delegtxd, &registered).await?;
-
-        info!("Build Successful!");
-        let tx = murin::utxomngr::RawTx::new(
-            &bld_tx.get_tx_body(),
-            &bld_tx.get_txwitness(),
-            &bld_tx.get_tx_unsigned(),
-            &bld_tx.get_metadata(),
-            &gtxd.to_string(),
-            &delegtxd.to_string(),
-            &bld_tx.get_used_utxos(),
-            &hex::encode(gtxd.get_stake_address().to_bytes()),
-            &(self.customer_id as i64),
-            &(-1),
-            &(-1.0),
-        );
-        debug!("RAWTX data: {:?}", tx);
-
-        let ret = super::create_response(
-            &bld_tx,
-            &tx,
-            self.transaction_pattern().wallet_type().as_ref(),
-        )?;
-
-        Ok(ret.to_string())
     }
 }
 
