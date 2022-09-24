@@ -28,7 +28,7 @@ impl TBContracts {
         let result = contracts
             .filter(
                 contract_type
-                    .eq(&crate::datamodel::hephadata::ContractType::DrasilAPILiquidity.to_string()),
+                    .eq(&crate::datamodel::models::ContractType::DrasilAPILiquidity.to_string()),
             )
             .filter(user_id.eq(user_id_in))
             .first::<TBContracts>(&mut establish_connection()?)?;

@@ -73,7 +73,7 @@ async fn main() {
 mod filters {
     use super::handlers;
     use crate::clientapi::filter::api_endpoints;
-    use hugin::datamodel::hephadata::{ContractType, MultiSigType, StdTxType, TXPWrapper};
+    use hugin::datamodel::models::{ContractType, MultiSigType, StdTxType, TXPWrapper};
     use warp::Filter;
 
     pub fn endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -292,7 +292,7 @@ mod auth {
 ///Handlers
 mod handlers {
     use hugin::client::{connect, Client};
-    use hugin::datamodel::hephadata::{
+    use hugin::datamodel::models::{
         ContractAction, ContractType, MarketplaceActions, MultiSigType, ReturnError, StdTxType,
         TxHash, UnsignedTransaction,
     };

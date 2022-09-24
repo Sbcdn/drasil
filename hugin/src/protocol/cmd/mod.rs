@@ -27,8 +27,8 @@ pub use finalizestdtx::FinalizeStdTx;
 mod verifyuser;
 pub use verifyuser::VerifyUser;
 
-mod getstakekey;
-pub use getstakekey::GetStakeKey;
+mod hydra;
+pub use hydra::GetStakeKey;
 
 mod verifydata;
 pub use verifydata::VerifyData;
@@ -188,18 +188,16 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
 pub fn create_response(
     bld_tx: &murin::htypes::BuildOutput,
     raw_tx: &murin::utxomngr::RawTx,
-    wallet_type: Option<&crate::datamodel::hephadata::WalletType>,
-) -> Result<crate::datamodel::hephadata::UnsignedTransaction, murin::MurinError> {
+    wallet_type: Option<&crate::datamodel::models::WalletType>,
+) -> Result<crate::datamodel::models::UnsignedTransaction, murin::MurinError> {
     debug!("Try to store raw tx...");
     let tx_id = murin::utxomngr::txmind::store_raw_tx(raw_tx)?;
     debug!("Try to create response...");
-    let mut response = crate::datamodel::hephadata::UnsignedTransaction::new(
-        Some(&bld_tx.get_tx_unsigned()),
-        &tx_id,
-    );
+    let mut response =
+        crate::datamodel::models::UnsignedTransaction::new(Some(&bld_tx.get_tx_unsigned()), &tx_id);
     debug!("Determine wallet specific settings...");
     if let Some(wallet) = wallet_type {
-        if *wallet == crate::datamodel::hephadata::WalletType::Yoroi {
+        if *wallet == crate::datamodel::models::WalletType::Yoroi {
             response.set_tx(&bld_tx.get_tx_unsigned())
         }
     }

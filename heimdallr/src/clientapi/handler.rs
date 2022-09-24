@@ -7,7 +7,7 @@
 #################################################################################
 */
 use hugin::client::{connect, Client};
-use hugin::datamodel::hephadata::{
+use hugin::datamodel::models::{
     MultiSigType, OneShotReturn, ReturnError, TXPWrapper, TransactionPattern,
 };
 use hugin::BuildMultiSig;
