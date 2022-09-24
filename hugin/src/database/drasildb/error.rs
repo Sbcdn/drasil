@@ -35,6 +35,8 @@ pub enum SystemDBError {
     IOError(#[from] std::io::Error),
     #[error(transparent)]
     BoolParseError(#[from] std::str::ParseBoolError),
+    #[error(transparent)]
+    CmdError(#[from] crate::CmdError),
 }
 
 impl From<std::string::String> for SystemDBError {

@@ -7,7 +7,7 @@
 #################################################################################
 */
 pub mod build_deleg;
-pub use build_deleg::build_delegation_tx;
+pub use build_deleg::{AtDelegBuilder, AtDelegParams};
 
 use cardano_serialization_lib::crypto as ccrypto;
 
@@ -17,6 +17,7 @@ use crate::MurinError;
 pub struct DelegTxData {
     poolhash: String,
     poolkeyhash: ccrypto::Ed25519KeyHash,
+    registred: Option<bool>,
 }
 
 impl DelegTxData {
@@ -25,6 +26,7 @@ impl DelegTxData {
         Ok(DelegTxData {
             poolhash: poolhash.to_string(),
             poolkeyhash: pool_keyhash,
+            registred: None,
         })
     }
 
@@ -34,6 +36,18 @@ impl DelegTxData {
 
     pub fn get_poolkeyhash(&self) -> ccrypto::Ed25519KeyHash {
         self.poolkeyhash.clone()
+    }
+
+    pub fn get_registered(&self) -> bool {
+        if let Some(r) = self.registred {
+            r
+        } else {
+            false
+        }
+    }
+
+    pub fn set_registered(&mut self, r: Option<bool>) {
+        self.registred = r;
     }
 }
 

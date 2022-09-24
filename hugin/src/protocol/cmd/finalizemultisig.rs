@@ -266,7 +266,7 @@ impl FinalizeMultiSig {
 
     async fn finalize_utxopti(&self, raw_tx: murin::RawTx) -> crate::Result<String> {
         use crate::database::drasildb::*;
-        use murin::txbuilders::rwdist::build_utxopti::finalize_utxopti;
+        use murin::txbuilders::rwdist::finalize_utxopti::finalize_utxopti;
 
         let mut drasildbcon = establish_connection()?;
         let keyloc = TBMultiSigLoc::get_multisig_keyloc(

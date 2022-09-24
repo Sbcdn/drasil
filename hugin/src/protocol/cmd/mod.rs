@@ -39,6 +39,7 @@ pub use unknown::Unknown;
 mod error;
 pub use error::CmdError;
 
+use crate::error::SystemDBError;
 use crate::{Connection, Frame, Parse, Shutdown, TransactionPattern};
 
 pub trait IntoFrame {
@@ -204,4 +205,38 @@ pub fn create_response(
     }
     debug!("Sending response...");
     Ok(response)
+}
+
+pub fn determine_contract(
+    contract_id: Option<u64>,
+    customer_id: i64,
+) -> Result<Option<crate::drasildb::TBContracts>, SystemDBError> {
+    let u_customer_id = customer_id;
+    if let Some(contract_id) = contract_id {
+        log::debug!("Get defined contract {:?}...", contract_id);
+        let u_contract_id = contract_id as i64;
+        log::debug!("Lookup Data: User: {:?}, ", (u_customer_id));
+        log::debug!("Lookup Data: Contract ID: {:?}, ", (contract_id as i64));
+        let tcontract =
+            crate::drasildb::TBContracts::get_contract_uid_cid(u_customer_id, u_contract_id);
+        log::debug!("Found contract: {:?}...", tcontract);
+        Ok(Some(tcontract?))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn convert_nfts_to_minter_token_asset(
+    nfts: &Vec<gungnir::Nft>,
+    policy_id: &String,
+) -> Result<Vec<murin::MintTokenAsset>, murin::MurinError> {
+    let mut out = Vec::<murin::MintTokenAsset>::new();
+    for nft in nfts {
+        out.push((
+            Some(murin::chelper::string_to_policy(policy_id)?),
+            murin::chelper::string_to_assetname(&nft.asset_name)?,
+            murin::u64_to_bignum(1),
+        ))
+    }
+    Ok(out)
 }
