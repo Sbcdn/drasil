@@ -19,6 +19,9 @@ pub(crate) async fn handle_stake(
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
     println!("Handle Stake Address: {:?}", stake.stake_addr);
+    if stake.amount.to_f64().unwrap() / 1000000.0 < 1.0 {
+        return Ok(());
+    }
     match twd.mode {
         gungnir::Calculationmode::RelationalToADAStake => {
             println!("Calcualte with: RelationalToAdaStake");

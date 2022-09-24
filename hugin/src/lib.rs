@@ -24,7 +24,7 @@ pub mod database;
 pub use database::*;
 
 pub mod datamodel;
-pub use crate::datamodel::hephadata::*;
+pub use crate::datamodel::models::*;
 
 pub mod client;
 pub use crate::client::Client;

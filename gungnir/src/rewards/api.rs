@@ -114,8 +114,14 @@ impl Rewards {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .filter(fingerprint.eq(&fingerprint_in))
-            .load::<Rewards>(conn)?;
-        Ok(result)
+            .load::<Rewards>(conn);
+        match result {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                log::error!("Error: {:?}", e.to_string());
+                Ok(Vec::<Rewards>::new())
+            }
+        }
     }
 
     pub fn get_total_rewards_token(
