@@ -220,7 +220,7 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
     log::debug!("Process epochs...");
     let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
     let mut start_epoch = twl.start_epoch_in;
-    if start_epoch < current_epoch {
+    if start_epoch < current_epoch - 2 {
         log::error!(
             "Start epoch cannot be smaller as current epoch, current epoch set as start epoch..."
         );
