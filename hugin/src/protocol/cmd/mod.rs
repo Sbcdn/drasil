@@ -28,7 +28,7 @@ mod verifyuser;
 pub use verifyuser::VerifyUser;
 
 mod hydra;
-pub use hydra::GetStakeKey;
+pub use hydra::HydraOps;
 
 mod verifydata;
 pub use verifydata::VerifyData;
@@ -55,7 +55,7 @@ pub enum Command {
     FinalizeMultiSig(FinalizeMultiSig),
     FinalizeStdTx(FinalizeStdTx),
     VerifyUser(VerifyUser),
-    GetStakeKey(GetStakeKey),
+    HydraOperation(HydraOps),
     VerifyData(VerifyData),
     Unknown(Unknown),
 }
@@ -82,7 +82,7 @@ impl Command {
             //GetPubKey
             "vus" => Command::VerifyUser(VerifyUser::parse_frames(&mut parse)?),
             //GetStakeKey
-            "gsk" => {
+            "hyd" => {
                 Command::Unknown(Unknown::new(command_name))
                 //Command::GetStakeKey(GetStakeKey::parse_frames(&mut parse)?)
             }
@@ -129,7 +129,7 @@ impl Command {
             Command::FinalizeMultiSig(_) => "fms",
             Command::FinalizeStdTx(_) => "ftx",
             Command::VerifyUser(_) => "vus",
-            Command::GetStakeKey(_) => "gsk",
+            Command::HydraOperation(_) => "hyd",
             Command::VerifyData(_) => "vd",
             Command::Unknown(_) => "unkw",
         }
@@ -205,20 +205,23 @@ pub fn create_response(
     Ok(response)
 }
 
-pub fn determine_contract(
-    contract_id: Option<u64>,
+pub fn determine_contracts(
+    contract_id: Option<Vec<i64>>,
     customer_id: i64,
-) -> Result<Option<crate::drasildb::TBContracts>, SystemDBError> {
+) -> Result<Option<Vec<crate::drasildb::TBContracts>>, SystemDBError> {
     let u_customer_id = customer_id;
     if let Some(contract_id) = contract_id {
-        log::debug!("Get defined contract {:?}...", contract_id);
-        let u_contract_id = contract_id as i64;
-        log::debug!("Lookup Data: User: {:?}, ", (u_customer_id));
-        log::debug!("Lookup Data: Contract ID: {:?}, ", (contract_id as i64));
-        let tcontract =
-            crate::drasildb::TBContracts::get_contract_uid_cid(u_customer_id, u_contract_id);
-        log::debug!("Found contract: {:?}...", tcontract);
-        Ok(Some(tcontract?))
+        log::debug!("Get defined contracts {:?}...", contract_id);
+        let mut tcontracts = Vec::<crate::drasildb::TBContracts>::new();
+        for cid in contract_id {
+            let u_contract_id = cid as i64;
+            tcontracts.push(crate::drasildb::TBContracts::get_contract_uid_cid(
+                u_customer_id,
+                u_contract_id,
+            )?);
+        }
+        log::debug!("Found Contracts: {:?}", tcontracts);
+        Ok(Some(tcontracts))
     } else {
         Ok(None)
     }

@@ -7,4 +7,3 @@
 #################################################################################
 */
 pub(crate) mod nft_marketplace;
-pub(crate) use nft_marketplace::*;

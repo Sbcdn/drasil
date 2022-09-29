@@ -7,6 +7,9 @@
 #################################################################################
 */
 
+use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
+use chrono::{DateTime, Utc};
+use gungnir::{Rewards, TokenInfo};
 use murin::TxData;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Error, str::FromStr};
@@ -312,7 +315,7 @@ pub enum TXPWrapper {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionPattern {
     user: String,
-    contract_id: Option<u64>,
+    contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
     wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
     sending_wal_addrs: Vec<String>,
     sending_stake_addr: Option<String>,
@@ -346,6 +349,7 @@ impl TransactionPattern {
     }
 
     pub fn contract_id(&self) -> Option<u64> {
+        // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
         self.contract_id
     }
 
@@ -417,7 +421,7 @@ impl TransactionPattern {
         };
 
         let mut txd = TxData::new(
-            self.contract_id(),
+            Some(vec![self.contract_id().unwrap() as i64]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
             murin::wallet::decode_addresses(&self.sending_wal_addrs()).await?,
             saddr,
             murin::wallet::get_transaction_unspent_outputs(
@@ -453,7 +457,7 @@ impl TransactionPattern {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ScriptSpecParams {
     SpoRewardClaim {
-        reward_tokens: Vec<Token>,
+        rewards: Vec<murin::RewardHandle>,
         recipient_stake_addr: String,
         recipient_payment_addr: String,
     },
@@ -554,15 +558,15 @@ impl ScriptSpecParams {
 
         match self {
             ScriptSpecParams::SpoRewardClaim {
-                reward_tokens,
+                rewards,
                 recipient_stake_addr,
                 recipient_payment_addr,
             } => {
-                let assets = Token::for_all_into_asset(reward_tokens)?;
+                // let assets = Token::for_all_into_asset(reward_tokens)?;
                 let stake_addr = murin::decode_addr(recipient_stake_addr).await?;
                 let payment_addr = murin::decode_addr(recipient_payment_addr).await?;
 
-                Ok(RWDTxData::new(&assets, &stake_addr, &payment_addr))
+                Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this contract",
@@ -876,6 +880,88 @@ impl OneShotReturn {
             amounts: amounts.to_owned(),
             txhash: txhash.to_owned(),
             metadata: metadata.to_owned(),
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct ClaimedHandle {
+    pub stake_addr: String,
+    pub payment_addr: String,
+    pub policyid: String,
+    pub tokenname: String,
+    pub fingerprint: String,
+    pub amount: BigDecimal,
+    pub contract_id: i64,
+    pub user_id: i64,
+    pub txhash: String,
+    pub invalid: Option<bool>,
+    pub invalid_descr: Option<String>,
+    pub timestamp: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl ClaimedHandle {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        stake_addr: String,
+        payment_addr: String,
+        policyid: String,
+        tokenname: String,
+        fingerprint: String,
+        amount: BigDecimal,
+        contract_id: i64,
+        user_id: i64,
+        txhash: String,
+        invalid: Option<bool>,
+        invalid_descr: Option<String>,
+        timestamp: DateTime<Utc>,
+        updated_at: DateTime<Utc>,
+    ) -> ClaimedHandle {
+        ClaimedHandle {
+            stake_addr,
+            payment_addr,
+            policyid,
+            tokenname,
+            fingerprint,
+            amount,
+            contract_id,
+            user_id,
+            txhash,
+            invalid,
+            invalid_descr,
+            timestamp,
+            updated_at,
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct RewardHandle {
+    pub contract_id: i64,
+    pub stake_addr: String,
+    pub fingerprint: String,
+    pub policy: String,
+    pub tokenname: String,
+    pub tot_earned: u64,
+    pub tot_claimed: u64,
+    pub last_calc_epoch: i64,
+}
+
+impl RewardHandle {
+    pub fn new(ti: &TokenInfo, rwd: &Rewards) -> RewardHandle {
+        RewardHandle {
+            contract_id: rwd.contract_id,
+            stake_addr: rwd.stake_addr.clone(),
+            fingerprint: ti.fingerprint.clone().unwrap(),
+            policy: ti.policy.clone(),
+            tokenname: ti.tokenname.clone().unwrap(),
+            tot_earned: (rwd.tot_earned.clone() / &BigDecimal::from_i32(1000000).unwrap())
+                .to_u64()
+                .unwrap(),
+
+            tot_claimed: rwd.tot_claimed.clone().to_u64().unwrap(),
+            last_calc_epoch: rwd.last_calc_epoch,
         }
     }
 }

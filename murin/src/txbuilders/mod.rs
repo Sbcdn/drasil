@@ -18,6 +18,7 @@ pub mod delegation;
 pub mod finalize;
 pub mod marketplace;
 pub mod minter;
+pub mod modules;
 pub mod rwdist;
 pub mod stdtx;
 
@@ -134,8 +135,8 @@ pub type MintTokenAsset = (Option<clib::PolicyID>, clib::AssetName, cutils::BigN
 
 #[derive(Debug, Clone)]
 pub struct TxData {
-    user_id: Option<u64>,
-    contract_id: Option<u64>,
+    user_id: Option<i64>,
+    contract_id: Option<Vec<i64>>,
     senders_addresses: Vec<caddr::Address>,
     senders_stake_addr: caddr::Address,
     outputs: Option<TransactionUnspentOutputs>,
@@ -151,7 +152,7 @@ const LV_PLUTUSV1           : &str = "a141005901d59f1a000302590001011a00060bc719
 
 impl TxData {
     pub fn new(
-        contract_id: Option<u64>,
+        contract_id: Option<Vec<i64>>,
         saddresses: Vec<caddr::Address>,
         sstake: Option<caddr::Address>,
         inputs: TransactionUnspentOutputs,
@@ -176,12 +177,12 @@ impl TxData {
         })
     }
 
-    pub fn set_user_id(&mut self, user_id: u64) {
+    pub fn set_user_id(&mut self, user_id: i64) {
         self.user_id = Some(user_id);
     }
 
-    pub fn set_contract_id(&mut self, contract_id: u64) {
-        self.contract_id = Some(contract_id);
+    pub fn set_contract_id(&mut self, contract_ids: Vec<i64>) {
+        self.contract_id = Some(contract_ids);
     }
 
     pub fn set_senders_addresses(&mut self, addresses: Vec<caddr::Address>) {
@@ -212,12 +213,12 @@ impl TxData {
         self.current_slot = current_slot;
     }
 
-    pub fn get_user_id(&self) -> Option<u64> {
+    pub fn get_user_id(&self) -> Option<i64> {
         self.user_id
     }
 
-    pub fn get_contract_id(&self) -> Option<u64> {
-        self.contract_id
+    pub fn get_contract_id(&self) -> Option<Vec<i64>> {
+        self.contract_id.clone()
     }
 
     pub fn get_senders_addresses(&self) -> Vec<caddr::Address> {
@@ -329,7 +330,15 @@ impl ToString for TxData {
         };
 
         let s_contract_id = match self.get_contract_id() {
-            Some(cid) => cid.to_string(),
+            Some(cid) => {
+                let mut s = String::new();
+                for i in cid {
+                    s.push_str(&i.to_string());
+                    s.push(',');
+                }
+                s.pop();
+                s
+            }
             None => "NoData".to_string(),
         };
 
@@ -413,12 +422,22 @@ impl core::str::FromStr for TxData {
 
             let user_id = match slice[8] {
                 "NoData" => None,
-                _ => Some(slice[8].parse::<u64>()?),
+                _ => Some(slice[8].parse::<i64>()?),
             };
 
             let contract_id = match slice[9] {
                 "NoData" => None,
-                _ => Some(slice[9].parse::<u64>()?),
+                _ => {
+                    let scids: Vec<&str> = slice[9].split(',').collect();
+                    let mut cids = Vec::<i64>::new();
+                    scids.iter().for_each(|n| {
+                        cids.push(
+                            n.parse::<i64>()
+                                .expect("could not convert string to contract-id"),
+                        )
+                    });
+                    Some(cids)
+                }
             };
 
             Ok(TxData {

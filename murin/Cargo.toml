@@ -44,6 +44,8 @@ bech32 = "0.4.0"
 futures = "0.3.21"
 argon2 = "0.4.0"
 itertools = "0.10.3"
+thiserror = "1.0.32"
+bigdecimal = { version = "0.3.0", features = ["serde"] }
 
 cryptoxide = { git = "https://github.com/typed-io/cryptoxide.git", branch = "master", features = [
     "blake2",

@@ -364,7 +364,7 @@ pub fn check_any_utxo_used(
     info!("check used utxos...");
     let mut con = redis_usedutxos_connection()?;
     let mut members = Vec::<String>::new();
-    debug!("Input TXUOS: '{:?}'", txuos);
+    //debug!("Input TXUOS: '{:?}'", txuos);
     for j in 0..txuos.len() {
         members.push(
             hex::encode(txuos.get(j).input().transaction_id().to_bytes())
@@ -372,13 +372,13 @@ pub fn check_any_utxo_used(
                 + &txuos.get(j).input().index().to_string(),
         );
     }
-    debug!("\n\nMembers: {:?}", members);
+    //debug!("\n\nMembers: {:?}", members);
     let mut used_utxos = Vec::<UsedUtxo>::new();
 
     for i in &[0, 1, 2] {
         let key = select_used_utxo_datastore(0, Some(*i))?;
         if !key.0.is_empty() && key.1 > 0 {
-            debug!("Key: {:?}", key);
+            //debug!("Key: {:?}", key);
             let response = sismember(&mut con, &key.0, &members);
             debug!("\n\nResponse: {:?}", response);
             for (j, i) in response.into_iter().enumerate() {

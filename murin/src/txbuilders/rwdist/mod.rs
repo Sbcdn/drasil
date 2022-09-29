@@ -7,6 +7,8 @@
 #################################################################################
 */
 pub mod build_rwd;
+use std::fmt;
+
 pub use build_rwd::*;
 
 pub mod finalize_rwd;
@@ -15,12 +17,104 @@ pub use finalize_rwd::*;
 pub mod finalize_utxopti;
 
 use super::*;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
 
+// Copy from Hugin / Datamodel
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct RewardHandle {
+    contract_id: i64,
+    stake_addr: String,
+    fingerprint: String,
+    policy: String,
+    tokenname: String,
+    tot_earned: u64,
+    tot_claimed: u64,
+    last_calc_epoch: i64,
+}
+
+impl fmt::Display for RewardHandle {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let serde = serde_json::to_string(self)
+            .expect("Error: could not convert Rewardhandle to JSON string");
+        fmt.write_str(&serde)?;
+        Ok(())
+    }
+}
+
+impl From<String> for RewardHandle {
+    fn from(str: String) -> Self {
+        let rwd: RewardHandle = serde_json::from_str(&str)
+            .expect("Error: could not convert JSON string to Rewardhandle");
+        rwd
+    }
+}
+
+impl RewardHandle {
+    pub fn get_policy_id(&self) -> Result<clib::PolicyID, MurinError> {
+        clib::PolicyID::from_bytes(hex::decode(&self.policy)?)
+            .map_err(|_| MurinError::new("could not get policy-id from reward handle"))
+    }
+    pub fn get_assetname(&self) -> Result<clib::AssetName, MurinError> {
+        clib::AssetName::new(hex::decode(&self.tokenname)?)
+            .map_err(|_| MurinError::new("could not get assetname from reward handle"))
+    }
+    pub fn get_amount(&self) -> Result<clib::utils::BigNum, MurinError> {
+        Ok(cutils::BigNum::from(
+            (self.tot_earned.to_owned() - self.tot_claimed.to_owned())
+                .to_u64()
+                .unwrap(),
+        ))
+    }
+    pub fn get_fingerprint(&self) -> String {
+        self.fingerprint.clone()
+    }
+    pub fn get_contract_id(&self) -> i64 {
+        self.contract_id
+    }
+    pub fn get_stake_addr(&self) -> Result<clib::address::RewardAddress, MurinError> {
+        let addr = crate::b_decode_addr_na(&self.stake_addr)?;
+        clib::address::RewardAddress::from_address(&addr).ok_or_else(|| {
+            MurinError::new("Error: could not construct RewardAddress for RewardHandle")
+        })
+    }
+    pub fn get_stake_addr_str(&self) -> String {
+        self.stake_addr.clone()
+    }
+
+    pub fn total_value(handles: &[RewardHandle]) -> Result<clib::utils::Value, MurinError> {
+        let tv: clib::utils::Value =
+            handles
+                .iter()
+                .fold(clib::utils::Value::zero(), |mut acc, n| {
+                    let mut assets = clib::Assets::new();
+                    assets.insert(&n.get_assetname().unwrap(), &n.get_amount().unwrap());
+                    let mut ma = clib::MultiAsset::new();
+                    ma.insert(&n.get_policy_id().unwrap(), &assets);
+                    let mut v = clib::utils::Value::zero();
+                    v.set_multiasset(&ma);
+                    acc = acc.checked_add(&v).unwrap();
+                    acc
+                });
+        Ok(tv)
+    }
+
+    pub fn value(&self) -> Result<clib::utils::Value, MurinError> {
+        let mut assets = clib::Assets::new();
+        assets.insert(&self.get_assetname().unwrap(), &self.get_amount().unwrap());
+        let mut ma = clib::MultiAsset::new();
+        ma.insert(&self.get_policy_id().unwrap(), &assets);
+        let mut v = clib::utils::Value::zero();
+        v.set_multiasset(&ma);
+
+        Ok(v)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RWDTxData {
-    reward_tokens: Vec<TokenAsset>,
+    rewards: Vec<RewardHandle>,
     recipient_stake_addr: caddr::Address,
     recipient_payment_addr: caddr::Address,
     fee_wallet_addr: Option<caddr::Address>,
@@ -30,7 +124,7 @@ pub struct RWDTxData {
 
 impl RWDTxData {
     pub fn new(
-        reward_tokens: &[TokenAsset],
+        rewards: &[RewardHandle],
         recipient_stake_addr: &caddr::Address,
         recipient_payment_addr: &caddr::Address,
         //fee_wallet_addr         : &caddr::Address,
@@ -38,7 +132,7 @@ impl RWDTxData {
         //reward_utxos            : &Option<TransactionUnspentOutputs>,
     ) -> RWDTxData {
         RWDTxData {
-            reward_tokens: reward_tokens.to_vec(),
+            rewards: rewards.to_vec(),
             recipient_stake_addr: recipient_stake_addr.clone(),
             recipient_payment_addr: recipient_payment_addr.clone(),
             fee_wallet_addr: None, //fee_wallet_addr.clone(),
@@ -47,8 +141,8 @@ impl RWDTxData {
         }
     }
 
-    pub fn get_reward_tokens(&self) -> Vec<TokenAsset> {
-        self.reward_tokens.clone()
+    pub fn get_rewards(&self) -> Vec<RewardHandle> {
+        self.rewards.clone()
     }
 
     pub fn get_stake_addr(&self) -> caddr::Address {
@@ -71,8 +165,8 @@ impl RWDTxData {
         self.reward_utxos.clone()
     }
 
-    pub fn set_reward_tokens(&mut self, data: &[TokenAsset]) {
-        self.reward_tokens = data.to_vec();
+    pub fn set_reward_tokens(&mut self, data: &[RewardHandle]) {
+        self.rewards = data.to_vec();
     }
 
     pub fn set_stake_addr(&mut self, data: &caddr::Address) {
@@ -100,12 +194,13 @@ impl ToString for RWDTxData {
     fn to_string(&self) -> String {
         // prepare tokens vector
         let mut s_tokens = String::new();
-        for ta in self.get_reward_tokens() {
-            let mut subs = String::new();
-            subs.push_str(&(hex::encode(ta.0.to_bytes()) + "?"));
-            subs.push_str(&(hex::encode(ta.1.to_bytes()) + "?"));
-            subs.push_str(&(hex::encode(ta.2.to_bytes()) + "!"));
-            s_tokens.push_str(&subs);
+        for ta in self.get_rewards() {
+            //let mut subs = String::new();
+            //subs.push_str(&(hex::encode(ta.0.to_bytes()) + "?"));
+            //subs.push_str(&(hex::encode(ta.1.to_bytes()) + "?"));
+            //subs.push_str(&(hex::encode(ta.2.to_bytes()) + "!"));
+            s_tokens.push_str(&ta.to_string());
+            s_tokens.push('!');
         }
         // erase last !
         s_tokens.pop();
@@ -158,17 +253,21 @@ impl core::str::FromStr for RWDTxData {
         let slice: Vec<&str> = src.split('|').collect();
         if slice.len() == 6 {
             // restore token vector
-            let mut tokens = Vec::<TokenAsset>::new();
-            let tokens_vec: Vec<&str> = slice[0].split('!').collect();
-            for token in tokens_vec {
-                let token_slice: Vec<&str> = token.split('?').collect();
+            let mut rewards = Vec::<RewardHandle>::new();
+
+            let rwds: Vec<&str> = slice[0].split('!').collect();
+            for rwd in rwds {
+                rewards.push(RewardHandle::from(rwd.to_string()));
+                /*
+                let rwd_slice: Vec<&str> = token.split('?').collect();
                 tokens.push((
                     clib::PolicyID::from_bytes(hex::decode(token_slice[0])?)?,
                     clib::AssetName::from_bytes(hex::decode(token_slice[1])?)?,
                     cutils::BigNum::from_bytes(hex::decode(token_slice[2])?)?,
                 ))
+                */
             }
-            debug!("Tokens: {:?}", tokens);
+            debug!("Tokens: {:?}", rewards);
 
             // restore stake address
             let stake_address = caddr::Address::from_bytes(hex::decode(slice[1])?)?;
@@ -198,7 +297,7 @@ impl core::str::FromStr for RWDTxData {
             };
             println!("Restored token utxos");
             Ok(RWDTxData {
-                reward_tokens: tokens,
+                rewards,
                 recipient_stake_addr: stake_address,
                 recipient_payment_addr: payment_address,
                 fee_wallet_addr,

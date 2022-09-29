@@ -130,7 +130,6 @@ pub(crate) async fn handle_testrewards(bms: &BuildMultiSig) -> crate::Result<Str
     //    ns_addr = Some(contract.address);
     //}
     let ns_script = contract.plutus.clone();
-    let ns_version = contract.version.to_string();
 
     let mut dbsync = match mimir::establish_connection() {
         Ok(conn) => conn,
@@ -194,8 +193,7 @@ pub(crate) async fn handle_testrewards(bms: &BuildMultiSig) -> crate::Result<Str
         &bld_tx.get_used_utxos(),
         &hex::encode(gtxd.get_stake_address().to_bytes()),
         &(bms.customer_id()),
-        &contract.contract_id,
-        &contract.version,
+        &[contract.contract_id],
     );
     debug!("RAWTX data: {:?}", tx);
     let used_utxos = tx.get_usedutxos().clone();

@@ -1120,12 +1120,12 @@ pub fn find_suitable_coins(
     let mut multi_storage = TransactionUnspentOutputs::new();
     let mut coin_storage = TransactionUnspentOutputs::new();
 
-    debug!("\n\nTXINS in find suitabe coins: {:?}\n\n", inputs);
+    //debug!("\n\nTXINS in find suitabe coins: {:?}\n\n", inputs);
 
-    debug!(
-        "\nFIND COINS: max_coins {:?}, coins: {:?}\n",
-        max_coins, coins
-    );
+    //debug!(
+    //    "\nFIND COINS: max_coins {:?}, coins: {:?}\n",
+    //    max_coins, coins
+    //);
     'outer: for tx in inputs.clone() {
         debug!(
             "\n-------TXIn : {:?}{:?}",
@@ -1134,19 +1134,19 @@ pub fn find_suitable_coins(
         );
 
         let lc = cutils::from_bignum(&tx.output().amount().coin());
-        debug!(
-            "\n---LC: {:?}----TXIn : {:?}{:?}",
-            lc,
-            tx.input().transaction_id(),
-            tx.input().index()
-        );
+        //debug!(
+        //    "\n---LC: {:?}----TXIn : {:?}{:?}",
+        //    lc,
+        //    tx.input().transaction_id(),
+        //    tx.input().index()
+        //);
         if lc > coins {
             match tx.output().amount().multiasset() {
                 Some(multi) => match multi.len() {
                     0 => {
-                        debug!("Multiasset of Len 0: Found Coins: {:?}", lc);
+                        //debug!("Multiasset of Len 0: Found Coins: {:?}", lc);
                         if lc < max_coins {
-                            debug!("No Multiasset: Found Coins: {:?}", lc);
+                            //debug!("No Multiasset: Found Coins: {:?}", lc);
                             selection.add(&tx);
                             debug!("Selection: {:?}", selection);
                             return (Some(selection), lc);
@@ -1156,21 +1156,21 @@ pub fn find_suitable_coins(
                     }
 
                     1..=21 => {
-                        debug!("Multiasses with less than 21 NFTs, Found Coins: {:?}", lc);
+                        //debug!("Multiasses with less than 21 NFTs, Found Coins: {:?}", lc);
                         selection.add(&tx);
-                        debug!("Selection: {:?}", selection);
+                        //debug!("Selection: {:?}", selection);
                         return (Some(selection), lc);
                     }
                     _ => {
-                        debug!("More than 21 NFTs, Found Coins: {:?}", lc);
-                        debug!("Trying find better option, store this one");
+                        //debug!("More than 21 NFTs, Found Coins: {:?}", lc);
+                        //debug!("Trying find better option, store this one");
                         multi_storage.add(&tx);
                     }
                 },
 
                 None => {
                     if lc < max_coins {
-                        debug!("No Multiasset: Found Coins: {:?}", lc);
+                        //debug!("No Multiasset: Found Coins: {:?}", lc);
                         selection.add(&tx);
                         debug!("Selection: {:?}", selection);
                         return (Some(selection), lc);
@@ -1195,7 +1195,7 @@ pub fn find_suitable_coins(
     }
     if !coin_storage.is_empty() {
         coin_storage.sort_by_coin();
-        debug!("Took from coinstorage: {:?}", coin_storage);
+        //debug!("Took from coinstorage: {:?}", coin_storage);
 
         let tx = coin_storage.get(0);
         selection.add(&tx);
@@ -1203,23 +1203,23 @@ pub fn find_suitable_coins(
         return (Some(selection), acc);
     } else {
         for tx in inputs {
-            debug!(
-                "\n-------TXIn in Acc : {:?}{:?}",
-                tx.input().transaction_id(),
-                tx.input().index()
-            );
+            //debug!(
+            //    "\n-------TXIn in Acc : {:?}{:?}",
+            //    tx.input().transaction_id(),
+            //    tx.input().index()
+            //);
             let lc = cutils::from_bignum(&tx.output().amount().coin());
             acc += lc;
-            debug!("Acc {:?}, LC: {:?}", acc, lc);
+            //debug!("Acc {:?}, LC: {:?}", acc, lc);
             selection.add(&tx);
             if acc > coins + MIN_ADA {
-                debug!("Return in Accumulator {:?}", acc);
+                //debug!("Return in Accumulator {:?}", acc);
                 return (Some(selection), acc);
             }
         }
     }
 
-    debug!("SUITABLE COINS: {:?}", acc);
+    //debug!("SUITABLE COINS: {:?}", acc);
 
     if selection.is_empty() {
         debug!("Selection length = 0");
