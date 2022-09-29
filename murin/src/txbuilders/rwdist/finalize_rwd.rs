@@ -43,24 +43,24 @@ pub async fn finalize_rwd(
         vkeys_signature = vks;
     };
 
-    let root_key2 = clib::crypto::Bip32PrivateKey::from_bytes(&hex::decode(&pvks[1])?)?;
-    let account_key2 = root_key2
-        .derive(harden(1852u32))
-        .derive(harden(1815u32))
-        .derive(harden(0u32));
-    let prv2 = account_key2.to_raw_key(); // for signatures
-
-    let vkwitness_2 = cutils::make_vkey_witness(&cutils::hash_transaction(&tx_body), &prv2);
-
     let mut tx_witness_all_vkeys = ccrypto::Vkeywitnesses::new();
     if let Some(vkeys) = tx_witness_stored.vkeys() {
         tx_witness_all_vkeys = vkeys
     };
 
-    tx_witness_all_vkeys.add(&vkwitness_2);
-
     for i in 0..vkeys_signature.len() {
         tx_witness_all_vkeys.add(&vkeys_signature.get(i))
+    }
+
+    for pv in pvks {
+        let root_key = clib::crypto::Bip32PrivateKey::from_bytes(&hex::decode(&pv)?)?;
+        let account_key = root_key
+            .derive(harden(1852u32))
+            .derive(harden(1815u32))
+            .derive(harden(0u32));
+        let prv = account_key.to_raw_key(); // for signatures
+        let vkwitness = cutils::make_vkey_witness(&cutils::hash_transaction(&tx_body), &prv);
+        tx_witness_all_vkeys.add(&vkwitness);
     }
 
     tx_witness_stored.set_vkeys(&tx_witness_all_vkeys);

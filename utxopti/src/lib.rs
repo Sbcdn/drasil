@@ -97,8 +97,7 @@ async fn submit_tx(
         &bld_tx.get_used_utxos(),
         &"".to_string(),
         &uid,
-        &cid,
-        &version,
+        &[cid],
     );
 
     let resp = hugin::create_response(&bld_tx, &raw_tx, None)?;

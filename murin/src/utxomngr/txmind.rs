@@ -42,7 +42,6 @@ pub struct RawTx {
     stake_addr: String,
     user_id: String,
     contract_id: String,
-    contract_version: String,
 }
 
 impl RawTx {
@@ -58,7 +57,6 @@ impl RawTx {
             stake_addr: "".to_string(),
             user_id: "".to_string(),
             contract_id: "".to_string(),
-            contract_version: "".to_string(),
         }
     }
 
@@ -73,8 +71,7 @@ impl RawTx {
         used_utxos: &String,
         stake_addr: &String,
         user_id: &i64,
-        contract_id: &i64,
-        contract_version: &f32,
+        contract_id: &[i64],
     ) -> RawTx {
         RawTx {
             tx_body: tx_body.to_string(),
@@ -86,8 +83,7 @@ impl RawTx {
             used_utxos: used_utxos.to_string(),
             stake_addr: stake_addr.to_string(),
             user_id: user_id.to_string(),
-            contract_id: contract_id.to_string(),
-            contract_version: contract_version.to_string(),
+            contract_id: serde_json::to_string(&contract_id).unwrap(),
         }
     }
 
@@ -129,20 +125,13 @@ impl RawTx {
     pub fn get_user_id_as_str(&self) -> &String {
         &self.user_id
     }
-    pub fn get_contract_id(&self) -> Result<i64, MurinError> {
-        Ok(self.contract_id.parse::<i64>()?)
+    pub fn get_contract_id(&self) -> Result<Vec<i64>, MurinError> {
+        serde_json::from_str::<Vec<i64>>(&self.contract_id)
+            .map_err(|_| MurinError::new("Error: could not convert to contract id vector"))
     }
 
     pub fn get_contract_id_as_str(&self) -> &String {
         &self.contract_id
-    }
-
-    pub fn get_contract_version(&self) -> Result<f32, MurinError> {
-        Ok(self.contract_version.parse::<f32>()?)
-    }
-
-    pub fn get_contract_version_as_str(&self) -> &String {
-        &self.contract_version
     }
 
     pub fn set_txbody(&mut self, str: &str) {
@@ -177,15 +166,11 @@ impl RawTx {
         self.stake_addr = str.to_owned();
     }
 
-    pub fn set_contract_id(&mut self, n: i64) {
-        self.contract_id = n.to_string();
+    pub fn set_contract_id(&mut self, n: &[i64]) {
+        self.contract_id = serde_json::to_string(&n).unwrap();
     }
 
-    pub fn set_contract_version(&mut self, n: f32) {
-        self.contract_version = n.to_string();
-    }
-
-    pub fn to_redis_item(&self) -> [(&str, &str); 11] {
+    pub fn to_redis_item(&self) -> [(&str, &str); 10] {
         [
             ("txbody", &self.tx_body),
             ("txwitness", &self.tx_witness),
@@ -197,7 +182,6 @@ impl RawTx {
             ("stakeaddr", &self.stake_addr),
             ("userid", &self.user_id),
             ("contractid", &self.contract_id),
-            ("contractversion", &self.contract_version),
         ]
     }
 }
@@ -256,10 +240,6 @@ pub fn read_raw_tx(key: &String) -> Result<RawTx, MurinError> {
         response.get("usedutxos").ok_or(&err)?,
         response.get("stakeaddr").ok_or(&err)?,
         &response.get("userid").ok_or(&err)?.parse::<i64>()?,
-        &response.get("contractid").ok_or(&err)?.parse::<i64>()?,
-        &response
-            .get("contractversion")
-            .ok_or(&err)?
-            .parse::<f32>()?,
+        &serde_json::from_str::<Vec<i64>>(response.get("contractid").ok_or(&err)?)?,
     ))
 }
