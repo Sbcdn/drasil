@@ -7,4 +7,4 @@
 #################################################################################
 */
 #[derive(Debug, Clone)]
-pub struct GetStakeKey {}
+pub struct HydraOps {}

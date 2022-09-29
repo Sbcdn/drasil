@@ -169,7 +169,7 @@ impl BuildContract {
             .unwrap()
             .into_mp(gtxd.clone().get_inputs())
             .await?;
-        gtxd.set_user_id(self.customer_id as u64);
+        gtxd.set_user_id(self.customer_id as i64);
         let mut dbsync = mimir::establish_connection()?;
         let slot = mimir::get_slot(&mut dbsync)?;
         gtxd.set_current_slot(slot as u64);
@@ -209,8 +209,7 @@ impl BuildContract {
                             &res.get_used_utxos(),
                             &hex::encode(gtxd.get_stake_address().to_bytes()),
                             &(self.customer_id as i64),
-                            &contract.contract_id,
-                            &contract.version,
+                            &[contract.contract_id],
                         );
 
                         ret = super::create_response(

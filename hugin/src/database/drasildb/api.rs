@@ -670,7 +670,7 @@ impl TBCaPayment {
         let contract = TBContracts::get_contract_uid_cid(self.user_id, self.contract_id)?;
 
         let mut gtxd = TxData::new(
-            Some(self.contract_id as u64),
+            Some(vec![self.contract_id]),
             vec![murin::wallet::b_decode_addr(&get_vaddr(&self.user_id).await?).await?],
             None,
             TransactionUnspentOutputs::new(),
@@ -754,8 +754,7 @@ impl TBCaPayment {
             &bld_tx.get_used_utxos(),
             &"".to_string(),
             &user.user_id,
-            &contract.contract_id,
-            &contract.version,
+            &[contract.contract_id],
         );
         debug!("RAWTX data: {:?}", tx);
 

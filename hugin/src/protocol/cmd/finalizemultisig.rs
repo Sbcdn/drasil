@@ -115,10 +115,10 @@ impl FinalizeMultiSig {
                 let rwd_data = murin::RWDTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
 
                 let mut gcon = gungnir::establish_connection()?;
-                for token in rwd_data.get_reward_tokens() {
+                for handle in rwd_data.get_rewards() {
                     let fingerprint = murin::chelper::make_fingerprint(
-                        &hex::encode(token.0.to_bytes()),
-                        &hex::encode(token.1.name()),
+                        &hex::encode(handle.get_policy_id()?.to_bytes()),
+                        &hex::encode(handle.get_assetname()?.name()),
                     )?;
                     gungnir::Claimed::create_claim(
                         &mut gcon,
@@ -131,8 +131,8 @@ impl FinalizeMultiSig {
                             .to_bech32(None)
                             .expect("Could not construct bech32 address for payment address"),
                         &fingerprint,
-                        &murin::clib::utils::from_bignum(&token.2),
-                        &(raw_tx.get_contract_id()? as i64),
+                        &murin::clib::utils::from_bignum(&handle.get_amount()?),
+                        &(handle.get_contract_id()),
                         &(raw_tx.get_user_id()? as i64),
                         &ret.clone(),
                         None,
@@ -142,9 +142,9 @@ impl FinalizeMultiSig {
                         &mut gcon,
                         &tx_data.get_stake_address().to_bech32(None).unwrap(),
                         &fingerprint,
-                        &(raw_tx.get_contract_id()? as i64),
+                        &handle.get_contract_id(),
                         &(raw_tx.get_user_id()? as i64),
-                        &murin::clib::utils::from_bignum(&token.2),
+                        &murin::clib::utils::from_bignum(&handle.get_amount()?),
                     )?;
                 }
             }
@@ -214,25 +214,31 @@ impl FinalizeMultiSig {
         use murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
 
         let mut drasildbcon = establish_connection()?;
-        let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-            &mut drasildbcon,
-            &raw_tx.get_contract_id()?,
-            &(self.customer_id as i64),
-            &raw_tx.get_contract_version()?,
-        )?;
+        let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
+        let mut pvks = Vec::<String>::new();
 
-        let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
-            self.customer_id as i64,
-            raw_tx.get_contract_id()?,
-        )?;
-        let ident = crate::encryption::mident(
-            &contract.user_id,
-            &contract.contract_id,
-            &contract.version,
-            &contract.address,
-        );
-        let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
-        let response = finalize_rwd(&self.get_signature(), raw_tx, pkvs).await?;
+        for cid in tx_data.get_contract_id().as_ref().unwrap() {
+            let contract =
+                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
+
+            let keyloc = TBMultiSigLoc::get_multisig_keyloc(
+                &mut drasildbcon,
+                cid,
+                &(self.customer_id as i64),
+                &contract.version,
+            )?;
+
+            let ident = crate::encryption::mident(
+                &contract.user_id,
+                &contract.contract_id,
+                &contract.version,
+                &contract.address,
+            );
+            let _pvks = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
+            pvks.push(_pvks[1].clone())
+        }
+
+        let response = finalize_rwd(&self.get_signature(), raw_tx, pvks).await?;
         info!("Response: {}", response);
         Ok(response)
     }
@@ -242,24 +248,30 @@ impl FinalizeMultiSig {
         use murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
 
         let mut drasildbcon = establish_connection()?;
-        let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-            &mut drasildbcon,
-            &raw_tx.get_contract_id()?,
-            &(self.customer_id as i64),
-            &raw_tx.get_contract_version()?,
-        )?;
-        let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
-            self.customer_id as i64,
-            raw_tx.get_contract_id()?,
-        )?;
-        let ident = crate::encryption::mident(
-            &contract.user_id,
-            &contract.contract_id,
-            &contract.version,
-            &contract.address,
-        );
-        let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
-        let response = finalize_rwd(&self.get_signature(), raw_tx, pkvs).await?;
+        let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
+        let mut pvks = Vec::<String>::new();
+
+        for cid in tx_data.get_contract_id().as_ref().unwrap() {
+            let contract =
+                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
+
+            let keyloc = TBMultiSigLoc::get_multisig_keyloc(
+                &mut drasildbcon,
+                cid,
+                &(self.customer_id as i64),
+                &contract.version,
+            )?;
+
+            let ident = crate::encryption::mident(
+                &contract.user_id,
+                &contract.contract_id,
+                &contract.version,
+                &contract.address,
+            );
+            let _pvks = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
+            pvks.extend(_pvks.clone().iter().map(|n| n.to_owned()))
+        }
+        let response = finalize_rwd(&self.get_signature(), raw_tx, pvks).await?;
         info!("Response: {}", response);
         Ok(response)
     }
@@ -269,24 +281,30 @@ impl FinalizeMultiSig {
         use murin::txbuilders::rwdist::finalize_utxopti::finalize_utxopti;
 
         let mut drasildbcon = establish_connection()?;
-        let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-            &mut drasildbcon,
-            &raw_tx.get_contract_id()?,
-            &(self.customer_id as i64),
-            &raw_tx.get_contract_version()?,
-        )?;
-        let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
-            self.customer_id as i64,
-            raw_tx.get_contract_id()?,
-        )?;
-        let ident = crate::encryption::mident(
-            &contract.user_id,
-            &contract.contract_id,
-            &contract.version,
-            &contract.address,
-        );
-        let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
-        let response = finalize_utxopti(raw_tx, pkvs).await?;
+        let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
+        let mut pvks = Vec::<String>::new();
+
+        for cid in tx_data.get_contract_id().as_ref().unwrap() {
+            let contract =
+                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
+
+            let keyloc = TBMultiSigLoc::get_multisig_keyloc(
+                &mut drasildbcon,
+                cid,
+                &(self.customer_id as i64),
+                &contract.version,
+            )?;
+
+            let ident = crate::encryption::mident(
+                &contract.user_id,
+                &contract.contract_id,
+                &contract.version,
+                &contract.address,
+            );
+            let _pvks = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
+            pvks.push(_pvks[1].clone())
+        }
+        let response = finalize_utxopti(raw_tx, pvks).await?;
         info!("Response: {}", response);
         Ok(response)
     }

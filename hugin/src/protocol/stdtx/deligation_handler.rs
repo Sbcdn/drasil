@@ -34,7 +34,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
         .into_stake_delegation()
         .await?;
     let mut gtxd = bst.transaction_pattern().into_txdata().await?;
-    gtxd.set_user_id(bst.customer_id() as u64);
+    gtxd.set_user_id(bst.customer_id());
 
     let mut dbsync = mimir::establish_connection()?;
     let slot = mimir::get_slot(&mut dbsync)?;
@@ -71,8 +71,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
         &bld_tx.get_used_utxos(),
         &hex::encode(gtxd.get_stake_address().to_bytes()),
         &(bst.customer_id()),
-        &(-1),
-        &(-1.0),
+        &[(-1)],
     );
     debug!("RAWTX data: {:?}", tx);
 
