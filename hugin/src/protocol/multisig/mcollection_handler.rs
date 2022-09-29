@@ -7,7 +7,7 @@
 #################################################################################
 */
 use crate::datamodel::ScriptSpecParams;
-use crate::protocol::{convert_nfts_to_minter_token_asset, create_response, determine_contract};
+use crate::protocol::{convert_nfts_to_minter_token_asset, create_response, determine_contracts};
 use crate::BuildMultiSig;
 use crate::CmdError;
 use murin::PerformTxb;
@@ -61,7 +61,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     let mut gtxd = bms.transaction_pattern().into_txdata().await?;
 
     log::debug!("Check contract...");
-    let contract = determine_contract(gtxd.get_contract_id(), bms.customer_id())?
+    let contract = determine_contracts(gtxd.get_contract_id(), bms.customer_id())?
         .expect("Could not find valid contract");
 
     log::debug!("Try to establish database connection...");
@@ -70,9 +70,9 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     log::debug!("Try to determine additional data...");
     let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
         &mut drasildbcon,
-        &contract.contract_id,
-        &contract.user_id,
-        &contract.version,
+        &contract[0].contract_id,
+        &contract[0].user_id,
+        &contract[0].version,
     )?;
 
     log::debug!("Try to determine fees...");
@@ -93,20 +93,19 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     };
 
     let ns_addr: Option<murin::address::Address> =
-        Some(murin::b_decode_addr(&contract.address).await?);
+        Some(murin::b_decode_addr(&contract[0].address).await?);
     // ToDo:
     //if minttxd.get_to_vendor_script() == true {
     //    ns_addr = Some(contract.address);
     //}
-    let ns_script = contract.plutus;
-    let ns_version = contract.version.to_string();
+    let ns_script = contract[0].plutus.clone();
 
     log::debug!("Try to determine nft data...");
     let mut gcon = gungnir::establish_connection()?;
     let mint_project = gungnir::MintProject::get_mintproject_by_uid_cid(
         &mut gcon,
         bms.customer_id(),
-        contract.contract_id,
+        contract[0].contract_id,
     )?;
     let _whitelist = if let Some(wid) = mint_project.whitelist_id {
         Some(gungnir::Whitelist::get_whitelist(&mut gcon, wid)?)
@@ -114,8 +113,9 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         None
     };
 
-    let policy_id = contract
+    let policy_id = contract[0]
         .policy_id
+        .clone()
         .expect("Error: The provided contract is not eligable to mint, no policy ID");
     let payment_addr_bech32 = minttxd.get_payment_addr_bech32()?;
 
@@ -139,7 +139,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 &payment_addr_bech32,
                 &murin::cip30::get_bech32_stake_address_from_str(&payment_addr_bech32)?,
                 &fingerprint,
-                contract.contract_id,
+                contract[0].contract_id,
                 bms.customer_id(),
             )?;
             if !rewards.is_empty() {
@@ -159,7 +159,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         let claimed = gungnir::Claimed::get_claims(
             &mut gcon,
             &murin::cip30::get_bech32_stake_address_from_str(&payment_addr_bech32)?,
-            contract.contract_id,
+            contract[0].contract_id,
             bms.customer_id(),
         )?;
         //ToDo: Add parameter for NFTs minted per transaction
@@ -226,10 +226,10 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
 
     let ident = crate::encryption::mident(
-        &contract.user_id,
-        &contract.contract_id,
-        &contract.version,
-        &contract.address,
+        &contract[0].user_id,
+        &contract[0].contract_id,
+        &contract[0].version,
+        &contract[0].address,
     );
     let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
 
@@ -259,8 +259,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         &bld_tx.get_used_utxos(),
         &hex::encode(gtxd.get_stake_address().to_bytes()),
         &(bms.customer_id()),
-        &contract.contract_id,
-        &contract.version,
+        &[contract[0].contract_id],
     );
     debug!("RAWTX data: {:?}", tx);
 

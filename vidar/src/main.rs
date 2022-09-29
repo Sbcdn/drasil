@@ -259,10 +259,8 @@ mod filters {
 
 ///Handlers
 mod handlers {
-    use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive}; //ToPrimitive
     use cardano_serialization_lib::address::Address;
-    use chrono::{DateTime, Utc};
-
+    use hugin::datamodel::{ClaimedHandle, RewardHandle};
     use std::convert::Infallible;
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -274,91 +272,6 @@ mod handlers {
         pub fn new(str: &str) -> ReturnError {
             ReturnError {
                 msg: str.to_string(),
-            }
-        }
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-    pub struct ClaimedResponse {
-        pub stake_addr: String,
-        pub payment_addr: String,
-        pub policyid: String,
-        pub tokenname: String,
-        pub fingerprint: String,
-        pub amount: BigDecimal,
-        pub contract_id: i64,
-        pub user_id: i64,
-        pub txhash: String,
-        pub invalid: Option<bool>,
-        pub invalid_descr: Option<String>,
-        pub timestamp: DateTime<Utc>,
-        pub updated_at: DateTime<Utc>,
-    }
-
-    impl ClaimedResponse {
-        #[allow(clippy::too_many_arguments)]
-        pub fn new(
-            stake_addr: String,
-            payment_addr: String,
-            policyid: String,
-            tokenname: String,
-            fingerprint: String,
-            amount: BigDecimal,
-            contract_id: i64,
-            user_id: i64,
-            txhash: String,
-            invalid: Option<bool>,
-            invalid_descr: Option<String>,
-            timestamp: DateTime<Utc>,
-            updated_at: DateTime<Utc>,
-        ) -> ClaimedResponse {
-            ClaimedResponse {
-                stake_addr,
-                payment_addr,
-                policyid,
-                tokenname,
-                fingerprint,
-                amount,
-                contract_id,
-                user_id,
-                txhash,
-                invalid,
-                invalid_descr,
-                timestamp,
-                updated_at,
-            }
-        }
-    }
-
-    #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-    pub struct RewardResponse {
-        pub stake_addr: String,
-        pub fingerprint: String,
-        pub policy: String,
-        pub tokenname: String,
-        pub tot_earned: BigDecimal,
-        pub tot_claimed: BigDecimal,
-        pub last_calc_epoch: i64,
-    }
-
-    impl RewardResponse {
-        pub fn new(
-            stake_addr: String,
-            fingerprint: String,
-            policy: String,
-            tokenname: String,
-            tot_earned: BigDecimal,
-            tot_claimed: BigDecimal,
-            last_calc_epoch: i64,
-        ) -> RewardResponse {
-            RewardResponse {
-                stake_addr,
-                fingerprint,
-                policy,
-                tokenname,
-                tot_earned,
-                tot_claimed,
-                last_calc_epoch,
             }
         }
     }
@@ -377,29 +290,15 @@ mod handlers {
             gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
         let rewards = gungnir::Rewards::get_rewards_stake_addr(&mut gconn, bech32addr);
         println!("Rewards: {:?}", rewards);
-        let lovelace = BigDecimal::from_i32(1000000).unwrap();
         let response = match rewards {
             Ok(rwds) => {
-                let mut ret = Vec::<RewardResponse>::new();
+                let mut ret = Vec::<RewardHandle>::new();
                 for rwd in rwds {
                     match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
-                        Ok(ti) => {
-                            ret.push(RewardResponse::new(
-                                rwd.stake_addr,
-                                ti.fingerprint.unwrap(),
-                                ti.policy,
-                                ti.tokenname.unwrap(),
-                                BigDecimal::from_u64(
-                                    (rwd.tot_earned / &lovelace).to_u64().unwrap(),
-                                )
-                                .unwrap(), //rwd.tot_earned/&lovelace,//
-                                rwd.tot_claimed,
-                                rwd.last_calc_epoch,
-                            ))
-                        }
+                        Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
                         Err(_) => {
                             log::info!(
-                                "Error: coudl not find token info for {:?}",
+                                "Error: could not find token info for {:?}",
                                 rwd.fingerprint
                             );
                         }
@@ -442,24 +341,10 @@ mod handlers {
 
         let response = match rewards {
             Ok(rwds) => {
-                let mut ret = Vec::<RewardResponse>::new();
-                let lovelace = BigDecimal::from_i32(1000000).unwrap();
+                let mut ret = Vec::<RewardHandle>::new();
                 for rwd in rwds {
                     match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
-                        Ok(ti) => {
-                            ret.push(RewardResponse::new(
-                                rwd.stake_addr,
-                                ti.fingerprint.unwrap(),
-                                ti.policy,
-                                ti.tokenname.unwrap(),
-                                BigDecimal::from_u64(
-                                    (rwd.tot_earned / &lovelace).to_u64().unwrap(),
-                                )
-                                .unwrap(), //rwd.tot_earned/&lovelace,//
-                                rwd.tot_claimed,
-                                rwd.last_calc_epoch,
-                            ))
-                        }
+                        Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
                         Err(_) => {
                             log::info!(
                                 "Error: coudl not find token info for {:?}",
@@ -504,10 +389,10 @@ mod handlers {
         );
         let response = match claims {
             Ok(clms) => {
-                let mut ret = Vec::<ClaimedResponse>::new();
+                let mut ret = Vec::<ClaimedHandle>::new();
                 for clm in clms {
                     match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
-                        Ok(cl) => ret.push(ClaimedResponse::new(
+                        Ok(cl) => ret.push(ClaimedHandle::new(
                             clm.stake_addr,
                             clm.payment_addr,
                             cl.policy,
@@ -566,10 +451,10 @@ mod handlers {
 
         let response = match claims {
             Ok(clms) => {
-                let mut ret = Vec::<ClaimedResponse>::new();
+                let mut ret = Vec::<ClaimedHandle>::new();
                 for clm in clms {
                     match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
-                        Ok(cl) => ret.push(ClaimedResponse::new(
+                        Ok(cl) => ret.push(ClaimedHandle::new(
                             clm.stake_addr,
                             clm.payment_addr,
                             cl.policy,

@@ -36,6 +36,12 @@ impl Error for MurinError {
 unsafe impl Send for MurinError {}
 unsafe impl Sync for MurinError {}
 
+impl From<crate::modules::transfer::error::TransferError> for MurinError {
+    fn from(err: crate::modules::transfer::error::TransferError) -> Self {
+        MurinError::new(&err.to_string())
+    }
+}
+
 impl From<hex::FromHexError> for MurinError {
     fn from(err: hex::FromHexError) -> Self {
         MurinError::new(&err.to_string())

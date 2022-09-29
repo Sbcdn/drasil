@@ -25,16 +25,11 @@ pretty_env_logger = "0.4.0"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.79"
-bigdecimal = { version = "0.3.0", features = ["serde"] }
 cardano-serialization-lib = "11.0.5"
 hex = "0.4"
-chrono = { version = "0.4.19", features = ["serde"] }
 jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 thiserror = "1.0.32"
 
 gungnir = { path = "../gungnir", version = "0.1.0" }
 hugin = { path = "../hugin", version = "0.1.0" }
-
 mimir = { path = "../mimir", version = "0.1.0" }
-#gungnir = { git = "ssh://git@github.com/maestro-org/gungnir.git", branch="main" }
-#hugin = { git = "ssh://git@github.com/sbcdn/hugin.git", branch="main" }

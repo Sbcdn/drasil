@@ -41,6 +41,7 @@ rargon2 = { package = "rust-argon2", version = "1.0" }
 rpassword = "5.0.1"
 vaultrs = { git = "https://github.com/Sbcdn/vaultrs.git", branch = "master" } #"0.6.2"
 sha2 = "0.10.2"
+bigdecimal = { version = "0.3.0", features = ["serde"] }
 #google-authenticator = "0.3.0"
 
 murin = { path = "../murin", version = "0.1.0" }

@@ -116,8 +116,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
         &bld_tx.get_used_utxos(),
         &hex::encode(gtxd.get_stake_address().to_bytes()),
         &(bms.customer_id()),
-        &(-1),
-        &(0.1),
+        &[(-1)],
     );
 
     log::debug!("Finalize...");
