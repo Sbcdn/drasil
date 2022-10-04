@@ -124,7 +124,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let txh = murin::finalize_rwd(
         &hex::encode(&murin::clib::TransactionWitnessSet::new().to_bytes()),
         tx,
-        vec!["".to_string(), pkvs[0].clone()],
+        vec![hex::encode(oneshotwallet.0.as_bytes())],
     )
     .await?;
 
