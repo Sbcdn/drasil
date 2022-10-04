@@ -4,20 +4,21 @@
 # License: Drasil Source Available License v1.0                                 #
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
+
 [workspace]
 members = [
-    "freki",
-    "frigg",
-    "geri",
-    "gungnir",
-    "heimdallr",
-    "hugin",
-    "mimir",
-    "murin",
-    "odin",
-    "sleipnir",
-    "vidar",
-    "utxopti",
-    "pauther",
-    "dvltath",
+    "jobs/freki",
+    "services/frigg",
+    "worker/geri",
+    "services/heimdallr",
+    "libs/gungnir",
+    "libs/hugin",
+    "libs/mimir",
+    "libs/murin",
+    "services/odin",
+    "libs/sleipnir",
+    "services/vidar",
+    "jobs/utxopti",
+    "services/wsauth",
+    "libs/dvltath",
 ]
