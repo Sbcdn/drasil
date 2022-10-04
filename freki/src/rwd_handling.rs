@@ -46,67 +46,72 @@ pub(crate) fn handle_rewards(
         twd.user_id,
         &twd.fingerprint.clone(),
     )?;
+    println!("Check rewards...");
     let mut tot_earned = BigDecimal::from_i32(0).unwrap();
-    if rewards.len() == 1 && rewards[0].last_calc_epoch < twd.calc_epoch {
-        if no_acc
-            && gungnir::Rewards::get_available_rewards(
-                &mut gconn,
-                &rewards[0].stake_addr,
-                &rewards[0].payment_addr,
-                &rewards[0].fingerprint,
-                rewards[0].contract_id,
-                rewards[0].user_id,
-                token_earned.to_i64().unwrap(),
-            )? != -token_earned.to_i64().unwrap()
-        {
-            gungnir::Rewards::update_rewards(
-                &mut gconn,
-                &rewards[0].stake_addr,
-                &rewards[0].fingerprint,
-                &rewards[0].contract_id,
-                &rewards[0].user_id,
-                &rewards[0].tot_earned,
-                &twd.calc_epoch,
-            )?;
-            return Ok(());
+    match rewards.len() {
+        1 => {
+            if rewards[0].last_calc_epoch < twd.calc_epoch {
+                if no_acc
+                    && gungnir::Rewards::get_available_rewards(
+                        &mut gconn,
+                        &rewards[0].stake_addr,
+                        &rewards[0].payment_addr,
+                        &rewards[0].fingerprint,
+                        rewards[0].contract_id,
+                        rewards[0].user_id,
+                        token_earned.to_i64().unwrap(),
+                    )? != -token_earned.to_i64().unwrap()
+                {
+                    gungnir::Rewards::update_rewards(
+                        &mut gconn,
+                        &rewards[0].stake_addr,
+                        &rewards[0].fingerprint,
+                        &rewards[0].contract_id,
+                        &rewards[0].user_id,
+                        &rewards[0].tot_earned,
+                        &twd.calc_epoch,
+                    )?;
+                    return Ok(());
+                }
+                tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
+                println!("Earned add: {:?}", tot_earned);
+                let stake_rwd = gungnir::Rewards::update_rewards(
+                    &mut gconn,
+                    &rewards[0].stake_addr,
+                    &rewards[0].fingerprint,
+                    &rewards[0].contract_id,
+                    &rewards[0].user_id,
+                    &tot_earned,
+                    &twd.calc_epoch,
+                )?;
+                println!("Stake Rewards Added : {:?}", stake_rwd);
+            }
         }
-        tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
-        println!("Earned add: {:?}", tot_earned);
-        let stake_rwd = gungnir::Rewards::update_rewards(
-            &mut gconn,
-            &rewards[0].stake_addr,
-            &rewards[0].fingerprint,
-            &rewards[0].contract_id,
-            &rewards[0].user_id,
-            &tot_earned,
-            &twd.calc_epoch,
-        )?;
-        println!("Stake Rewards Added : {:?}", stake_rwd);
-    }
-    if rewards.is_empty() {
-        let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
+        0 => {
+            let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
 
-        tot_earned = token_earned.to_owned();
-        println!("Earned new: {:?}", tot_earned);
-        let stake_rwd = gungnir::Rewards::create_rewards(
-            &mut gconn,
-            stake_addr,
-            &payment_addr,
-            &twd.fingerprint,
-            &twd.contract_id,
-            &twd.user_id,
-            &tot_earned,
-            &BigDecimal::from_i32(0).unwrap(),
-            &false,
-            &twd.calc_epoch,
-        );
-        println!("Stake Rewards New: {:?}", stake_rwd);
-    }
-    if rewards.len() > 1 {
-        return Err(murin::MurinError::new(
-            "More than one reward entry found on the same contract for the same token",
-        )
-        .into());
+            tot_earned = token_earned.to_owned();
+            println!("Earned new: {:?}", tot_earned);
+            let stake_rwd = gungnir::Rewards::create_rewards(
+                &mut gconn,
+                stake_addr,
+                &payment_addr,
+                &twd.fingerprint,
+                &twd.contract_id,
+                &twd.user_id,
+                &tot_earned,
+                &BigDecimal::from_i32(0).unwrap(),
+                &false,
+                &twd.calc_epoch,
+            );
+            println!("Stake Rewards New: {:?}", stake_rwd);
+        }
+        _ => {
+            return Err(murin::MurinError::new(
+                "More than one reward entry found on the same contract for the same token",
+            )
+            .into());
+        }
     }
     // Store reward calculation to csv
     let table_entry = RewardTable {

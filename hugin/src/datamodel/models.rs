@@ -365,6 +365,10 @@ impl TransactionPattern {
         self.sending_wal_addrs = vec.to_owned();
     }
 
+    pub fn set_contract_id(&mut self, n: u64) {
+        self.contract_id = Some(n);
+    }
+
     pub fn sending_stake_addr(&self) -> Option<String> {
         self.sending_stake_addr.clone()
     }
@@ -420,8 +424,13 @@ impl TransactionPattern {
             None => None,
         };
 
+        let contract_id = match self.contract_id() {
+            Some(n) => n as i64,
+            None => -1,
+        };
+
         let mut txd = TxData::new(
-            Some(vec![self.contract_id().unwrap() as i64]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
+            Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
             murin::wallet::decode_addresses(&self.sending_wal_addrs()).await?,
             saddr,
             murin::wallet::get_transaction_unspent_outputs(
