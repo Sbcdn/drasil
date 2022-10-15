@@ -46,13 +46,13 @@ impl IntoFrame for FinalizeContract {
 
 impl FinalizeContract {
     pub fn new(
-        cid: u64,
+        customer_id: u64,
         ctype: ContractType,
         tx_id: String,
         signature: String,
     ) -> FinalizeContract {
         FinalizeContract {
-            customer_id: cid,
+            customer_id,
             ctype,
             tx_id,
             signature,

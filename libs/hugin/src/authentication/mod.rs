@@ -6,6 +6,27 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+use std::fmt;
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Role {
+    StandardUser,
+    EnterpriseUser,
+    Retailer,
+    DrasilAdmin,
+}
+
+impl fmt::Display for Role {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Role::DrasilAdmin => write!(f, "0"),
+            Role::Retailer => write!(f, "1"),
+            Role::EnterpriseUser => write!(f, "2"),
+            Role::StandardUser => write!(f, "3"),
+        }
+    }
+}
+
 /*
 use google_authenticator::*;
 use murin::MurinError;

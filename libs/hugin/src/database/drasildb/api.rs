@@ -146,9 +146,7 @@ impl TBContracts {
             .filter(contracts::user_id.eq(&user_id_in))
             .filter(contracts::contract_id.eq(&contract_id_in))
             .load::<TBContracts>(&mut establish_connection()?);
-
-        log::debug!("Result: {:?}", result);
-
+        println!("input data: u:{},c:{} ", user_id_in, contract_id_in);
         Ok(result?[0].clone())
     }
 

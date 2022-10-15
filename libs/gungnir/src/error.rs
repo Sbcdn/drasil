@@ -97,3 +97,9 @@ impl From<std::num::ParseIntError> for RWDError {
         RWDError::new(&err.to_string())
     }
 }
+
+impl From<tokio_postgres::Error> for RWDError {
+    fn from(err: tokio_postgres::Error) -> Self {
+        RWDError::new(&err.to_string())
+    }
+}

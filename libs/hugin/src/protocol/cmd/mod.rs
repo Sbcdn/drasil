@@ -228,7 +228,7 @@ pub fn determine_contracts(
 }
 
 pub fn convert_nfts_to_minter_token_asset(
-    nfts: &Vec<gungnir::Nft>,
+    nfts: &Vec<gungnir::minting::models::Nft>,
     policy_id: &String,
 ) -> Result<Vec<murin::MintTokenAsset>, murin::MurinError> {
     let mut out = Vec::<murin::MintTokenAsset>::new();

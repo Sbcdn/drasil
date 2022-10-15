@@ -122,20 +122,22 @@ table! {
 table! {
     mint_projects (id) {
         id  -> Int8,
-        customer_name -> Varchar,
         project_name -> Varchar,
         user_id -> Int8,
-        contract_id -> Int8,
-        whitelist_id -> Nullable<Int8>,
+        mint_contract_id -> Int8,
+        whitelists -> Nullable<Array<Int8>>,
         mint_start_date -> Timestamptz,
         mint_end_date -> Nullable<Timestamptz>,
-        storage_folder -> Varchar,
-        max_trait_count -> Int4,
+        storage_type -> Varchar,
+        storage_url -> Nullable<Varchar>,
+        storage_access_token -> Nullable<Varchar>,
         collection_name -> Varchar,
         author -> Varchar,
         meta_description -> Varchar,
+        meta_common_nft_name -> Nullable<Varchar>,
         max_mint_p_addr -> Nullable<Int4>,
-        reward_minter -> Bool,
+        nft_table_name -> Varchar,
+        active -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -146,16 +148,27 @@ table! {
         project_id -> Int8,
         asset_name_b -> Bytea,
         asset_name -> Varchar,
-        picture_id -> Varchar,
-        file_name -> Varchar,
+        fingerprint -> Varchar,
+        nft_id -> Varchar,
+        file_name -> Nullable<Varchar>,
         ipfs_hash -> Nullable<Varchar>,
-        trait_category -> Array<Text>,
-        traits -> Array<Array<Text>>,
-        metadata -> Text,
-        payment_addr -> Nullable<Varchar>,
+        metadata -> Nullable<Text>,
+        claim_addr -> Nullable<Varchar>,
         minted -> Bool,
         tx_hash -> Nullable<Varchar>,
         confirmed -> Bool,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+table! {
+    mint_rewards (id){
+        id -> Int8,
+        project_id -> Int8,
+        pay_addr -> Varchar,
+        v_nfts_b -> Array<Bytea>,
+        minted -> Bool,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
@@ -172,4 +185,5 @@ allow_tables_to_appear_in_same_query!(
     whitelist,
     mint_projects,
     nft_table,
+    mint_rewards,
 );

@@ -25,23 +25,15 @@ use chrono::{DateTime, Utc};
 use std::fmt;
 
 use crate::schema::{
-    airdrop_parameter, airdrop_whitelist, claimed, mint_projects, nft_table, rewards,
-    token_whitelist, whitelist, wladdresses, wlalloc,
+    airdrop_parameter, airdrop_whitelist, claimed, rewards, token_whitelist, whitelist,
+    wladdresses, wlalloc,
 };
 
 pub fn establish_connection() -> Result<PgConnection, RWDError> {
     Ok(PgConnection::establish(&env::var("REWARDS_DB_URL")?)?)
 }
 
-#[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    DbEnum,
-)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, DbEnum)]
 #[DieselTypePath = "crate::schema::sql_types::Calculationmode"]
 pub enum Calculationmode {
     #[db_rename = "custom"]
@@ -122,9 +114,7 @@ impl PartialEq for GPools {
     }
 }
 
-#[derive(
-    Queryable, Identifiable, PartialEq, Debug, Clone, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Queryable, Identifiable, Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[diesel(table_name = rewards)]
 pub struct Rewards {
     pub id: i64,
@@ -143,7 +133,7 @@ pub struct Rewards {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = rewards)]
 pub struct RewardsNew<'a> {
     pub stake_addr: &'a String,
@@ -157,7 +147,7 @@ pub struct RewardsNew<'a> {
     pub last_calc_epoch: &'a i64,
 }
 
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(table_name = claimed)]
 pub struct Claimed {
     pub id: i64,
@@ -174,7 +164,7 @@ pub struct Claimed {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = claimed)]
 pub struct ClaimedNew<'a> {
     pub stake_addr: &'a String,
@@ -188,7 +178,7 @@ pub struct ClaimedNew<'a> {
     pub invalid_descr: Option<&'a String>,
 }
 
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone, serde::Serialize)]
+#[derive(Queryable, Identifiable, Debug, Clone, serde::Serialize)]
 #[diesel(table_name = token_whitelist)]
 pub struct TokenWhitelist {
     pub id: i64,
@@ -208,7 +198,7 @@ pub struct TokenWhitelist {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = token_whitelist)]
 pub struct TokenWhitelistNew<'a> {
     pub fingerprint: &'a String,
@@ -225,14 +215,14 @@ pub struct TokenWhitelistNew<'a> {
     pub modificator_equ: Option<&'a String>,
 }
 
-#[derive(Queryable, PartialEq, Debug, Clone, Serialize)]
+#[derive(Queryable, Debug, Clone, Serialize)]
 pub struct TokenInfo {
     pub policy: String,
     pub tokenname: Option<String>,
     pub fingerprint: Option<String>,
 }
 
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(table_name = airdrop_whitelist)]
 pub struct AirDropWhitelist {
     pub id: i64,
@@ -243,7 +233,7 @@ pub struct AirDropWhitelist {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = airdrop_whitelist)]
 pub struct AirDropWhitelistNew<'a> {
     pub contract_id: &'a i64,
@@ -251,7 +241,7 @@ pub struct AirDropWhitelistNew<'a> {
     pub reward_created: &'a bool,
 }
 
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(table_name = airdrop_parameter)]
 pub struct AirDropParameter {
     pub id: i64,
@@ -268,7 +258,7 @@ pub struct AirDropParameter {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = airdrop_parameter)]
 pub struct AirDropParameterNew<'a> {
     pub contract_id: &'a i64,
@@ -282,20 +272,20 @@ pub struct AirDropParameterNew<'a> {
     pub whitelist_ids: Option<&'a Vec<i64>>,
 }
 
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(table_name = wladdresses)]
 pub struct WlAddresses {
     pub id: i64,
     pub payment_address: String,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = wladdresses)]
 pub struct WlAddressesNew<'a> {
     pub payment_address: &'a String,
 }
 
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(primary_key(wl, addr))]
 #[diesel(table_name = wlalloc)]
 pub struct WlAlloc {
@@ -303,14 +293,14 @@ pub struct WlAlloc {
     pub addr: i64,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = wlalloc)]
 pub struct WlAllocNew<'a> {
     pub wl: &'a i64,
     pub addr: &'a i64,
 }
 
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
+#[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(table_name = whitelist)]
 pub struct Whitelist {
     pub id: i64,
@@ -319,88 +309,8 @@ pub struct Whitelist {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Insertable, PartialEq, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = whitelist)]
 pub struct WhitelistNew<'a> {
     pub max_addr_repeat: &'a i32,
-}
-
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[diesel(table_name = mint_projects)]
-pub struct MintProject {
-    pub id: i64,
-    pub customer_name: String,
-    pub project_name: String,
-    pub user_id: i64,
-    pub contract_id: i64,
-    pub whitelist_id: Option<i64>,
-    pub mint_start_date: DateTime<Utc>,
-    pub mint_end_date: Option<DateTime<Utc>>,
-    pub storage_folder: String,
-    pub max_trait_count: i32,
-    pub collection_name: String,
-    pub author: String,
-    pub meta_description: String,
-    pub max_mint_p_addr: Option<i32>,
-    pub reward_minter: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Insertable, PartialEq, Debug, Clone)]
-#[diesel(table_name = mint_projects)]
-pub struct MintProjectNew<'a> {
-    pub customer_name: &'a String,
-    pub project_name: &'a String,
-    pub user_id: &'a i64,
-    pub contract_id: &'a i64,
-    pub whitelist_id: Option<&'a i64>,
-    pub mint_start_date: &'a DateTime<Utc>,
-    pub mint_end_date: Option<&'a DateTime<Utc>>,
-    pub storage_folder: &'a String,
-    pub max_trait_count: &'a i32,
-    pub collection_name: &'a String,
-    pub author: &'a String,
-    pub meta_description: &'a String,
-    pub max_mint_p_addr: Option<&'a i32>,
-    pub reward_minter: &'a bool,
-}
-
-#[derive(Queryable, Identifiable, PartialEq, Debug, Clone)]
-#[diesel(table_name = nft_table)]
-#[diesel(primary_key(project_id, asset_name_b))]
-pub struct Nft {
-    pub project_id: i64,
-    pub asset_name_b: Vec<u8>,
-    pub asset_name: String,
-    pub picture_id: String,
-    pub file_name: String,
-    pub ipfs_hash: Option<String>,
-    pub trait_category: Vec<String>,
-    pub traits: Vec<Vec<String>>,
-    pub metadata: String,
-    pub payment_addr: Option<String>,
-    pub minted: bool,
-    pub tx_hash: Option<String>,
-    pub confirmed: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Insertable, PartialEq, Debug, Clone)]
-#[diesel(table_name = nft_table)]
-pub struct NftNew<'a> {
-    pub project_id: &'a i64,
-    pub asset_name_b: &'a Vec<u8>,
-    pub asset_name: &'a String,
-    pub picture_id: &'a String,
-    pub file_name: &'a String,
-    pub ipfs_hash: Option<&'a String>,
-    pub trait_category: &'a Vec<String>,
-    pub traits: &'a Vec<Vec<String>>,
-    pub metadata: &'a String,
-    pub payment_addr: Option<&'a String>,
-    pub minted: &'a bool,
-    pub tx_hash: Option<&'a String>,
-    pub confirmed: &'a bool,
 }

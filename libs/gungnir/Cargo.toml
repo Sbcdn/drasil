@@ -19,6 +19,8 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
+tokio-postgres = { version = "0.7.7", features = ["with-chrono-0_4"] }
+async-recursion = "1.0.0"
 diesel = { version = "2.0.0", features = [
     "postgres",
     "numeric",
@@ -26,12 +28,9 @@ diesel = { version = "2.0.0", features = [
     "64-column-tables",
     "r2d2",
 ] }
-diesel-derive-enum = { version = "2.0.0-rc.0", features = [
-    "postgres",
-] } # "postgres", "mysql" or "sqlite"
-bigdecimal = { version = "0.3.0", features = [
-    "serde",
-] } # needs to be 0.1.2 otherwise not working -> dependency diesel
+diesel-derive-enum = { version = "2.0.0-rc.0", features = ["postgres"] }
+diesel-dynamic-schema = "0.2.0"
+bigdecimal = { version = "0.3.0", features = ["serde"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 pretty_env_logger = "0.4.0"
 log = "0.4"
@@ -41,8 +40,8 @@ hex = "0.4"
 rand = "0.8.5"
 itertools = "0.10.3"
 
+
 mimir = { path = "../mimir", version = "0.1.0", optional = true }
-#mimir = { git = "ssh://git@github.com/sbcdn/mimir.git", branch="main", optional = true }
 structopt = { version = "0.3.26", optional = true }
 
 [features]

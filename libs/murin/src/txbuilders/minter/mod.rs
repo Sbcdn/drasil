@@ -17,6 +17,7 @@ use chrono::{DateTime, Utc};
 use clib::crypto::{Ed25519KeyHash, ScriptHash};
 use clib::{NativeScript, NativeScripts, ScriptAll, ScriptPubkey};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::str;
 
 #[derive(Debug, Clone)]
@@ -59,8 +60,11 @@ impl MinterTxData {
         self.mint_tokens.clone()
     }
 
-    pub fn get_stake_addr(&self) -> Option<caddr::Address> {
-        self.receiver_stake_addr.clone()
+    pub fn get_stake_addr(&self) -> caddr::Address {
+        match self.receiver_stake_addr.clone() {
+            Some(addr) => addr,
+            None => crate::get_reward_address(&self.get_payment_addr()).unwrap(),
+        }
     }
 
     pub fn get_stake_addr_bech32(&self) -> Result<Option<String>, MurinError> {
@@ -97,6 +101,10 @@ impl MinterTxData {
 
     pub fn get_fee(&self) -> Option<i64> {
         self.fee
+    }
+
+    pub fn set_claim_addr(&mut self, addr: caddr::Address) {
+        self.receiver_payment_addr = addr;
     }
 
     pub fn set_mint_tokens(&mut self, mint_tokens: Vec<MintTokenAsset>) {
@@ -136,10 +144,7 @@ impl ToString for MinterTxData {
         s_tokens.pop();
 
         // prepare stake address
-        let s_stake_addr = match self.get_stake_addr() {
-            Some(addr) => hex::encode(addr.to_bytes()),
-            None => "NoData".to_string(),
-        };
+        let s_stake_addr = hex::encode(self.get_stake_addr().to_bytes());
 
         // prepare payment address
         let s_payment_addr = hex::encode(self.get_payment_addr().to_bytes());
@@ -245,7 +250,16 @@ impl core::str::FromStr for MinterTxData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetadataOther {
     pub key: String,
-    pub value: Vec<String>,
+    pub value: serde_json::Value,
+}
+
+impl MetadataOther {
+    pub fn from_json(json: &serde_json::Value, key: &str) -> Vec<MetadataOther> {
+        vec![MetadataOther {
+            key: key.to_string(),
+            value: json.clone(),
+        }]
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -255,6 +269,24 @@ pub struct MetadataFile {
     pub media_type: String,
     pub src: Vec<String>,
     pub other: Option<Vec<MetadataOther>>,
+}
+
+impl MetadataFile {
+    pub fn from_json(json: &serde_json::Value) -> Result<Vec<MetadataFile>, MurinError> {
+        match json {
+            serde_json::Value::Object(_) => {
+                let n: MetadataFile = serde_json::from_value(json.clone())?;
+                Ok(vec![n])
+            }
+            serde_json::Value::Array(arr) => {
+                Ok(arr.iter().fold(Vec::<MetadataFile>::new(), |mut acc, n| {
+                    acc.extend(MetadataFile::from_json(n).unwrap().into_iter());
+                    acc
+                }))
+            }
+            _ => Err(MurinError::new("Not a valid cip25 file format")),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -267,6 +299,115 @@ pub struct AssetMetadata {
     pub image_url: Option<String>,
     pub files: Option<Vec<MetadataFile>>,
     pub other: Option<Vec<MetadataOther>>,
+}
+
+impl AssetMetadata {
+    pub fn from_json(str: &str) -> Result<Vec<AssetMetadata>, MurinError> {
+        let raw: serde_json::Value = serde_json::from_str(str)?;
+        println!("Read Raw Json: {:?}", raw);
+        let mut assets = Vec::<AssetMetadata>::new();
+        if let Some(o) = raw.as_object() {
+            let mut a: AssetMetadata;
+            let m = o
+                .iter()
+                .fold(Vec::<(&String, &Value)>::new(), |mut acc, n| {
+                    acc.push(n);
+                    acc
+                });
+            for elem in m.iter() {
+                let tn: String;
+                let n: String;
+                match hex::decode(elem.0) {
+                    Ok(v) => {
+                        tn = elem.0.to_string();
+                        n = String::from_utf8(v)?;
+                    }
+                    Err(_e) => {
+                        tn = hex::encode(elem.0.as_bytes());
+                        n = elem.0.to_string();
+                    }
+                }
+                println!("hexname: {}\nname: {}", tn, n);
+                a = AssetMetadata {
+                    tokenname: tn,
+                    name: Some(n),
+                    media_type: None,
+                    descritpion: None,
+                    image_url: None,
+                    files: None,
+                    other: None,
+                };
+
+                match elem.1 {
+                    Value::Object(o_) => {
+                        for object in o_.iter() {
+                            print!("Subelement : {:?}", object);
+                            match &object.0[..] {
+                                "name" => {
+                                    a.name = match object.1 {
+                                        Value::String(s) => Some(s.to_string()),
+                                        _ => {
+                                            return Err(MurinError::new("name is not a string"));
+                                        }
+                                    }
+                                }
+                                "image" => {
+                                    a.image_url = match object.1 {
+                                        Value::String(s) => Some(s.to_string()),
+                                        Value::Array(s) => match s.len() {
+                                            0 => None,
+                                            _ => Some(s[0].to_string()),
+                                        },
+                                        _ => None,
+                                    }
+                                }
+                                "mediaType" => {
+                                    a.media_type = match object.1 {
+                                        Value::String(s) => Some(s.to_string()),
+                                        _ => {
+                                            return Err(MurinError::new(
+                                                "mediaType value is not a string",
+                                            ));
+                                        }
+                                    }
+                                }
+                                "descritpion" => {
+                                    a.descritpion = {
+                                        match object.1 {
+                                            Value::String(s) => Some(vec![s.to_string()]),
+                                            Value::Array(s) => match s.len() {
+                                                0 => None,
+                                                _ => {
+                                                    Some(s.iter().map(|s| s.to_string()).collect())
+                                                }
+                                            },
+                                            _ => None,
+                                        }
+                                    };
+                                }
+                                "files" => a.files = Some(MetadataFile::from_json(object.1)?),
+                                _ => {
+                                    if let Some(mut other) = a.other.clone() {
+                                        other.extend(
+                                            MetadataOther::from_json(elem.1, elem.0).into_iter(),
+                                        );
+                                        a.other = Some(other);
+                                    } else {
+                                        a.other = Some(MetadataOther::from_json(elem.1, elem.0));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        return Err(MurinError::new("Not CIP25 conform metadata"));
+                    }
+                }
+                assets.push(a);
+            }
+        }
+        Ok(assets)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -353,11 +494,13 @@ pub fn make_mint_metadata_from_json(
     // Other
     if let Some(other) = &raw_metadata.other {
         for o in other.clone() {
-            if !o.value.is_empty() {
+            if !o.value.is_null() {
                 let mut olist = MetadataList::new();
-                for l in o.value {
-                    olist.add(&clib::metadata::TransactionMetadatum::new_text(l)?)
-                }
+
+                olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                    o.value.to_string(),
+                )?);
+
                 metamap.insert_str(
                     &o.key,
                     &clib::metadata::TransactionMetadatum::new_list(&olist),
@@ -365,7 +508,7 @@ pub fn make_mint_metadata_from_json(
             } else {
                 metamap.insert_str(
                     &o.key,
-                    &clib::metadata::TransactionMetadatum::new_text(o.value[0].clone())?,
+                    &clib::metadata::TransactionMetadatum::new_text(o.value[0].to_string())?,
                 )?;
             }
         }
@@ -443,11 +586,13 @@ pub fn make_721_asset_entry(
             if let Some(other) = f.other {
                 log::debug!("Found some key / values in other: {:?}", other);
                 for o in other {
-                    if !o.value.is_empty() {
+                    if !o.value.is_null() {
                         let mut filelist = MetadataList::new();
-                        for l in o.value {
-                            filelist.add(&clib::metadata::TransactionMetadatum::new_text(l)?)
-                        }
+
+                        filelist.add(&clib::metadata::TransactionMetadatum::new_text(
+                            o.value.to_string(),
+                        )?);
+
                         filemap.insert_str(
                             &o.key,
                             &clib::metadata::TransactionMetadatum::new_list(&filelist),
@@ -455,7 +600,9 @@ pub fn make_721_asset_entry(
                     } else {
                         filemap.insert_str(
                             &o.key,
-                            &clib::metadata::TransactionMetadatum::new_text(o.value[0].clone())?,
+                            &clib::metadata::TransactionMetadatum::new_text(
+                                o.value[0].to_string(),
+                            )?,
                         )?;
                     }
                 }
@@ -471,11 +618,13 @@ pub fn make_721_asset_entry(
     // Other
     if let Some(other) = &asset.other {
         for o in other.clone() {
-            if !o.value.is_empty() {
+            if !o.value.is_null() {
                 let mut olist = MetadataList::new();
-                for l in o.value {
-                    olist.add(&clib::metadata::TransactionMetadatum::new_text(l)?)
-                }
+
+                olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                    o.value.to_string(),
+                )?);
+
                 asset_metadata.insert_str(
                     &o.key,
                     &clib::metadata::TransactionMetadatum::new_list(&olist),
@@ -483,7 +632,7 @@ pub fn make_721_asset_entry(
             } else {
                 asset_metadata.insert_str(
                     &o.key,
-                    &clib::metadata::TransactionMetadatum::new_text(o.value[0].clone())?,
+                    &clib::metadata::TransactionMetadatum::new_text(o.value[0].to_string())?,
                 )?;
             }
         }

@@ -33,7 +33,7 @@ warp = { version = "0.3" }
 structopt = { version = "0.3.26", optional = true }          #  
 strum = "0.24"
 strum_macros = "0.24"
-
+csv = "1.1"
 
 murin = { path = "../murin", version = "0.1.0" }
 mimir = { path = "../mimir", version = "0.1.0" }
