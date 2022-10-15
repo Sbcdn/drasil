@@ -61,7 +61,7 @@ pub async fn optimize(addr: &String, uid: i64, cid: i64) -> Result<()> {
             tx.1,
             contract.user_id,
             contract.contract_id,
-            contract.version,
+            //contract.version,
         )
         .await?;
         txhs.push(txh);
@@ -76,7 +76,7 @@ async fn submit_tx(
     used_utxos: murin::TransactionUnspentOutputs,
     uid: i64,
     cid: i64,
-    version: f32,
+    //version: f32,
 ) -> Result<String> {
     let bld_tx = murin::hfn::tx_output_data(
         transaction.body(),
@@ -125,7 +125,7 @@ fn reallocate_tokens(
     liquidity: u64,
 ) -> Result<Vec<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>> {
     let mut out = Vec::<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>::new();
-    let ada = t_utxos.coin_sum();
+    //let ada = t_utxos.coin_sum();
     let (std_value, minutxo, utxo_count) = get_values_and_tamt_per_utxo(tokens, liquidity);
     println!("\n\nTUTXO: BEFORE FILTER: \n{:?}\n\n", t_utxos);
     let set = t_utxos.filter_values(&std_value, Some(20))?;

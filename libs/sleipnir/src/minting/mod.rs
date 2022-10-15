@@ -6,6 +6,8 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+pub mod api;
+pub mod models;
 pub use crate::error::SleipnirError;
 
 use chrono::{DateTime, Utc};

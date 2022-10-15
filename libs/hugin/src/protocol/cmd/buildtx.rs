@@ -23,11 +23,11 @@ pub struct BuildStdTx {
 }
 
 impl BuildStdTx {
-    pub fn new(cid: u64, txtype: StdTxType, txpatter: TransactionPattern) -> BuildStdTx {
+    pub fn new(customer_id: u64, txtype: StdTxType, txpattern: TransactionPattern) -> BuildStdTx {
         BuildStdTx {
-            customer_id: cid,
+            customer_id,
             txtype,
-            txpattern: txpatter,
+            txpattern,
         }
     }
 

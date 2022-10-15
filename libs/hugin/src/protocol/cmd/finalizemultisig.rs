@@ -46,14 +46,14 @@ impl IntoFrame for FinalizeMultiSig {
 
 impl FinalizeMultiSig {
     pub fn new(
-        cid: u64,
-        ctype: MultiSigType,
+        customer_id: u64,
+        mtype: MultiSigType,
         tx_id: String,
         signature: String,
     ) -> FinalizeMultiSig {
         FinalizeMultiSig {
-            customer_id: cid,
-            mtype: ctype,
+            customer_id,
+            mtype,
             tx_id,
             signature,
         }

@@ -28,13 +28,13 @@ pub struct BuildContract {
 
 impl BuildContract {
     pub fn new(
-        cid: u64,
+        customer_id: u64,
         ctype: ContractType,
         action: ContractAction,
         txpattern: TransactionPattern,
     ) -> BuildContract {
         BuildContract {
-            customer_id: cid,
+            customer_id,
             ctype,
             action,
             txpattern,

@@ -23,11 +23,15 @@ pub struct BuildMultiSig {
 }
 
 impl BuildMultiSig {
-    pub fn new(cid: u64, mtype: MultiSigType, txpatter: TransactionPattern) -> BuildMultiSig {
+    pub fn new(
+        customer_id: u64,
+        mtype: MultiSigType,
+        txpattern: TransactionPattern,
+    ) -> BuildMultiSig {
         BuildMultiSig {
-            customer_id: cid,
+            customer_id,
             mtype,
-            txpattern: txpatter,
+            txpattern,
         }
     }
 

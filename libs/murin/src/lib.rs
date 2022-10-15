@@ -9,6 +9,7 @@
 pub mod chelper;
 pub mod cip30;
 pub mod error;
+pub mod pparams;
 pub mod txbuilders;
 pub mod utxomngr;
 

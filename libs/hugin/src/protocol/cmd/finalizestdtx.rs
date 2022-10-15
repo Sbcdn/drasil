@@ -45,9 +45,14 @@ impl IntoFrame for FinalizeStdTx {
 }
 
 impl FinalizeStdTx {
-    pub fn new(cid: u64, txtype: StdTxType, tx_id: String, signature: String) -> FinalizeStdTx {
+    pub fn new(
+        customer_id: u64,
+        txtype: StdTxType,
+        tx_id: String,
+        signature: String,
+    ) -> FinalizeStdTx {
         FinalizeStdTx {
-            customer_id: cid,
+            customer_id,
             txtype,
             tx_id,
             signature,

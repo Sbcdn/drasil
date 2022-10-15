@@ -31,42 +31,35 @@ pub(crate) async fn handle_testrewards(bms: &BuildMultiSig) -> crate::Result<Str
         .into());
     }
     log::info!("Randomize....");
-    let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_entropy();
-    let i: usize = rng.gen_range(0..3); // random number
-
-    let mut t1 = Vec::<murin::MintTokenAsset>::new();
-    let mta1: murin::txbuilders::MintTokenAsset = (
-        None,
-        murin::clib::AssetName::new("ttFLZC".as_bytes().to_vec()).unwrap(),
-        murin::clib::utils::to_bignum(138),
-    );
-    let mta2: murin::txbuilders::MintTokenAsset = (
-        None,
-        murin::clib::AssetName::new("ttSIL".as_bytes().to_vec()).unwrap(),
-        murin::clib::utils::to_bignum(142),
-    );
-    let mta3: murin::txbuilders::MintTokenAsset = (
-        None,
-        murin::clib::AssetName::new("ttDRSL".as_bytes().to_vec()).unwrap(),
-        murin::clib::utils::to_bignum(63),
-    );
-    t1.push(mta1);
-    t1.push(mta2);
-    t1.push(mta3);
-
-    let mut metadataarray = Vec::<String>::new();
-    let m1 = "{\"assets\":[{\"name\":\"ttFLZC\",\"tokenname\":\"ttFLZC\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
-    let m2 = "{\"assets\":[{\"name\":\"ttSIL\",\"tokenname\":\"ttSIL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
-    let m3 = "{\"assets\":[{\"name\":\"ttDRSL\",\"tokenname\":\"ttDRSL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string();
-    metadataarray.push(m1);
-    metadataarray.push(m2);
-    metadataarray.push(m3);
-
+    let t1: Vec<murin::MintTokenAsset> = vec![
+        (
+            None,
+            murin::clib::AssetName::new("ttFLZC".as_bytes().to_vec()).unwrap(),
+            murin::clib::utils::to_bignum(138),
+        ),
+        (
+            None,
+            murin::clib::AssetName::new("ttSIL".as_bytes().to_vec()).unwrap(),
+            murin::clib::utils::to_bignum(142),
+        ),
+        (
+            None,
+            murin::clib::AssetName::new("ttDRSL".as_bytes().to_vec()).unwrap(),
+            murin::clib::utils::to_bignum(63),
+        ),
+    ];
+    let metadataarray = vec![
+    "{\"assets\":[{\"name\":\"ttFLZC\",\"tokenname\":\"ttFLZC\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string()
+    ,"{\"assets\":[{\"name\":\"ttSIL\",\"tokenname\":\"ttSIL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string()
+    ,"{\"assets\":[{\"name\":\"ttDRSL\",\"tokenname\":\"ttDRSL\",\"mediaType\":\"image/png\",\"descritpion\":[\"MyDescription\"],\"image_url\":\"nourl\",\"files\":[],\"other\":[]}],\"version\":\"1.0\"}".to_string()
+    ];
     let tns = vec![
         hex::encode("tFLZC".as_bytes()),
         hex::encode("tSIL".as_bytes()),
         hex::encode("tDRSL".as_bytes()),
     ];
+    let mut rng: rand::rngs::StdRng = rand::SeedableRng::from_entropy();
+    let i: usize = rng.gen_range(0..3);
     let tokens = vec![t1[i].clone()];
 
     let t_minter_contract_id = 111;
