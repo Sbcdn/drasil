@@ -1,9 +1,17 @@
 /*
 #################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
+# Business Source License           See LICENSE.md for full license information.#
+# Licensor:             Drasil Blockchain Association                           #
+# Licensed Work:        Drasil Application Framework v.0.2. The Licensed Work   #
+#                       is © 2022 Drasil Blockchain Association                 #
+# Additional Use Grant: You may use the Licensed Work when your application     #
+#                       using the Licensed Work is generating less than         #
+#                       $150,000 and the entity operating the application       #
+#                       engaged equal or less than 10 people.                   #
+# Change Date:          Drasil Application Framework v.0.2, change date is two  #
+#                       and a half years from release date.                     #
+# Change License:       Version 2 or later of the GNU General Public License as #
+#                       published by the Free Software Foundation.              #
 #################################################################################
 */
 
@@ -154,6 +162,15 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::entrp_create_sporwc);
 
+    // Create a new mint project
+    let enterprise_post_create_mint_project = enterprise_post
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("cr"))
+        .and(warp::path("cmint"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::mint::entrp_create_mint_proj);
+
     // Deactivate a Reward Contract (set to depricated)
     let enterprise_post_deprecate_reward_contract = enterprise_post
         .clone()
@@ -195,12 +212,21 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::remove_pools);
 
+    // Remove a pool from a Whitelisted Token
+    let enterprise_post_import_nfts_csv_meta = enterprise_post
+        .clone()
+        .and(warp::path("mint"))
+        .and(warp::path("impcsv"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::mint::entrp_create_nfts_from_csv);
+
     // Endpoint Accumulators
     let pools = enterprise_get_pools
         .or(enterprise_post_add_pools)
         .or(enterprise_post_rm_pools);
 
     let sporwc = enterprise_post_create_reward_contract
+        .or(enterprise_post_create_mint_project)
         .or(enterprise_post_deprecate_reward_contract)
         .or(enterprise_get_contract_tokens)
         .or(enterprise_post_add_token_sporwc)
@@ -208,6 +234,7 @@ async fn main() {
         .or(enterprise_get_user_tx);
 
     let enterprise = sporwc
+        .or(enterprise_post_import_nfts_csv_meta)
         .or(pools)
         .or(enterprise_create_api_token)
         .or(enterprise_get_contracts);
