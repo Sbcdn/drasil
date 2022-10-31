@@ -1,0 +1,38 @@
+[package]
+name = "csl_common"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil - Cardano Common Functions Library"
+repository = "https://github.com/drasil_blockchain/cardano_common.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+
+[dependencies]
+cardano-serialization-lib = "11.0.5"
+serde_json = { version = "1.0.79", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+hex = "0.4"
+thiserror = "1.0.32"
+pretty_env_logger = "0.4.0"
+log = "0.4"
+itertools = "0.10.3"
+reqwest = { version = "0.11", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
+http = "0.2.6"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3.21"
+cbor_event = "2.1.3"
+cryptoxide = { git = "https://github.com/typed-io/cryptoxide.git", branch = "master", features = [
+    "blake2",
+] }
+bech32 = "0.4.0"
+
+[lib]
+name = "drasil_csl_common"
+path = "src/lib.rs"
