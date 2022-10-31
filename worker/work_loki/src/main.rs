@@ -116,11 +116,132 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
                         ));
                     }
                 };
+
+            if !mp.active {
+                log::error!("requesed to mint on an inactive project");
+                return Err(crate::error::Error::Custom(
+                    "requesed to mint on an inactive project".to_owned(),
+                ));
+            }
+
+            log::debug!("check data ...");
+            let address = murin::address::Address::from_bech32(&data.claim_addr)?;
+            // header has 4 bits addr type discrim then 4 bits network discrim.
+            // Copied from shelley.cddl:
+            //
+            // shelley payment addresses:
+            // bit 7: 0
+            // bit 6: base/other
+            // bit 5: pointer/enterprise [for base: stake cred is keyhash/scripthash]
+            // bit 4: payment cred is keyhash/scripthash
+            // bits 3-0: network id
+            //
+            // reward addresses:
+            // bits 7-5: 111
+            // bit 4: credential is keyhash/scripthash
+            // bits 3-0: network id
+            //
+            // byron addresses:
+            // bits 7-4: 1000
+            let stake_address: String = match address.to_bytes()[0] {
+                //base
+                0b0000 | 0b0001 => murin::get_reward_address(&address)?.to_bech32(None)?,
+                //script address
+                0b0010 | 0b0011 => {
+                    log::error!("script address cannot claim");
+                    return Err(crate::error::Error::Custom(
+                        "script address cannot claim:".to_owned(),
+                    ));
+                }
+                //pointer
+                0b0100 | 0b0101 => {
+                    log::error!("pointer address cannot claim");
+                    return Err(crate::error::Error::Custom(
+                        "pointer address cannot claim:".to_owned(),
+                    ));
+                }
+                //enterprise
+                0b0110 | 0b0111 => {
+                    log::error!("enterprise address cannot claim");
+                    return Err(crate::error::Error::Custom(
+                        "enterprise address cannot claim:".to_owned(),
+                    ));
+                }
+                //reward
+                0b1110 | 0b1111 => data.claim_addr.clone(),
+                //byron 0b1000
+                _ => {
+                    log::error!("byron or undefined cannot claim");
+                    return Err(crate::error::Error::Custom(
+                        "byron address cannot claim:".to_owned(),
+                    ));
+                }
+            };
+
+            // get first payment address
+            let mut payment_addr = mimir::api::select_addr_of_first_transaction(&stake_address)?;
+
+            // check whitelists
+            let valid_addresses = if let Some(wl) = mp.whitelists.clone() {
+                let mut va = Vec::<(gungnir::WlAddresses, i64)>::new();
+
+                for w in wl {
+                    let claim_wl =
+                        gungnir::WlAlloc::check_pay_address_whitelist(w, &data.claim_addr)?;
+                    if !claim_wl.is_empty() {
+                        va.extend(claim_wl.into_iter().map(|n| (n, w)));
+                        payment_addr = data.claim_addr.clone();
+                        break;
+                    } else {
+                        va.extend(
+                            gungnir::WlAlloc::check_stake_address_whitelist(w, &stake_address)?
+                                .into_iter()
+                                .map(|n| (n, w)),
+                        );
+                        va.extend(
+                            gungnir::WlAlloc::check_pay_address_whitelist(w, &payment_addr)?
+                                .into_iter()
+                                .map(|n| (n, w)),
+                        );
+                    }
+                }
+                Some(va)
+            } else {
+                None
+            };
+            if valid_addresses.is_none() && mp.whitelists.is_some() {
+                log::error!("requesting wallet is not whitelisted");
+                return Err(crate::error::Error::Custom(
+                    "requesting wallet is not whitelisted".to_owned(),
+                ));
+            }
+
+            if let Some(i) = mp.max_mint_p_addr {
+                let nfts = gungnir::minting::models::Nft::get_nft_by_claim_addr(
+                    mp.id,
+                    &payment_addr,
+                    &mp.nft_table_name,
+                )?;
+                log::debug!("already minted NFTs: {:?}", nfts);
+                if nfts.len() >= i as usize {
+                    log::error!("reached maximum allowed mints: {}", payment_addr);
+                    channel
+                        .basic_reject(
+                            deliv.delivery_tag,
+                            lapin::options::BasicRejectOptions::default(),
+                        )
+                        .await?;
+                    return Err(crate::error::Error::Custom(
+                        "reached maximum allowed mints".to_owned(),
+                    ));
+                }
+            }
+
             log::debug!("try to claim nft ...");
             let nft = match gungnir::minting::models::Nft::claim_random_unminted_nft(
                 mp.id,
                 &mp.nft_table_name,
-                &data.claim_addr,
+                &payment_addr,
                 0,
             )
             .await
@@ -140,6 +261,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             match nft {
                 Some(n) => {
                     log::debug!("nft: {:?}", n);
+                    // ToDo: Create Mint Reward for User and NFT
                 }
                 None => {
                     return Err(crate::error::Error::Custom(

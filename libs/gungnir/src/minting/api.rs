@@ -286,36 +286,62 @@ impl Nft {
             "SELECT * FROM {} TABLESAMPLE SYSTEM_ROWS(1) WHERE claim_addr IS NULL AND tx_hash IS NULL AND minted = false",
             table_name
         );
-
         let mut rows = client.query(&rnd_nft_query, &[]).await?;
+        log::debug!("First Select: {:?}", rows);
+        let nft : Nft;
         if rows.is_empty() || rows.len() > 1 {
-            let rnd_nft_query = format!(
+            let last_nft_query = format!(
                 "SELECT * FROM {} WHERE claim_addr IS NULL AND tx_hash IS NULL AND minted = false",
                 table_name
             );
-            rows = client.query(&rnd_nft_query, &[]).await?;
-            if rows.len() != 1 {
-                log::error!("Couldn't find valid asset");
-                return Err(RWDError::new("Couldn't find valid nft to claim"));
+            rows = client.query(&last_nft_query, &[]).await?;
+            log::debug!("Second Select: {:?}", rows);
+            match rows.len() {
+                0 => {
+                    log::error!("Couldn't find valid asset");
+                    return Err(RWDError::new("Couldn't find valid nft to claim"));
+                },
+                _ => {
+                    use rand::Rng;
+                    let rnd = rand::thread_rng().gen_range(0..rows.len());
+                    nft = Nft {
+                        project_id: rows[rnd].get("project_id"),
+                        asset_name_b: rows[rnd].get("asset_name_b"),
+                        asset_name: rows[rnd].get("asset_name"),
+                        fingerprint: rows[rnd].get("fingerprint"),
+                        nft_id: rows[rnd].get("nft_id"),
+                        file_name: rows[rnd].get("file_name"),
+                        ipfs_hash: rows[rnd].get("ipfs_hash"),
+                        metadata: rows[rnd].get("metadata"),
+                        claim_addr: rows[rnd].get("claim_addr"),
+                        minted: rows[rnd].get("minted"),
+                        tx_hash: rows[rnd].get("tx_hash"),
+                        confirmed: rows[rnd].get("confirmed"),
+                        created_at: rows[rnd].get("created_at"),
+                        updated_at: rows[rnd].get("updated_at"),
+                    };
+                }
+                
             }
             
+        } else {
+            nft = Nft {
+                project_id: rows[0].get("project_id"),
+                asset_name_b: rows[0].get("asset_name_b"),
+                asset_name: rows[0].get("asset_name"),
+                fingerprint: rows[0].get("fingerprint"),
+                nft_id: rows[0].get("nft_id"),
+                file_name: rows[0].get("file_name"),
+                ipfs_hash: rows[0].get("ipfs_hash"),
+                metadata: rows[0].get("metadata"),
+                claim_addr: rows[0].get("claim_addr"),
+                minted: rows[0].get("minted"),
+                tx_hash: rows[0].get("tx_hash"),
+                confirmed: rows[0].get("confirmed"),
+                created_at: rows[0].get("created_at"),
+                updated_at: rows[0].get("updated_at"),
+            };
         }
-        let nft = Nft {
-            project_id: rows[0].get("project_id"),
-            asset_name_b: rows[0].get("asset_name_b"),
-            asset_name: rows[0].get("asset_name"),
-            fingerprint: rows[0].get("fingerprint"),
-            nft_id: rows[0].get("nft_id"),
-            file_name: rows[0].get("file_name"),
-            ipfs_hash: rows[0].get("ipfs_hash"),
-            metadata: rows[0].get("metadata"),
-            claim_addr: rows[0].get("claim_addr"),
-            minted: rows[0].get("minted"),
-            tx_hash: rows[0].get("tx_hash"),
-            confirmed: rows[0].get("confirmed"),
-            created_at: rows[0].get("created_at"),
-            updated_at: rows[0].get("updated_at"),
-        };
         println!("\nNFT: {:?}", nft);
 
         Nft::set_nft_claim_addr(&pid_in, table_name, &nft.asset_name_b, claim_addr_in).await?;

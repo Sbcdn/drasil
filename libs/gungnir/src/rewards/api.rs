@@ -1077,12 +1077,32 @@ impl WlAddresses {
         Ok(result)
     }
 
+    pub fn get_address(addr: String) -> Result<Vec<WlAddresses>, RWDError> {
+        use crate::schema::wladdresses::dsl::*;
+        let conn = &mut establish_connection()?;
+        let result = wladdresses
+            .filter(payment_address.eq(addr))
+            .load::<WlAddresses>(conn)?;
+        Ok(result)
+    }
+
+    pub fn get_stake_address(addr: String) -> Result<Vec<WlAddresses>, RWDError> {
+        use crate::schema::wladdresses::dsl::*;
+        let conn = &mut establish_connection()?;
+        let result = wladdresses
+            .filter(stake_address.eq(addr).nullable())
+            .load::<WlAddresses>(conn)?;
+        Ok(result)
+    }
+
     pub fn create_wladdress(
         conn: &mut PgConnection,
         address: &String,
+        stake_address: Option<&String>,
     ) -> Result<WlAddresses, RWDError> {
         let new_entry = WlAddressesNew {
             payment_address: address,
+            stake_address,
         };
 
         Ok(diesel::insert_into(wladdresses::table)
@@ -1106,6 +1126,43 @@ impl WlAlloc {
             .filter(wlalloc::wl.eq(id_in))
             .select(wladdresses::payment_address)
             .load::<String>(conn)?;
+        Ok(result)
+    }
+
+    pub fn check_stake_address_whitelist(
+        id_in: i64,
+        stake_address: &String,
+    ) -> Result<Vec<WlAddresses>, RWDError> {
+        let conn = &mut establish_connection()?;
+        let result = wlalloc::table
+            .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
+            .filter(wlalloc::wl.eq(id_in))
+            .filter(wladdresses::stake_address.eq(stake_address).nullable())
+            .select((
+                wladdresses::id,
+                wladdresses::payment_address,
+                wladdresses::stake_address,
+            ))
+            .load::<WlAddresses>(conn)?;
+        Ok(result)
+    }
+
+    pub fn check_pay_address_whitelist(
+        id_in: i64,
+        address: &String,
+    ) -> Result<Vec<WlAddresses>, RWDError> {
+        let conn = &mut establish_connection()?;
+        let result = wlalloc::table
+            .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
+            .filter(wlalloc::wl.eq(id_in))
+            .filter(wladdresses::payment_address.eq(address).nullable())
+            .filter(wladdresses::stake_address.is_null())
+            .select((
+                wladdresses::id,
+                wladdresses::payment_address,
+                wladdresses::stake_address,
+            ))
+            .load::<WlAddresses>(conn)?;
         Ok(result)
     }
 
@@ -1163,8 +1220,9 @@ impl Whitelist {
         conn: &mut PgConnection,
         wl_in: &'a i64,
         address: &'a String,
+        stake_address: Option<&'a String>,
     ) -> Result<WlAlloc, RWDError> {
-        let raddr = WlAddresses::create_wladdress(conn, address)?;
+        let raddr = WlAddresses::create_wladdress(conn, address, stake_address)?;
         let ralloc = WlAlloc::create_alloc(conn, wl_in, &raddr.id)?;
         Ok(ralloc)
     }
@@ -1175,5 +1233,51 @@ impl Whitelist {
         let result =
             diesel::delete(whitelist::table.filter(whitelist::id.eq(wl_in))).execute(conn)?;
         Ok(result)
+    }
+}
+
+impl Discount {
+    pub fn get_discounts(cid_in: i64, uid_in: i64) -> Result<Vec<Discount>, RWDError> {
+        let conn = &mut establish_connection()?;
+        let result = discount::table
+            .filter(discount::contract_id.eq(cid_in))
+            .filter(discount::user_id.eq(uid_in))
+            .load::<Discount>(conn)?;
+        Ok(result)
+    }
+
+    pub fn create_discount(
+        user_id: &i64,
+        contract_id: &i64,
+        policy_id: &String,
+        fingerprint: Option<&String>,
+        metadata_path: &Vec<String>,
+    ) -> Result<Discount, RWDError> {
+        let conn = &mut establish_connection()?;
+        let new_entry = DiscountNew {
+            contract_id,
+            user_id,
+            policy_id,
+            fingerprint,
+            metadata_path,
+        };
+
+        Ok(diesel::insert_into(discount::table)
+            .values(&new_entry)
+            .get_result::<Discount>(conn)?)
+    }
+
+    pub fn remove_discount(conn: &mut PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
+        let result =
+            diesel::delete(discount::table.filter(discount::id.eq(wl_in))).execute(conn)?;
+        Ok(result)
+    }
+
+    pub fn policy_id(&self) -> String {
+        self.policy_id.clone()
+    }
+
+    pub fn fingerprint(&self) -> Option<&String> {
+        self.fingerprint.as_ref()
     }
 }

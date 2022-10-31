@@ -39,8 +39,10 @@ pub use unknown::Unknown;
 mod error;
 pub use error::CmdError;
 
+mod discount;
 use crate::error::SystemDBError;
 use crate::{Connection, Frame, Parse, Shutdown, TransactionPattern};
+pub(crate) use discount::*;
 
 pub trait IntoFrame {
     fn into_frame(self) -> Frame;

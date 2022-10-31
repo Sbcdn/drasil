@@ -8,6 +8,7 @@
 */
 use crate::error::MurinError;
 use crate::htypes::*;
+use argon2::password_hash::rand_core::{OsRng, RngCore};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto};
 use clib::address::{BaseAddress, EnterpriseAddress};
@@ -291,4 +292,165 @@ pub fn create_drslkeypair() -> (String, String, String) {
         ac1_public_key.to_bech32(),
         hex::encode(ac1_public_key_hash.to_bytes()),
     )
+}
+
+pub fn create_bip0039_wallet(
+    password: Option<String>,
+) -> Result<(String, Vec<String>), MurinError> {
+    let mut entropy = [0u8; 32];
+    OsRng.fill_bytes(&mut entropy);
+    let mnemonic = bip39::Mnemonic::from_entropy(&entropy)?;
+
+    let seed = if let Some(password) = password.clone() {
+        mnemonic.to_seed_normalized(&password)
+    } else {
+        mnemonic.to_seed_normalized("")
+    };
+
+    let words = mnemonic
+        .word_iter()
+        .fold(Vec::<String>::new(), |mut acc, n| {
+            acc.push(n.to_string());
+            acc
+        });
+
+    let root_key: clib::crypto::Bip32PrivateKey =
+        clib::crypto::Bip32PrivateKey::from_bip39_entropy(&seed, {
+            if password.is_some() {
+                password.as_ref().unwrap().as_bytes()
+            } else {
+                "".as_bytes()
+            }
+        });
+
+    /*
+       let account_key1 = root_key
+           .derive(crate::txbuilders::harden(1852u32))
+           .derive(crate::txbuilders::harden(1815u32))
+           .derive(crate::txbuilders::harden(0u32));
+       let ac1_chaincode = account_key1.chaincode();
+       let ac1_private_key = account_key1.to_raw_key(); // for signatures
+       let ac1_public_key = account_key1.to_raw_key().to_public();
+       let ac1_public_key_hash = account_key1.to_raw_key().to_public().hash(); // for Native Script Input / Verification
+       let vkey1 = "5840".to_string()
+           + &((hex::encode(ac1_public_key.as_bytes())) + &hex::encode(ac1_chaincode.clone())); // .vkey
+       let skey1 = "5880".to_string()
+           + &(hex::encode(ac1_private_key.as_bytes())
+               + &hex::encode(ac1_public_key.as_bytes())
+               + &hex::encode(ac1_chaincode)); // .skey
+    */
+    Ok((root_key.to_hex(), words))
+}
+
+pub fn restore_bip0039_wallet(
+    words: Vec<String>,
+    password: Option<String>,
+) -> Result<(String, ccrypto::Bip32PrivateKey), MurinError> {
+    let mut entropy = [0u8; 32];
+    OsRng.fill_bytes(&mut entropy);
+
+    let s = words.iter().fold(String::new(), |mut acc, n| {
+        acc.push_str(n);
+        acc.push(' ');
+        acc
+    });
+
+    let mnemonic = bip39::Mnemonic::parse(std::borrow::Cow::from(s)).unwrap();
+
+    let seed = if let Some(password) = password.clone() {
+        mnemonic.to_seed_normalized(&password)
+    } else {
+        mnemonic.to_seed_normalized("")
+    };
+
+    let root_key: clib::crypto::Bip32PrivateKey =
+        clib::crypto::Bip32PrivateKey::from_bip39_entropy(&seed, {
+            if password.is_some() {
+                password.as_ref().unwrap().as_bytes()
+            } else {
+                "".as_bytes()
+            }
+        });
+
+    /*
+       let account_key1 = root_key
+           .derive(crate::txbuilders::harden(1852u32))
+           .derive(crate::txbuilders::harden(1815u32))
+           .derive(crate::txbuilders::harden(0u32));
+       let ac1_chaincode = account_key1.chaincode();
+       let ac1_private_key = account_key1.to_raw_key(); // for signatures
+       let ac1_public_key = account_key1.to_raw_key().to_public();
+       let ac1_public_key_hash = account_key1.to_raw_key().to_public().hash(); // for Native Script Input / Verification
+       let vkey1 = "5840".to_string()
+           + &((hex::encode(ac1_public_key.as_bytes())) + &hex::encode(ac1_chaincode.clone())); // .vkey
+       let skey1 = "5880".to_string()
+           + &(hex::encode(ac1_private_key.as_bytes())
+               + &hex::encode(ac1_public_key.as_bytes())
+               + &hex::encode(ac1_chaincode)); // .skey
+    */
+    Ok((root_key.to_hex(), root_key))
+}
+
+#[cfg(test)]
+mod tests {
+    use cardano_serialization_lib::StakeCredentials;
+
+    use crate::{create_bip0039_wallet, restore_bip0039_wallet};
+
+    #[tokio::test]
+    async fn bip0039_seed_test() {
+        let wallet = create_bip0039_wallet(Some("otto".to_string())).unwrap();
+        println!("{:?}", wallet.1);
+        println!("{:?}", wallet.0);
+        let restored = restore_bip0039_wallet(wallet.1, None).unwrap();
+        println!("{:?}", restored.0);
+        assert_ne!(wallet.0, restored.0)
+    }
+
+    #[tokio::test]
+    async fn bip0039_restore_test() {
+        let wallet = vec![
+            "already", "ivory", "floor", "demise", "turn", "nurse", "code", "cage", "hobby",
+            "transfer", "struggle", "enough", "topple", "citizen", "wasp", "amateur", "vacuum",
+            "banner", "resist", "cupboard", "delay", "area", "dry", "silly",
+        ];
+        let mut wal = Vec::<String>::new();
+        wallet.iter().for_each(|n| wal.push(n.to_string()));
+        let skey = "10e892baf1a2dc4a14d90a0660a3f8155c1429ac4cb611f43f882c8c4bf2104fd2bdbccfd238068e36c2666fe2ca6563e0ebf4082d710f8a1367b5b2c95875b697ea593ac107552864a0ccd285d4d0cbbcfeee44200ba68028d34fbeaf050417";
+        let restored = restore_bip0039_wallet(wal, Some("Otto".to_string())).unwrap();
+        //assert_eq!(skey, restored.0);
+
+        let stake_key = restored
+            .1
+            .derive(crate::txbuilders::harden(1852u32))
+            .derive(crate::txbuilders::harden(1815u32))
+            .derive(crate::txbuilders::harden(0u32))
+            .derive(2)
+            .derive(0);
+        let stake_key_hash = stake_key.to_raw_key().to_public().hash();
+
+        let account_key1 = restored
+            .1
+            .derive(crate::txbuilders::harden(1852))
+            .derive(crate::txbuilders::harden(1815))
+            .derive(crate::txbuilders::harden(0))
+            .derive(0)
+            .derive(1);
+        let ac1_chaincode = account_key1.chaincode();
+        let ac1_private_key = account_key1.to_raw_key(); // for signatures
+        let ac1_public_key = account_key1.to_raw_key().to_public();
+        let ac1_public_key_hash = account_key1.to_raw_key().to_public().hash(); // for Native Script Input / Verification
+        let vkey1 = "5840".to_string()
+            + &((hex::encode(ac1_public_key.as_bytes())) + &hex::encode(ac1_chaincode.clone())); // .vkey
+        let skey1 = "5880".to_string()
+            + &(hex::encode(ac1_private_key.as_bytes())
+                + &hex::encode(ac1_public_key.as_bytes())
+                + &hex::encode(ac1_chaincode)); // .skey
+        let pycr = crate::clib::address::StakeCredential::from_keyhash(&ac1_public_key_hash);
+        let stkcr = crate::clib::address::StakeCredential::from_keyhash(&stake_key_hash);
+        let addr = crate::clib::address::BaseAddress::new(1, &pycr, &stkcr).to_address();
+        let addr2 = crate::clib::address::EnterpriseAddress::new(1, &pycr).to_address();
+        println!("Base: {}", addr.to_bech32(None).unwrap());
+        println!("Enterprise: {}", addr2.to_bech32(None).unwrap());
+    }
 }

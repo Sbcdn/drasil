@@ -100,6 +100,7 @@ table! {
     wladdresses (id) {
         id -> Int8,
         payment_address -> Varchar,
+        stake_address -> Nullable<Varchar>,
     }
 }
 
@@ -169,6 +170,19 @@ table! {
         pay_addr -> Varchar,
         v_nfts_b -> Array<Bytea>,
         minted -> Bool,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+table! {
+    discount (id){
+        id -> Int8,
+        contract_id -> Int8,
+        user_id -> Int8,
+        policy_id -> Varchar,
+        fingerprint -> Nullable<Varchar>,
+        metadata_path -> Array<Varchar>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }

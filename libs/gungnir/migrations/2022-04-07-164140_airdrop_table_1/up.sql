@@ -120,3 +120,20 @@ CREATE INDEX nft_project ON nft_table (project_id);
 
 -- https://www.postgresql.org/docs/current/tsm-system-rows.html
 CREATE EXTENSION tsm_system_rows;
+
+CREATE TABLE discount (
+    id BIGSERIAL PRIMARY KEY,
+    contract_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    policy_id VARCHAR NOT NULL,
+    fingerprint VARCHAR,
+    metadata_path VARCHAR[] NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id,contract_id,policy_id)
+);
+
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON discount
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();
