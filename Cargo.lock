@@ -842,7 +842,7 @@ dependencies = [
  "bech32 0.4.1",
  "cardano-serialization-lib",
  "cbor_event",
- "cryptoxide 0.4.2 (git+https://github.com/typed-io/cryptoxide.git?branch=master)",
+ "cryptoxide 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures",
  "hex",
  "http",
