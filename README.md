@@ -1,10 +1,10 @@
 # Drasil
 
-The Drasil Application Framework is a collection of microservices which, when used together, form an effective, scalabe framework for running dApps on the Cardano blockchain. Its architecture, services and libraries are written in Rust.
+The Drasil Application Framework is a collection of microservices which, when used together, form an effective, scalable, comprehensive and powerful framework for running decentralised applications (or "dApps") on the Cardano blockchain. Its architecture, services and libraries are written in Rust.
 
 Drasil system and concept was created by Torben and Zak, but it also utilises several tools developed by the Cardano community, to whom we are grateful and hope to continue to repay with our own small contributions.  Because of the complicated way in which the various tools interact, a lot more is required to actually run a fully integrated and working "Drasil System" than just the applications and libraries found in this repository, of course!  We exist to support and advise on how to utilize this framework for particular applications and consult on what it is required to run it effectively.
 
-Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. We constantly develop Drasil and add features, smart contracts and applications. We also maintain a testnet and mainnet version, and it is possible to subscribe to single services or applications directly without running your own Drasil System.  You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
+Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. We are constantly developing Drasil with new features, smart contracts and applications. We also maintain a testnet and mainnet version, and it is possible to subscribe to hosted single services or applications directly without the need to run your own Drasil System.  You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
 
 Visit us at [drasil.io](https://www.drasil.io)
 
@@ -41,7 +41,7 @@ A third interpretation, presented by F. Detter, is that the name Yggdrasill refe
 #### Build Executable
 
 Navigate into the 'drasil' folder and run `cargo build`. This will build all services at once.
-If you want to build executables for production use for example: 
+If you want to build executables for production, you can use (for example): 
 
 `RUSTFLAGS='-C target-feature=-crt-static' cargo build --target x86_64-unknown-linux-gnu --release`
 
@@ -51,12 +51,12 @@ or
 
 
 ### Docker
-Follow the Readme's in the single applications folders
+Follow the Readme files in the single applications' folders
 
 
 ### Environment 
-Drasils individual services need many settings which are passed via environment variables, the individual needed settings are described in the Readme file for each service. 
+Drasils individual services require the setting of many parameters which are passed via environment variables.  These are described in the Readme file corresponding to the specific service. 
 
 ## Architecture
 
-...Follows soon...
+...coming soon...
