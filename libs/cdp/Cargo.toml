@@ -1,0 +1,42 @@
+[package]
+name = "cdp"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil - Cardano DataProvider Library"
+repository = "https://github.com/drasil_blockchain/cardano_data_provider.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+
+[dependencies]
+cardano-serialization-lib = "11.0.5"
+cryptoxide = { git = "https://github.com/typed-io/cryptoxide.git", branch = "master", features = [
+    "blake2",
+] }
+serde_json = { version = "1.0.79", features = ["preserve_order"] }
+serde = { version = "1.0", features = ["derive"] }
+hex = "0.4"
+itertools = "0.10.3"
+thiserror = "1.0.32"
+strum = { version = "0.24", features = ["derive", "phf"] }
+strum_macros = "0.24"
+pretty_env_logger = "0.4.0"
+log = "0.4"
+lazy_static = "1.4.0"
+reqwest = { version = "0.11", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
+http = "0.2.6"
+diesel = { version = "2.0.0", features = [
+    "postgres",
+    "numeric",
+    "chrono",
+    "64-column-tables",
+    "r2d2",
+] }
+diesel-derive-enum = { version = "2.0.0-rc.0", features = ["postgres"] }
+bigdecimal = { version = "0.3.0", features = ["serde"] }
