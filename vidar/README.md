@@ -1,9 +1,7 @@
 # Vidar
 
 ## Summary
-Vidar is the Gateway to retrieve data from the reward and distribution system. 
-It needs API key authentication from a registered user which has the permission to use the
-reward and distribution system and its information. 
+'Vidar' is the gateway to retrieve data from the reward and distribution system.  It needs API key authentication from a registered user who has the permission to use the reward and distribution system and its information. 
 
 * [Documentation](https://docs.drasil.io/reward-and-distribution/drasil-rewards-api/reward-information)
 
