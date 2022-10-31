@@ -22,7 +22,7 @@ rust-s3 = { version = "0.31.0", default-features = false, features = [
     "tokio-rustls-tls",
     "tags",
 ] }
-indexmap = "=1.7.0"
+#indexmap = "=1.7.0"
 tokio = { version = "1", features = ["full"] }
 serde_json = { version = "1.0.79", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }

@@ -25,7 +25,7 @@ use chrono::{DateTime, Utc};
 use std::fmt;
 
 use crate::schema::{
-    airdrop_parameter, airdrop_whitelist, claimed, rewards, token_whitelist, whitelist,
+    airdrop_parameter, airdrop_whitelist, claimed, discount, rewards, token_whitelist, whitelist,
     wladdresses, wlalloc,
 };
 
@@ -277,12 +277,14 @@ pub struct AirDropParameterNew<'a> {
 pub struct WlAddresses {
     pub id: i64,
     pub payment_address: String,
+    pub stake_address: Option<String>,
 }
 
 #[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = wladdresses)]
 pub struct WlAddressesNew<'a> {
     pub payment_address: &'a String,
+    pub stake_address: Option<&'a String>,
 }
 
 #[derive(Queryable, Identifiable, Debug, Clone)]
@@ -313,4 +315,27 @@ pub struct Whitelist {
 #[diesel(table_name = whitelist)]
 pub struct WhitelistNew<'a> {
     pub max_addr_repeat: &'a i32,
+}
+
+#[derive(Queryable, Identifiable, Debug, Clone)]
+#[diesel(table_name = discount)]
+pub struct Discount {
+    pub id: i64,
+    pub contract_id: i64,
+    pub user_id: i64,
+    pub policy_id: String,
+    pub fingerprint: Option<String>,
+    pub metadata_path: Vec<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[diesel(table_name = discount)]
+pub struct DiscountNew<'a> {
+    pub contract_id: &'a i64,
+    pub user_id: &'a i64,
+    pub policy_id: &'a String,
+    pub fingerprint: Option<&'a String>,
+    pub metadata_path: &'a Vec<String>,
 }

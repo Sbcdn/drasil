@@ -8,7 +8,7 @@
 */
 use crate::datamodel::ScriptSpecParams;
 use crate::protocol::{create_response, determine_contracts};
-use crate::CmdError;
+use crate::{discount, CmdError};
 use crate::{BuildMultiSig, TBMultiSigLoc};
 use murin::modules::transfer::models::*;
 use murin::PerformTxb;
@@ -320,6 +320,19 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         rwdtxd.set_fee_wallet_addr(&fees.last().unwrap().0);
         rwdtxd.set_fee(&(fees.last().unwrap().1 as u64));
     }
+    let mut r = Vec::<i64>::new();
+    for c in &contract {
+        r.push(discount(gtxd.get_inputs(), c.contract_id, c.user_id));
+    }
+
+    r.sort();
+    let discnt = r[r.len() - 1];
+
+    if discnt > 0 {
+        let fee = rwdtxd.get_fee().unwrap_or(0);
+        rwdtxd.set_fee(&(fee - (fee as f64 * (discnt as f64 / 100.0)) as u64))
+    }
+
     let mut wallets = TransWallets::new();
     let mut dbsync = mimir::establish_connection()?;
     for c in contract {

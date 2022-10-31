@@ -137,3 +137,9 @@ impl From<argon2::password_hash::Error> for MurinError {
         MurinError::new(&err.to_string())
     }
 }
+
+impl From<bip39::Error> for MurinError {
+    fn from(err: bip39::Error) -> Self {
+        MurinError::new(&err.to_string())
+    }
+}

@@ -391,12 +391,12 @@ pub fn lookup_nft_token_holders(policy: &String) -> Result<Vec<EligableWallet>, 
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct TokenInfoMint {
-    fingerprint: String,
-    policy: String,
-    tokenname: String,
-    meta_key: i64,
-    json: Option<serde_json::Value>,
-    txhash: String,
+    pub fingerprint: String,
+    pub policy: String,
+    pub tokenname: String,
+    pub meta_key: i64,
+    pub json: Option<serde_json::Value>,
+    pub txhash: String,
 }
 
 pub fn get_mint_metadata(fingerprint_in: &String) -> Result<TokenInfoMint, MimirError> {

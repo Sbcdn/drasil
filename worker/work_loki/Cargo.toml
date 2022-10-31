@@ -28,3 +28,5 @@ deadpool-lapin = { version = "0.10.0", features = ["serde"] }
 lazy_static = "1.4.0"
 hugin = { path = "../../libs/hugin", version = "0.1.0" }
 gungnir = { path = "../../libs/gungnir", version = "0.1.0" }
+murin = { path = "../../libs/murin", version = "0.1.0" }
+mimir = { path = "../../libs/mimir", version = "0.1.0" }

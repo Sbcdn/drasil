@@ -24,6 +24,12 @@ pub enum Error {
     JsonError(#[from] serde_json::Error),
     #[error("MintAPIError: {0}")]
     MintAPIError(#[from] gungnir::RWDError),
+    #[error("SCLError: {0}")]
+    CSLError(#[from] murin::clib::error::JsError),
+    #[error("MurinError: {0}")]
+    MurinError(#[from] murin::MurinError),
+    #[error("MimirError: {0}")]
+    MimirError(#[from] mimir::MimirError),
 }
 
 #[derive(Serialize, Debug)]
