@@ -1,15 +1,12 @@
 # Odin
 
 ## Summary
-Odin is heart of the drasil system, it builds an finalize transactions in general and interacts and composes the different parts. 
-It implements the blockchain applications and is the central runtime of the Drasil application framework. 
-Odin itself is very lightwight but implements via 'Commands' many different blockchain interactions. The communications protocol is 
-created with the Redis ..... 
+'Odin' is heart of the Drasil system: it builds and finalizes transactions as well as interacting with and composing the different parts.  'Odin' implements the blockchain applications and is the central runtime of the Drasil Application Framework. 
+'Odin' itself is very lightwight, implementing the various blockchain interactions via 'Commands'. The communications protocol is 
+created with the Redis. 
 
-There is no direct documentation for Odin as it serves basically all existing functions. Odin is a internal service and its not possible to directly 
-communicate with Odin. The API to communicate with Odin is 'Heimdallr'. This allows encapsulations between the central blockchain services and the available endpoints as well as independent scalability between the two services. 
-By using a loadbalancer between several Heimdallr and Odin instances it is possible to scale the application depending on load. Each Odin instance starts incomming 
-application commands as asynchronous independent processes. 
+There is no direct documentation for 'Odin' as it essentially serves all existing functions. 'Odin' is an internal service and it is not possible to directly communicate with it. The gateway API to communicate with 'Odin' is 'Heimdallr'. This allows encapsulations between the central blockchain services and the available endpoints as well as independent scalability between the two services. 
+By using a loadbalancer between several 'Heimdallr' and 'Odin' instances it is possible to scale the application depending on load. Each 'Odin' instance starts incoming application commands as asynchronous independent processes. 
 
 * [Documentation](https://docs.drasil.io/)
 
@@ -32,7 +29,7 @@ Odin appears as a prominent god throughout the recorded history of Northern Euro
 #### Build Executable
 
 Navigate into the 'drasil/odin' folder and run `cargo build`. 
-If you want to build an executable for production use for example: 
+If you want to build an executable for production use (for example): 
 
 `RUSTFLAGS='-C target-feature=-crt-static' cargo build --target x86_64-unknown-linux-gnu --release`
 
@@ -67,7 +64,7 @@ The docker image path and name can be defined in the Makefile using the followin
 
 
 ### Environment 
-Odin needs the following environment variables set to run properly:
+'Odin' needs the following environment variables set to run properly:
 
 Reward Database: 
 
