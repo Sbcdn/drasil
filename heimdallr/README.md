@@ -1,9 +1,9 @@
 # Heimdallr
 
 ## Summary
-Heimdallr is the Gateway to to interact with the blockchain system in general, it guards a bridge to Odin. 
-It needs API key authentication from a registered user which has the permission to use the system.
-The transaction builder but also infrastructure APIs are accessible by Heimdallr. 
+'Heimdallr' is the gateway to interact with the blockchain system in general and it guards a bridge to 'Odin'. 
+It requires API key authentication from a registered user who has permission to use the system.
+The transaction builder as well as infrastructure APIs are made accessible by 'Heimdallr'. 
 
 * [Documentation](https://docs.drasil.io/)
 
@@ -26,7 +26,7 @@ Heimdall possesses the resounding horn Gjallarhorn and the golden-maned horse Gu
 #### Build Executable
 
 Navigate into the 'drasil/vidar' folder and run `cargo build`. 
-If you want to build an executable for production use for example: 
+Use the following if you want to build an executable for production use (for example): 
 
 `RUSTFLAGS='-C target-feature=-crt-static' cargo build --target x86_64-unknown-linux-gnu --release`
 
@@ -61,7 +61,7 @@ The docker image path and name can be defined in the Makefile using the followin
 
 
 ### Environment 
-Heimdallr needs the following environment variables set to run properly:
+'Heimdallr' needs the following environment variables set to run properly:
 
 Reward Database: 
 
@@ -85,6 +85,6 @@ Public Key for JWT Certificate:
 
 ....
 #### Optional
-For log output activate RUST_LOG by settign the trace level, default is error. 
+For log output activate RUST_LOG by setting the trace level (default is error). 
 
 `RUST_LOG=info`
