@@ -24,13 +24,13 @@ pub(crate) async fn handle_stake(
     }
     match twd.mode {
         gungnir::Calculationmode::RelationalToADAStake => {
-            println!("Calcualte with: RelationalToAdaStake");
+            println!("Calculate with: RelationalToAdaStake");
             let token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
             handle_rewards(&stake.stake_addr, twd, &token_earned, table, false)?;
         }
 
         gungnir::Calculationmode::FixedEndEpoch => {
-            println!("Calcualte with: FixedEndEpoch");
+            println!("Calculate with: FixedEndEpoch");
             let x = if let Some(s) = twd.modificator_equ.clone() {
                 BigDecimal::from_str(&s)?
             } else {
@@ -68,7 +68,7 @@ pub(crate) async fn handle_stake(
                     }
                 }
                 CustomCalculationTypes::FixedAmountPerEpoch => {
-                    println!("Calcualte with: FixedAmountPerEpoch");
+                    println!("Calculate with: FixedAmountPerEpoch");
                     let adastake = stake.amount.to_f64().unwrap() / 1000000.0;
                     println!(
                         "Ada Staked: {}, for addr: {} in epoch: {}",
@@ -97,7 +97,7 @@ pub(crate) async fn handle_stake(
                     }
                 }
                 CustomCalculationTypes::FixedAmountPerEpochNonAcc => {
-                    println!("Calcualte with: FixedAmountPerEpochNonAcc");
+                    println!("Calculate with: FixedAmountPerEpochNonAcc");
                     let adastake = stake.amount.to_f64().unwrap() / 1000000.0;
                     println!(
                         "Ada Staked: {}, for addr: {} in epoch: {}",
@@ -126,7 +126,7 @@ pub(crate) async fn handle_stake(
                     }
                 }
                 CustomCalculationTypes::Threshold => {
-                    println!("Calcualte with: Threshold");
+                    println!("Calculate with: Threshold");
                     let adastake = stake.amount.to_f64().unwrap() / 1000000.0;
                     println!(
                         "Ada Staked: {}, for addr: {} in epoch: {}",
