@@ -23,7 +23,7 @@ pub(crate) async fn handle_whitelist_address(
     let script_reward = *addr == stake_addr;
     if script_reward {
         return Err(Box::new(murin::MurinError::new(
-            "Scritp Rewards not implemented yet",
+            "Script Rewards not implemented yet",
         )));
     }
 
@@ -37,7 +37,7 @@ pub(crate) async fn handle_whitelist_address(
         gungnir::Calculationmode::Custom => {
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::FixedAmountPerEpoch => {
-                    println!("Whitelist calcualte with: FixedAmountPerEpoch");
+                    println!("Whitelist calculate with: FixedAmountPerEpoch");
                     let param: FixedAmountPerEpochType =
                         serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
 
@@ -50,7 +50,7 @@ pub(crate) async fn handle_whitelist_address(
                     )?;
                 }
                 CustomCalculationTypes::FixedAmountPerEpochNonAcc => {
-                    println!("Whitelist calcualte with: FixedAmountPerEpochNonAcc");
+                    println!("Whitelist calculate with: FixedAmountPerEpochNonAcc");
                     let param: FixedAmountPerEpochType =
                         serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
                     handle_rewards(
