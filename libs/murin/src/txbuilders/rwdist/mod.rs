@@ -185,6 +185,10 @@ impl RWDTxData {
         self.fee = Some(*data);
     }
 
+    pub fn set_nofee(&mut self) {
+        self.fee = None;
+    }
+
     pub fn set_reward_utxos(&mut self, data: &Option<TransactionUnspentOutputs>) {
         self.reward_utxos = data.clone();
     }

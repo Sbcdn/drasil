@@ -212,13 +212,29 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::remove_pools);
 
-    // Remove a pool from a Whitelisted Token
+    // Import NFTs via CIP25 metadata
     let enterprise_post_import_nfts_csv_meta = enterprise_post
         .clone()
         .and(warp::path("mint"))
         .and(warp::path("impcsv"))
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::mint::entrp_create_nfts_from_csv);
+
+    // Create discount for contract
+    let enterprise_post_create_discount = enterprise_post
+        .clone()
+        .and(warp::path("disco"))
+        .and(warp::path("cr"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::discounts::hndl_create_discount);
+
+    // Create discount for contract
+    let enterprise_post_remove_discount = enterprise_post
+        .clone()
+        .and(warp::path("disco"))
+        .and(warp::path("rm"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::discounts::hndl_remove_discount);
 
     // Endpoint Accumulators
     let pools = enterprise_get_pools
@@ -234,6 +250,8 @@ async fn main() {
         .or(enterprise_get_user_tx);
 
     let enterprise = sporwc
+        .or(enterprise_post_create_discount)
+        .or(enterprise_post_remove_discount)
         .or(enterprise_post_import_nfts_csv_meta)
         .or(pools)
         .or(enterprise_create_api_token)

@@ -10,6 +10,7 @@ pub mod administration;
 pub mod airdrops;
 pub mod apiauth;
 pub mod contracts;
+pub mod discounts;
 pub mod minting;
 pub mod rewards;
 pub mod user;

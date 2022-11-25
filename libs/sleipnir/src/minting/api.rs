@@ -54,7 +54,6 @@ pub async fn create_mintproject(data: &CreateMintProj) -> Result<MintProject, Sl
     log::debug!("table created: {}...", tablename);
     log::debug!("try to create mint project...");
     let m = MintProject::create_mintproject(
-        gconn,
         &data.project_name,
         &data.user_id.unwrap(),
         &policy_script_id,
@@ -133,7 +132,7 @@ pub async fn import_from_asset_metadata(
     meta: Vec<murin::minter::AssetMetadata>,
 ) -> Result<Vec<gungnir::minting::models::Nft>, SleipnirError> {
     let gconn = &mut gungnir::establish_connection()?;
-    let mint_project = MintProject::get_mintproject_by_id(gconn, mpid)?;
+    let mint_project = MintProject::get_mintproject_by_id(mpid)?;
     println!("Try to find contract...");
     let mint_contract =
         hugin::TBContracts::get_contract_uid_cid(user_id, mint_project.mint_contract_id)?;

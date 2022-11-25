@@ -9,6 +9,8 @@
 use crate::{hfn, htypes};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
+use clib::address::Address;
+use clib::utils::BigNum;
 use clib::NetworkIdKind;
 use serde::{Deserialize, Serialize};
 use std::ops::{Div, Rem, Sub};
@@ -1646,4 +1648,10 @@ pub fn minimize_coins_on_values(
         out.push(ada);
     }
     Ok(out)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceFees {
+    pub fee: BigNum,
+    pub fee_addr: Address,
 }

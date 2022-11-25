@@ -8,36 +8,46 @@
 */
 use crate::error::MurinError;
 use crate::hfn::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
-use crate::htypes::*;
 use crate::minter::*;
-use crate::txbuilders::minter::MinterTxData;
+use crate::{htypes::*, ServiceFees};
+
+use crate::minter::models::CMintHandle;
 use crate::txbuilders::{calc_min_ada_for_utxo, harden, input_selection, TxBO};
 use crate::wallet::*;
 use crate::TxData;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
+use clib::address::Address;
+
+use super::models::{ColMinterTxData, PriceCMintHandle};
 //use std::env;
 
 // One Shot Minter Builder Type
 #[derive(Debug, Clone)]
 pub struct AtCMBuilder {
-    pub vendorscript_addr: Option<clib::address::Address>,
-    pub script: clib::NativeScript,
-    pub stxd: MinterTxData,
+    pub scripts: Vec<clib::NativeScript>,
+    pub prices: Option<Vec<PriceCMintHandle>>,
+    pub metadata: Cip25Metadata,
+    pub fees: Option<Vec<ServiceFees>>,
+    pub stxd: ColMinterTxData,
 }
 
 pub type AtCMParams<'a> = (
-    Option<clib::address::Address>,
-    clib::NativeScript,
-    &'a MinterTxData,
+    &'a Vec<clib::NativeScript>,
+    &'a Option<Vec<PriceCMintHandle>>,
+    &'a Cip25Metadata,
+    &'a Option<Vec<ServiceFees>>,
+    &'a ColMinterTxData,
 );
 
 impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
     fn new(t: AtCMParams) -> Self {
         AtCMBuilder {
-            vendorscript_addr: t.0,
-            script: t.1,
-            stxd: t.2.clone(),
+            scripts: t.0.to_vec(),
+            prices: t.1.clone(),
+            metadata: t.2.clone(),
+            fees: t.3.clone(),
+            stxd: t.4.clone(),
         }
     }
 
@@ -58,25 +68,15 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             info!("--------------------------------------------------------------------------------------------------------\n");
         }
 
-        //let rwd_system_fee = env::var("SYSTEM_FEE_MINT")?.parse::<u64>()?;
-        //let rwd_system_fee_wallet = caddr::Address::from_bech32(&env::var("SYSTEM_FEE_WALLET")?)?;
-        let mut vendor_script_address: caddr::Address = self.stxd.get_payment_addr();
-        let receiving_address: caddr::Address = self.stxd.get_payment_addr();
-        if let Some(addr) = &self.vendorscript_addr {
-            vendor_script_address = addr.clone();
-        };
+        if self.scripts.len() != 1usize {
+            return Err(MurinError::new(
+                "Minting multiple NFTs from different scripts isn't yet supported",
+            ));
+        }
 
-        let receiving_address_bech32 = receiving_address.to_bech32(None)?;
-        debug!("Recipent Address: {:?}", receiving_address_bech32);
-
-        let _recipient_payment_addr = get_pubkey(&receiving_address)?;
-        let _recipient_stake_addr = get_stake_address(&receiving_address)?;
-        let _recipient_address_bech32_1 = &receiving_address_bech32[0..62];
-        let _recipient_address_bech32_2 = &receiving_address_bech32[62..];
-
-        let native_script = &self.script;
+        let native_script = &self.scripts[0];
         let mintpolicy = native_script.hash(); //clib::ScriptHashNamespace::NativeScript
-        let minttokens = mintasset_into_tokenasset(self.stxd.get_mint_tokens(), mintpolicy.clone());
+                                               // let minttokens = mintasset_into_tokenasset(self.stxd.get_mint_tokens(), mintpolicy.clone());
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         //
@@ -84,11 +84,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         //  Plutus Script and Metadata
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         let mut aux_data = clib::metadata::AuxiliaryData::new();
-        let metadata = make_mint_metadata_from_json(
-            &self.stxd.get_metadata(),
-            minttokens.clone(),
-            mintpolicy.clone(),
-        )?;
+        let metadata = make_mint_metadata(&self.metadata, mintpolicy.clone())?;
         aux_data.set_metadata(&metadata);
         let aux_data_hash = cutils::hash_auxiliary_data(&aux_data);
 
@@ -101,19 +97,19 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         let mut txouts = clib::TransactionOutputs::new();
         let _zero_val = cutils::Value::new(&cutils::to_bignum(0u64));
 
-        let mut mint_val = tokens_to_value(&minttokens.clone());
+        let mut mint_val = CMintHandle::total_value(&self.stxd.mint_handles)?;
         let min_utxo_val = calc_min_ada_for_utxo(&mint_val, None);
         mint_val.set_coin(&min_utxo_val);
 
-        match self.vendorscript_addr {
-            Some(_) => {
+        let receiver = Address::from_bech32(&self.stxd.mint_handles[0].pay_addr)?;
+
+        // Add Fees
+        if let Some(fees) = &self.fees {
+            for fee in fees {
                 txouts.add(&clib::TransactionOutput::new(
-                    &vendor_script_address,
-                    &mint_val,
+                    &fee.fee_addr,
+                    &cutils::Value::new(&fee.fee),
                 ));
-            }
-            None => {
-                txouts.add(&clib::TransactionOutput::new(&receiving_address, &mint_val));
             }
         }
 
@@ -152,7 +148,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         let mut txos_paied = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
         let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
-        let change_address = receiving_address.clone();
+        let change_address = receiver.clone();
 
         let mut needed_value = sum_output_values(&txouts);
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
@@ -219,7 +215,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
 
         let txouts_fin = balance_tx(
             &mut input_txuos,
-            &minttokens,
+            &Tokens::new(),
             &mut txouts,
             Some(mint_val_zero_coin).as_ref(), // but not the ADA!!!!
             fee,
@@ -227,7 +223,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             &mut first_run,
             &mut txos_paied,
             &mut tbb_values,
-            &receiving_address, //who is sender ?
+            &receiver, //who is sender ?
             &change_address,
             &mut acc,
             None,
@@ -241,9 +237,9 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         ////////////////////////////////////////////////////////////////////////////////////////////
         let mut mintasset = clib::MintAssets::new();
 
-        for token in minttokens {
-            mintasset.insert(&token.1, clib::utils::Int::new(&token.2));
-        }
+        //for token in minttokens {
+        //   mintasset.insert(&token.1, clib::utils::Int::new(&token.2));
+        //}
 
         let mint = clib::Mint::new_from_entry(&mintpolicy, &mintasset);
 
@@ -264,13 +260,6 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         txbody.set_auxiliary_data_hash(&aux_data_hash);
 
         txbody.set_mint(&mint);
-
-        // Set network Id
-        //if gtxd.get_network() == clib::NetworkIdKind::Testnet {
-        //    txbody.set_network_id(&clib::NetworkId::testnet());
-        //} else {
-        //    txbody.set_network_id(&clib::NetworkId::mainnet());
-        //}
 
         //let req_signer = native_script.get_required_signers();
         //info!("Len Req SIgner: {:?}",req_signer.len());

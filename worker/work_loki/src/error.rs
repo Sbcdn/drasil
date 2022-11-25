@@ -30,6 +30,8 @@ pub enum Error {
     MurinError(#[from] murin::MurinError),
     #[error("MimirError: {0}")]
     MimirError(#[from] mimir::MimirError),
+    #[error("HuginError: {0}")]
+    HuginError(#[from] hugin::error::SystemDBError),
 }
 
 #[derive(Serialize, Debug)]

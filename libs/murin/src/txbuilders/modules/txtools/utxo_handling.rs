@@ -276,14 +276,17 @@ pub fn combine_wallet_outputs(txos: &clib::TransactionOutputs) -> clib::Transact
     for o in 0..txos.len() {
         _txos.push(txos.get(o))
     }
-
+    /*
     let wallets: Vec<clib::TransactionOutput> = _txos
         .iter()
-        .filter(|n| clib::address::BaseAddress::from_address(&n.address()).is_some())
+        .filter(
+            |n| true, /*clib::address::BaseAddress::from_address(&n.address()).is_some()*/
+        )
         .map(|n| n.to_owned())
         .collect();
+    */
 
-    let addresses = wallets
+    let addresses = _txos
         .iter()
         .fold(Vec::<clib::address::Address>::new(), |mut acc, n| {
             if !acc.contains(&n.address()) {
@@ -292,7 +295,7 @@ pub fn combine_wallet_outputs(txos: &clib::TransactionOutputs) -> clib::Transact
             acc
         });
     addresses.iter().for_each(|a| {
-        let os: Vec<clib::TransactionOutput> = wallets
+        let os: Vec<clib::TransactionOutput> = _txos
             .iter()
             .filter(|n| n.address() == *a)
             .cloned()
@@ -311,7 +314,7 @@ pub fn combine_wallet_outputs(txos: &clib::TransactionOutputs) -> clib::Transact
             _ => {}
         }
     });
-
+    /*
     let r: Vec<clib::TransactionOutput> = _txos
         .iter()
         .filter(|n| clib::address::BaseAddress::from_address(&n.address()).is_none())
@@ -319,6 +322,6 @@ pub fn combine_wallet_outputs(txos: &clib::TransactionOutputs) -> clib::Transact
         .collect();
     for e in r {
         out.add(&e);
-    }
+    }*/
     out
 }

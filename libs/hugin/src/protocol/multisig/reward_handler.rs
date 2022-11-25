@@ -122,69 +122,6 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
 
     info!("determine contract...");
     let contract = determine_contracts(gtxd.get_contract_id(), bms.customer_id())?;
-    /*
-    if contract.is_none() {
-        info!("No contract ID provided, try to select contract automatically");
-        let contracts = crate::drasildb::TBContracts::get_all_contracts_for_user_typed(
-            bms.customer_id(),
-            crate::MultiSigType::SpoRewardClaim.to_string(),
-        )?;
-        let mut all_tokens_available = Vec::<bool>::new();
-        for c in contracts {
-            all_tokens_available.extend(rwdtxd.get_rewards().iter().map(|t| {
-                let fingerprint = murin::chelper::make_fingerprint(
-                    &hex::encode(t.0.to_bytes()),
-                    &hex::encode(t.1.name()),
-                )
-                .unwrap();
-                let has_wl = gungnir::TokenWhitelist::has_contract_valid_whitelisting(
-                    c.contract_id,
-                    bms.customer_id(),
-                    &fingerprint,
-                )
-                .unwrap();
-                if has_wl {
-                    // Check if whitelist token on contract also has available rewards
-                    gungnir::Rewards::get_available_rewards(
-                        &mut gcon,
-                        &gtxd
-                            .get_stake_address()
-                            .to_bech32(None)
-                            .expect("ERROR Could not construct bech32 address for stake address"),
-                        &rwdtxd
-                            .get_payment_addr()
-                            .to_bech32(None)
-                            .expect("ERROR Could not construct bech32 address for payment address"),
-                        &fingerprint,
-                        c.contract_id as i64,
-                        bms.customer_id(),
-                        murin::clib::utils::from_bignum(&t.2) as i64,
-                    )
-                    .is_ok()
-                } else {
-                    false
-                }
-            }));
-            let sum = all_tokens_available.iter().fold(true, |n, s| *s && n);
-            debug!("Available Tokens: {:?}", all_tokens_available);
-            debug!("Sum: {:?}", sum);
-
-            if sum {
-                contract = Some(vec![c]);
-                break;
-            } else {
-                all_tokens_available = Vec::<bool>::new();
-            }
-        }
-
-        if contract.is_none() {
-            return Err(CmdError::Custom {
-                str: "Automatic selection failed, no suitable contract found.".to_string(),
-            }
-            .into());
-        }
-    }
-     */
     let contract = contract.expect("Error: could not unwrap contracts");
     info!(
         "Contract selected: UID: '{}', CID '{:?}'",
@@ -330,7 +267,10 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
 
     if discnt > 0 {
         let fee = rwdtxd.get_fee().unwrap_or(0);
-        rwdtxd.set_fee(&(fee - (fee as f64 * (discnt as f64 / 100.0)) as u64))
+        rwdtxd.set_fee(&(fee - (fee as f64 * (discnt as f64 / 100.0)) as u64));
+        if fee == 0 {
+            rwdtxd.set_nofee();
+        }
     }
 
     let mut wallets = TransWallets::new();
