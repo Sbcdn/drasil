@@ -10,7 +10,7 @@
 
 pub mod api;
 pub use api::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::RWDError;
 
@@ -317,7 +317,7 @@ pub struct WhitelistNew<'a> {
     pub max_addr_repeat: &'a i32,
 }
 
-#[derive(Queryable, Identifiable, Debug, Clone)]
+#[derive(Queryable, Identifiable, Debug, Clone, Serialize, Deserialize)]
 #[diesel(table_name = discount)]
 pub struct Discount {
     pub id: i64,

@@ -10,7 +10,7 @@
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use gungnir::{Rewards, TokenInfo};
-use murin::TxData;
+use murin::{minter::models::CMintHandle, TxData};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Error, str::FromStr};
 
@@ -483,13 +483,17 @@ pub enum ScriptSpecParams {
         metadata: Vec<String>,
         selling_price: u64,
     },
-    NftMinter {
+    Minter {
         mint_tokens: Option<Vec<MinterToken>>,
         receiver_stake_addr: Option<String>,
         receiver_payment_addr: String,
         mint_metadata: Option<String>,
         auto_mint: Option<bool>,
         contract_id: i64,
+    },
+    NftCollectionMinter {
+        mint_handles: Vec<CMintHandle>,
+        claim_stake_addr: String,
     },
     TokenMinter {},
     NftOffer {
@@ -583,6 +587,26 @@ impl ScriptSpecParams {
         }
     }
 
+    pub async fn into_colmintdata(
+        &self,
+    ) -> Result<murin::txbuilders::minter::models::ColMinterTxData, murin::error::MurinError> {
+        use murin::error::MurinError;
+        use murin::txbuilders::minter::models::*;
+
+        match self {
+            ScriptSpecParams::NftCollectionMinter {
+                mint_handles,
+                claim_stake_addr,
+            } => {
+                let addr = murin::b_decode_addr_na(claim_stake_addr)?;
+                Ok(ColMinterTxData::new(mint_handles.to_vec(), addr))
+            }
+            _ => Err(MurinError::new(
+                "provided wrong specfic paramter for this contract",
+            )),
+        }
+    }
+
     pub async fn into_mintdata(
         &self,
     ) -> Result<murin::txbuilders::minter::MinterTxData, murin::error::MurinError> {
@@ -590,7 +614,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::minter::MinterTxData;
 
         match self {
-            ScriptSpecParams::NftMinter {
+            ScriptSpecParams::Minter {
                 mint_tokens,
                 receiver_stake_addr,
                 receiver_payment_addr,
@@ -640,6 +664,7 @@ impl ScriptSpecParams {
                 metadata,
                 receiver,
             } => {
+                log::debug!("Try to parse OneShotType");
                 let mut assets = Vec::<murin::txbuilders::MintTokenAsset>::new();
                 for (i, t) in tokennames.iter().enumerate() {
                     let tn = murin::chelper::string_to_assetname(&hex::encode(t.as_bytes()))?;

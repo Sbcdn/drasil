@@ -13,8 +13,10 @@ mod handlers;
 mod models;
 
 use deadpool_lapin::Pool;
+use gungnir::models::MintReward;
 use lapin::ConnectionProperties;
 use lazy_static::lazy_static;
+use murin::{clib::Assets, utils::to_bignum, AssetName, MultiAsset, PolicyID};
 use std::env;
 
 lazy_static! {
@@ -99,23 +101,21 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             log::debug!("try to esteblish connection ...");
             let gcon = &mut gungnir::establish_connection()?;
             log::debug!("try to get mint project ...");
-            let mp =
-                match gungnir::minting::models::MintProject::get_mintproject_by_id(gcon, data.mpid)
-                {
-                    Ok(o) => o,
-                    Err(e) => {
-                        log::error!("could not find mint project: {}", e.to_string());
-                        channel
-                            .basic_reject(
-                                deliv.delivery_tag,
-                                lapin::options::BasicRejectOptions::default(),
-                            )
-                            .await?;
-                        return Err(crate::error::Error::Custom(
-                            "could not find mint project:".to_owned(),
-                        ));
-                    }
-                };
+            let mp = match gungnir::minting::models::MintProject::get_mintproject_by_id(data.mpid) {
+                Ok(o) => o,
+                Err(e) => {
+                    log::error!("could not find mint project: {}", e.to_string());
+                    channel
+                        .basic_reject(
+                            deliv.delivery_tag,
+                            lapin::options::BasicRejectOptions::default(),
+                        )
+                        .await?;
+                    return Err(crate::error::Error::Custom(
+                        "could not find mint project:".to_owned(),
+                    ));
+                }
+            };
 
             if !mp.active {
                 log::error!("requesed to mint on an inactive project");
@@ -258,10 +258,31 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
                 }
             };
 
+            let mint_contract = hugin::database::TBContracts::get_contract_uid_cid(
+                mp.user_id,
+                mp.mint_contract_id,
+            )?;
+
             match nft {
                 Some(n) => {
                     log::debug!("nft: {:?}", n);
-                    // ToDo: Create Mint Reward for User and NFT
+                    let mut mint_value = murin::clib::utils::Value::zero();
+                    let mut assets = Assets::new();
+                    assets.insert(&AssetName::new(n.asset_name_b.clone())?, &to_bignum(1));
+                    let mut ma = MultiAsset::new();
+                    ma.insert(
+                        &PolicyID::from_hex(&mint_contract.policy_id.unwrap()).unwrap(),
+                        &assets,
+                    );
+                    mint_value.set_multiasset(&ma);
+
+                    MintReward::create_mintreward(
+                        mp.user_id,
+                        mp.mint_contract_id,
+                        &payment_addr,
+                        vec![&n.asset_name_b],
+                        vec![&mint_value.to_bytes()],
+                    )?;
                 }
                 None => {
                     return Err(crate::error::Error::Custom(

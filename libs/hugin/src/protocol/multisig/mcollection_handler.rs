@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 /*
 #################################################################################
 # See LICENSE.md for full license information.                                  #
@@ -7,10 +9,14 @@
 #################################################################################
 */
 use crate::datamodel::ScriptSpecParams;
-use crate::protocol::{convert_nfts_to_minter_token_asset, create_response, determine_contracts};
-use crate::BuildMultiSig;
-use crate::CmdError;
-use murin::PerformTxb;
+use crate::protocol::create_response;
+use crate::{discount, BuildMultiSig, TBContracts};
+use crate::{CmdError, TBMultiSigLoc};
+use gungnir::models::MintProject;
+use gungnir::Whitelist;
+use murin::minter::build_minttx::{AtCMBuilder, AtCMParams};
+use murin::utils::{from_bignum, to_bignum};
+use murin::{NativeScript, PerformTxb, ServiceFees};
 
 pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     match bms
@@ -18,10 +24,9 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         .script()
         .ok_or("ERROR: No specific contract data supplied")?
     {
-        ScriptSpecParams::NftMinter {
-            receiver_stake_addr,
-            receiver_payment_addr,
-            ..
+        ScriptSpecParams::NftCollectionMinter {
+            mint_handles,
+            claim_stake_addr,
         } => {
             let err = Err(CmdError::Custom {
                 str: format!(
@@ -30,15 +35,27 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 ),
             }
             .into());
-            if murin::decode_addr(&receiver_payment_addr).await.is_err() {
+            if mint_handles.is_empty() {
                 return err;
-            } else if let Some(saddr) = receiver_stake_addr {
-                if murin::wallet::get_stake_address(&murin::decode_addr(&saddr).await?)?
+            }
+            if murin::b_decode_addr(&mint_handles[0].pay_addr)
+                .await
+                .is_err()
+            {
+                return err;
+            } else {
+                let payer0 = murin::b_decode_addr(&mint_handles[0].pay_addr).await?;
+                if murin::wallet::get_stake_address(&payer0)?
                     != murin::wallet::get_stake_address(
-                        &murin::decode_addr(&receiver_payment_addr).await?,
+                        &murin::b_decode_addr(&claim_stake_addr).await?,
                     )?
                 {
                     return err;
+                }
+                for mint in &mint_handles {
+                    if payer0 != murin::b_decode_addr(&mint.pay_addr).await? {
+                        return err;
+                    }
                 }
             }
         }
@@ -52,168 +69,153 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     log::debug!("Checks okay...");
 
     log::debug!("Try to create raw data...");
-    let mut minttxd = bms
+    let minttxd = bms
         .transaction_pattern()
         .script()
         .unwrap()
-        .into_mintdata()
+        .into_colmintdata()
         .await?;
-    minttxd.set_claim_addr(
-        murin::b_decode_addr(&mimir::api::select_addr_of_first_transaction(
-            &minttxd.get_stake_addr_bech32()?.unwrap(),
-        )?)
-        .await?,
-    );
+    let first_address = murin::b_decode_addr(&mimir::api::select_addr_of_first_transaction(
+        &minttxd.claim_stake_addr.to_bech32(None)?,
+    )?)
+    .await?;
     let mut gtxd = bms.transaction_pattern().into_txdata().await?;
 
-    log::debug!("Check contract...");
-    let contract = determine_contracts(gtxd.get_contract_id(), bms.customer_id())?
-        .expect("Could not find valid contract");
+    let mintproject_ids = minttxd
+        .mint_handles
+        .iter()
+        .fold(Vec::<i64>::new(), |mut acc, n| {
+            acc.push(n.project_id);
+            acc
+        });
+
+    log::debug!("Check contracts and mint projects...");
+    let mut mintprojects = Vec::<(i64, MintProject, TBContracts, Option<TBMultiSigLoc>)>::new();
+    for id in mintproject_ids {
+        let p = MintProject::get_mintproject_by_id(id)?;
+        let c = TBContracts::get_contract_uid_cid(bms.customer_id(), p.mint_contract_id)?;
+        mintprojects.push((id, p, c, None));
+    }
 
     log::debug!("Try to establish database connection...");
     let mut drasildbcon = crate::database::drasildb::establish_connection()?;
+    let mut gcon = gungnir::establish_connection()?;
+
+    let mut fees = Vec::<ServiceFees>::new();
+    let mut ns_scripts = Vec::<NativeScript>::new();
+    let mut whitelists = Vec::<Whitelist>::new();
 
     log::debug!("Try to determine additional data...");
-    let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-        &mut drasildbcon,
-        &contract[0].contract_id,
-        &contract[0].user_id,
-        &contract[0].version,
-    )?;
+    for c in mintprojects.iter_mut() {
+        let kl = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
+            &mut drasildbcon,
+            &c.2.contract_id,
+            &c.2.user_id,
+            &c.2.version,
+        )?;
+        c.3 = Some(kl.clone());
+        if let Some(addr) = kl.fee_wallet_addr {
+            fees.push(ServiceFees {
+                fee: to_bignum(kl.fee.unwrap() as u64),
+                fee_addr: murin::b_decode_addr(&addr).await?,
+            });
+        }
+        ns_scripts.push(NativeScript::from_bytes(hex::decode(&c.2.plutus)?)?);
+        if let Some(whitelist) = &c.1.whitelists {
+            for w in whitelist.iter() {
+                whitelists.push(gungnir::Whitelist::get_whitelist(&mut gcon, *w)?);
+            }
+        }
+    }
 
-    log::debug!("Try to determine fees...");
-    if let Some(feeaddr) = keyloc.fee_wallet_addr {
-        match murin::b_decode_addr(&feeaddr).await {
-            Ok(a) => minttxd.set_fee_addr(a),
+    // Fees and Discount
+    fees.sort_by(|a, b| match a.fee.compare(&b.fee) {
+        0 => Ordering::Equal,
+        1 => Ordering::Greater,
+        _ => Ordering::Less,
+    });
+    // Contains highest contract fee
+    let mut fees = vec![fees.last().unwrap().clone()];
+
+    let mut r = Vec::<i64>::new();
+    for c in &mintprojects {
+        r.push(discount(gtxd.get_inputs(), c.2.contract_id, c.1.user_id));
+    }
+    r.sort();
+    let discnt = r[r.len() - 1];
+    if discnt > 0 {
+        let fee = from_bignum(&fees[0].fee);
+        fees[0].fee = to_bignum(fee - (fee as f64 * (discnt as f64 / 100.0)) as u64);
+        if fee == 0 {
+            fees = vec![];
+        }
+    }
+    log::debug!("Check nft data...");
+    for m in &minttxd.mint_handles {
+        let mintreward = gungnir::minting::models::MintReward::get_mintreward_by_id(m.id);
+        match mintreward {
+            Ok(mr) => {
+                if mr.processed
+                    || mr.minted
+                    || mr.project_id != m.project_id
+                    || mr.pay_addr != first_address.to_bech32(None).unwrap()
+                {
+                    return Err(CmdError::Custom {
+                        str: format!("ERROR invalid mint reward '{:?}'", mr),
+                    }
+                    .into());
+                }
+                let mut tv = murin::clib::utils::Value::zero();
+                for nft in &mr.v_nfts_b {
+                    let v = murin::clib::utils::Value::from_bytes(nft.to_owned())?;
+                    tv = tv.checked_add(&v)?;
+                }
+                if let Some(x) = m.value()?.compare(&tv) {
+                    if x != 0 {
+                        return Err(CmdError::Custom {
+                            str: format!("ERROR claim values dont match '{:?}'", mr),
+                        }
+                        .into());
+                    }
+                }
+            }
             Err(e) => {
                 return Err(CmdError::Custom {
-                    str: format!("ERROR could not decode fee address: '{:?}'", e.to_string()),
+                    str: format!("ERROR mint reward does not exist: '{:?}'", e),
                 }
                 .into());
             }
-        };
-    };
-
-    if let Some(fee) = keyloc.fee {
-        minttxd.set_fee(fee)
-    };
-
-    let ns_addr: Option<murin::address::Address> =
-        Some(murin::b_decode_addr(&contract[0].address).await?);
-    // ToDo:
-    //if minttxd.get_to_vendor_script() == true {
-    //    ns_addr = Some(contract.address);
-    //}
-    let ns_script = contract[0].plutus.clone();
-
-    log::debug!("Try to determine nft data...");
-    let mut gcon = gungnir::establish_connection()?;
-    let mint_project = gungnir::minting::models::MintProject::get_mintproject_by_uid_cid(
-        &mut gcon,
-        bms.customer_id(),
-        contract[0].contract_id,
-    )?;
-    let _whitelist = if let Some(whitelists) = mint_project.whitelists {
-        let mut v = Vec::<gungnir::Whitelist>::new();
-        for w in whitelists.iter() {
-            v.push(gungnir::Whitelist::get_whitelist(&mut gcon, *w)?);
-        }
-        v
-    } else {
-        Vec::<gungnir::Whitelist>::new()
-    };
-
-    let policy_id = contract[0]
-        .policy_id
-        .clone()
-        .expect("Error: The provided contract is not eligable to mint, no policy ID");
-    let payment_addr_bech32 = minttxd.get_payment_addr_bech32()?;
-
-    let mut avail_rewards = Vec::<gungnir::Rewards>::new();
-    let mut eligable_nfts = Vec::<gungnir::minting::models::Nft>::new();
-
-    let mut nfts_to_mint = gungnir::minting::models::Nft::get_nft_by_claim_addr(
-        mint_project.id,
-        &payment_addr_bech32,
-        &mint_project.nft_table_name,
-    )?;
-    nfts_to_mint.retain(|n| !n.minted);
-    if nfts_to_mint.is_empty() {
-        return Err(CmdError::Custom {
-            str: "ERROR No assets for this address available".to_string(),
-        }
-        .into());
-    }
-    for nft in &nfts_to_mint {
-        let fingerprint = nft.fingerprint.clone();
-        let rewards = gungnir::Rewards::get_avail_specific_asset_reward(
-            &mut gcon,
-            &payment_addr_bech32,
-            &murin::cip30::get_bech32_stake_address_from_str(&payment_addr_bech32)?,
-            &fingerprint,
-            contract[0].contract_id,
-            bms.customer_id(),
-        )?;
-        if !rewards.is_empty() {
-            eligable_nfts.push(nft.clone());
-        }
-        avail_rewards.extend(rewards.iter().map(|n| n.to_owned()));
-    }
-    if avail_rewards.len() != eligable_nfts.len() {
-        return Err(CmdError::Custom {
-            str: "ERROR there is some missmatch in your available rewards please contact support"
-                .to_string(),
-        }
-        .into());
-    } else {
-        let claimed = gungnir::Claimed::get_claims(
-            &mut gcon,
-            &murin::cip30::get_bech32_stake_address_from_str(&payment_addr_bech32)?,
-            contract[0].contract_id,
-            bms.customer_id(),
-        )?;
-        //ToDo: Add parameter for NFTs minted per transaction
-        let mut max_nfts = 1;
-        if let Some(max) = mint_project.max_mint_p_addr {
-            if claimed.len() >= max as usize {
-                return Err(CmdError::Custom {
-                    str: "ERROR No assets for this address available".to_string(),
-                }
-                .into());
-            }
-            max_nfts = max;
-        }
-        for _ in 0..max_nfts {
-            nfts_to_mint.extend(
-                gungnir::minting::models::Nft::claim_random_unminted_nft(
-                    mint_project.id,
-                    &mint_project.nft_table_name,
-                    &minttxd.get_payment_addr_bech32()?,
-                    0,
-                )
-                .await?
-                .into_iter(),
-            )
         }
     }
-
-    // create MintTokenAsset datatype for all nfts to be minted
-    minttxd.set_mint_tokens(convert_nfts_to_minter_token_asset(
-        &nfts_to_mint,
-        &policy_id,
-    )?);
 
     // create transaction specific metadata
     let mut metadataassets = Vec::<murin::minter::AssetMetadata>::new();
-    for nft in &nfts_to_mint {
-        metadataassets.push(serde_json::from_str(nft.metadata.as_ref().unwrap())?)
+    let mut nfts = Vec::<gungnir::minting::models::Nft>::new();
+
+    for mh in &minttxd.mint_handles {
+        let nft_ids = mh.nft_ids()?;
+        for nftb in nft_ids {
+            let mp: Vec<_> = mintprojects
+                .iter()
+                .filter(|n| n.0 == mh.project_id)
+                .collect();
+            let nft = gungnir::minting::models::Nft::get_nft_by_assetnameb(
+                mh.project_id,
+                &mp[0].1.nft_table_name,
+                &nftb.name(),
+            )?;
+            if let Some(metadata) = &nft.metadata {
+                metadataassets.push(serde_json::from_str(metadata)?)
+            }
+            nfts.push(nft);
+        }
     }
+
     let metadata = murin::minter::Cip25Metadata {
         assets: metadataassets,
         other: None,
         version: "1.0".to_string(),
     };
-    minttxd.set_metadata(metadata);
 
     log::debug!("Try to determine slot...");
     let mut dbsync = match mimir::establish_connection() {
@@ -239,30 +241,25 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     };
     gtxd.set_current_slot(slot as u64);
 
-    //ToDO:
-    // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
+    let mut pvks = Vec::<String>::new();
+    let mut scripts = Vec::<NativeScript>::new();
+    let mut contract_ids = Vec::<i64>::new();
+    for m in mintprojects {
+        let ident =
+            crate::encryption::mident(&m.2.user_id, &m.2.contract_id, &m.2.version, &m.2.address);
+        let pvs = crate::encryption::decrypt_pkvs(m.3.unwrap().pvks, &ident).await?;
+        pvks.extend(pvs.iter().map(|n| n.to_owned()));
+        scripts.push(NativeScript::from_bytes(hex::decode(m.2.plutus)?)?);
+        contract_ids.push(m.2.contract_id);
+    }
 
-    let ident = crate::encryption::mident(
-        &contract[0].user_id,
-        &contract[0].contract_id,
-        &contract[0].version,
-        &contract[0].address,
-    );
-    let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
+    // TODO: Prices are not implemented yet
 
     log::debug!("Try to build transaction...");
+    let txb_param: AtCMParams = (&scripts, &None, &metadata, &Some(fees), &minttxd);
 
-    let txb_param: murin::txbuilders::minter::build_minttx::AtCMParams = (
-        ns_addr,
-        murin::clib::NativeScript::from_bytes(hex::decode(ns_script)?).map_err::<CmdError, _>(
-            |_| CmdError::Custom {
-                str: "could not convert string to native script".to_string(),
-            },
-        )?,
-        &minttxd,
-    );
-    let minter = murin::txbuilders::minter::build_minttx::AtCMBuilder::new(txb_param);
-    let builder = murin::TxBuilder::new(&gtxd, &pkvs);
+    let minter = AtCMBuilder::new(txb_param);
+    let builder = murin::TxBuilder::new(&gtxd, &pvks);
     let bld_tx = builder.build(&minter).await?;
 
     log::debug!("Try to create raw tx...");
@@ -276,7 +273,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         &bld_tx.get_used_utxos(),
         &hex::encode(gtxd.get_stake_address().to_bytes()),
         &(bms.customer_id()),
-        &[contract[0].contract_id],
+        &contract_ids,
     );
     debug!("RAWTX data: {:?}", tx);
 
@@ -286,6 +283,5 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         &tx,
         bms.transaction_pattern().wallet_type().as_ref(),
     )?;
-
-    Ok(ret.to_string())
+    Ok(serde_json::json!(ret).to_string())
 }

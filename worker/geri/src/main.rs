@@ -288,10 +288,10 @@ pub fn main() -> Result<()> {
                 if use_stream_trimmer {
                     for stream in streams.clone() {
                         let maxlen = match &stream.clone()[..] {
-                            "transaction" => 50000,
-                            "block" => 10000,
+                            "transaction" => 25000,
+                            "block" => 5000,
                             "rollback" => 1000,
-                            _ => 5000,
+                            _ => 1000,
                         };
                         run_stream_trimmer(stream, maxlen)?;
                         log::info!("Ran stream trimmer")

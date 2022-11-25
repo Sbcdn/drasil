@@ -8,6 +8,7 @@
 */
 pub mod build_minttx;
 pub mod build_oneshot_mint;
+pub mod models;
 use super::PerformTxb;
 use crate::MurinError;
 use crate::{MintTokenAsset, TokenAsset};
@@ -250,14 +251,14 @@ impl core::str::FromStr for MinterTxData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetadataOther {
     pub key: String,
-    pub value: serde_json::Value,
+    pub value: String, //serde_json::Value,
 }
 
 impl MetadataOther {
     pub fn from_json(json: &serde_json::Value, key: &str) -> Vec<MetadataOther> {
         vec![MetadataOther {
             key: key.to_string(),
-            value: json.clone(),
+            value: json.to_string(),
         }]
     }
 }
@@ -446,6 +447,123 @@ pub fn mintasset_into_tokenasset(m: Vec<MintTokenAsset>, p: clib::PolicyID) -> V
     out
 }
 
+pub fn make_mint_metadata(
+    raw_metadata: &Cip25Metadata,
+    // tokens: Vec<TokenAsset>,
+    policy_id: clib::PolicyID,
+) -> std::result::Result<clib::metadata::GeneralTransactionMetadata, MurinError> {
+    pub use clib::metadata::*;
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //Auxiliary Data
+    //  Plutus Script and Metadata
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    let policy_str = hex::encode(policy_id.to_bytes());
+    let mut toplevel_metadata = clib::metadata::GeneralTransactionMetadata::new();
+    //let mut raw_metadata =  Vec::<String>::new();
+
+    debug!("RawMetadata: {:?}", raw_metadata);
+
+    // Check if all tokens have metadata available
+    /* let mut i = 0;
+       'avail_tok: for token in tokens.clone() {
+           let t_name = str::from_utf8(&token.1.name())?.to_string();
+           debug!("TName: {}", t_name);
+           for asset in raw_metadata.assets.clone() {
+               if asset.tokenname == t_name {
+                   i += 1;
+                   continue 'avail_tok;
+               }
+           }
+       }
+       if tokens.len() != i {
+           return Err(MurinError::new(&format!("Error provided metadata and tokens to mint are not fitting, please provide correct metadata: \n {:?}",raw_metadata)));
+       }
+    */
+    let mut metamap = clib::metadata::MetadataMap::new();
+    let mut assetmap = MetadataMap::new();
+    for asset in &raw_metadata.assets {
+        make_721_asset_entry(asset, &mut assetmap)?;
+    }
+    let metadatum = clib::metadata::TransactionMetadatum::new_map(&assetmap);
+    metamap.insert_str(&policy_str, &metadatum)?;
+    metamap.insert_str(
+        "version",
+        &clib::metadata::TransactionMetadatum::new_text(raw_metadata.version.clone())?,
+    )?;
+
+    // Other
+    if let Some(other) = &raw_metadata.other {
+        for o in other.clone() {
+            let v: serde_json::Value = serde_json::from_str(&o.value)?;
+            if !v.is_null() {
+                let mut olist = MetadataList::new();
+
+                if v.is_i64() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
+
+                if v.is_string() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
+                    )?;
+                }
+
+                if v.is_array() {
+                    olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                        v.to_string(),
+                    )?);
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_list(&olist),
+                    )?;
+                }
+
+                if v.is_boolean() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
+
+                if v.is_object() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
+                    )?;
+                }
+
+                if v.is_number() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
+            } else {
+                metamap.insert_str(
+                    &o.key,
+                    &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
+                )?;
+            }
+        }
+    }
+
+    let metadata = clib::metadata::TransactionMetadatum::new_map(&metamap);
+    toplevel_metadata.insert(&cutils::to_bignum(721u64), &metadata);
+
+    Ok(toplevel_metadata)
+}
+
 pub fn make_mint_metadata_from_json(
     raw_metadata: &Cip25Metadata,
     tokens: Vec<TokenAsset>,
@@ -494,21 +612,64 @@ pub fn make_mint_metadata_from_json(
     // Other
     if let Some(other) = &raw_metadata.other {
         for o in other.clone() {
-            if !o.value.is_null() {
+            let v: serde_json::Value = serde_json::from_str(&o.value)?;
+            if !v.is_null() {
                 let mut olist = MetadataList::new();
 
-                olist.add(&clib::metadata::TransactionMetadatum::new_text(
-                    o.value.to_string(),
-                )?);
+                if v.is_i64() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
 
-                metamap.insert_str(
-                    &o.key,
-                    &clib::metadata::TransactionMetadatum::new_list(&olist),
-                )?;
+                if v.is_string() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
+                    )?;
+                }
+
+                if v.is_array() {
+                    olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                        v.to_string(),
+                    )?);
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_list(&olist),
+                    )?;
+                }
+
+                if v.is_boolean() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
+
+                if v.is_object() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
+                    )?;
+                }
+
+                if v.is_number() {
+                    metamap.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
             } else {
                 metamap.insert_str(
                     &o.key,
-                    &clib::metadata::TransactionMetadatum::new_text(o.value[0].to_string())?,
+                    &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
                 )?;
             }
         }
@@ -585,28 +746,72 @@ pub fn make_721_asset_entry(
             //Other
             if let Some(other) = f.other {
                 log::debug!("Found some key / values in other: {:?}", other);
-                for o in other {
-                    if !o.value.is_null() {
-                        let mut filelist = MetadataList::new();
+                for o in other.clone() {
+                    let v: serde_json::Value = serde_json::from_str(&o.value)?;
+                    if !v.is_null() {
+                        let mut olist = MetadataList::new();
 
-                        filelist.add(&clib::metadata::TransactionMetadatum::new_text(
-                            o.value.to_string(),
-                        )?);
+                        if v.is_i64() {
+                            filemap.insert_str(
+                                &o.key,
+                                &clib::metadata::TransactionMetadatum::new_int(
+                                    &clib::utils::Int::new_i32(v.as_i64().unwrap() as i32),
+                                ),
+                            )?;
+                        }
 
-                        filemap.insert_str(
-                            &o.key,
-                            &clib::metadata::TransactionMetadatum::new_list(&filelist),
-                        )?;
+                        if v.is_string() {
+                            filemap.insert_str(
+                                &o.key,
+                                &clib::metadata::TransactionMetadatum::new_text(
+                                    o.value.to_string(),
+                                )?,
+                            )?;
+                        }
+
+                        if v.is_array() {
+                            olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                                v.to_string(),
+                            )?);
+                            filemap.insert_str(
+                                &o.key,
+                                &clib::metadata::TransactionMetadatum::new_list(&olist),
+                            )?;
+                        }
+
+                        if v.is_boolean() {
+                            filemap.insert_str(
+                                &o.key,
+                                &clib::metadata::TransactionMetadatum::new_int(
+                                    &clib::utils::Int::new_i32(v.as_i64().unwrap() as i32),
+                                ),
+                            )?;
+                        }
+
+                        if v.is_object() {
+                            filemap.insert_str(
+                                &o.key,
+                                &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
+                            )?;
+                        }
+
+                        if v.is_number() {
+                            filemap.insert_str(
+                                &o.key,
+                                &clib::metadata::TransactionMetadatum::new_int(
+                                    &clib::utils::Int::new_i32(v.as_i64().unwrap() as i32),
+                                ),
+                            )?;
+                        }
                     } else {
                         filemap.insert_str(
                             &o.key,
-                            &clib::metadata::TransactionMetadatum::new_text(
-                                o.value[0].to_string(),
-                            )?,
+                            &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
                         )?;
                     }
                 }
             }
+
             mfiles.add(&clib::metadata::TransactionMetadatum::new_map(&filemap));
         }
         asset_metadata.insert_str(
@@ -618,21 +823,64 @@ pub fn make_721_asset_entry(
     // Other
     if let Some(other) = &asset.other {
         for o in other.clone() {
-            if !o.value.is_null() {
+            let v: serde_json::Value = serde_json::from_str(&o.value)?;
+            if !v.is_null() {
                 let mut olist = MetadataList::new();
 
-                olist.add(&clib::metadata::TransactionMetadatum::new_text(
-                    o.value.to_string(),
-                )?);
+                if v.is_i64() {
+                    asset_metadata.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
 
-                asset_metadata.insert_str(
-                    &o.key,
-                    &clib::metadata::TransactionMetadatum::new_list(&olist),
-                )?;
+                if v.is_string() {
+                    asset_metadata.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
+                    )?;
+                }
+
+                if v.is_array() {
+                    olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                        v.to_string(),
+                    )?);
+                    asset_metadata.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_list(&olist),
+                    )?;
+                }
+
+                if v.is_boolean() {
+                    asset_metadata.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
+
+                if v.is_object() {
+                    asset_metadata.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
+                    )?;
+                }
+
+                if v.is_number() {
+                    asset_metadata.insert_str(
+                        &o.key,
+                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                            v.as_i64().unwrap() as i32,
+                        )),
+                    )?;
+                }
             } else {
                 asset_metadata.insert_str(
                     &o.key,
-                    &clib::metadata::TransactionMetadatum::new_text(o.value[0].to_string())?,
+                    &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
                 )?;
             }
         }

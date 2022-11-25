@@ -107,20 +107,23 @@ pub struct MintReward {
     pub id: i64,
     pub project_id: i64,
     pub pay_addr: String,
+    pub nft_ids: Vec<Vec<u8>>,
     pub v_nfts_b: Vec<Vec<u8>>, // serialized clib::utils::Value
-    minted: bool,
+    pub processed: bool,
+    pub minted: bool,
     #[serde(serialize_with = "to_ts")]
     pub created_at: DateTime<Utc>,
     #[serde(serialize_with = "to_ts")]
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Queryable, Identifiable, Debug, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = mint_rewards)]
 pub struct MintRewardNew<'a> {
-    pub id: i64,
     pub project_id: &'a i64,
     pub pay_addr: &'a String,
+    pub nft_ids: Vec<&'a Vec<u8>>,
     pub v_nfts_b: Vec<&'a Vec<u8>>, // serialized clib::utils::Value
+    pub processed: &'a bool,
     pub minted: &'a bool,
 }

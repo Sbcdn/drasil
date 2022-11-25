@@ -317,14 +317,15 @@ impl TransactionUnspentOutputs {
     pub fn sum_avail_tokens(&self) -> Tokens {
         let mut out = Tokens::new();
         self.0.iter().for_each(|n| {
-            let ma = n.output().amount().multiasset().unwrap();
-            let policies = ma.keys();
-            for p in 0..policies.len() {
-                let assets = ma.get(&policies.get(p)).unwrap();
-                let ans = assets.keys();
-                for a in 0..assets.keys().len() {
-                    let n = assets.get(&ans.get(a)).unwrap();
-                    out.push((policies.get(p), ans.get(a), n))
+            if let Some(ma) = n.output().amount().multiasset() {
+                let policies = ma.keys();
+                for p in 0..policies.len() {
+                    let assets = ma.get(&policies.get(p)).unwrap();
+                    let ans = assets.keys();
+                    for a in 0..assets.keys().len() {
+                        let n = assets.get(&ans.get(a)).unwrap();
+                        out.push((policies.get(p), ans.get(a), n))
+                    }
                 }
             }
         });

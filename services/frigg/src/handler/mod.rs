@@ -17,6 +17,7 @@
 
 pub mod adm;
 pub mod dapi;
+pub mod discounts;
 pub mod mint;
 pub mod rwd;
 

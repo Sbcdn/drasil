@@ -65,7 +65,7 @@ pub enum Command {
 impl Command {
     pub fn from_frame(frame: Frame) -> crate::Result<Command> {
         let mut parse = Parse::new(frame)?;
-
+        log::debug!("FromFrame: {:?}", &parse);
         let command_name = parse.next_string()?.to_lowercase();
 
         let command: Command = match &command_name[..] {

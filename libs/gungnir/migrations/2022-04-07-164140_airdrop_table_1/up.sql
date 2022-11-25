@@ -137,3 +137,21 @@ CREATE TRIGGER set_timestamp
 BEFORE UPDATE ON discount
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
+
+CREATE TABLE mint_rewards (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL,
+    pay_addr VARCHAR NOT NULL,
+    nft_ids Bytea[] NOT NULL,
+    v_nfts_b Bytea[] NOT NULL,
+    processed BOOLEAN NOT NULL,
+    minted BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (project_id,nft_ids)
+);
+
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON mint_rewards
+FOR EACH ROW
+EXECUTE PROCEDURE trigger_set_timestamp();

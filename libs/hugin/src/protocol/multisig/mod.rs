@@ -18,5 +18,5 @@ pub(crate) use moneshot_handler::handle_onehshot_mint;
 pub(crate) mod cpo_handler;
 pub(crate) use cpo_handler::handle_customer_payout;
 
-pub(crate) mod testrwd_handler;
-pub(crate) use testrwd_handler::handle_testrewards;
+//pub(crate) mod testrwd_handler;
+//pub(crate) use testrwd_handler::handle_testrewards;

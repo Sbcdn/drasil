@@ -92,17 +92,18 @@ impl BuildMultiSig {
                 };
             }
             MultiSigType::ClAPIOneShotMint => {
+                log::debug!("ClAPIOneShotMint");
                 ret = match multisig::handle_onehshot_mint(&self).await {
                     Ok(s) => s,
                     Err(e) => e.to_string(),
                 };
             }
-            MultiSigType::TestRewards => {
+            /*  MultiSigType::TestRewards => {
                 ret = match multisig::handle_testrewards(&self).await {
                     Ok(s) => s,
                     Err(e) => e.to_string(),
                 };
-            }
+            } */
             MultiSigType::CustomerPayout => {
                 ret = match multisig::handle_customer_payout(&self).await {
                     Ok(s) => s,

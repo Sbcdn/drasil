@@ -30,7 +30,7 @@ WORKDIR /heimdallr-build
 ENV CARGO_HOME=/heimdallr-build/.cargo
 COPY ./Cargo.toml ./                       
 COPY ./.cargo/config $CARGO_HOME/config
-COPY ./.cargo/git $CARGO_HOME/git
+#COPY ./.cargo/git $CARGO_HOME/git
 COPY ./src ./src
 COPY ./.cargo/libs/hugin /libs/hugin
 COPY ./.cargo/libs/murin /libs/murin

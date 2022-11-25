@@ -1267,9 +1267,10 @@ impl Discount {
             .get_result::<Discount>(conn)?)
     }
 
-    pub fn remove_discount(conn: &mut PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
-        let result =
-            diesel::delete(discount::table.filter(discount::id.eq(wl_in))).execute(conn)?;
+    pub fn remove_discount(id: &i64) -> Result<usize, RWDError> {
+        let conn = &mut establish_connection()?;
+
+        let result = diesel::delete(discount::table.filter(discount::id.eq(id))).execute(conn)?;
         Ok(result)
     }
 

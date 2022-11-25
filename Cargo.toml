@@ -23,6 +23,4 @@ members = [
     "libs/dvltath",
     "services/loki",
     "worker/work_loki",
-    "libs/cdp",
-    "libs/csl_common",
 ]
