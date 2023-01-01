@@ -32,9 +32,9 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     let po = TBCaPayment::find(&poid.get_po_id())?;
 
     if po.stauts_pa == "cancel" || po.stauts_bl.is_some() {
-        return Err(Box::new(SystemDBError::Custom(format!(
-            "ERROR payout is invalid",
-        ))));
+        return Err(Box::new(SystemDBError::Custom(
+            "ERROR payout is invalid".to_string(),
+        )));
     }
 
     log::debug!("Verify password...");
