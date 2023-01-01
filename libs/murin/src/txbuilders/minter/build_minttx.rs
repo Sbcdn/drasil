@@ -9,6 +9,7 @@
 use crate::error::MurinError;
 use crate::hfn::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
 use crate::minter::*;
+use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
 use crate::{htypes::*, ServiceFees};
 
 use crate::minter::models::CMintHandle;
@@ -100,6 +101,10 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         let mut mint_val = CMintHandle::total_value(&self.stxd.mint_handles)?;
         let min_utxo_val = calc_min_ada_for_utxo(&mint_val, None);
         mint_val.set_coin(&min_utxo_val);
+        txouts.add(&clib::TransactionOutput::new(
+            &gtxd.get_senders_address(None).unwrap(),
+            &mint_val,
+        ));
 
         let receiver = Address::from_bech32(&self.stxd.mint_handles[0].pay_addr)?;
 
@@ -133,16 +138,10 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             input_txuos.remove_used_utxos(used_utxos);
         }
 
-        let k = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)?;
-        info!("K: {:?}", k);
-
         let collateral_input_txuo = gtxd.clone().get_collateral();
         debug!("\nCollateral Input: {:?}", collateral_input_txuo);
 
         // Balance TX
-        debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
-        debug!("Before Balance: Transaction Outputs: {:?}", txouts);
-
         let mut fee_paied = false;
         let mut first_run = true;
         let mut txos_paied = false;
@@ -229,7 +228,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             None,
             &fcrun,
         )?;
-
+        let txouts_fin = combine_wallet_outputs(&txouts_fin);
         ////////////////////////////////////////////////////////////////////////////////////////////
         //
         // MINT ASSETS
@@ -237,9 +236,11 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         ////////////////////////////////////////////////////////////////////////////////////////////
         let mut mintasset = clib::MintAssets::new();
 
-        //for token in minttokens {
-        //   mintasset.insert(&token.1, clib::utils::Int::new(&token.2));
-        //}
+        for token in &self.stxd.mint_handles {
+            for t in &token.nft_ids()? {
+                mintasset.insert(t, clib::utils::Int::new_i32(1));
+            }
+        }
 
         let mint = clib::Mint::new_from_entry(&mintpolicy, &mintasset);
 

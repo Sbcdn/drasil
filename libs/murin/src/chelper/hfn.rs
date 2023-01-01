@@ -1571,16 +1571,8 @@ pub fn balance_tx(
                 debug!("Acc after clamped sub: \n{:?}", acc_change);
                 debug!("------------------------------------------------------------------\n\n");
             }
-            let mut min_utxo = cutils::to_bignum(MIN_ADA);
-            match acc_change.multiasset() {
-                Some(_) => {
-                    if acc_change.multiasset().unwrap().len() != 0 {
-                        //calculate minUtxo
-                        min_utxo = txbuilders::calc_min_ada_for_utxo(acc_change, None);
-                    }
-                }
-                None => {}
-            }
+            let min_utxo = txbuilders::calc_min_ada_for_utxo(acc_change, None);
+
             let min_ada_value = cutils::Value::new(&min_utxo);
             if *txos_paied && *fee_paied && acc_change.coin().compare(&min_ada_value.coin()) >= 0 {
                 debug!("\nAdded accumulated output: {:?}", acc_change.coin());
@@ -1606,7 +1598,7 @@ pub fn balance_tx(
             if (!*txos_paied
                 || !*fee_paied
                 || acc_change.coin().compare(&cutils::to_bignum(0u64)) != 0
-                || acc_change.multiasset() != None)
+                || acc_change.multiasset().is_some())
                 && !*dummyrun
             {
                 let mut overhead = &mut cutils::Value::new(&cutils::to_bignum(0u64));

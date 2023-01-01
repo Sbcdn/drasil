@@ -12,7 +12,6 @@ use crate::hfn;
 use crate::modules::transfer::models::Sink;
 use crate::modules::transfer::models::Source;
 use crate::modules::transfer::models::TransBuilder;
-use crate::modules::transfer::models::TransWallet;
 use crate::modules::transfer::models::TransWallets;
 use crate::modules::transfer::models::Transfer;
 use cardano_serialization_lib as clib;
@@ -50,7 +49,7 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         &self,
         fee: &clib::utils::BigNum,
         gtxd: &TxData,
-        pvks: &[String], // Deprecated
+        _pvks: &[String], // Deprecated
         fcrun: bool,
     ) -> std::result::Result<TxBO, MurinError> {
         if fcrun {

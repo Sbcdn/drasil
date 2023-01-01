@@ -7,12 +7,15 @@
 #################################################################################
 */
 use crate::datamodel::MultiSigType;
-use crate::{CmdError, Parse};
+use crate::{establish_connection, CmdError, Parse, TBContracts};
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
+use gungnir::models::{MintProject, MintReward, Nft};
+use murin::make_fingerprint;
+use murin::minter::models::ColMinterTxData;
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -133,7 +136,7 @@ impl FinalizeMultiSig {
                         &fingerprint,
                         &murin::clib::utils::from_bignum(&handle.get_amount()?),
                         &(handle.get_contract_id()),
-                        &(raw_tx.get_user_id()? as i64),
+                        &raw_tx.get_user_id()?,
                         &ret.clone(),
                         None,
                         None,
@@ -143,12 +146,36 @@ impl FinalizeMultiSig {
                         &tx_data.get_stake_address().to_bech32(None).unwrap(),
                         &fingerprint,
                         &handle.get_contract_id(),
-                        &(raw_tx.get_user_id()? as i64),
+                        &raw_tx.get_user_id()?,
                         &murin::clib::utils::from_bignum(&handle.get_amount()?),
                     )?;
                 }
             }
+            MultiSigType::NftCollectionMinter => {
+                if let Err(e) = murin::minter::models::ColMinterTxData::from_str(
+                    raw_tx.get_tx_specific_rawdata(),
+                ) {
+                    return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a collection minter transaction, {:?}",e.to_string())}.into());
+                };
+                ret = self.finalize_rwd(raw_tx.clone()).await?;
 
+                let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
+                let mint_data = ColMinterTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
+
+                for m in &mint_data.mint_handles {
+                    let p = MintProject::get_mintproject_by_id(m.project_id)?;
+                    let c = TBContracts::get_contract_by_id(
+                        &mut establish_connection()?,
+                        p.mint_contract_id,
+                    )?;
+                    for a in m.nft_ids.clone() {
+                        let fingerprint =
+                            make_fingerprint(c.policy_id.as_ref().unwrap(), &a).unwrap();
+                        Nft::set_nft_minted(&p.id, &p.nft_table_name, &fingerprint, &ret).await?;
+                    }
+                    MintReward::process_mintreward(m.id, p.id, &m.pay_addr)?;
+                }
+            }
             MultiSigType::NftVendor => {}
 
             MultiSigType::DAOVoting => {}
@@ -216,8 +243,9 @@ impl FinalizeMultiSig {
         let mut drasildbcon = establish_connection()?;
         let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
         let mut pvks = Vec::<String>::new();
-
+        log::debug!("TxData in Finalize: {:?}", tx_data);
         for cid in tx_data.get_contract_id().as_ref().unwrap() {
+            log::debug!("Contract Ids:{:?}", tx_data.get_contract_id());
             let contract =
                 crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
 
@@ -281,10 +309,10 @@ impl FinalizeMultiSig {
         use murin::txbuilders::rwdist::finalize_utxopti::finalize_utxopti;
 
         let mut drasildbcon = establish_connection()?;
-        let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
+        let contract_ids = raw_tx.get_contract_id()?;
         let mut pvks = Vec::<String>::new();
 
-        for cid in tx_data.get_contract_id().as_ref().unwrap() {
+        for cid in &contract_ids {
             let contract =
                 crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
 
@@ -302,7 +330,9 @@ impl FinalizeMultiSig {
                 &contract.address,
             );
             let _pvks = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
-            pvks.push(_pvks[1].clone())
+            for pk in _pvks {
+                pvks.push(pk.clone())
+            }
         }
         let response = finalize_utxopti(raw_tx, pvks).await?;
         info!("Response: {}", response);

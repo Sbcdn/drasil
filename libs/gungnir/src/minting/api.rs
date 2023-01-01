@@ -28,6 +28,17 @@ impl MintProject {
         Ok(result)
     }
 
+    pub fn get_mintproject_by_id_active(
+        id_in: i64,
+    ) -> Result<MintProject, RWDError> {
+        let conn = &mut establish_connection()?;
+        let result = mint_projects::table
+            .filter(mint_projects::id.eq(id_in))
+            .filter(mint_projects::active.eq(true))
+            .first::<MintProject>(conn)?;
+        Ok(result)
+    }
+
     pub fn get_mintproject_by_uid_cid(
         uid_in: i64,
         cid_in: i64,
@@ -684,11 +695,22 @@ impl Nft {
 impl MintReward {
     pub fn get_mintrewards_by_pid_addr(
         pid_in: i64,
-        pay_addr_in: String,
+        pay_addr_in: &String,
     ) -> Result<Vec<MintReward>, RWDError> {
         let result = mint_rewards::table
             .filter(mint_rewards::pay_addr.eq(pay_addr_in))
             .filter(mint_rewards::project_id.eq(pid_in))
+            .load::<MintReward>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
+    pub fn get_avail_mintrewards_by_addr(
+        pay_addr_in: &String,
+    ) -> Result<Vec<MintReward>, RWDError> {
+        let result = mint_rewards::table
+            .filter(mint_rewards::pay_addr.eq(pay_addr_in))
+            .filter(mint_rewards::processed.eq(false))
+            .filter(mint_rewards::minted.eq(false))
             .load::<MintReward>(&mut establish_connection()?)?;
         Ok(result)
     }
@@ -735,18 +757,18 @@ impl MintReward {
     pub fn process_mintreward(
         id_in: i64,
         pid_in: i64,
-        pay_addr_in: String,
+        pay_addr_in: &String,
     ) -> Result<MintReward, RWDError> {
         let conn = &mut establish_connection()?;
         let mint_reward = MintReward::get_mintreward_by_id(id_in)?;
         
-        if mint_reward.pay_addr != pay_addr_in || mint_reward.processed || mint_reward.minted || mint_reward.project_id != pid_in {
+        if mint_reward.pay_addr != *pay_addr_in || mint_reward.processed || mint_reward.minted || mint_reward.project_id != pid_in {
             return Err(RWDError::new("The provided mintreward is invalid"))
         }
         let mp = MintProject::get_mintproject_by_id(mint_reward.project_id)?;
         for nft_id in &mint_reward.nft_ids {
             let nft  = Nft::get_nft_by_assetnameb(mint_reward.project_id, &mp.nft_table_name, nft_id)?;
-            if nft.claim_addr.unwrap() != pay_addr_in || nft.minted {
+            if nft.claim_addr.unwrap() != *pay_addr_in || nft.minted {
                 return Err(RWDError::new("invalid minting request"))
             }
         }
@@ -765,12 +787,12 @@ impl MintReward {
     pub fn mint_mintreward(
         id_in: i64,
         pid_in: i64,
-        pay_addr_in: String,
+        pay_addr_in: &String,
     ) -> Result<MintReward, RWDError> {
         let conn = &mut establish_connection()?;
         let mint_reward = MintReward::get_mintreward_by_id(id_in)?;
         
-        if mint_reward.pay_addr != pay_addr_in || !mint_reward.processed || mint_reward.minted || mint_reward.project_id != pid_in {
+        if mint_reward.pay_addr != *pay_addr_in || !mint_reward.processed || mint_reward.minted || mint_reward.project_id != pid_in {
             return Err(RWDError::new("The provided mintreward is invalid"))
         }
         let mintreward = diesel::update(
