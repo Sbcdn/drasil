@@ -34,7 +34,7 @@ pub(crate) async fn handle_stake(
             let x = if let Some(s) = twd.modificator_equ.clone() {
                 BigDecimal::from_str(&s)?
             } else {
-                BigDecimal::from_i32(1).unwrap()
+                BigDecimal::from_i32(0).unwrap()
             };
             println!("X: {:?}", x);
             let y = BigDecimal::from_str(&twd.equation)?;

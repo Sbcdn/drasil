@@ -8,7 +8,7 @@
 */
 use crate::datamodel::{MultiSigType, TransactionPattern};
 use crate::protocol::multisig;
-use crate::Parse;
+use crate::{CmdError, Parse};
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
@@ -67,11 +67,14 @@ impl BuildMultiSig {
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response =
             Frame::Simple("ERROR: Could not build multisignature transaction".to_string());
-        if self.multisig_type() != MultiSigType::ClAPIOneShotMint {
+        if self.multisig_type() != MultiSigType::ClAPIOneShotMint
+            && self.multisig_type() != MultiSigType::CustomerPayout
+        {
             if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
                 log::debug!("{:?}", response);
                 response = Frame::Simple(e.to_string());
                 dst.write_frame(&response).await?;
+                return Err(Box::new(CmdError::InvalidData));
             }
             log::debug!("Transaction pattern check okay!");
         }
@@ -86,6 +89,13 @@ impl BuildMultiSig {
             }
             MultiSigType::NftVendor => {}
             MultiSigType::Mint => {
+                ret = match multisig::handle_collection_mint(&self).await {
+                    Ok(s) => s,
+                    Err(e) => e.to_string(),
+                };
+            }
+            MultiSigType::NftCollectionMinter => {
+                log::debug!("NftCollectionMinter");
                 ret = match multisig::handle_collection_mint(&self).await {
                     Ok(s) => s,
                     Err(e) => e.to_string(),

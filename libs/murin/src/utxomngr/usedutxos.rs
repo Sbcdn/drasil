@@ -108,11 +108,11 @@ pub fn store_used_utxos(
     match con {
         (Some(mut c), None) => {
             redis::cmd("SADD").arg(&key.0).arg(&payload).query(&mut c)?;
-            redis::cmd("HMSET").arg(&txhash).arg(&items).query(&mut c)?;
+            redis::cmd("HMSET").arg(txhash).arg(&items).query(&mut c)?;
         }
         (None, Some(mut c)) => {
             redis::cmd("SADD").arg(&key.0).arg(&payload).query(&mut c)?;
-            redis::cmd("HMSET").arg(&txhash).arg(&items).query(&mut c)?;
+            redis::cmd("HMSET").arg(txhash).arg(&items).query(&mut c)?;
         }
         _ => {}
     }
@@ -129,13 +129,13 @@ pub fn store_used_utxos_from_txm(txhash: &String, utxo: &Vec<String>) -> Result<
         (Some(ref mut c), None) => {
             response = redis::cmd("SISMEMBER")
                 .arg(&latesttx)
-                .arg(&txhash)
+                .arg(txhash)
                 .query(c)?;
         }
         (None, Some(ref mut c)) => {
             response = redis::cmd("SISMEMBER")
                 .arg(&latesttx)
-                .arg(&txhash)
+                .arg(txhash)
                 .query(c)?;
         }
         _ => {}
@@ -169,17 +169,17 @@ pub fn store_used_utxos_from_txm(txhash: &String, utxo: &Vec<String>) -> Result<
         match con {
             (Some(ref mut c), None) => {
                 redis::cmd("SADD").arg(&key.0).arg(&payload).query(c)?;
-                redis::cmd("HMSET").arg(&txhash).arg(&items).query(c)?;
+                redis::cmd("HMSET").arg(txhash).arg(&items).query(c)?;
                 //redis::cmd("EXPIRE").arg(&txhash).arg("1800").arg("NX").query(c)?;
-                redis::cmd("SADD").arg(&txgmempool).arg(&txhash).query(c)?;
-                redis::cmd("SADD").arg(&latesttx).arg(&txhash).query(c)?;
+                redis::cmd("SADD").arg(&txgmempool).arg(txhash).query(c)?;
+                redis::cmd("SADD").arg(&latesttx).arg(txhash).query(c)?;
             }
             (None, Some(ref mut c)) => {
                 redis::cmd("SADD").arg(&key.0).arg(&payload).query(c)?;
-                redis::cmd("HMSET").arg(&txhash).arg(&items).query(c)?;
+                redis::cmd("HMSET").arg(txhash).arg(&items).query(c)?;
                 //redis::cmd("EXPIRE").arg(&txhash).arg("1800").arg("NX").query(c)?;
-                redis::cmd("SADD").arg(&txgmempool).arg(&txhash).query(c)?;
-                redis::cmd("SADD").arg(&latesttx).arg(&txhash).query(c)?;
+                redis::cmd("SADD").arg(&txgmempool).arg(txhash).query(c)?;
+                redis::cmd("SADD").arg(&latesttx).arg(txhash).query(c)?;
             }
             _ => {}
         }
@@ -215,23 +215,23 @@ pub fn store_used_utxos_from_txm_org(
     match con {
         (Some(ref mut c), None) => {
             redis::cmd("SADD").arg(&key.0).arg(&payload).query(c)?;
-            redis::cmd("SADD").arg(&txhash).arg(&payload).query(c)?;
+            redis::cmd("SADD").arg(txhash).arg(&payload).query(c)?;
             redis::cmd("EXPIRE")
-                .arg(&txhash)
+                .arg(txhash)
                 .arg("3600")
                 .arg("NX")
                 .query(c)?;
-            redis::cmd("SADD").arg(&txgmempool).arg(&txhash).query(c)?;
+            redis::cmd("SADD").arg(&txgmempool).arg(txhash).query(c)?;
         }
         (None, Some(ref mut c)) => {
             redis::cmd("SADD").arg(&key.0).arg(&payload).query(c)?;
-            redis::cmd("SADD").arg(&txhash).arg(&payload).query(c)?;
+            redis::cmd("SADD").arg(txhash).arg(&payload).query(c)?;
             redis::cmd("EXPIRE")
-                .arg(&txhash)
+                .arg(txhash)
                 .arg("3600")
                 .arg("NX")
                 .query(c)?;
-            redis::cmd("SADD").arg(&txgmempool).arg(&txhash).query(c)?;
+            redis::cmd("SADD").arg(&txgmempool).arg(txhash).query(c)?;
         }
         _ => {}
     }
@@ -317,14 +317,14 @@ fn sismember(
     utxos: &Vec<String>,
 ) -> Vec<i64> {
     match con {
-        (Some(ref mut c), None) => match redis::cmd("SMISMEMBER").arg(key).arg(&utxos).query(c) {
+        (Some(ref mut c), None) => match redis::cmd("SMISMEMBER").arg(key).arg(utxos).query(c) {
             Ok(o) => o,
             Err(e) => {
                 log::error!("Could not find used utxo members, error: {}", e.to_string());
                 vec![]
             }
         },
-        (None, Some(ref mut c)) => match redis::cmd("SMISMEMBER").arg(key).arg(&utxos).query(c) {
+        (None, Some(ref mut c)) => match redis::cmd("SMISMEMBER").arg(key).arg(utxos).query(c) {
             Ok(o) => o,
             Err(e) => {
                 log::error!("Could not find used utxo members, error: {}", e.to_string());
@@ -362,9 +362,20 @@ pub fn check_any_utxo_used(
     txuos: &TransactionUnspentOutputs,
 ) -> Result<Option<Vec<UsedUtxo>>, MurinError> {
     info!("check used utxos...");
-    let mut con = redis_usedutxos_connection()?;
+    let con = redis_usedutxos_connection();
+
+    let mut con = match con {
+        Ok(o) => {
+            log::debug!("Redis connection ok");
+            o
+        }
+        Err(e) => {
+            log::debug!("Redis connection failed with: {:?}", e.to_string());
+            return Err(MurinError::new(&e.to_string()));
+        }
+    };
     let mut members = Vec::<String>::new();
-    //debug!("Input TXUOS: '{:?}'", txuos);
+    debug!("Input UTxOs: '{:?}'", txuos);
     for j in 0..txuos.len() {
         members.push(
             hex::encode(txuos.get(j).input().transaction_id().to_bytes())
@@ -372,7 +383,7 @@ pub fn check_any_utxo_used(
                 + &txuos.get(j).input().index().to_string(),
         );
     }
-    //debug!("\n\nMembers: {:?}", members);
+    debug!("\n\nMembers: {:?}", members);
     let mut used_utxos = Vec::<UsedUtxo>::new();
 
     for i in &[0, 1, 2] {
@@ -457,12 +468,12 @@ pub fn delete_used_utxo(txhash: &String) -> Result<(), MurinError> {
         }
         match con {
             (Some(ref mut c), None) => {
-                redis::cmd("SREM").arg("txgmempool").arg(&txhash).query(c)?;
-                redis::cmd("DEL").arg(&txhash).query(c)?;
+                redis::cmd("SREM").arg("txgmempool").arg(txhash).query(c)?;
+                redis::cmd("DEL").arg(txhash).query(c)?;
             }
             (None, Some(ref mut c)) => {
-                redis::cmd("SREM").arg("txgmempool").arg(&txhash).query(c)?;
-                redis::cmd("DEL").arg(&txhash).query(c)?;
+                redis::cmd("SREM").arg("txgmempool").arg(txhash).query(c)?;
+                redis::cmd("DEL").arg(txhash).query(c)?;
             }
             _ => {
                 return Err(MurinError::new(
@@ -506,13 +517,10 @@ pub async fn delete_used_utxo_async(
     }
     redis::cmd("SREM")
         .arg("txgmempool")
-        .arg(&txhash)
+        .arg(txhash)
         .query_async(redis_con)
         .await?;
-    redis::cmd("DEL")
-        .arg(&txhash)
-        .query_async(redis_con)
-        .await?;
+    redis::cmd("DEL").arg(txhash).query_async(redis_con).await?;
     info!("Delete Response: {:?}", txhash);
     Ok(())
 }
@@ -539,10 +547,7 @@ pub async fn delete_used_utxos_hashmap_async(
         .arg(txhash)
         .query_async(redis_con)
         .await?;
-    redis::cmd("DEL")
-        .arg(&txhash)
-        .query_async(redis_con)
-        .await?;
+    redis::cmd("DEL").arg(txhash).query_async(redis_con).await?;
     info!("Delete Response: {:?}", txhash);
     Ok(())
 }

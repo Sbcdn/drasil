@@ -17,7 +17,7 @@ pub use finalize_rwd::*;
 pub mod finalize_utxopti;
 
 use super::*;
-use bigdecimal::{BigDecimal, ToPrimitive};
+use bigdecimal::ToPrimitive;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
 

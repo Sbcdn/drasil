@@ -40,3 +40,64 @@ pub async fn adm_create_lqdt(uid: String, cparam: CrLqdtContr) -> WebResult<impl
         warp::http::StatusCode::CREATED,
     ))
 }
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct CrPayout {
+    contract_id: i64,
+    ada: i64,
+    token: Vec<hugin::Token>,
+    pw: String,
+}
+
+pub async fn adm_create_payout(uid: String, cparam: CrPayout) -> WebResult<impl Reply> {
+    let user = get_user_from_string(&uid).await?;
+
+    let payout = sleipnir::user::create_custom_payout(
+        user,
+        cparam.contract_id,
+        cparam.ada,
+        cparam.token,
+        cparam.pw,
+    )
+    .await?;
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&json!({ "created": payout })),
+        warp::http::StatusCode::CREATED,
+    ))
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct ExPayout {
+    pub po_id: i64,
+    pub pw: String,
+}
+
+pub async fn adm_execute_payout(uid: String, cparam: ExPayout) -> WebResult<impl Reply> {
+    let user = get_user_from_string(&uid).await?;
+    log::debug!("Try to find payout...");
+    let payout = sleipnir::user::find_payout(user, cparam.po_id).await?;
+
+    log::debug!("Try to execute...");
+    match payout.execute(&cparam.pw).await {
+        Ok(o) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({ "success": o })),
+            warp::http::StatusCode::OK,
+        )),
+        Err(e) => Ok(warp::reply::with_status(
+            warp::reply::json(&json!({ "failed": e.to_string() })),
+            warp::http::StatusCode::PRECONDITION_FAILED,
+        )),
+    }
+}
+
+pub async fn adm_list_payouts(uid: String) -> WebResult<impl Reply> {
+    let user = get_user_from_string(&uid).await?;
+
+    let payout = sleipnir::user::show_payouts(user).await?;
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&json!(payout)),
+        warp::http::StatusCode::OK,
+    ))
+}

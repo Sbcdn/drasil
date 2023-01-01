@@ -29,7 +29,7 @@ async fn main() {
     }
     pretty_env_logger::init();
 
-    let cors2 = warp::cors()
+    let cors = warp::cors()
         .allow_any_origin()
         .allow_methods(vec!["GET", "POST", "OPTIONS", "PUT"])
         .allow_credentials(true)
@@ -64,7 +64,7 @@ async fn main() {
         ]);
 
     let api = filters::endpoints();
-    let routes = api.with(cors2).with(warp::log("vidar"));
+    let routes = api.with(cors).with(warp::log("vidar"));
     let server = host.to_string() + ":" + &port;
     let socket: std::net::SocketAddr = server.parse().expect("Unable to parse socket address");
 
@@ -152,6 +152,7 @@ mod filters {
             .or(get_total_rewards())
             .or(get_token_info())
             .or(get_user_tokens())
+            .or(get_avail_mintrewards())
             .or(resp_option())
         // .or(warp::get().and(warp::any().map(warp::reply)))
     }
@@ -245,6 +246,16 @@ mod filters {
             .and_then(handlers::handle_total_rewards)
     }
 
+    pub fn get_avail_mintrewards(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("mird")
+            .and(warp::path("all"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::path::param::<String>())
+            .and_then(handlers::handle_all_mint_rewards_for_stake_addr)
+    }
+
     fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
         use super::auth::authorize;
         use warp::{
@@ -260,7 +271,11 @@ mod filters {
 ///Handlers
 mod handlers {
     use cardano_serialization_lib::address::Address;
-    use hugin::datamodel::{ClaimedHandle, RewardHandle};
+    use gungnir::models::{MintProject, MintReward};
+    use hugin::{
+        datamodel::{ClaimedHandle, RewardHandle},
+        MintProjectHandle, MintRewardHandle,
+    };
     use std::convert::Infallible;
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -540,21 +555,19 @@ mod handlers {
     }
 
     pub async fn handle_total_rewards(user_id: u64) -> Result<impl warp::Reply, Infallible> {
-        let response = match gungnir::Rewards::get_total_rewards_token(user_id as i64) {
-            Ok(t) => t,
+        match gungnir::Rewards::get_total_rewards_token(user_id as i64) {
+            Ok(t) => Ok(warp::reply::with_status(
+                warp::reply::json(&serde_json::json!(t)),
+                warp::http::StatusCode::OK,
+            )),
             Err(e) => {
                 log::info!("Error: could not find any tokens");
-                return Ok(warp::reply::with_status(
+                Ok(warp::reply::with_status(
                     warp::reply::json(&ReturnError::new(&e.to_string())),
                     warp::http::StatusCode::NOT_FOUND,
-                ));
+                ))
             }
-        };
-
-        Ok(warp::reply::with_status(
-            warp::reply::json(&serde_json::json!(response)),
-            warp::http::StatusCode::OK,
-        ))
+        }
     }
 
     pub fn make_error(e: String) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
@@ -575,6 +588,70 @@ mod handlers {
                 Err(e) => Err(e.to_string() + &err),
             },
             Err(e) => Err(e.to_string() + &err),
+        }
+    }
+
+    pub async fn handle_all_mint_rewards_for_stake_addr(
+        _: u64,
+        stake_addr: String,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let bech32addr = match get_bech32_from_bytes(stake_addr) {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e);
+            }
+        };
+
+        let payaddr = match mimir::select_addr_of_first_transaction(&bech32addr) {
+            Ok(a) => a,
+            Err(e) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&e.to_string()),
+                    warp::http::StatusCode::NO_CONTENT,
+                ))
+            }
+        };
+
+        let rewards = MintReward::get_avail_mintrewards_by_addr(&payaddr);
+        println!("Rewards: {:?}", rewards);
+        match rewards {
+            Ok(rwds) => {
+                let mut ret = Vec::<MintRewardHandle>::new();
+                for rwd in rwds {
+                    match MintProject::get_mintproject_by_id_active(rwd.project_id) {
+                        Ok(p) => ret.push(MintRewardHandle {
+                            id: rwd.id,
+                            addr: rwd.pay_addr,
+                            project: MintProjectHandle {
+                                project_name: p.project_name,
+                                collection_name: p.collection_name,
+                                author: p.author,
+                                image: None,
+                            },
+                        }),
+                        Err(e) => {
+                            log::info!("Error: could not find active mint project");
+                            return Ok(warp::reply::with_status(
+                                warp::reply::json(&e.to_string()),
+                                warp::http::StatusCode::NO_CONTENT,
+                            ));
+                        }
+                    }
+                }
+
+                Ok(warp::reply::with_status(
+                    warp::reply::json(&ret),
+                    warp::http::StatusCode::OK,
+                ))
+            }
+            Err(otherwise) => {
+                log::info!("{:?}", otherwise);
+
+                Ok(warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&otherwise.to_string())),
+                    warp::http::StatusCode::NO_CONTENT,
+                ))
+            }
         }
     }
 }

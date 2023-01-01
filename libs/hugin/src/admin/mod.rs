@@ -58,13 +58,21 @@ pub async fn verify_approval_drsl(msg: &str, sign: &str) -> Result<bool, SystemD
 
 // ToDO: TWO FACTOR AUTHENTICATION
 pub async fn get_vaddr(user: &i64) -> Result<String, SystemDBError> {
-    let user = TBDrasilUser::get_user_by_user_id(&mut crate::establish_connection()?, user)?;
+    // ToDo:
+    // Get useres idvidually verified wallet for this user
 
+    //let user = TBDrasilUser::get_user_by_user_id(&mut crate::establish_connection()?, user)?;
+
+    /*
     let vaddr = vault_get(&user.drslpubkey)
         .await
         .get("vaddr")
         .expect("Error: A1205: Could not retrieve verified address")
         .clone();
+    */
+
+    //Get general admin wallet for payouts
+    let vaddr = std::env::var("POW").unwrap();
 
     Ok(vaddr)
 }

@@ -474,30 +474,21 @@ pub struct CBORTransaction {
 // Customer Payout
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CPO {
-    user_id: i64,
-    contract_id: i64,
-    security_code: String,
+    po_id: i64,
+    pw: String,
 }
 
 impl CPO {
-    pub fn new(user_id: &i64, contract_id: &i64, security_code: &str) -> Self {
-        CPO {
-            user_id: *user_id,
-            contract_id: *contract_id,
-            security_code: security_code.to_string(),
-        }
+    pub fn new(po_id: i64, pw: String) -> Self {
+        CPO { po_id, pw }
     }
 
-    pub fn get_user_id(&self) -> i64 {
-        self.user_id
+    pub fn get_po_id(&self) -> i64 {
+        self.po_id
     }
 
-    pub fn get_contract_id(&self) -> i64 {
-        self.contract_id
-    }
-
-    pub fn get_security_code(&self) -> String {
-        self.security_code.clone()
+    pub fn get_pw(&self) -> String {
+        self.pw.to_owned()
     }
 }
 

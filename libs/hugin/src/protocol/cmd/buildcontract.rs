@@ -88,6 +88,7 @@ impl BuildContract {
             log::debug!("{:?}", response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
+            return Err(Box::new(CmdError::InvalidData));
         }
 
         let mut ret = String::new();

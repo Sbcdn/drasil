@@ -119,8 +119,14 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
 
             if !mp.active {
                 log::error!("requesed to mint on an inactive project");
+                channel
+                    .basic_ack(
+                        deliv.delivery_tag,
+                        lapin::options::BasicAckOptions::default(),
+                    )
+                    .await?;
                 return Err(crate::error::Error::Custom(
-                    "requesed to mint on an inactive project".to_owned(),
+                    "requesed to mint on an inactive project, request discarded".to_owned(),
                 ));
             }
 

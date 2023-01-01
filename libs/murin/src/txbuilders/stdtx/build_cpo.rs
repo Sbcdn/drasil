@@ -18,11 +18,12 @@ use crate::error::MurinError;
 use crate::hfn::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
 use crate::htypes::*;
 use crate::{
-    txbuilders::{harden, input_selection, TxBO},
+    txbuilders::{input_selection, TxBO},
     PerformTxb, TxData,
 };
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
+use clib::address::{EnterpriseAddress, StakeCredential};
 use clib::TransactionOutput;
 
 // One Shot Minter Builder Type
@@ -57,7 +58,7 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
         &self,
         fee: &clib::utils::BigNum,
         gtxd: &TxData,
-        pvks: &[String],
+        _pvks: &[String],
         fcrun: bool,
     ) -> std::result::Result<TxBO, MurinError> {
         if fcrun {
@@ -79,6 +80,12 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             }
         };
 
+        let script_hash = self.script.hash();
+        let script_address = EnterpriseAddress::new(
+            cwallet_address.network_id()?,
+            &StakeCredential::from_scripthash(&script_hash),
+        )
+        .to_address();
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         //
         //Auxiliary Data
@@ -100,7 +107,6 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
         // Inputs
         let mut input_txuos = gtxd.clone().get_inputs();
 
-        info!("\n Before USED UTXOS");
         // Check if some utxos in inputs are in use and remove them
         if let Some(used_utxos) = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)? {
             info!("\n\n");
@@ -108,16 +114,6 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             info!("\n\n");
             input_txuos.remove_used_utxos(used_utxos);
         }
-
-        let k = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)?;
-        info!("K: {:?}", k);
-
-        let collateral_input_txuo = gtxd.clone().get_collateral();
-        debug!("\nCollateral Input: {:?}", collateral_input_txuo);
-
-        // Balance TX
-        debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
-        debug!("Before Balance: Transaction Outputs: {:?}", txouts);
 
         let mut fee_paied = false;
         let mut first_run = true;
@@ -132,39 +128,26 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
         debug!("Needed Value: {:?}", needed_value);
-        debug!(
-            "\n\n\n\n\nTxIns Before selection:\n {:?}\n\n\n\n\n",
-            input_txuos
-        );
-        let (txins, mut input_txuos) = input_selection(
-            None,
-            &mut needed_value,
-            &input_txuos,
-            gtxd.clone().get_collateral(),
-            Some(&cwallet_address.clone()),
-        )?;
+
+        let (txins, mut input_txuos) =
+            input_selection(None, &mut needed_value, &input_txuos, None, None)?;
 
         let saved_input_txuos = input_txuos.clone();
-        info!("Saved Inputs: {:?}", saved_input_txuos);
 
-        let mut vkey_counter = get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 1; // +1 dues to signature in finalize
-        debug!(
-            "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
-            input_txuos
-        );
+        let mut vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
 
         let txouts_fin = balance_tx(
             &mut input_txuos,
             &Tokens::new(),
             &mut txouts,
-            None, // but not the ADA!!!!
+            None,
             fee,
             &mut fee_paied,
             &mut first_run,
             &mut txos_paied,
             &mut tbb_values,
-            &cwallet_address,
-            &cwallet_address,
+            &script_address,
+            &script_address,
             &mut acc,
             None,
             &fcrun,
@@ -173,32 +156,12 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
         let slot = gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network());
         let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
         txbody.set_ttl(&cutils::to_bignum(slot));
-        info!("\nTxOutputs: {:?}\n", txbody.outputs());
-        debug!("\nTxInputs: {:?}\n", txbody.inputs());
-
-        // Set network Id
-        if gtxd.get_network() == clib::NetworkIdKind::Testnet {
-            txbody.set_network_id(&clib::NetworkId::testnet());
-        } else {
-            txbody.set_network_id(&clib::NetworkId::mainnet());
-        }
 
         let mut txwitness = clib::TransactionWitnessSet::new();
         let mut native_scripts = clib::NativeScripts::new();
         native_scripts.add(&self.script);
         txwitness.set_native_scripts(&native_scripts);
 
-        let root_key1 = clib::crypto::Bip32PrivateKey::from_bytes(&hex::decode(&pvks[0])?)?;
-        let account_key1 = root_key1
-            .derive(harden(1852u32))
-            .derive(harden(1815u32))
-            .derive(harden(0u32));
-        let prv1 = account_key1.to_raw_key(); // for signatures
-        let vkwitness_1d1 = cutils::make_vkey_witness(&cutils::hash_transaction(&txbody), &prv1);
-
-        let mut vkeywitnesses = clib::crypto::Vkeywitnesses::new();
-        vkeywitnesses.add(&vkwitness_1d1);
-        txwitness.set_vkeys(&vkeywitnesses);
         debug!("TxWitness: {:?}", hex::encode(txwitness.to_bytes()));
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
         debug!("--------------------Iteration Ended------------------------------");

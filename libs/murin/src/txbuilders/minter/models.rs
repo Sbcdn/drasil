@@ -7,10 +7,10 @@
 #################################################################################
 */
 
-use crate::MurinError;
+use crate::{get_reward_address, MurinError};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::address as caddr;
-use clib::utils::BigNum;
+use clib::{address::BaseAddress, utils::BigNum};
 use serde::{Deserialize, Serialize};
 use std::{fmt, str};
 
@@ -41,11 +41,9 @@ impl From<String> for CMintHandle {
 }
 
 impl CMintHandle {
-    pub fn payment_addr(&self) -> Result<clib::address::RewardAddress, MurinError> {
+    pub fn reward_addr(&self) -> Result<clib::address::Address, MurinError> {
         let addr = crate::b_decode_addr_na(&self.pay_addr)?;
-        clib::address::RewardAddress::from_address(&addr).ok_or_else(|| {
-            MurinError::new("Error: could not construct RewardAddress for CMintHandle")
-        })
+        get_reward_address(&addr)
     }
 
     pub fn total_value(handles: &[CMintHandle]) -> Result<clib::utils::Value, MurinError> {
@@ -104,19 +102,12 @@ pub struct PriceCMintHandle {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColMinterTxData {
     pub mint_handles: Vec<CMintHandle>,
-    pub claim_stake_addr: caddr::Address,
 }
 
 impl ColMinterTxData {
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        mint_handles: Vec<CMintHandle>,
-        claim_stake_addr: caddr::Address,
-    ) -> ColMinterTxData {
-        ColMinterTxData {
-            mint_handles,
-            claim_stake_addr,
-        }
+    pub fn new(mint_handles: Vec<CMintHandle>) -> ColMinterTxData {
+        ColMinterTxData { mint_handles }
     }
 }
 
