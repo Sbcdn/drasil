@@ -26,9 +26,9 @@ pub async fn create_discount(params: DiscountParams) -> Result<serde_json::Value
         &params.policy_id,
         params.fingerprint.as_ref(),
         &params.metadata_path,
-    )?;
-
-    Ok(json!(new))
+    );
+    log::debug!("Sleipnir create discount: {:?}", new);
+    Ok(json!(new?))
 }
 
 pub async fn get_discounts(cid: i64, uid: i64) -> Result<serde_json::Value, SleipnirError> {

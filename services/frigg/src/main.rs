@@ -118,6 +118,16 @@ async fn main() {
         .and(warp::path("cr"))
         .and_then(handler::dapi::enterprise_create_apikey_post_handler);
 
+    // get set pool in a contract
+    let enterprise_get_user_tx = enterprise_get
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("stats"))
+        .and(warp::path("sprwc"))
+        .and(warp::path("tx"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::get_user_txs);
+
     // get all availabale contracts
     let enterprise_get_contracts = enterprise_get
         .clone()
@@ -134,16 +144,6 @@ async fn main() {
         .and_then(handler::rwd::get_pools);
 
     // get set pool in a contract
-    let enterprise_get_user_tx = enterprise_get
-        .clone()
-        .and(warp::path("ms"))
-        .and(warp::path("stats"))
-        .and(warp::path("sprwc"))
-        .and(warp::path("tx"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::get_user_txs);
-
-    // get set pool in a contract
     let enterprise_get_contract_tokens = enterprise_get
         .clone()
         .and(warp::path("sprwc"))
@@ -151,74 +151,13 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::get_contract_tokens);
 
+    let ent_get = enterprise_create_api_token
+        .or(enterprise_get_user_tx)
+        .or(enterprise_get_contracts)
+        .or(enterprise_get_pools)
+        .or(enterprise_get_contract_tokens);
+
     // Enterprise POST
-
-    // Create a new reward contract
-    let enterprise_post_create_reward_contract = enterprise_post
-        .clone()
-        .and(warp::path("ms"))
-        .and(warp::path("cr"))
-        .and(warp::path("sprwc"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::entrp_create_sporwc);
-
-    // Create a new mint project
-    let enterprise_post_create_mint_project = enterprise_post
-        .clone()
-        .and(warp::path("ms"))
-        .and(warp::path("cr"))
-        .and(warp::path("cmint"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::mint::entrp_create_mint_proj);
-
-    // Deactivate a Reward Contract (set to depricated)
-    let enterprise_post_deprecate_reward_contract = enterprise_post
-        .clone()
-        .and(warp::path("ms"))
-        .and(warp::path("depr"))
-        .and(warp::path("sprwc"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::entrp_depricate_sporwc);
-
-    // Add a Token to a contract (whitelist a token)
-    let enterprise_post_add_token_sporwc = enterprise_post
-        .clone()
-        .and(warp::path("sprwc"))
-        .and(warp::path("addt"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::entrp_add_token_sporwc);
-
-    // Remove a TOken from a Contract (Remove from Whitelist)
-    let enterprise_post_rm_token_sporwc = enterprise_post
-        .clone()
-        .and(warp::path("sprwc"))
-        .and(warp::path("rmt"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::entrp_rm_token_sporwc);
-
-    // Add a pool to a Whitelistes Token
-    let enterprise_post_add_pools = enterprise_post
-        .clone()
-        .and(warp::path("sprwc"))
-        .and(warp::path("addpools"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::add_pools);
-
-    // Remove a pool from a Whitelisted Token
-    let enterprise_post_rm_pools = enterprise_post
-        .clone()
-        .and(warp::path("sprwc"))
-        .and(warp::path("rmpools"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::remove_pools);
-
-    // Import NFTs via CIP25 metadata
-    let enterprise_post_import_nfts_csv_meta = enterprise_post
-        .clone()
-        .and(warp::path("mint"))
-        .and(warp::path("impcsv"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::mint::entrp_create_nfts_from_csv);
 
     // Create discount for contract
     let enterprise_post_create_discount = enterprise_post
@@ -236,26 +175,86 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::discounts::hndl_remove_discount);
 
-    // Endpoint Accumulators
-    let pools = enterprise_get_pools
-        .or(enterprise_post_add_pools)
-        .or(enterprise_post_rm_pools);
+    // Import NFTs via CIP25 metadata
+    let enterprise_post_import_nfts_csv_meta = enterprise_post
+        .clone()
+        .and(warp::path("mint"))
+        .and(warp::path("impcsv"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::mint::entrp_create_nfts_from_csv);
 
-    let sporwc = enterprise_post_create_reward_contract
-        .or(enterprise_post_create_mint_project)
-        .or(enterprise_post_deprecate_reward_contract)
-        .or(enterprise_get_contract_tokens)
-        .or(enterprise_post_add_token_sporwc)
-        .or(enterprise_post_rm_token_sporwc)
-        .or(enterprise_get_user_tx);
+    // Create a new mint project
+    let enterprise_post_create_mint_project = enterprise_post
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("cr"))
+        .and(warp::path("cmint"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::mint::entrp_create_mint_proj);
 
-    let enterprise = sporwc
-        .or(enterprise_post_create_discount)
+    // Create a new reward contract
+    let enterprise_post_create_reward_contract = enterprise_post
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("cr"))
+        .and(warp::path("sprwc"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::entrp_create_sporwc);
+
+    // Deactivate a Reward Contract (set to depricated)
+    let enterprise_post_deprecate_reward_contract = enterprise_post
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("depr"))
+        .and(warp::path("sprwc"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::entrp_depricate_sporwc);
+
+    // Add a pool to a Whitelistes Token
+    let enterprise_post_add_pools = enterprise_post
+        .clone()
+        .and(warp::path("sprwc"))
+        .and(warp::path("addpools"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::add_pools);
+
+    // Add a Token to a contract (whitelist a token)
+    let enterprise_post_add_token_sporwc = enterprise_post
+        .clone()
+        .and(warp::path("sprwc"))
+        .and(warp::path("addt"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::entrp_add_token_sporwc);
+
+    // Remove a TOken from a Contract (Remove from Whitelist)
+    let enterprise_post_rm_token_sporwc = enterprise_post
+        .clone()
+        .and(warp::path("sprwc"))
+        .and(warp::path("rmt"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::entrp_rm_token_sporwc);
+
+    // Remove a pool from a Whitelisted Token
+    let enterprise_post_rm_pools = enterprise_post
+        .clone()
+        .and(warp::path("sprwc"))
+        .and(warp::path("rmpools"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::remove_pools);
+
+    let ent_post = enterprise_post_create_discount
         .or(enterprise_post_remove_discount)
         .or(enterprise_post_import_nfts_csv_meta)
-        .or(pools)
-        .or(enterprise_create_api_token)
-        .or(enterprise_get_contracts);
+        .or(enterprise_post_create_mint_project)
+        .or(enterprise_post_create_reward_contract)
+        .or(enterprise_post_deprecate_reward_contract)
+        .or(enterprise_post_add_pools)
+        .or(enterprise_post_add_token_sporwc)
+        .or(enterprise_post_rm_token_sporwc)
+        .or(enterprise_post_rm_pools);
+
+    // Endpoint Accumulators
+    let enterprise = ent_get.or(ent_post);
 
     // Retailer Routes
 
@@ -280,9 +279,29 @@ async fn main() {
 
     let admin_route = warp::path("adm").and(with_auth(Role::DrasilAdmin));
 
-    let _adm_get = admin_route.clone().and(warp::get());
+    let adm_get = admin_route.clone().and(warp::get());
 
     let adm_post = admin_route.clone().and(warp::post());
+
+    let adm_create_payout = adm_post
+        .clone()
+        .and(warp::path("po"))
+        .and(warp::path("cr"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::adm::adm_create_payout);
+
+    let adm_exec_payout = adm_post
+        .clone()
+        .and(warp::path("po"))
+        .and(warp::path("ex"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::adm::adm_execute_payout);
+
+    let adm_list_payouts = adm_get
+        .clone()
+        .and(warp::path("po"))
+        .and(warp::path("list"))
+        .and_then(handler::adm::adm_list_payouts);
 
     // Create a new reward contract
     let adm_post_create_lqdt_wallet = adm_post
@@ -293,17 +312,20 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::adm::adm_create_lqdt);
 
-    let admin = adm_post_create_lqdt_wallet;
+    let admin = adm_create_payout
+        .or(adm_exec_payout)
+        .or(adm_list_payouts)
+        .or(adm_post_create_lqdt_wallet);
     // Routes
 
     let endpoints = login_route
         .or(register_route)
         .or(verify_email_route)
-        .or(user)
         .or(enterprise)
         .or(retailer_route)
         .or(admin)
-        .or(warp::get().and(warp::any().map(warp::reply)))
+        .or(user)
+        //.or(warp::get().and(warp::any().map(warp::reply)))
         .recover(error::handle_rejection);
 
     let cors = warp::cors()

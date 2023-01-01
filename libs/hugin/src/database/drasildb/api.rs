@@ -9,8 +9,10 @@
 use super::*;
 use crate::{
     admin::get_vaddr,
+    client::connect,
     encryption::{decrypt, encrypt},
     schema::{contracts, email_verification_token, multisig_keyloc},
+    BuildMultiSig, ScriptSpecParams, TransactionPattern,
 };
 use diesel::pg::upsert::on_constraint;
 use dvltath::vault::kv::{vault_get, vault_store};
@@ -146,7 +148,7 @@ impl TBContracts {
             .filter(contracts::user_id.eq(&user_id_in))
             .filter(contracts::contract_id.eq(&contract_id_in))
             .load::<TBContracts>(&mut establish_connection()?);
-        println!("input data: u:{},c:{} ", user_id_in, contract_id_in);
+        log::debug!("input data: u:{},c:{} ", user_id_in, contract_id_in);
         Ok(result?[0].clone())
     }
 
@@ -570,7 +572,7 @@ impl TBCaPayment {
     pub fn find_user_st_open(user_id_in: &i64) -> Result<Vec<Self>, SystemDBError> {
         let cap = ca_payment::table
             .filter(ca_payment::user_id.eq(user_id_in))
-            .filter(ca_payment::stauts_pa.eq("open"))
+            .filter(ca_payment::status_pa.eq("open"))
             .load::<TBCaPayment>(&mut establish_connection()?)?;
         Ok(cap)
     }
@@ -583,7 +585,10 @@ impl TBCaPayment {
         user_id: &i64,
         contract_id: &i64,
         value: &CaValue,
+        pw: &String,
     ) -> Result<Self, SystemDBError> {
+        log::debug!("Verify password...");
+        TBDrasilUser::verify_pw_userid(user_id, &pw.to_string())?;
         let value = &serde_json::to_string(value)?;
         let new_pa = TBCaPaymentNew {
             user_id,
@@ -592,17 +597,16 @@ impl TBCaPayment {
             tx_hash: None,
             user_appr: None,
             drasil_appr: None,
-            stauts_bl: None,
-            stauts_pa: "new",
+            status_bl: None,
+            status_pa: "new",
         };
-
-        // ToDo: Check that payout sum cannot spent liquidity
 
         let pa = diesel::insert_into(ca_payment::table)
             .values(&new_pa)
-            .get_result(&mut establish_connection()?)
-            .unwrap();
+            .get_result(&mut establish_connection()?);
 
+        log::debug!("created?: {:?}", pa);
+        let pa = pa?;
         TBCaPaymentHash::create(&pa).await?;
 
         Ok(pa)
@@ -613,7 +617,7 @@ impl TBCaPayment {
         let user_approval = diesel::update(ca_payment::table.find(&self.id))
             .set((
                 ca_payment::user_appr.eq(Some(user_signature)),
-                ca_payment::stauts_pa.eq("user approved"),
+                ca_payment::status_pa.eq("user approved"),
             ))
             .get_result::<TBCaPayment>(&mut establish_connection()?)?;
         TBCaPaymentHash::create(&user_approval).await?;
@@ -625,7 +629,7 @@ impl TBCaPayment {
         let drasil_approval = diesel::update(ca_payment::table.find(&self.id))
             .set((
                 ca_payment::drasil_appr.eq(Some(drsl_signature)),
-                ca_payment::stauts_pa.eq("fully approved"),
+                ca_payment::status_pa.eq("fully approved"),
             ))
             .get_result::<TBCaPayment>(&mut establish_connection()?)?;
         TBCaPaymentHash::create(&drasil_approval).await?;
@@ -635,7 +639,7 @@ impl TBCaPayment {
     pub fn cancel(&self) -> Result<Self, SystemDBError> {
         let cancel = diesel::update(ca_payment::table.find(&self.id))
             .set((
-                ca_payment::stauts_pa.eq("canceled"),
+                ca_payment::status_pa.eq("canceled"),
                 ca_payment::drasil_appr.eq::<Option<String>>(None),
                 ca_payment::user_appr.eq::<Option<String>>(None),
             ))
@@ -645,13 +649,13 @@ impl TBCaPayment {
 
     // ToDO: build and submit payout transaction
     pub async fn execute(&self, pw: &str) -> Result<Self, SystemDBError> {
-        TBCaPaymentHash::check(self).await?;
-        let mut conn = establish_connection()?;
-        let user = TBDrasilUser::get_user_by_user_id(&mut establish_connection()?, &self.user_id)?;
-        let msg = TBCaPaymentHash::find_by_payid(&self.id)?[0]
-            .payment_hash
-            .clone();
+        //TBCaPaymentHash::check(self).await?;
+        //let msg = TBCaPaymentHash::find_by_payid(&self.id)?[0]
+        //    .payment_hash
+        //    .clone();
+        log::debug!("Verify password...");
         TBDrasilUser::verify_pw_userid(&self.user_id, &pw.to_string())?;
+        /*
         match (
             user.verify_approval(&msg, &self.user_appr.clone().expect("Error: POT1001"))?,
             crate::admin::verify_approval_drsl(
@@ -663,121 +667,32 @@ impl TBCaPayment {
             (true, true) => (),
             _ => return Err(SystemDBError::Custom("Error: POT1003".to_string())),
         }
-
-        //Trigger Build and submit payout transaction
-        let contract = TBContracts::get_contract_uid_cid(self.user_id, self.contract_id)?;
-
-        let mut gtxd = TxData::new(
-            Some(vec![self.contract_id]),
-            vec![murin::wallet::b_decode_addr(&get_vaddr(&self.user_id).await?).await?],
-            None,
-            TransactionUnspentOutputs::new(),
-            get_network_from_address(&contract.address)?,
-            0,
-        )?;
-
-        let verified_addr = gtxd.get_senders_address(None).unwrap();
-
-        let cv = serde_json::from_str::<CaValue>(&self.value)?.into_cvalue()?;
-        let txo_values = vec![(&verified_addr, &cv, None)];
-
-        // ToDo: Check that payout sum cannot spent liquidity
-
-        let mut dbsync = match mimir::establish_connection() {
-            Ok(conn) => conn,
-            Err(e) => {
-                return Err(SystemDBError::Custom(format!(
-                    "ERROR could not connect to dbsync: '{:?}'",
-                    e.to_string()
-                )))
+        */
+        log::debug!("connect to odin...");
+        let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
+        let cmd = BuildMultiSig::new(
+            self.user_id.try_into().unwrap(),
+            crate::MultiSigType::CustomerPayout,
+            TransactionPattern::new_empty(
+                self.user_id.try_into().unwrap(),
+                &ScriptSpecParams::CPO {
+                    po_id: self.id,
+                    pw: pw.to_string(),
+                },
+                0b0,
+            ),
+        );
+        log::info!("try to build payout in odin ...");
+        let result = match client.build_cmd::<BuildMultiSig>(cmd).await {
+            Ok(s) => serde_json::from_str::<TBCaPayment>(&s)?,
+            Err(_) => {
+                return Err(SystemDBError::Custom(
+                    "Error: odin could not finialize payout transaction".to_string(),
+                ));
             }
         };
-        let slot = match mimir::get_slot(&mut dbsync) {
-            Ok(s) => s,
-            Err(e) => {
-                return Err(SystemDBError::Custom(format!(
-                    "ERROR could not determine current slot: '{:?}'",
-                    e.to_string()
-                )))
-            }
-        };
-        gtxd.set_current_slot(slot as u64);
-        log::info!("DB Sync Slot: {}", slot);
-        //ToDO:
-        // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
-        let utxos = mimir::get_address_utxos(&mut dbsync, &contract.address)
-            .expect("MimirError: cannot find address utxos");
-        gtxd.set_inputs(utxos);
 
-        log::debug!("Try to establish database connection...");
-        let mut drasildbcon = crate::database::drasildb::establish_connection()?;
-
-        log::debug!("Try to determine additional data...");
-        let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &mut drasildbcon,
-            &contract.contract_id,
-            &contract.user_id,
-            &contract.version,
-        )?;
-
-        let ident = crate::encryption::mident(
-            &contract.user_id,
-            &contract.contract_id,
-            &contract.version,
-            &contract.address,
-        );
-        let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
-
-        log::debug!("Try to build transaction...");
-
-        let txb_param: murin::txbuilders::stdtx::build_cpo::AtCPOParams = (
-            txo_values,
-            murin::clib::NativeScript::from_bytes(hex::decode(&contract.plutus)?)
-                .map_err::<crate::CmdError, _>(|_| crate::CmdError::Custom {
-                    str: "could not convert string to native script".to_string(),
-                })?,
-        );
-        let cpo = murin::txbuilders::stdtx::build_cpo::AtCPOBuilder::new(txb_param);
-        let builder = murin::TxBuilder::new(&gtxd, &pkvs);
-        let bld_tx = builder.build(&cpo).await?;
-
-        log::debug!("Try to create raw tx...");
-        let tx = murin::utxomngr::RawTx::new(
-            &bld_tx.get_tx_body(),
-            &bld_tx.get_txwitness(),
-            &bld_tx.get_tx_unsigned(),
-            &bld_tx.get_metadata(),
-            &gtxd.to_string(),
-            &"CPayout".to_string(),
-            &bld_tx.get_used_utxos(),
-            &"".to_string(),
-            &user.user_id,
-            &[contract.contract_id],
-        );
-        debug!("RAWTX data: {:?}", tx);
-
-        let used_utxos = tx.get_usedutxos().clone();
-        let txh = murin::finalize_rwd(
-            &hex::encode(&murin::clib::TransactionWitnessSet::new().to_bytes()),
-            tx,
-            pkvs,
-        )
-        .await?;
-        murin::utxomngr::usedutxos::store_used_utxos(
-            &txh,
-            &murin::TransactionUnspentOutputs::from_hex(&used_utxos)?,
-        )?;
-
-        // On Success update status
-        let exec = diesel::update(ca_payment::table.find(&self.id))
-            .set((
-                ca_payment::stauts_pa.eq("transfer in process"),
-                ca_payment::stauts_bl.eq("transaction submit"),
-                ca_payment::tx_hash.eq(Some(txh)),
-            ))
-            .get_result::<TBCaPayment>(&mut conn)?;
-        TBCaPaymentHash::create(&exec).await?;
-        Ok(exec)
+        Ok(result)
     }
 
     // ToDo: Triggered by Monitoring Tool
@@ -785,11 +700,21 @@ impl TBCaPayment {
         TBCaPaymentHash::check(self).await?;
         let confi = diesel::update(ca_payment::table.find(&self.id))
             .set((
-                ca_payment::stauts_bl.eq("confirmed"),
-                ca_payment::stauts_bl.eq("transaction on chain"),
+                ca_payment::status_bl.eq("confirmed"),
+                ca_payment::status_bl.eq("transaction on chain"),
             ))
             .get_result::<TBCaPayment>(&mut establish_connection()?)?;
         Ok(confi)
+    }
+
+    pub async fn update_txhash(&self, txh: &String) -> Result<TBCaPayment, SystemDBError> {
+        Ok(diesel::update(ca_payment::table.find(&self.id))
+            .set((
+                ca_payment::status_pa.eq("transfer in process"),
+                ca_payment::status_bl.eq("transaction submit"),
+                ca_payment::tx_hash.eq(Some(txh)),
+            ))
+            .get_result::<TBCaPayment>(&mut establish_connection()?)?)
     }
 }
 
@@ -810,29 +735,38 @@ impl TBCaPaymentHash {
     }
 
     pub async fn hash(tbcapay: &TBCaPayment) -> Result<String, SystemDBError> {
+        log::debug!("Try to create payout hash...");
+
+        let payout_addr = get_vaddr(&tbcapay.user_id).await?;
+        //ToDo: Store hash in user table of verified address and check against that
+        /*
         let payout_addr =
             TBDrasilUser::get_user_by_user_id(&mut establish_connection()?, &tbcapay.user_id)?
                 .cardano_wallet
                 .unwrap();
 
-        let vaddr = get_vaddr(&tbcapay.user_id).await?;
 
-        if payout_addr != vaddr {
-            return Err(SystemDBError::Custom(
-                "Exxxx: verified addresse discrepancy".to_string(),
-            ));
-        }
-        let last_hash = match TBCaPaymentHash::find_by_payid(&tbcapay.id) {
-            Ok(o) => Some(o[0].payment_hash.clone()),
-            Err(e) => {
-                if e.to_string() == "NotFound" {
-                    None
-                } else {
-                    return Err(SystemDBError::Custom(e.to_string()));
-                }
-            }
-        };
+                        let vaddr = get_vaddr(&tbcapay.user_id).await?;
 
+                        if payout_addr != vaddr {
+                            return Err(SystemDBError::Custom(
+                                "Exxxx: verified addresse discrepancy".to_string(),
+                            ));
+                        }
+
+                let last_hash = match TBCaPaymentHash::find_by_payid(&tbcapay.id) {
+                    Ok(o) => Some(o[0].payment_hash.clone()),
+                    Err(e) => {
+                        if e.to_string() == "NotFound" {
+                            None
+                        } else {
+                            return Err(SystemDBError::Custom(e.to_string()));
+                        }
+                    }
+                };
+        */
+        let last_hash: Option<String> = None;
+        log::debug!("Try to run hasher...");
         let mut hasher = sha2::Sha224::new();
         if let Some(hash) = last_hash {
             hasher.update((hash).as_bytes());
@@ -858,6 +792,7 @@ impl TBCaPaymentHash {
 
     pub async fn create(tbcapay: &TBCaPayment) -> Result<Self, SystemDBError> {
         let hash = TBCaPaymentHash::hash(tbcapay).await?;
+        log::debug!("PO hash: {:?}", hash);
         let new_pah = TBCaPaymentHashNew {
             payment_id: &tbcapay.id,
             payment_hash: &hash,
@@ -865,8 +800,10 @@ impl TBCaPaymentHash {
 
         let pah = diesel::insert_into(ca_payment_hash::table)
             .values(&new_pah)
-            .get_result(&mut establish_connection()?)
-            .unwrap();
+            .get_result(&mut establish_connection()?);
+        log::debug!("created hash?: {:?}", pah);
+        let pah = pah?;
+
         Ok(pah)
     }
 

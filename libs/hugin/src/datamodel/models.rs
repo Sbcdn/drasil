@@ -97,6 +97,7 @@ pub enum MultiSigType {
     DAOVoting,
     VestingWallet,
     Mint,
+    NftCollectionMinter,
     ClAPIOneShotMint,
     TestRewards,
     UTxOpti,
@@ -116,6 +117,7 @@ impl FromStr for MultiSigType {
             "sporwc" => Ok(MultiSigType::SpoRewardClaim),
             "nvendor" => Ok(MultiSigType::NftVendor),
             "mint" => Ok(MultiSigType::Mint),
+            "nftcollectionminter" => Ok(MultiSigType::NftCollectionMinter),
             "clapioneshotmint" => Ok(MultiSigType::ClAPIOneShotMint),
             "testrewards" => Ok(MultiSigType::TestRewards),
             "cpo" => Ok(MultiSigType::CustomerPayout),
@@ -136,6 +138,7 @@ impl ToString for MultiSigType {
             MultiSigType::DAOVoting => "dvotng".to_string(),
             MultiSigType::VestingWallet => "vesting".to_string(),
             MultiSigType::Mint => "mint".to_string(),
+            MultiSigType::NftCollectionMinter => "nftcollectionminter".to_string(),
             MultiSigType::ClAPIOneShotMint => "clapioneshotmint".to_string(),
             MultiSigType::TestRewards => "testrewards".to_string(),
             MultiSigType::CustomerPayout => "cpo".to_string(),
@@ -314,7 +317,7 @@ pub enum TXPWrapper {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionPattern {
-    user: String,
+    user: Option<String>,
     contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
     wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
     sending_wal_addrs: Vec<String>,
@@ -330,7 +333,7 @@ pub struct TransactionPattern {
 impl TransactionPattern {
     pub fn new_empty(customer_id: u64, script_spec: &ScriptSpecParams, network: u64) -> Self {
         TransactionPattern {
-            user: customer_id.to_string(),
+            user: Some(customer_id.to_string()),
             contract_id: None,
             wallet_type: None,
             sending_wal_addrs: Vec::<String>::new(),
@@ -345,7 +348,11 @@ impl TransactionPattern {
     }
 
     pub fn user(&self) -> String {
-        self.user.clone()
+        if let Some(u) = self.user.clone() {
+            u
+        } else {
+            "".to_string()
+        }
     }
 
     pub fn contract_id(&self) -> Option<u64> {
@@ -492,8 +499,7 @@ pub enum ScriptSpecParams {
         contract_id: i64,
     },
     NftCollectionMinter {
-        mint_handles: Vec<CMintHandle>,
-        claim_stake_addr: String,
+        mint_handles: Vec<MintRewardHandle>,
     },
     TokenMinter {},
     NftOffer {
@@ -509,9 +515,8 @@ pub enum ScriptSpecParams {
         poolhash: String,
     },
     CPO {
-        contract_id: i64,
-        user_id: i64,
-        security_code: String,
+        po_id: i64,
+        pw: String,
     },
     ClApiOneShotMint {
         tokennames: Vec<String>,
@@ -594,12 +599,24 @@ impl ScriptSpecParams {
         use murin::txbuilders::minter::models::*;
 
         match self {
-            ScriptSpecParams::NftCollectionMinter {
-                mint_handles,
-                claim_stake_addr,
-            } => {
-                let addr = murin::b_decode_addr_na(claim_stake_addr)?;
-                Ok(ColMinterTxData::new(mint_handles.to_vec(), addr))
+            ScriptSpecParams::NftCollectionMinter { mint_handles } => {
+                let mut out = Vec::<CMintHandle>::new();
+                for handle in mint_handles {
+                    let mrwd =
+                        gungnir::minting::models::MintReward::get_mintreward_by_id(handle.id)
+                            .unwrap();
+                    if mrwd.pay_addr != handle.addr {
+                        return Err(MurinError::new("corrupt data"));
+                    }
+                    out.push(CMintHandle {
+                        id: mrwd.id,
+                        project_id: mrwd.project_id,
+                        pay_addr: mrwd.pay_addr,
+                        nft_ids: mrwd.nft_ids.iter().map(hex::encode).collect(),
+                        v_nfts_b: mrwd.v_nfts_b.iter().map(hex::encode).collect(),
+                    })
+                }
+                Ok(ColMinterTxData::new(out))
             }
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this contract",
@@ -708,11 +725,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::CPO;
 
         match self {
-            ScriptSpecParams::CPO {
-                contract_id,
-                user_id,
-                security_code,
-            } => Ok(CPO::new(user_id, contract_id, security_code)),
+            ScriptSpecParams::CPO { po_id, pw } => Ok(CPO::new(*po_id, pw.to_owned())),
 
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this transaction",
@@ -998,4 +1011,19 @@ impl RewardHandle {
             last_calc_epoch: rwd.last_calc_epoch,
         }
     }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct MintRewardHandle {
+    pub id: i64,
+    pub addr: String,
+    pub project: MintProjectHandle,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct MintProjectHandle {
+    pub project_name: String,
+    pub collection_name: String,
+    pub author: String,
+    pub image: Option<String>,
 }

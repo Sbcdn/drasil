@@ -78,12 +78,14 @@ impl Listener {
         loop {
             self.limit_connections.acquire().await?.forget();
             let socket = self.accept().await?;
+            log::debug!("From peer address: {:?}", socket.peer_addr().unwrap());
             let mut handler = Handler {
                 connection: Connection::new(socket),
                 limit_connections: self.limit_connections.clone(),
                 shutdown: Shutdown::new(self.notify_shutdown.subscribe()),
                 _shutdown_complete: self.shutdown_complete_tx.clone(),
             };
+
             tokio::spawn(async move {
                 if let Err(err) = handler.run().await {
                     log::error!("connection error: {:?}", err);

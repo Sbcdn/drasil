@@ -208,14 +208,17 @@ fn txbuilder(
             //.expect("Could not create transaction");
             utxos.delete_set(&used_utxos);
             transactions.push((tx, used_utxos.clone()));
-            Ok(txbuilder(
-                &mut used_utxos,
-                std_value,
-                new_utxo_amt,
-                transactions,
-                addr,
-                script,
-            )?)
+            Ok(
+                (), /*
+                        txbuilder(
+                        &mut used_utxos,
+                        std_value,
+                        new_utxo_amt,
+                        transactions,
+                        addr,
+                        script,
+                    )? */
+            )
         }
     }
 }

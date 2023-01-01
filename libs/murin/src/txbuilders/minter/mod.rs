@@ -16,10 +16,11 @@ use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
 use chrono::{DateTime, Utc};
 use clib::crypto::{Ed25519KeyHash, ScriptHash};
+use clib::metadata::{MetadataList, MetadataMap};
 use clib::{NativeScript, NativeScripts, ScriptAll, ScriptPubkey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::str;
+use std::str::{self, from_utf8};
 
 #[derive(Debug, Clone)]
 pub struct MinterTxData {
@@ -296,7 +297,7 @@ pub struct AssetMetadata {
     pub tokenname: String,
     #[serde(rename(serialize = "mediaType", deserialize = "mediaType"))]
     pub media_type: Option<String>,
-    pub descritpion: Option<Vec<String>>,
+    pub description: Option<Vec<String>>,
     pub image_url: Option<String>,
     pub files: Option<Vec<MetadataFile>>,
     pub other: Option<Vec<MetadataOther>>,
@@ -305,107 +306,90 @@ pub struct AssetMetadata {
 impl AssetMetadata {
     pub fn from_json(str: &str) -> Result<Vec<AssetMetadata>, MurinError> {
         let raw: serde_json::Value = serde_json::from_str(str)?;
-        println!("Read Raw Json: {:?}", raw);
+        log::debug!("Read Raw Json: {:?}", raw);
         let mut assets = Vec::<AssetMetadata>::new();
         if let Some(o) = raw.as_object() {
-            let mut a: AssetMetadata;
+            log::debug!("Some Assets found: {:?}", o);
+            let mut a = AssetMetadata {
+                tokenname: "".to_owned(),
+                name: None,
+                media_type: None,
+                description: None,
+                image_url: None,
+                files: None,
+                other: None,
+            };
             let m = o
                 .iter()
                 .fold(Vec::<(&String, &Value)>::new(), |mut acc, n| {
                     acc.push(n);
                     acc
                 });
+            log::debug!("Key Values: {:?}", m);
             for elem in m.iter() {
-                let tn: String;
-                let n: String;
-                match hex::decode(elem.0) {
-                    Ok(v) => {
-                        tn = elem.0.to_string();
-                        n = String::from_utf8(v)?;
+                log::debug!("Element: {:?}", elem);
+                match &elem.0[..] {
+                    "name" => match elem.1 {
+                        Value::String(s) => match hex::decode(s) {
+                            Ok(v) => {
+                                a.tokenname = hex::encode(v.clone());
+                                a.name = Some(String::from_utf8(v)?);
+                            }
+                            Err(_e) => {
+                                a.tokenname = hex::encode(s.as_bytes());
+                                a.name = Some(s.to_string());
+                            }
+                        },
+                        _ => {
+                            return Err(MurinError::new("name is not a string"));
+                        }
+                    },
+                    "image" => {
+                        a.image_url = match elem.1 {
+                            Value::String(s) => Some(s.to_string()),
+                            Value::Array(s) => match s.len() {
+                                0 => None,
+                                // ToDo: allow also arrays and transform them correctly
+                                _ => Some(s[0].to_string()),
+                            },
+                            _ => None,
+                        }
                     }
-                    Err(_e) => {
-                        tn = hex::encode(elem.0.as_bytes());
-                        n = elem.0.to_string();
-                    }
-                }
-                println!("hexname: {}\nname: {}", tn, n);
-                a = AssetMetadata {
-                    tokenname: tn,
-                    name: Some(n),
-                    media_type: None,
-                    descritpion: None,
-                    image_url: None,
-                    files: None,
-                    other: None,
-                };
-
-                match elem.1 {
-                    Value::Object(o_) => {
-                        for object in o_.iter() {
-                            print!("Subelement : {:?}", object);
-                            match &object.0[..] {
-                                "name" => {
-                                    a.name = match object.1 {
-                                        Value::String(s) => Some(s.to_string()),
-                                        _ => {
-                                            return Err(MurinError::new("name is not a string"));
-                                        }
-                                    }
-                                }
-                                "image" => {
-                                    a.image_url = match object.1 {
-                                        Value::String(s) => Some(s.to_string()),
-                                        Value::Array(s) => match s.len() {
-                                            0 => None,
-                                            _ => Some(s[0].to_string()),
-                                        },
-                                        _ => None,
-                                    }
-                                }
-                                "mediaType" => {
-                                    a.media_type = match object.1 {
-                                        Value::String(s) => Some(s.to_string()),
-                                        _ => {
-                                            return Err(MurinError::new(
-                                                "mediaType value is not a string",
-                                            ));
-                                        }
-                                    }
-                                }
-                                "descritpion" => {
-                                    a.descritpion = {
-                                        match object.1 {
-                                            Value::String(s) => Some(vec![s.to_string()]),
-                                            Value::Array(s) => match s.len() {
-                                                0 => None,
-                                                _ => {
-                                                    Some(s.iter().map(|s| s.to_string()).collect())
-                                                }
-                                            },
-                                            _ => None,
-                                        }
-                                    };
-                                }
-                                "files" => a.files = Some(MetadataFile::from_json(object.1)?),
-                                _ => {
-                                    if let Some(mut other) = a.other.clone() {
-                                        other.extend(
-                                            MetadataOther::from_json(elem.1, elem.0).into_iter(),
-                                        );
-                                        a.other = Some(other);
-                                    } else {
-                                        a.other = Some(MetadataOther::from_json(elem.1, elem.0));
-                                    }
-                                }
+                    "mediaType" => {
+                        a.media_type = match elem.1 {
+                            Value::String(s) => Some(s.to_string()),
+                            _ => {
+                                return Err(MurinError::new("mediaType value is not a string"));
                             }
                         }
                     }
+                    "description" => {
+                        //ToDO: Make also string descriptions possible without vec
+                        a.description = {
+                            match elem.1 {
+                                Value::String(s) => Some(vec![s.to_string()]),
+                                Value::Array(s) => match s.len() {
+                                    0 => None,
+                                    _ => Some(s.iter().map(|s| s.to_string()).collect()),
+                                },
+                                _ => None,
+                            }
+                        };
+                    }
+                    "files" => a.files = Some(MetadataFile::from_json(elem.1)?),
                     _ => {
-                        return Err(MurinError::new("Not CIP25 conform metadata"));
+                        log::debug!("SubElement Other: {:?}", elem);
+                        if let Some(other) = a.clone().other {
+                            let mut w = other.clone();
+                            w.extend(MetadataOther::from_json(elem.1, elem.0).into_iter());
+                            a.other = Some(w);
+                        } else {
+                            a.other = Some(MetadataOther::from_json(elem.1, elem.0));
+                        }
                     }
                 }
-                assets.push(a);
             }
+            assets.push(a);
         }
         Ok(assets)
     }
@@ -494,74 +478,178 @@ pub fn make_mint_metadata(
 
     // Other
     if let Some(other) = &raw_metadata.other {
-        for o in other.clone() {
-            let v: serde_json::Value = serde_json::from_str(&o.value)?;
-            if !v.is_null() {
-                let mut olist = MetadataList::new();
-
-                if v.is_i64() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-
-                if v.is_string() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
-                    )?;
-                }
-
-                if v.is_array() {
-                    olist.add(&clib::metadata::TransactionMetadatum::new_text(
-                        v.to_string(),
-                    )?);
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_list(&olist),
-                    )?;
-                }
-
-                if v.is_boolean() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-
-                if v.is_object() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
-                    )?;
-                }
-
-                if v.is_number() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-            } else {
-                metamap.insert_str(
-                    &o.key,
-                    &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
-                )?;
-            }
-        }
+        encode_other_metadata(&mut metamap, other)?
     }
 
     let metadata = clib::metadata::TransactionMetadatum::new_map(&metamap);
     toplevel_metadata.insert(&cutils::to_bignum(721u64), &metadata);
 
     Ok(toplevel_metadata)
+}
+
+fn chunk_string(metamap: &mut MetadataMap, key: &str, s: &String) -> Result<(), MurinError> {
+    if s.len() > 64 {
+        let chunks = s
+            .as_bytes()
+            .chunks(64)
+            .map(from_utf8)
+            .collect::<Result<Vec<&str>, _>>()
+            .unwrap();
+        log::debug!("Chunks: {:?}", chunks);
+        let mut list = MetadataList::new();
+        for s in chunks {
+            list.add(&clib::metadata::TransactionMetadatum::new_text(
+                s.to_string(),
+            )?)
+        }
+        metamap.insert_str(key, &clib::metadata::TransactionMetadatum::new_list(&list))?;
+    } else {
+        metamap.insert_str(
+            key,
+            &clib::metadata::TransactionMetadatum::new_text(s.to_string())?,
+        )?;
+    }
+    Ok(())
+}
+
+fn encode_object(v: &serde_json::Value) -> Result<MetadataMap, MurinError> {
+    let mut map = MetadataMap::new();
+    let o = v.as_object().unwrap();
+    for e in o.iter() {
+        match e.1 {
+            Value::Null => {
+                map.insert_str(
+                    e.0,
+                    &clib::metadata::TransactionMetadatum::new_text("".to_string())?,
+                )?;
+            }
+            Value::Bool(b) => {
+                map.insert_str(
+                    e.0,
+                    &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                        *b as i32,
+                    )),
+                )?;
+            }
+            Value::Number(b) => {
+                map.insert_str(
+                    e.0,
+                    &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                        b.as_i64().unwrap() as i32,
+                    )),
+                )?;
+            }
+            Value::String(b) => {
+                map.insert_str(
+                    e.0,
+                    &clib::metadata::TransactionMetadatum::new_text(b.to_string())?,
+                )?;
+            }
+            Value::Array(_) => {
+                let array = encode_array(e.1)?;
+                map.insert_str(e.0, &clib::metadata::TransactionMetadatum::new_list(&array))?;
+            }
+            Value::Object(_) => {
+                let object = encode_object(e.1)?;
+                map.insert_str(e.0, &clib::metadata::TransactionMetadatum::new_map(&object))?;
+            }
+        }
+    }
+    Ok(map)
+}
+
+fn encode_array(v: &serde_json::Value) -> Result<MetadataList, MurinError> {
+    let mut olist = MetadataList::new();
+    for e in v.as_array().unwrap() {
+        match e {
+            Value::Null => {
+                olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                    "".to_string(),
+                )?);
+            }
+            Value::Bool(b) => {
+                olist.add(&clib::metadata::TransactionMetadatum::new_int(
+                    &clib::utils::Int::new_i32(*b as i32),
+                ));
+            }
+            Value::Number(n) => {
+                olist.add(&clib::metadata::TransactionMetadatum::new_int(
+                    &clib::utils::Int::new_i32(n.as_i64().unwrap() as i32),
+                ));
+            }
+            Value::String(s) => {
+                olist.add(&clib::metadata::TransactionMetadatum::new_text(
+                    s.to_string(),
+                )?);
+            }
+            Value::Array(_) => {
+                let array = encode_array(e)?;
+                olist.add(&clib::metadata::TransactionMetadatum::new_list(&array))
+            }
+            Value::Object(_) => {
+                let object = encode_object(e)?;
+                olist.add(&clib::metadata::TransactionMetadatum::new_map(&object));
+            }
+        }
+    }
+    Ok(olist)
+}
+
+fn encode_other_metadata(
+    metamap: &mut MetadataMap,
+    other: &[MetadataOther],
+) -> Result<(), MurinError> {
+    for o in other {
+        let v: serde_json::Value = serde_json::from_str(&o.value)?;
+        if !v.is_null() {
+            if v.is_i64() {
+                metamap.insert_str(
+                    &o.key,
+                    &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                        v.as_i64().unwrap() as i32,
+                    )),
+                )?;
+            }
+
+            if v.is_string() {
+                let s = o.value.to_string();
+                chunk_string(metamap, &o.key, &s)?
+            }
+
+            if v.is_array() {
+                let array = encode_array(&v)?;
+                metamap.insert_str(
+                    &o.key,
+                    &clib::metadata::TransactionMetadatum::new_list(&array),
+                )?;
+            }
+
+            if v.is_boolean() {
+                metamap.insert_str(
+                    &o.key,
+                    &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                        v.as_i64().unwrap() as i32,
+                    )),
+                )?;
+            }
+
+            if v.is_object() {
+                chunk_string(metamap, &o.key, &v.to_string())?;
+            }
+
+            if v.is_number() {
+                metamap.insert_str(
+                    &o.key,
+                    &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
+                        v.as_i64().unwrap() as i32,
+                    )),
+                )?;
+            }
+        } else {
+            chunk_string(metamap, &o.key, &o.value.to_string())?
+        }
+    }
+    Ok(())
 }
 
 pub fn make_mint_metadata_from_json(
@@ -611,68 +699,7 @@ pub fn make_mint_metadata_from_json(
 
     // Other
     if let Some(other) = &raw_metadata.other {
-        for o in other.clone() {
-            let v: serde_json::Value = serde_json::from_str(&o.value)?;
-            if !v.is_null() {
-                let mut olist = MetadataList::new();
-
-                if v.is_i64() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-
-                if v.is_string() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
-                    )?;
-                }
-
-                if v.is_array() {
-                    olist.add(&clib::metadata::TransactionMetadatum::new_text(
-                        v.to_string(),
-                    )?);
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_list(&olist),
-                    )?;
-                }
-
-                if v.is_boolean() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-
-                if v.is_object() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
-                    )?;
-                }
-
-                if v.is_number() {
-                    metamap.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-            } else {
-                metamap.insert_str(
-                    &o.key,
-                    &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
-                )?;
-            }
-        }
+        encode_other_metadata(&mut metamap, other)?
     }
 
     let metadata = clib::metadata::TransactionMetadatum::new_map(&metamap);
@@ -711,14 +738,18 @@ pub fn make_721_asset_entry(
 
     //Description
     let mut desc_array = MetadataList::new();
-    if let Some(descritpion) = &asset.descritpion {
-        for line in descritpion.clone() {
-            desc_array.add(&clib::metadata::TransactionMetadatum::new_text(line)?);
+    if let Some(descritpion) = &asset.description {
+        if descritpion.len() == 1 {
+            chunk_string(assetmap, "description", &descritpion[0])?
+        } else {
+            for line in descritpion.clone() {
+                desc_array.add(&clib::metadata::TransactionMetadatum::new_text(line)?);
+            }
+            asset_metadata.insert_str(
+                "description",
+                &clib::metadata::TransactionMetadatum::new_list(&desc_array),
+            )?;
         }
-        asset_metadata.insert_str(
-            "description",
-            &clib::metadata::TransactionMetadatum::new_list(&desc_array),
-        )?;
     }
 
     //Files
@@ -746,70 +777,7 @@ pub fn make_721_asset_entry(
             //Other
             if let Some(other) = f.other {
                 log::debug!("Found some key / values in other: {:?}", other);
-                for o in other.clone() {
-                    let v: serde_json::Value = serde_json::from_str(&o.value)?;
-                    if !v.is_null() {
-                        let mut olist = MetadataList::new();
-
-                        if v.is_i64() {
-                            filemap.insert_str(
-                                &o.key,
-                                &clib::metadata::TransactionMetadatum::new_int(
-                                    &clib::utils::Int::new_i32(v.as_i64().unwrap() as i32),
-                                ),
-                            )?;
-                        }
-
-                        if v.is_string() {
-                            filemap.insert_str(
-                                &o.key,
-                                &clib::metadata::TransactionMetadatum::new_text(
-                                    o.value.to_string(),
-                                )?,
-                            )?;
-                        }
-
-                        if v.is_array() {
-                            olist.add(&clib::metadata::TransactionMetadatum::new_text(
-                                v.to_string(),
-                            )?);
-                            filemap.insert_str(
-                                &o.key,
-                                &clib::metadata::TransactionMetadatum::new_list(&olist),
-                            )?;
-                        }
-
-                        if v.is_boolean() {
-                            filemap.insert_str(
-                                &o.key,
-                                &clib::metadata::TransactionMetadatum::new_int(
-                                    &clib::utils::Int::new_i32(v.as_i64().unwrap() as i32),
-                                ),
-                            )?;
-                        }
-
-                        if v.is_object() {
-                            filemap.insert_str(
-                                &o.key,
-                                &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
-                            )?;
-                        }
-
-                        if v.is_number() {
-                            filemap.insert_str(
-                                &o.key,
-                                &clib::metadata::TransactionMetadatum::new_int(
-                                    &clib::utils::Int::new_i32(v.as_i64().unwrap() as i32),
-                                ),
-                            )?;
-                        }
-                    } else {
-                        filemap.insert_str(
-                            &o.key,
-                            &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
-                        )?;
-                    }
-                }
+                encode_other_metadata(&mut filemap, &other)?
             }
 
             mfiles.add(&clib::metadata::TransactionMetadatum::new_map(&filemap));
@@ -822,68 +790,7 @@ pub fn make_721_asset_entry(
 
     // Other
     if let Some(other) = &asset.other {
-        for o in other.clone() {
-            let v: serde_json::Value = serde_json::from_str(&o.value)?;
-            if !v.is_null() {
-                let mut olist = MetadataList::new();
-
-                if v.is_i64() {
-                    asset_metadata.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-
-                if v.is_string() {
-                    asset_metadata.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
-                    )?;
-                }
-
-                if v.is_array() {
-                    olist.add(&clib::metadata::TransactionMetadatum::new_text(
-                        v.to_string(),
-                    )?);
-                    asset_metadata.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_list(&olist),
-                    )?;
-                }
-
-                if v.is_boolean() {
-                    asset_metadata.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-
-                if v.is_object() {
-                    asset_metadata.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_text(v.to_string())?,
-                    )?;
-                }
-
-                if v.is_number() {
-                    asset_metadata.insert_str(
-                        &o.key,
-                        &clib::metadata::TransactionMetadatum::new_int(&clib::utils::Int::new_i32(
-                            v.as_i64().unwrap() as i32,
-                        )),
-                    )?;
-                }
-            } else {
-                asset_metadata.insert_str(
-                    &o.key,
-                    &clib::metadata::TransactionMetadatum::new_text(o.value.to_string())?,
-                )?;
-            }
-        }
+        encode_other_metadata(&mut asset_metadata, other)?
     }
     let metadatum = clib::metadata::TransactionMetadatum::new_map(&asset_metadata);
     assetmap.insert_str(&asset.tokenname, &metadatum)?;
