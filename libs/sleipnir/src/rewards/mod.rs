@@ -221,10 +221,11 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
     let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
     let mut start_epoch = twl.start_epoch_in;
     if start_epoch < current_epoch - 2 {
+        start_epoch = current_epoch - 2;
         log::error!(
-            "Start epoch cannot be smaller as current epoch, current epoch set as start epoch..."
+            "Start epoch cannot be smaller as current epoch - 2,set {:?} as start epoch...",
+            start_epoch
         );
-        start_epoch = current_epoch;
     }
     if let Some(endepoch) = twl.end_epoch {
         if endepoch <= current_epoch || endepoch <= start_epoch {
@@ -248,7 +249,7 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
         }
         spools.extend(ps.iter().map(|p| gungnir::GPools {
             pool_id: p.clone(),
-            first_valid_epoch: current_epoch,
+            first_valid_epoch: start_epoch,
         }));
     }
 

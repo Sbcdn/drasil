@@ -9,12 +9,14 @@
 pub use crate::error::SleipnirError;
 use chrono::{DateTime, Utc};
 use dvltath::vault::kv::vault_get;
-use hugin::{database::TBDrasilUser, encryption};
+use hugin::{database::TBDrasilUser, encryption, TBCaPayment};
+use murin::utils::{from_bignum, to_bignum};
 use zeroize::Zeroize;
 
 pub async fn create_rev_payout(
     user_id: i64,
     contract_id: i64,
+    pw: String,
 ) -> Result<hugin::TBCaPayment, SleipnirError> {
     let contract = hugin::TBContracts::get_contract_uid_cid(user_id, contract_id)?;
 
@@ -27,7 +29,40 @@ pub async fn create_rev_payout(
         murin::utils::from_bignum(&total_value.coin().checked_sub(&contract_lqdty)?),
         vec![],
     );
-    Ok(hugin::TBCaPayment::create(&user_id, &contract_id, &payout_value).await?)
+    Ok(hugin::TBCaPayment::create(&user_id, &contract_id, &payout_value, &pw).await?)
+}
+
+pub async fn create_custom_payout(
+    user_id: i64,
+    contract_id: i64,
+    ada_value: i64,
+    tokens: Vec<hugin::Token>,
+    pw: String,
+) -> Result<hugin::TBCaPayment, SleipnirError> {
+    log::debug!("Try to get contract...");
+    let contract = hugin::TBContracts::get_contract_uid_cid(user_id, contract_id)?;
+
+    log::debug!("Try to connect to dbsync...");
+    let mut mconn = mimir::establish_connection()?;
+    log::debug!("Try to find contract utxos...");
+    let address_utxos = mimir::get_address_utxos(&mut mconn, &contract.address)?;
+    log::debug!("Try to calculate total value...");
+    let total_value = address_utxos.calc_total_value()?;
+    log::debug!("Try to get contract liquidity...");
+    let contract_lqdty = contract.get_contract_liquidity();
+    log::debug!("Try to calculate difference...");
+    let diff = from_bignum(&total_value.coin().checked_sub(&contract_lqdty).unwrap());
+    log::debug!("Check payout and liquiditity value...");
+    if diff < ada_value as u64 || ada_value <= 0 {
+        return Err(SleipnirError::new(
+            "Requested Ada is not available on this contract",
+        ));
+    }
+    log::debug!("Create payout value...");
+
+    let payout_value = hugin::CaValue::new(ada_value as u64, tokens);
+    log::debug!("All check passed, create on database...");
+    Ok(hugin::TBCaPayment::create(&user_id, &contract_id, &payout_value, &pw).await?)
 }
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
@@ -69,6 +104,14 @@ pub async fn show_payouts(user_id: i64) -> Result<Vec<DispCaPayment>, SleipnirEr
     let caps =
         hugin::TBCaPayment::find_all(&user_id).map_err(|e| SleipnirError::new(&e.to_string()))?;
     Ok(DispCaPayment::from_cap(caps))
+}
+
+pub async fn find_payout(user_id: i64, po_id: i64) -> Result<TBCaPayment, SleipnirError> {
+    let caps = hugin::TBCaPayment::find(&po_id).map_err(|e| SleipnirError::new(&e.to_string()))?;
+    if caps.user_id != user_id {
+        return Err(SleipnirError::new("wrong user"));
+    }
+    Ok(caps)
 }
 
 // ToDO: TWO FACTOR AUTHENTICATION

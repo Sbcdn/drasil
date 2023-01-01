@@ -11,12 +11,9 @@
 use super::models::*;
 use crate::SleipnirError;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use gungnir::establish_connection;
 use gungnir::minting::models::*;
 
 pub async fn create_mintproject(data: &CreateMintProj) -> Result<MintProject, SleipnirError> {
-    let gconn = &mut establish_connection()?;
-
     let time_constraint = if let Some(date) = &data.time_constraint {
         Some(DateTime::<Utc>::from_utc(
             NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S")?,
@@ -96,20 +93,22 @@ pub async fn import_nfts_from_csv_metadata(
     mint_pid: i64,
 ) -> Result<usize, SleipnirError> {
     let mut rdr = csv::Reader::from_reader(csv);
-    // let n = rdr.records().clone().count();
-    println!("Count: {:?}", rdr);
+    //let n = rdr.clone().records().count();
+    //log::debug!("Count: {:?}", n);
+    log::debug!("Reader: {:?}", rdr);
     let mut counter = 0;
     for result in rdr.records() {
-        // The iterator yields Result<StringRecord, Error>, so we check the
-        // error here.
-        let record = result.unwrap();
-        for n in record.iter() {
-            println!("Try to parse from json...: {}", n);
-            let assets = murin::minter::AssetMetadata::from_json(n)?;
-            println!("Try to import from asset metadata...");
-            let nfts = import_from_asset_metadata(user_id, mint_pid, assets).await?;
-            println!("\n Imported Nfts: {:?}", nfts);
-            counter += nfts.len();
+        if let Ok(record) = result {
+            for n in record.iter() {
+                println!("Try to parse from json...: {}", n);
+                let assets = murin::minter::AssetMetadata::from_json(n)?;
+                println!("Try to import from asset metadata...");
+                let nfts = import_from_asset_metadata(user_id, mint_pid, assets).await?;
+                println!("\n Imported Nfts: {:?}", nfts);
+                counter += nfts.len();
+            }
+        } else {
+            log::debug!("No more records; processed: {}", counter);
         }
     }
     Ok(counter)
@@ -131,7 +130,7 @@ pub async fn import_from_asset_metadata(
     mpid: i64,
     meta: Vec<murin::minter::AssetMetadata>,
 ) -> Result<Vec<gungnir::minting::models::Nft>, SleipnirError> {
-    let gconn = &mut gungnir::establish_connection()?;
+    //let gconn = &mut gungnir::establish_connection()?;
     let mint_project = MintProject::get_mintproject_by_id(mpid)?;
     println!("Try to find contract...");
     let mint_contract =

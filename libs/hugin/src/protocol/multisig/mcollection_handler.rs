@@ -24,10 +24,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         .script()
         .ok_or("ERROR: No specific contract data supplied")?
     {
-        ScriptSpecParams::NftCollectionMinter {
-            mint_handles,
-            claim_stake_addr,
-        } => {
+        ScriptSpecParams::NftCollectionMinter { mint_handles } => {
             let err = Err(CmdError::Custom {
                 str: format!(
                     "ERROR wrong data provided for script specific parameters: '{:?}'",
@@ -38,22 +35,12 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             if mint_handles.is_empty() {
                 return err;
             }
-            if murin::b_decode_addr(&mint_handles[0].pay_addr)
-                .await
-                .is_err()
-            {
+            if murin::b_decode_addr(&mint_handles[0].addr).await.is_err() {
                 return err;
             } else {
-                let payer0 = murin::b_decode_addr(&mint_handles[0].pay_addr).await?;
-                if murin::wallet::get_stake_address(&payer0)?
-                    != murin::wallet::get_stake_address(
-                        &murin::b_decode_addr(&claim_stake_addr).await?,
-                    )?
-                {
-                    return err;
-                }
+                let payer0 = murin::b_decode_addr(&mint_handles[0].addr).await?;
                 for mint in &mint_handles {
-                    if payer0 != murin::b_decode_addr(&mint.pay_addr).await? {
+                    if payer0 != murin::b_decode_addr(&mint.addr).await? {
                         return err;
                     }
                 }
@@ -75,12 +62,14 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         .unwrap()
         .into_colmintdata()
         .await?;
+    let stake_address = minttxd.mint_handles[0].reward_addr()?.to_bech32(None)?;
+
     let first_address = murin::b_decode_addr(&mimir::api::select_addr_of_first_transaction(
-        &minttxd.claim_stake_addr.to_bech32(None)?,
+        &stake_address,
     )?)
     .await?;
     let mut gtxd = bms.transaction_pattern().into_txdata().await?;
-
+    gtxd.set_senders_addresses(vec![first_address.clone()]);
     let mintproject_ids = minttxd
         .mint_handles
         .iter()
@@ -88,14 +77,18 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             acc.push(n.project_id);
             acc
         });
-
+    gtxd.set_stake_address(minttxd.mint_handles[0].reward_addr()?);
     log::debug!("Check contracts and mint projects...");
     let mut mintprojects = Vec::<(i64, MintProject, TBContracts, Option<TBMultiSigLoc>)>::new();
+    let mut contract_ids = Vec::<i64>::new();
     for id in mintproject_ids {
         let p = MintProject::get_mintproject_by_id(id)?;
         let c = TBContracts::get_contract_uid_cid(bms.customer_id(), p.mint_contract_id)?;
+        contract_ids.push(p.mint_contract_id);
         mintprojects.push((id, p, c, None));
     }
+    log::debug!("ContractIds: {:?}", contract_ids);
+    gtxd.set_contract_id(contract_ids);
 
     log::debug!("Try to establish database connection...");
     let mut drasildbcon = crate::database::drasildb::establish_connection()?;

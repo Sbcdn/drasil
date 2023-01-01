@@ -224,7 +224,7 @@ impl CaValue {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Queryable, PartialEq, Eq)]
+#[derive(serde::Deserialize, serde::Serialize, Queryable, PartialEq, Eq, Debug)]
 pub struct TBCaPayment {
     pub id: i64,
     pub user_id: i64,
@@ -248,11 +248,11 @@ pub struct TBCaPaymentNew<'a> {
     pub tx_hash: Option<&'a str>,
     pub user_appr: Option<&'a str>,
     pub drasil_appr: Option<&'a str>,
-    pub stauts_bl: Option<&'a str>,
-    pub stauts_pa: &'a str,
+    pub status_bl: Option<&'a str>,
+    pub status_pa: &'a str,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Queryable, PartialEq, Eq)]
+#[derive(serde::Deserialize, serde::Serialize, Queryable, PartialEq, Eq, Debug)]
 pub struct TBCaPaymentHash {
     pub id: i64,
     pub payment_id: i64,

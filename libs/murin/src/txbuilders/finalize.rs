@@ -23,9 +23,9 @@ pub async fn finalize(signature: &String, raw_tx: RawTx) -> Result<String, Murin
 
     //Check if aux Data is empty, if yes set it None in the final tx
     let mut aux_data = Some(tx_aux.clone());
-    if tx_aux.native_scripts() == None
-        && tx_aux.plutus_scripts() == None
-        && tx_aux.metadata() == None
+    if tx_aux.native_scripts().is_none()
+        && tx_aux.plutus_scripts().is_none()
+        && tx_aux.metadata().is_none()
     {
         aux_data = None
     };

@@ -6,82 +6,106 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+
+use crate::admin::get_vaddr;
+use crate::ca_payment;
+use crate::error::SystemDBError;
+use crate::establish_connection;
 use crate::BuildMultiSig;
-use crate::CmdError;
+use crate::CaValue;
+use crate::TBCaPayment;
+use crate::TBCaPaymentHash;
+use crate::TBContracts;
+use crate::TBDrasilUser;
+use murin::get_network_from_address;
 use murin::PerformTxb;
+use murin::TransactionUnspentOutputs;
+use murin::TxData;
 
 pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result<String> {
-    info!("verify transaction data...");
-    // ToDo:
-    // Verify there is a unhandled payout existing for this user with the security code passed in cpo_data,
-    // Payout need to be verified and approved by a DrasilAdmin (In the best case after creation and signature of the customer)
-    // The Drasil verification would apply the last needed MultiSig Key for the payout so no accidential payout is possible.
-
-    info!("create raw data...");
-    let cpo_data = bms
+    let poid = bms
         .transaction_pattern()
         .script()
         .unwrap()
         .into_cpo()
         .await?;
-    let mut gtxd = bms.transaction_pattern().into_txdata().await?;
+    let po = TBCaPayment::find(&poid.get_po_id())?;
 
-    info!("establish database connections...");
-    let mut drasildbcon = crate::database::drasildb::establish_connection()?;
+    if po.stauts_pa == "cancel" || po.stauts_bl.is_some() {
+        return Err(Box::new(SystemDBError::Custom(format!(
+            "ERROR payout is invalid",
+        ))));
+    }
 
-    let contract = crate::drasildb::TBContracts::get_contract_uid_cid(
-        cpo_data.get_user_id(),
-        cpo_data.get_contract_id(),
+    log::debug!("Verify password...");
+    TBDrasilUser::verify_pw_userid(&po.user_id, &poid.get_pw())?;
+
+    if po.stauts_bl.is_some() {
+        return Err(Box::new(SystemDBError::Custom(
+            "ERROR this payout was processed before".to_string(),
+        )));
+    }
+
+    log::debug!("Try to connect to drasil db and get user...");
+    let user = TBDrasilUser::get_user_by_user_id(&mut establish_connection()?, &po.user_id)?;
+
+    //Trigger Build and submit payout transaction
+    let contract = TBContracts::get_contract_uid_cid(po.user_id, po.contract_id)?;
+
+    log::debug!("Generating TxData...");
+    let mut gtxd = TxData::new(
+        Some(vec![po.contract_id]),
+        vec![murin::wallet::b_decode_addr(&get_vaddr(&po.user_id).await?).await?],
+        None,
+        TransactionUnspentOutputs::new(),
+        get_network_from_address(&contract.address)?,
+        0,
     )?;
 
-    let _contract_address = murin::address::Address::from_bech32(&contract.address).unwrap();
+    log::debug!("Try to determine verified address...");
+    let verified_addr = gtxd.get_senders_address(None).unwrap();
 
-    info!("retrieve additional data...");
+    log::debug!("Make payout values...");
+    let cv = serde_json::from_str::<CaValue>(&po.value)?.into_cvalue()?;
+    let txo_values = vec![(&verified_addr, &cv, None)];
+    log::debug!("Try to build transaction...");
+    // ToDo: Check that payout sum cannot spent liquidity
+
+    let mut dbsync = match mimir::establish_connection() {
+        Ok(conn) => conn,
+        Err(e) => {
+            return Err(Box::new(SystemDBError::Custom(format!(
+                "ERROR could not connect to dbsync: '{:?}'",
+                e.to_string()
+            ))))
+        }
+    };
+    let slot = match mimir::get_slot(&mut dbsync) {
+        Ok(s) => s,
+        Err(e) => {
+            return Err(Box::new(SystemDBError::Custom(format!(
+                "ERROR could not determine current slot: '{:?}'",
+                e.to_string()
+            ))))
+        }
+    };
+    gtxd.set_current_slot(slot as u64);
+    log::info!("DB Sync Slot: {}", slot);
+
+    let utxos = mimir::get_address_utxos(&mut dbsync, &contract.address)
+        .expect("MimirError: cannot find address utxos");
+    gtxd.set_inputs(utxos);
+
+    log::debug!("Try to establish database connection...");
+    let mut drasildbcon = crate::database::drasildb::establish_connection()?;
+
+    log::debug!("Try to determine additional data...");
     let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
         &mut drasildbcon,
         &contract.contract_id,
         &contract.user_id,
         &contract.version,
     )?;
-    info!("Drasil Connection!");
-    info!("keyloc: {:?}", keyloc);
-
-    let ns_script = contract.plutus.clone();
-    let _ns_version = contract.version.to_string();
-
-    let mut dbsync = match mimir::establish_connection() {
-        Ok(conn) => conn,
-        Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()),
-            }
-            .into());
-        }
-    };
-    let slot = match mimir::get_slot(&mut dbsync) {
-        Ok(s) => s,
-        Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!(
-                    "ERROR could not determine current slot: '{:?}'",
-                    e.to_string()
-                ),
-            }
-            .into());
-        }
-    };
-    gtxd.set_current_slot(slot as u64);
-
-    // ToDO:
-    // Determine Available Payout Sum and write it into cpo_data so the txbuild can create correct transaction
-    // The Sum is determined automatically by: Outputsum = Ada_Available_on_contract - (Total_Liquidity)
-    // make sure no tokens are leaving the contract (possibly a rearrangement of Utxos is needed before and after the payout?)
-
-    // - Function to check and split utxos when for size >5kB (cal_min_ada panics on utxos >5kB)
-    // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
-    let contract_utxos = mimir::get_address_utxos(&mut dbsync, &contract.address)?;
-
-    gtxd.set_inputs(contract_utxos);
 
     let ident = crate::encryption::mident(
         &contract.user_id,
@@ -94,46 +118,45 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     log::debug!("Try to build transaction...");
 
     let txb_param: murin::txbuilders::stdtx::build_cpo::AtCPOParams = (
-        //Vec<(caddr::Address, cutils::Value, Option<TransactionUnspentOutputs>)>
-        // ToDo: Payout Values
-        Vec::<(
-            &murin::clib::address::Address,
-            &murin::clib::utils::Value,
-            Option<&murin::TransactionUnspentOutputs>,
-        )>::new(),
-        murin::clib::NativeScript::from_bytes(hex::decode(ns_script)?).map_err::<CmdError, _>(
-            |_| CmdError::Custom {
+        txo_values,
+        murin::clib::NativeScript::from_bytes(hex::decode(&contract.plutus)?)
+            .map_err::<crate::CmdError, _>(|_| crate::CmdError::Custom {
                 str: "could not convert string to native script".to_string(),
-            },
-        )?,
+            })?,
     );
     let cpo = murin::txbuilders::stdtx::build_cpo::AtCPOBuilder::new(txb_param);
     let builder = murin::TxBuilder::new(&gtxd, &pkvs);
-    let _bld_tx = builder.build(&cpo).await?;
+    let bld_tx = builder.build(&cpo).await?;
 
-    /*
-
-    info!("Build Successful!");
+    log::debug!("Try to create raw tx...");
     let tx = murin::utxomngr::RawTx::new(
         &bld_tx.get_tx_body(),
         &bld_tx.get_txwitness(),
         &bld_tx.get_tx_unsigned(),
         &bld_tx.get_metadata(),
         &gtxd.to_string(),
-        &minttxd.to_string(),
+        &"CPayout".to_string(),
         &bld_tx.get_used_utxos(),
-        &hex::encode(gtxd.get_stake_address().to_bytes()),
-        &(bms.customer_id as i64),
-        &contract.contract_id,
-        &contract.version,
+        &"".to_string(),
+        &user.user_id,
+        &[contract.contract_id],
     );
-    debug!("RAWTX data: {:?}",tx);
-    let used_utxos = tx.get_usedutxos().clone();
-    let txh = murin::finalize_rwd(&hex::encode(&murin::clib::TransactionWitnessSet::new().to_bytes()), tx, keyloc.pvks).await?;
-    murin::utxomngr::usedutxos::store_used_utxos(&txh, &murin::TransactionUnspentOutputs::from_hex(&used_utxos)?)?;
+    debug!("RAWTX data: {:?}", tx);
 
-    let ret = super::create_response(&bld_tx, &tx, bms.transaction_pattern().wallet_type().as_ref())?;
-    */
-    let ret = "Not implemented";
-    Ok(ret.to_string())
+    let used_utxos = tx.get_usedutxos().clone();
+    let txh = murin::finalize_rwd(
+        &hex::encode(&murin::clib::TransactionWitnessSet::new().to_bytes()),
+        tx,
+        pkvs,
+    )
+    .await?;
+    murin::utxomngr::usedutxos::store_used_utxos(
+        &txh,
+        &murin::TransactionUnspentOutputs::from_hex(&used_utxos)?,
+    )?;
+
+    // On Success update status
+    let result = po.update_txhash(&txh).await?;
+    TBCaPaymentHash::create(&result).await?;
+    Ok(serde_json::json!(result).to_string())
 }

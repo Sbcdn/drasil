@@ -382,11 +382,14 @@ mod handlers {
         log::info!("Build MultiSig Transaction....");
         match multisig_type {
             MultiSigType::SpoRewardClaim => {}
+            MultiSigType::NftCollectionMinter => {}
             MultiSigType::NftVendor => {
                 return Ok(badreq);
             }
             MultiSigType::Mint => {}
-            MultiSigType::TestRewards => {}
+            MultiSigType::TestRewards => {
+                return Ok(badreq);
+            }
             _ => {
                 // Wrong Parameter
                 return Ok(badreq);

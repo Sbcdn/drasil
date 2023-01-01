@@ -120,39 +120,33 @@ async fn client_msg(
         //"alive" | "alive\n"
         WSCom::Alive => {
             let locked = clients.lock().await;
-            match locked.get(&client_id) {
-                Some(v) => {
-                    if let Some(sender) = &v.sender {
-                        log::info!("sending alive");
-                        let _ = sender.send(Ok(Message::text("OK")));
-                    }
+            if let Some(v) = locked.get(&client_id) {
+                if let Some(sender) = &v.sender {
+                    log::info!("sending alive");
+                    let _ = sender.send(Ok(Message::text("OK")));
                 }
-                None => (),
             }
         }
         //"new_token"
         WSCom::ClaimMintRewards(mut cmr) => {
             let locked = clients.lock().await;
-            match locked.get(&client_id) {
-                Some(v) => {
-                    if let Some(sender) = &v.sender {
-                        log::info!("Try to claim mint reward...");
-                        // Send Requst into Queue and respond with waiting time
-                        cmr.user_id = Some(user_id);
-                        match super::add_msg_handler(pool, &cmr, rate_limiter).await {
-                            Ok(o) => {
-                                let _ = sender.send(Ok(Message::binary(o)));
-                            }
-                            Err(e) => {
-                                log::error!("Error adding message handler: {:?}", e);
-                                let _ = sender.send(Ok(Message::binary(
-                                    serde_json::to_string("too many requests").unwrap(),
-                                )));
-                            }
+            if let Some(v) = locked.get(&client_id) {
+                if let Some(sender) = &v.sender {
+                    log::info!("Try to claim mint reward...");
+                    // Send Requst into Queue and respond with waiting time
+                    cmr.user_id = Some(user_id);
+                    match super::add_msg_handler(pool, &cmr, rate_limiter).await {
+                        Ok(o) => {
+                            let _ = sender.send(Ok(Message::binary(o)));
+                        }
+                        Err(e) => {
+                            log::error!("Error adding message handler: {:?}", e);
+                            let _ = sender.send(Ok(Message::binary(
+                                serde_json::to_string("too many requests").unwrap(),
+                            )));
                         }
                     }
                 }
-                None => (),
             }
         } //   _ => (),
     }

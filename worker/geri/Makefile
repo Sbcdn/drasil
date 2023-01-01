@@ -1,7 +1,7 @@
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
-PROJECT=mdrsl
+PROJECT=drasil
 IMAGE=geri
-VERSION=v1.1
+VERSION=v1.0
 
 build:
 	cargo update

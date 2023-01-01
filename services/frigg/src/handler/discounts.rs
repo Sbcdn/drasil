@@ -32,7 +32,7 @@ pub struct DiscountInput {
 pub async fn hndl_create_discount(uid: String, input: DiscountInput) -> WebResult<impl Reply> {
     println!("hndl_create_discount");
     let user = get_user_from_string(&uid).await?;
-
+    println!("got user");
     let params = DiscountParams {
         contract_id: input.contract_id,
         user_id: user,
@@ -40,9 +40,11 @@ pub async fn hndl_create_discount(uid: String, input: DiscountInput) -> WebResul
         fingerprint: input.fingerprint,
         metadata_path: input.metadata_path,
     };
-    let discount = create_discount(params).await?;
+    println!("try to create discount");
+    let discount = create_discount(params).await;
+    println!("discount created: {:?}", discount);
     Ok(warp::reply::with_status(
-        warp::reply::json(&discount),
+        warp::reply::json(&discount?),
         warp::http::StatusCode::OK,
     ))
 }

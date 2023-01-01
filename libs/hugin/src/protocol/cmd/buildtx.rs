@@ -8,7 +8,7 @@
 */
 use crate::datamodel::{StdTxType, TransactionPattern};
 use crate::protocol::stdtx;
-use crate::Parse;
+use crate::{CmdError, Parse};
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
@@ -68,6 +68,7 @@ impl BuildStdTx {
             log::debug!("{:?}", response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
+            return Err(Box::new(CmdError::InvalidData));
         }
 
         let ret = match self.tx_type() {

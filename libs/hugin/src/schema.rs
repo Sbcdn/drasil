@@ -102,8 +102,8 @@ table! {
         tx_hash -> Nullable<Varchar>,
         user_appr -> Nullable<Varchar>,
         drasil_appr -> Nullable<Varchar>,
-        stauts_bl -> Nullable<Varchar>,
-        stauts_pa -> Varchar,
+        status_bl -> Nullable<Varchar>,
+        status_pa -> Varchar,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }
