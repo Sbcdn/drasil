@@ -15,7 +15,7 @@ use bincode as bc;
 use bytes::Bytes;
 use gungnir::models::{MintProject, MintReward, Nft};
 use murin::make_fingerprint;
-use murin::minter::models::ColMinterTxData;
+use murin::minter::models::{CMintHandle, ColMinterTxData};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -157,23 +157,41 @@ impl FinalizeMultiSig {
                 ) {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a collection minter transaction, {:?}",e.to_string())}.into());
                 };
+                murin::TxData::from_str(raw_tx.get_txrawdata())?;
+                let mint_data = ColMinterTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
+                log::debug!("mint_data: {:?}", mint_data);
+
+                let mut handles = Vec::<(CMintHandle, MintReward, MintProject, TBContracts)>::new();
+                for m in &mint_data.mint_handles {
+                    let mrwd = MintReward::get_mintreward_by_id(m.id)?;
+                    let p = MintProject::get_mintproject_by_id(m.project_id)?;
+                    log::debug!("Mintproject found....");
+                    let c = TBContracts::get_contract_uid_cid(p.user_id, p.mint_contract_id)?;
+                    log::debug!("Mintcontract found....");
+                    for a in mrwd.nft_ids.clone() {
+                        let nft = Nft::get_nft_by_assetnameb(p.id, &p.nft_table_name, &a)?;
+                        if nft.minted || mrwd.processed || mrwd.minted {
+                            return Err(CmdError::Custom {
+                                str: format!("ERROR mint already processed, {:?}", nft),
+                            }
+                            .into());
+                        }
+                    }
+                    handles.push((m.to_owned(), mrwd.to_owned(), p.to_owned(), c.to_owned()));
+                }
+
                 ret = self.finalize_rwd(raw_tx.clone()).await?;
 
-                let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
-                let mint_data = ColMinterTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
-
-                for m in &mint_data.mint_handles {
-                    let p = MintProject::get_mintproject_by_id(m.project_id)?;
-                    let c = TBContracts::get_contract_by_id(
-                        &mut establish_connection()?,
-                        p.mint_contract_id,
-                    )?;
-                    for a in m.nft_ids.clone() {
+                for h in &handles {
+                    MintReward::process_mintreward(h.1.id, h.1.project_id, &h.1.pay_addr)?;
+                    for a in h.1.nft_ids.clone() {
                         let fingerprint =
-                            make_fingerprint(c.policy_id.as_ref().unwrap(), &a).unwrap();
-                        Nft::set_nft_minted(&p.id, &p.nft_table_name, &fingerprint, &ret).await?;
+                            make_fingerprint(h.3.policy_id.as_ref().unwrap(), &hex::encode(a))
+                                .unwrap();
+                        log::debug!("Fingerprint: {:?}", fingerprint);
+                        Nft::set_nft_minted(&h.2.id, &h.2.nft_table_name, &fingerprint, &ret)
+                            .await?;
                     }
-                    MintReward::process_mintreward(m.id, p.id, &m.pay_addr)?;
                 }
             }
             MultiSigType::NftVendor => {}
