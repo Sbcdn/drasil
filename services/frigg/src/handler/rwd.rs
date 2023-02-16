@@ -188,16 +188,25 @@ pub async fn get_pools(uid: String, cparam: GetTWL) -> WebResult<impl Reply> {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct TxCountStat {
-    #[allow(dead_code)]
-    contract_id: Option<String>,
-    from: Option<String>,
-    to: Option<String>,
+    from: String,
+    to: String,
 }
 
-pub async fn get_user_txs(uid: String, cparam: TxCountStat) -> WebResult<impl Reply> {
+pub async fn get_user_txs_timed(uid: String, cparam: TxCountStat) -> WebResult<impl Reply> {
+    let user = get_user_from_string(&uid).await?;
+    log::debug!("TxCountStat: {:?}", cparam);
+    let resp = sleipnir::rewards::get_user_txs(user, Some(cparam.from), Some(cparam.to)).await?;
+
+    Ok(warp::reply::with_status(
+        warp::reply::json(&json!({ "tx_count": resp })),
+        warp::http::StatusCode::OK,
+    ))
+}
+
+pub async fn get_user_txs_all(uid: String) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let resp = sleipnir::rewards::get_user_txs(user, cparam.from, cparam.to).await?;
+    let resp = sleipnir::rewards::get_user_txs(user, None, None).await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&json!({ "tx_count": resp })),

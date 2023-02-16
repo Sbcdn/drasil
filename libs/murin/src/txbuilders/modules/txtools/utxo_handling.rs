@@ -45,17 +45,81 @@ pub async fn find_token_utxos(
     Ok(out)
 }
 
+pub fn find_token_utxos_v2(
+    inputs: &TransactionUnspentOutputs,
+    needed: &Value,
+    assets: Vec<TokenAsset>,
+    on_addr: Option<&Address>,
+) -> Result<TransactionUnspentOutputs, TxToolsError> {
+    let mut out = TransactionUnspentOutputs::new();
+    let ins = inputs.clone();
+    let mut needed_w = needed.clone();
+
+    if !inputs.is_empty() && !needed.is_zero() {
+        for i in 0..ins.len() {
+            let unspent_output = ins.get(i);
+            if let Some(addr) = on_addr {
+                if unspent_output.output().address().to_bytes() != addr.to_bytes() {
+                    continue;
+                }
+            };
+            let value = unspent_output.output().amount();
+            if value.multiasset().is_some() {
+                match value.checked_sub(&needed_w) {
+                    Ok(o) => {
+                        if let Some(n) = needed_w.compare(&o) {
+                            if n == 1 {
+                                out.add(&unspent_output);
+                                needed_w = needed_w.checked_sub(&value)?;
+                                break;
+                            }
+                        }
+                    }
+                    Err(_) => match needed_w.checked_sub(&value) {
+                        Ok(o) => {
+                            if let Some(n) = needed_w.compare(&o) {
+                                if n > 0 {
+                                    out.add(&unspent_output);
+                                    needed_w = needed_w.checked_sub(&value)?;
+                                }
+                            }
+                        }
+                        Err(_) => continue,
+                    },
+                }
+            }
+        }
+    } else {
+        return Err(TxToolsError::Custom(
+            "ERROR: cannot find token utxos , one of the provided inputs is empty".to_string(),
+        ));
+    }
+
+    if out.is_empty() || !needed_w.is_zero() {
+        trace!("Inputs: {:?}\n\n", inputs);
+        debug!("Selected UTxOs: {:?}\n\n", out);
+        return Err(TxToolsError::Custom(
+            "ERROR: The token is not available in the utxo set".to_string(),
+        ));
+    }
+
+    out.optimize_on_assets(assets)?;
+    Ok(out)
+}
+
 pub fn find_token_utxos_na(
     inputs: &TransactionUnspentOutputs,
     assets: Vec<TokenAsset>,
     on_addr: Option<&Address>,
 ) -> Result<TransactionUnspentOutputs, TxToolsError> {
     let mut out = TransactionUnspentOutputs::new();
-    let ins = inputs.clone();
+
     if !inputs.is_empty() && !assets.is_empty() {
-        for asset in assets.clone() {
+        for asset in &assets {
+            let ins = inputs.clone();
             let mut needed_amt = asset.2;
-            debug!("Set Needed Amount: {:?}", needed_amt);
+            info!("Set Needed Amount: {:?}", needed_amt);
+            info!("Input UTxOs count: {:?}", ins.len());
             for i in 0..ins.len() {
                 let unspent_output = ins.get(i);
                 if let Some(addr) = on_addr {
@@ -68,17 +132,25 @@ pub fn find_token_utxos_na(
                     if let Some(toks) = multi.get(&asset.0) {
                         if let Some(amt) = toks.get(&asset.1) {
                             if needed_amt.compare(&to_bignum(0)) > 0 {
-                                log::debug!(
-                                    "Found a utxo containing {} tokens {}.{}!",
-                                    asset.2.to_str(),
+                                log::info!(
+                                    "Found a utxo at index {} containing {} tokens of {}.{}!",
+                                    i,
+                                    amt.to_str(),
                                     hex::encode(asset.0.to_bytes()),
                                     hex::encode(asset.1.to_bytes())
                                 );
-                                if !out.contains_tx(&unspent_output) {
+                                if out.contains_tx(&unspent_output) {
+                                    log::info!("Already contained in selection: {:?}", &amt);
+                                    needed_amt = needed_amt.clamped_sub(&amt);
+                                    log::info!("New needed amount1: {:?}", &needed_amt);
+                                } else {
+                                    log::info!(
+                                        "Not contained in selection yet, tokens on utxo: {:?}",
+                                        &amt
+                                    );
                                     out.add(&unspent_output);
                                     needed_amt = needed_amt.clamped_sub(&amt);
-                                } else {
-                                    needed_amt = needed_amt.clamped_sub(&amt);
+                                    log::info!("New needed amount2: {:?}", &needed_amt);
                                 }
                             }
                         }
@@ -93,7 +165,7 @@ pub fn find_token_utxos_na(
     }
 
     if out.is_empty() {
-        debug!("Inputs: {:?}", inputs);
+        trace!("Inputs: {:?}", inputs);
         return Err(TxToolsError::Custom(
             "ERROR: The token is not available in the utxo set".to_string(),
         ));
@@ -130,11 +202,11 @@ pub fn input_selection(
             nv = nv
                 .checked_add(&token_utxos.get(i).output().amount())
                 .unwrap();
-            debug!("\n\nAdded Script Utxo to Acc Value : \n {:?}\n", acc);
+            trace!("\n\nAdded Script Utxo to Acc Value : \n {:?}\n", acc);
             // Delete script input from multi assets
             if let Some(i) = multiassets.find_utxo_index(&token_utxos.get(i)) {
                 let tutxo = multiassets.swap_remove(i);
-                debug!(
+                trace!(
                     "Deleted token utxo from multiasset inputs: \n {:?}\n",
                     tutxo
                 );
@@ -151,7 +223,7 @@ pub fn input_selection(
         //    c_index
         //);
         if let Some(index) = c_index {
-            let col = purecoinassets.swap_remove(index);
+            purecoinassets.swap_remove(index);
             //debug!("deleted exclude from inputs: {:?}\n", col);
             // Double check
             if crate::chelper::hfn::find_collateral_by_txhash_txix(&exclude_utxo, &purecoinassets)
@@ -183,7 +255,12 @@ pub fn input_selection(
                 }
             }
         }
-        let token_selection = find_token_utxos_na(&multiassets.clone(), tokens_to_find, on_addr)?;
+        let token_selection = find_token_utxos_na(
+            &multiassets.clone(),
+            // &needed_value.clone(),
+            tokens_to_find,
+            on_addr,
+        )?; //find_token_utxos_na(&multiassets.clone(), tokens_to_find, on_addr)?;
         if !token_selection.is_empty() {
             for i in 0..token_selection.len() {
                 selection.add(&token_selection.get(i));
@@ -193,7 +270,7 @@ pub fn input_selection(
                 //debug!("\n\nAdded Script Utxo to Acc Value : \n {:?}\n", acc);
                 // Delete script input from multi assets
                 if let Some(i) = multiassets.find_utxo_index(&token_selection.get(i)) {
-                    let tutxo = multiassets.swap_remove(i);
+                    multiassets.swap_remove(i);
                     //debug!(
                     //    "Deleted token utxo from multiasset inputs: \n {:?}\n",
                     //    tutxo
@@ -223,7 +300,7 @@ pub fn input_selection(
 
         if purecoinassets.is_empty() {
             // Find the tokens we want in the multis
-            debug!("\nWe look for multiassets!\n");
+            trace!("\nWe look for multiassets!\n");
             let ret = crate::chelper::hfn::find_suitable_coins(&mut nv, &mut multiassets, overhead);
             match ret.0 {
                 Some(utxos) => {
@@ -242,15 +319,15 @@ pub fn input_selection(
             // Fine enough Ada to pay the transaction
             let ret =
                 crate::chelper::hfn::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
-            debug!("Return coinassets: {:?}", ret);
+            trace!("Return coinassets: {:?}", ret);
             match ret.0 {
                 Some(utxos) => {
                     for u in utxos {
                         selection.add(&u);
                     }
                     acc.set_coin(&acc.coin().checked_add(&to_bignum(ret.1)).unwrap());
-                    debug!("\nSelection in coinassets: {:?}", selection);
-                    debug!("\nAcc in coinassets: {:?}", acc);
+                    trace!("\nSelection in coinassets: {:?}", selection);
+                    trace!("\nAcc in coinassets: {:?}", acc);
                 }
                 None => {
                     return Err(TxToolsError::Custom(
@@ -266,7 +343,7 @@ pub fn input_selection(
     for txuo in selection.clone() {
         txins.add(&txuo.input());
     }
-    debug!("\n\nSelection: {:?}\n\n", selection);
+    trace!("\n\nSelection: {:?}\n\n", selection);
     Ok((txins, selection))
 }
 

@@ -19,13 +19,13 @@ use diesel::sql_types::{Array, BigInt, Float8, Int4, Jsonb, Numeric};
 use diesel_derive_enum::*;
 
 #[derive(Debug, Clone, DbEnum)]
-#[DieselTypePath = "crate::schema::sql_types::Syncstatetype"]
+#[ExistingTypePath = "crate::schema::sql_types::Syncstatetype"]
 pub enum Syncstatetype {
     Lagging,
     Following,
 }
 #[derive(Debug, Clone, DbEnum)]
-#[DieselTypePath = "crate::schema::sql_types::Scriptpurposetype"]
+#[ExistingTypePath = "crate::schema::sql_types::Scriptpurposetype"]
 pub enum Scriptpurposetype {
     Spend,
     Mint,
@@ -33,7 +33,7 @@ pub enum Scriptpurposetype {
     Reward,
 }
 #[derive(Debug, Clone, DbEnum)]
-#[DieselTypePath = "crate::schema::sql_types::Rewardtype"]
+#[ExistingTypePath = "crate::schema::sql_types::Rewardtype"]
 pub enum Rewardtype {
     Leader,
     Member,
@@ -42,7 +42,7 @@ pub enum Rewardtype {
     Refund,
 }
 #[derive(Debug, Clone, DbEnum)]
-#[DieselTypePath = "crate::schema::sql_types::Scripttype"]
+#[ExistingTypePath = "crate::schema::sql_types::Scripttype"]
 pub enum Scripttype {
     Multisig,
     Tiemlock,

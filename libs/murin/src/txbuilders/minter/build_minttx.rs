@@ -118,14 +118,6 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             }
         }
 
-        // Add System Mint Fee
-        //if *apply_system_fee {
-        //    txouts.add(&clib::TransactionOutput::new(
-        //        &rwd_system_fee_wallet,
-        //        &cutils::Value::new(&cutils::to_bignum(rwd_system_fee)),
-        //    ));
-        //}
-
         // Inputs
         let mut input_txuos = gtxd.clone().get_inputs();
 
@@ -162,13 +154,6 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             input_txuos
         );
 
-        //let mut signers_address_utxos = (TransactionUnspentOutputs::new(),TransactionUnspentOutputs::new());
-        //if let Some(signer) = minttxd.get_signer() {
-        //    signers_address_utxos = find_utxos_by_address(signer.clone(), &input_txuos);
-        //}
-
-        //println!("Signer Address UTXOS: {:?}",signers_address_utxos.0);
-        // !!!! CHeck if input selection just tries to find ADA!!!!
         let (txins, mut input_txuos) = input_selection(
             None,
             &mut needed_value,
@@ -177,32 +162,10 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             None, //Some(native_script_address).as_ref(),
         )?;
 
-        /*
-        if let Some(signer) = minttxd.get_signer() {
-            if input_txuos.contains_any(&signers_address_utxos.0) {
-                info!("\n\nUtxo Input set contains minimum one utxo from the listing address\n\n");
-            } else {
-                if !signers_address_utxos.0.is_empty() {
-                    // ToDo:
-                    // In this case it would be better to have some larger Ada only Utxo -> Create a function to find one
-                    txins.add(&signers_address_utxos.0.get(0).input());
-                    input_txuos.add(&signers_address_utxos.0.get(0));
-                } else {
-                    return Err(
-                        MurinError::new(
-                            &format!(
-                                "Error: The Address which is needed for signature does not contain ADA, please provide suitable amount of ADA to: {:?}",signer.to_bech32(None)
-                            )
-                        )
-                    )
-                }
-            }
-        }
-         */
         let saved_input_txuos = input_txuos.clone();
         info!("Saved Inputs: {:?}", saved_input_txuos);
 
-        let vkey_counter = get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 1; // +1 dues to signature in finalize
+        let vkey_counter = get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 3; // +1 dues to signature in finalize
         debug!(
             "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
             input_txuos

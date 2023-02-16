@@ -10,8 +10,8 @@ use crate::{hfn, htypes};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use clib::address::Address;
-use clib::utils::BigNum;
-use clib::NetworkIdKind;
+use clib::utils::{to_bignum, BigNum};
+use clib::{NetworkIdKind, TransactionOutput};
 use serde::{Deserialize, Serialize};
 use std::ops::{Div, Rem, Sub};
 
@@ -277,7 +277,7 @@ impl ToString for TxData {
         let mut s_senders_addresses = String::new();
         for a in self.get_senders_addresses() {
             s_senders_addresses.push_str(&(hex::encode(a.to_bytes()) + "?"));
-            debug!("Addresses ToString TxData: {:?}", s_senders_addresses);
+            trace!("Addresses ToString TxData: {:?}", s_senders_addresses);
         }
         s_senders_addresses.pop();
 
@@ -1399,6 +1399,47 @@ pub fn calc_min_ada_for_utxo(
     }
 
     min_ada
+}
+
+pub fn min_ada_for_utxo(output_: &TransactionOutput) -> Result<TransactionOutput, MurinError> {
+    let mut output: TransactionOutput = output_.clone();
+    let coins_per_byte = crate::pparams::ProtocolParameters::read_protocol_parameter(
+        &"protocol_parameters_babbage.json".to_owned(),
+    )?;
+    for _ in 0..3 {
+        let required_coin = to_bignum(output.to_bytes().len() as u64)
+            .checked_add(&to_bignum(160))?
+            .checked_mul(&to_bignum(coins_per_byte.utxo_cost_per_byte))?;
+        if output.amount().coin().less_than(&required_coin) {
+            let mut v = output.amount().clone();
+            v.set_coin(&required_coin);
+            output = TransactionOutput::new(&output.address(), &v);
+            if let Some(dh) = output_.data_hash() {
+                output.set_data_hash(&dh)
+            }
+            if let Some(p) = output_.plutus_data() {
+                output.set_plutus_data(&p)
+            }
+            if let Some(sref) = output_.script_ref() {
+                output.set_script_ref(&sref)
+            }
+        } else {
+            return Ok(output);
+        }
+    }
+    let mut v = output.amount();
+    v.set_coin(&to_bignum(u64::MAX));
+    output = TransactionOutput::new(&output.address(), &v);
+    if let Some(dh) = output_.data_hash() {
+        output.set_data_hash(&dh)
+    }
+    if let Some(p) = output_.plutus_data() {
+        output.set_plutus_data(&p)
+    }
+    if let Some(sref) = output_.script_ref() {
+        output.set_script_ref(&sref)
+    }
+    min_ada_for_utxo(&output)
 }
 
 pub fn bundle_size(value: &cutils::Value, osc: &htypes::OutputSizeConstants) -> usize {

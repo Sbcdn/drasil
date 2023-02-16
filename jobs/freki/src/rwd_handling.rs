@@ -38,7 +38,7 @@ pub(crate) fn handle_rewards(
     no_acc: bool,
 ) -> Result<()> {
     let mut gconn = gungnir::establish_connection()?;
-    println!("Try to find rewards...");
+    log::debug!("Try to find rewards...");
     let rewards = gungnir::Rewards::get_rewards_per_token(
         &mut gconn,
         stake_addr,
@@ -46,7 +46,7 @@ pub(crate) fn handle_rewards(
         twd.user_id,
         &twd.fingerprint.clone(),
     )?;
-    println!("Check rewards...");
+    log::debug!("Check rewards...");
     let mut tot_earned = BigDecimal::from_i32(0).unwrap();
     match rewards.len() {
         1 => {
@@ -59,8 +59,8 @@ pub(crate) fn handle_rewards(
                         &rewards[0].fingerprint,
                         rewards[0].contract_id,
                         rewards[0].user_id,
-                        token_earned.to_i64().unwrap(),
-                    )? != -token_earned.to_i64().unwrap()
+                        token_earned.to_i128().unwrap(),
+                    )? != -token_earned.to_i128().unwrap()
                 {
                     gungnir::Rewards::update_rewards(
                         &mut gconn,
@@ -74,7 +74,7 @@ pub(crate) fn handle_rewards(
                     return Ok(());
                 }
                 tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
-                println!("Earned add: {:?}", tot_earned);
+                log::debug!("Earned add: {:?}", tot_earned);
                 let stake_rwd = gungnir::Rewards::update_rewards(
                     &mut gconn,
                     &rewards[0].stake_addr,
@@ -84,14 +84,14 @@ pub(crate) fn handle_rewards(
                     &tot_earned,
                     &twd.calc_epoch,
                 )?;
-                println!("Stake Rewards Added : {:?}", stake_rwd);
+                log::debug!("Stake Rewards Added : {:?}", stake_rwd);
             }
         }
         0 => {
             let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
 
             tot_earned = token_earned.to_owned();
-            println!("Earned new: {:?}", tot_earned);
+            log::debug!("Earned new: {:?}", tot_earned);
             let stake_rwd = gungnir::Rewards::create_rewards(
                 &mut gconn,
                 stake_addr,
@@ -104,7 +104,7 @@ pub(crate) fn handle_rewards(
                 &false,
                 &twd.calc_epoch,
             );
-            println!("Stake Rewards New: {:?}", stake_rwd);
+            log::debug!("Stake Rewards New: {:?}", stake_rwd);
         }
         _ => {
             return Err(murin::MurinError::new(

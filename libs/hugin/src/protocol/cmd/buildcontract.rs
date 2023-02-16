@@ -183,9 +183,7 @@ impl BuildContract {
                         use crate::database::drasildb::*;
                         use murin::txbuilders::marketplace::list::*;
                         //build a listing and send the repsonse to the sender
-                        let mut drasildbcon = establish_connection()?;
                         let contract = TBContracts::get_active_contract_for_user(
-                            &mut drasildbcon,
                             self.customer_id as i64,
                             self.ctype.to_string(),
                             None,

@@ -22,9 +22,18 @@ extern crate log;
 pub mod handler;
 
 use auth::{with_auth, Role};
+use deadpool_lapin::Pool;
 use error::Error::*;
+use handler::{
+    rwd::{Contract, GetTWL, TxCountStat},
+    Clients,
+};
+use lapin::ConnectionProperties;
+use nonzero_ext::nonzero;
+use ratelimit_meter::{DirectRateLimiter, LeakyBucket};
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::{collections::HashMap, convert::Infallible, sync::Arc};
+use tokio::sync::Mutex;
 use warp::{reject, reply, Filter, Rejection, Reply};
 
 use hugin::drasildb::TBDrasilUser;
@@ -67,14 +76,16 @@ pub struct RegisterRequest {
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: &str = "8000";
 
-#[tokio::main]
-async fn main() {
-    if env::var_os("RUST_LOG").is_none() {
-        env::set_var("RUST_LOG", "info");
-    }
-    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
-    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
+fn with_rmq(pool: Pool) -> impl Filter<Extract = (Pool,), Error = Infallible> + Clone {
+    warp::any().map(move || pool.clone())
+}
 
+fn endpoints(
+    _clients: Clients,
+    pool: Pool,
+    _rate_limiter: DirectRateLimiter<LeakyBucket>,
+) -> impl warp::Filter<Extract = impl warp::Reply, Error = warp::Rejection> + std::clone::Clone + 'static
+{
     let login_route = warp::path!("login")
         .and(warp::post())
         .and(warp::body::json())
@@ -125,14 +136,28 @@ async fn main() {
         .and(warp::path("stats"))
         .and(warp::path("sprwc"))
         .and(warp::path("tx"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::get_user_txs);
+        //.and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::get_user_txs_all);
+
+    // get set pool in a contract
+    let enterprise_get_user_tx_timed = enterprise_get
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("stats"))
+        .and(warp::path("sprwc"))
+        .and(warp::path("tx"))
+        .and(warp::path("timed"))
+        .and(warp::path::end())
+        .and(warp::query::<TxCountStat>())
+        //.and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::get_user_txs_timed);
 
     // get all availabale contracts
     let enterprise_get_contracts = enterprise_get
         .clone()
         .and(warp::path("rwd"))
         .and(warp::path("contr"))
+        .and(warp::path::end())
         .and_then(handler::rwd::enterprise_get_rwd_contracts_handler);
 
     // get set pool in a contract
@@ -140,7 +165,9 @@ async fn main() {
         .clone()
         .and(warp::path("sprwc"))
         .and(warp::path("pools"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and(warp::path::end())
+        .and(warp::query::<GetTWL>())
+        //.and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::get_pools);
 
     // get set pool in a contract
@@ -148,11 +175,14 @@ async fn main() {
         .clone()
         .and(warp::path("sprwc"))
         .and(warp::path("tokens"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and(warp::path::end())
+        .and(warp::query::<Contract>())
+        //.and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::get_contract_tokens);
 
     let ent_get = enterprise_create_api_token
         .or(enterprise_get_user_tx)
+        .or(enterprise_get_user_tx_timed)
         .or(enterprise_get_contracts)
         .or(enterprise_get_pools)
         .or(enterprise_get_contract_tokens);
@@ -175,13 +205,43 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::discounts::hndl_remove_discount);
 
+    // Allocate Whitelist to an NFT project
+    let enterprise_post_rnd_alloc_nfts_to_mp = enterprise_post
+        .clone()
+        .and(warp::path("mint"))
+        .and(warp::path("alloc"))
+        .and(warp::path("rnd"))
+        .and(with_rmq(pool.clone()))
+        .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
+        .and_then(handler::whitelist::random_allocate_whitelist_to_mp);
+
+    // Allocate Whitelist to an NFT project
+    let enterprise_post_alloc_nfts_to_mp = enterprise_post
+        .clone()
+        .and(warp::path("mint"))
+        .and(warp::path("alloc"))
+        .and(warp::path("sa"))
+        .and(with_rmq(pool.clone()))
+        .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
+        .and_then(handler::whitelist::allocate_whitelist_to_mp);
+
     // Import NFTs via CIP25 metadata
     let enterprise_post_import_nfts_csv_meta = enterprise_post
         .clone()
         .and(warp::path("mint"))
         .and(warp::path("impcsv"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and(with_rmq(pool.clone()))
+        .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
         .and_then(handler::mint::entrp_create_nfts_from_csv);
+
+    // Import NFTs via CIP25 metadata
+    let enterprise_post_import_nfts_csv_meta_2 = enterprise_post
+        .clone()
+        .and(warp::path("mint"))
+        .and(warp::path("simpcsv"))
+        .and(warp::path::param::<i64>())
+        .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::bytes()))
+        .and_then(handler::mint::entrp_create_nfts_from_csv_s);
 
     // Create a new mint project
     let enterprise_post_create_mint_project = enterprise_post
@@ -242,16 +302,47 @@ async fn main() {
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::remove_pools);
 
+    // Create an empty whitelist
+    let enterprise_post_create_whitelist = enterprise_post
+        .clone()
+        .and(warp::path("ws"))
+        .and(warp::path("cr"))
+        .and(warp::body::content_length_limit(1000 * 1024).and(warp::body::json()))
+        .and_then(handler::whitelist::create_whitelist);
+
+    // Delete a whitelist and all its content
+    let enterprise_post_delete_whitelist = enterprise_post
+        .clone()
+        .and(warp::path("ws"))
+        .and(warp::path("rm"))
+        .and(warp::body::content_length_limit(1000 * 1024).and(warp::body::json()))
+        .and_then(handler::whitelist::delete_whitelist);
+
+    // Import Whitelist
+    let enterprise_post_import_whitelist = enterprise_post
+        .clone()
+        .and(warp::path("ws"))
+        .and(warp::path("impcsv"))
+        .and(with_rmq(pool.clone()))
+        .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
+        .and_then(handler::whitelist::import_whitelist_from_csv);
+
     let ent_post = enterprise_post_create_discount
         .or(enterprise_post_remove_discount)
+        .or(enterprise_post_rnd_alloc_nfts_to_mp)
+        .or(enterprise_post_alloc_nfts_to_mp)
         .or(enterprise_post_import_nfts_csv_meta)
+        .or(enterprise_post_import_nfts_csv_meta_2)
         .or(enterprise_post_create_mint_project)
         .or(enterprise_post_create_reward_contract)
         .or(enterprise_post_deprecate_reward_contract)
         .or(enterprise_post_add_pools)
         .or(enterprise_post_add_token_sporwc)
         .or(enterprise_post_rm_token_sporwc)
-        .or(enterprise_post_rm_pools);
+        .or(enterprise_post_rm_pools)
+        .or(enterprise_post_create_whitelist)
+        .or(enterprise_post_delete_whitelist)
+        .or(enterprise_post_import_whitelist);
 
     // Endpoint Accumulators
     let enterprise = ent_get.or(ent_post);
@@ -316,17 +407,24 @@ async fn main() {
         .or(adm_exec_payout)
         .or(adm_list_payouts)
         .or(adm_post_create_lqdt_wallet);
-    // Routes
 
-    let endpoints = login_route
+    // Routes
+    login_route
         .or(register_route)
         .or(verify_email_route)
         .or(enterprise)
         .or(retailer_route)
         .or(admin)
         .or(user)
-        //.or(warp::get().and(warp::any().map(warp::reply)))
-        .recover(error::handle_rejection);
+}
+
+#[tokio::main]
+async fn main() {
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", "info");
+    }
+    let host: String = std::env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
+    let port = std::env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
 
     let cors = warp::cors()
         .allow_any_origin()
@@ -364,9 +462,28 @@ async fn main() {
 
     pretty_env_logger::init();
 
+    // RMQ
+    let manager = deadpool_lapin::Manager::new(
+        handler::AMQP_ADDR.to_string(),
+        ConnectionProperties::default(),
+    );
+    let pool: deadpool_lapin::Pool = deadpool::managed::Pool::builder(manager)
+        .max_size(100)
+        .build()
+        .expect("can't create pool");
+
+    //Rate Limitation
+    // Allow 3 units/second across all threads:
+    let lim =
+        DirectRateLimiter::<LeakyBucket>::new(nonzero!(2u32), std::time::Duration::from_secs(5));
+
     // Warp-Server
-    let api = endpoints;
-    let routes = api.with(cors).with(warp::log("frigg"));
+    let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
+
+    let routes = endpoints(clients, pool, lim)
+        .recover(error::handle_rejection)
+        .with(cors)
+        .with(warp::log("frigg"));
 
     let server = host.to_string() + ":" + &port;
     let socket: std::net::SocketAddr = server.parse().expect("Unable to parse socket address");

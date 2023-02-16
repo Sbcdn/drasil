@@ -25,6 +25,8 @@ mod finalizestdtx;
 pub use finalizestdtx::FinalizeStdTx;
 
 mod verifyuser;
+use murin::address::BaseAddress;
+use murin::get_reward_address;
 pub use verifyuser::VerifyUser;
 
 mod hydra;
@@ -174,12 +176,14 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     if txp.sending_stake_addr().is_some() {
         let addresses = murin::cip30::decode_addresses(&txp.sending_wal_addrs()).await?;
         let stake_addr = murin::cip30::decode_addr(&txp.sending_stake_addr().unwrap()).await?;
-        let stake_addr_hash = murin::cip30::get_stake_address(&stake_addr)?.to_bytes();
+        let mut rewardaddr = get_reward_address(&stake_addr)?;
         for address in addresses {
-            let s_addr_hash = murin::cip30::get_stake_address(&address)?.to_bytes();
-
-            if s_addr_hash != stake_addr_hash {
-                return Err(CmdError::Custom{str:"ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string()}.into());
+            if BaseAddress::from_address(&address).is_some() {
+                let raddr = get_reward_address(&address)?;
+                if raddr != rewardaddr {
+                    return Err(CmdError::Custom{str:"ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string()}.into());
+                }
+                rewardaddr = raddr
             }
         }
     }
@@ -216,10 +220,9 @@ pub fn determine_contracts(
         log::debug!("Get defined contracts {:?}...", contract_id);
         let mut tcontracts = Vec::<crate::drasildb::TBContracts>::new();
         for cid in contract_id {
-            let u_contract_id = cid as i64;
             tcontracts.push(crate::drasildb::TBContracts::get_contract_uid_cid(
                 u_customer_id,
-                u_contract_id,
+                cid,
             )?);
         }
         log::debug!("Found Contracts: {:?}", tcontracts);

@@ -16,15 +16,22 @@ pub enum CustomCalculationTypes {
     Freeloaderz,
     FixedAmountPerEpoch,
     FixedAmountPerEpochNonAcc,
+    FixedAmountPerEpochCaped,
     Threshold,
     Airdrop,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CapedType {
+    pub cap_value: i128,
+    pub rwd: i128,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ThresholdType {
     pub stake_threshold: f64,
-    pub lower_rwd: u64,
-    pub upper_rwd: u64,
+    pub lower_rwd: i128,
+    pub upper_rwd: i128,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -37,7 +44,7 @@ pub struct FreeloaderzType {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FixedAmountPerEpochType {
     pub min_stake: Option<f64>,
-    pub amount: u64,
+    pub amount: i128,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

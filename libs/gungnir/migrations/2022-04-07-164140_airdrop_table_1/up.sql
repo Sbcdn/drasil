@@ -40,21 +40,33 @@ BEFORE UPDATE ON airdrop_parameter
 FOR EACH ROW
 EXECUTE PROCEDURE trigger_set_timestamp();
 
+CREATE TYPE public.whitelisttype AS ENUM (
+    'RandomContained',
+    'SpecificAsset',
+    'RandomPreallocated'
+);
+
 CREATE TABLE wladdresses (
     id BIGSERIAL PRIMARY KEY,
-    payment_address BIGINT NOT NULL,
-    UNIQUE(payment_address)
+    payment_address VARCHAR NOT NULL UNIQUE,
+    stake_address VARCHAR
 );
 
 CREATE TABLE wlalloc (
     wl BIGINT NOT NULL,
     addr BIGINT NOT NULL,
-    PRIMARY KEY(wl,addr)
+    specific_asset Jsonb,
+    PRIMARY KEY(wl,addr,specific_asset)
 );
+ALTER TABLE wlalloc ADD CONSTRAINT unique_token_per_whitelist UNIQUE(wl, specific_asset);
 
 CREATE TABLE whitelist (
     id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
     max_addr_repeat INTEGER NOT NULL,
+    wl_type whitelisttype NOT NULL,
+    description VARCHAR NOT NULL,
+    notes VARCHAR NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -8,7 +8,6 @@
 */
 
 use crate::drasildb::error::SystemDBError;
-use crate::TBDrasilUser;
 use dvltath::vault::kv::vault_get;
 
 // ToDO: TWO FACTOR AUTHENTICATION
@@ -17,13 +16,12 @@ pub async fn approve_payout_drsl(
     pw: &String,
     _mfa: &str,
 ) -> Result<(), SystemDBError> {
-    let mut dconn = crate::establish_connection()?;
     let user_id = vault_get(&std::env::var("ADM_USER").expect("Error: A1201"))
         .await
         .get("user")
         .expect("Error: A1202")
         .parse::<i64>()?;
-    let user = crate::TBDrasilUser::get_user_by_user_id(&mut dconn, &user_id)?;
+    let user = crate::TBDrasilUser::get_user_by_user_id(&user_id)?;
 
     let msg = crate::TBCaPaymentHash::find_by_payid(payout_id)?[0]
         .payment_hash
@@ -40,13 +38,12 @@ pub async fn approve_payout_drsl(
 }
 
 pub async fn verify_approval_drsl(msg: &str, sign: &str) -> Result<bool, SystemDBError> {
-    let mut dconn = crate::establish_connection()?;
     let user_id = vault_get(&std::env::var("ADM_USER").expect("Error: A1201"))
         .await
         .get("user")
         .expect("Error: A1202")
         .parse::<i64>()?;
-    let user = crate::TBDrasilUser::get_user_by_user_id(&mut dconn, &user_id)?;
+    let user = crate::TBDrasilUser::get_user_by_user_id(&user_id)?;
 
     let pk = murin::crypto::PublicKey::from_bech32(&user.drslpubkey)?;
     let sign = murin::crypto::Ed25519Signature::from_hex(sign)?;

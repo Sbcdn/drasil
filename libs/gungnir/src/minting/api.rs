@@ -525,7 +525,7 @@ impl Nft {
         VALUES 
         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",table_name);
 
-        client
+        let q = client
             .query(
                 &insert_query,
                 &[
@@ -542,7 +542,11 @@ impl Nft {
                     &false,
                 ],
             )
-            .await?;
+            .await;
+
+        if q.is_err() {
+            log::debug!("NFT existed already or another error {:?}", q)               
+        }
 
         let nft = Nft::get_nft_by_assetnameb(
             *project_id,
@@ -550,7 +554,9 @@ impl Nft {
             asset_name_b,
         )?;
 
-        Ok(nft)
+        Ok(nft) 
+
+        
     }
 
     pub async fn set_nft_minted<'a>(
@@ -646,9 +652,16 @@ impl Nft {
         Ok(())
     }
 
-    pub async fn create_nft_table(str: &String) -> Result<(), RWDError> {
-        //let constr = r"host=3.15.179.114 port=5432 user=drasil_database_user password=/_RMf!\9sz?3<m3yN2Nc dbname=rewarddb";
 
+    /*
+    TODO:
+      On Mint-Project creation a user needs to set if a mint project will contain double IPFS images / filenames.
+      This means an IPFS link / image / file can occur for more than one NFT. 
+      For this case the database constraints which block the doublets needs to be excluded from the creation query. 
+      For this case the drasil system can obviously not ensure that an NFT is uniquly minted. 
+      The same might apply if you want Semi-Fungible Tokens but that needs anyway additional concepts.
+    */
+    pub async fn create_nft_table(str: &String) -> Result<(), RWDError> {
         log::debug!("try to connect...");
         let (client, connection) =
             tokio_postgres::connect(&std::env::var("REWARDS_DB_URL")?, tokio_postgres::NoTls)

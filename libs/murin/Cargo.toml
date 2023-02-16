@@ -53,3 +53,4 @@ cryptoxide = { git = "https://github.com/typed-io/cryptoxide.git", branch = "mas
     "blake2",
 ] }
 bip39 = "1.0.1"
+unwrap_or = "1.0.0"
