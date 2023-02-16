@@ -32,7 +32,6 @@ pub(crate) async fn handle_stake(
             {
                 token_earned *= decimal
             };
-
             handle_rewards(&stake.stake_addr, twd, &token_earned, table, false)?;
         }
 
@@ -109,6 +108,7 @@ pub(crate) async fn handle_stake(
                 }
                 CustomCalculationTypes::FixedAmountPerEpochNonAcc => {
                     log::debug!("Calcualte with: FixedAmountPerEpochNonAcc");
+
                     let adastake = stake.amount.to_f64().unwrap() / 1000000.0;
                     log::debug!(
                         "Ada Staked: {}, for addr: {} in epoch: {}",
@@ -140,6 +140,7 @@ pub(crate) async fn handle_stake(
                 }
                 CustomCalculationTypes::Threshold => {
                     log::debug!("Calcualte with: Threshold");
+
                     let adastake = stake.amount.to_f64().unwrap() / 1000000.0;
                     log::debug!(
                         "Ada Staked: {}, for addr: {} in epoch: {}",

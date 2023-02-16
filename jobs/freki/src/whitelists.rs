@@ -23,7 +23,7 @@ pub(crate) async fn handle_whitelist_address(
     let script_reward = *addr == stake_addr;
     if script_reward {
         return Err(Box::new(murin::MurinError::new(
-            "Scritp Rewards not implemented yet",
+            "Script Rewards not implemented yet",
         )));
     }
 
@@ -38,6 +38,7 @@ pub(crate) async fn handle_whitelist_address(
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::FixedAmountPerEpoch => {
                     log::debug!("Whitelist calcualte with: FixedAmountPerEpoch");
+
                     let param: FixedAmountPerEpochType =
                         serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
 
