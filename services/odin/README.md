@@ -96,4 +96,3 @@ USED_UTXO_DATASTORE_3
 For log output activate RUST_LOG by settign the trace level, default is error. 
 
 `RUST_LOG=info`
-
