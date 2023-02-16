@@ -1,0 +1,36 @@
+[package]
+name = "drasil_jobs"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - Job Processor for queued jobs."
+repository = "https://github.com/Sbcdn/drasil.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1.6"
+pretty_env_logger = "0.4.0"
+log = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.79"
+uuid = { version = "1.1.2", features = ["v4"] }
+thiserror = "1.0"
+futures = { version = "0.3", default-features = true }
+lapin = { version = "2.1.1", features = ["rustls"] }
+tokio-amqp = "2.0.0"
+deadpool = "0.9.5"
+deadpool-lapin = { version = "0.10.0", features = ["serde"] }
+lazy_static = "1.4.0"
+csv = "1.1"
+hex = "0.4"
+rand = "0.8.5"
+hugin = { path = "../../libs/hugin", version = "0.1.0" }
+gungnir = { path = "../../libs/gungnir", version = "0.1.0" }
+murin = { path = "../../libs/murin", version = "0.1.0" }
+mimir = { path = "../../libs/mimir", version = "0.1.0" }
+sleipnir = { path = "../../libs/sleipnir", version = "0.1.0" }

@@ -1,27 +1,10 @@
+/*
 #################################################################################
 # See LICENSE.md for full license information.                                  #
 # Software: Drasil Blockchain Application Framework                             #
 # License: Drasil Source Available License v1.0                                 #
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
-
-[workspace]
-members = [
-    "jobs/freki",
-    "services/frigg",
-    "worker/geri",
-    "services/heimdallr",
-    "libs/gungnir",
-    "libs/hugin",
-    "libs/mimir",
-    "libs/murin",
-    "services/odin",
-    "libs/sleipnir",
-    "services/vidar",
-    "jobs/utxopti",
-    "services/wsauth",
-    "libs/dvltath",
-    "services/loki",
-    "worker/work_loki",
-    "worker/jobs",
-]
+*/
+#[derive(Debug, Clone)]
+pub struct HydraOps {}
