@@ -84,7 +84,7 @@ impl Rewards {
             );
             match claim_sum {
                 Ok(cs) => {
-                    if cs < r.tot_earned.to_i64().unwrap() {
+                    if cs < r.tot_earned.to_i128().unwrap() {
                         res.push(r);
                     }
                 }
@@ -137,7 +137,7 @@ impl Rewards {
             let twl_rewards: Vec<Rewards> = rewards
                 .filter(contract_id.eq(&i.contract_id))
                 .filter(user_id.eq(&user_id_in))
-                .filter(fingerprint.eq(&i.fingerprint.clone().unwrap_or_else(|| "".to_string())))
+                .filter(fingerprint.eq(&i.fingerprint.clone().unwrap_or_default()))
                 .load::<Rewards>(conn)?;
 
             let sum: BigDecimal = twl_rewards.iter().fold(
@@ -163,8 +163,8 @@ impl Rewards {
         fingerprint_in: &String,
         contract_id_in: i64,
         user_id_in: i64,
-        claim_request: i64,
-    ) -> Result<i64, RWDError> {
+        claim_request: i128,
+    ) -> Result<i128, RWDError> {
         use crate::schema::rewards::dsl::*;
         log::info!("Try to find existing rewards...");
         let result = rewards
@@ -199,9 +199,9 @@ impl Rewards {
         };
         log::info!("found claims");
         let lovelace = BigDecimal::from_i32(1000000).unwrap();
-        match ((result.0 / lovelace) - result.1.clone()).to_i64() {
+        match ((result.0 / lovelace) - result.1.clone()).to_i128() {
             Some(dif) => {
-                if claim_sum != result.1.to_i64().unwrap() {
+                if claim_sum != result.1.to_i128().unwrap() {
                     return Err(RWDError::new(
                         "Error: Missmatch on claimed amount, please contact support!",
                     ));
@@ -377,7 +377,7 @@ impl Claimed {
         fingerprint_in: &String,
         contract_id_in: i64,
         user_id_in: i64,
-    ) -> Result<i64, RWDError> {
+    ) -> Result<i128, RWDError> {
         use crate::schema::claimed::dsl::*;
         let result = claimed
             .filter(stake_addr.eq(stake_addr_in))
@@ -388,7 +388,7 @@ impl Claimed {
             .select(amount)
             .load::<BigDecimal>(conn)?;
 
-        let sum = result.iter().map(|x| x.to_i64().unwrap()).sum();
+        let sum = result.iter().map(|x| x.to_i128().unwrap()).sum();
 
         Ok(sum)
     }
@@ -551,13 +551,13 @@ impl Claimed {
         let mut gconn = establish_connection()?;
 
         let result = claimed
-            .select((user_id, txhash))
-            .distinct_on(txhash)
+            .select(diesel::dsl::count_star())
             .filter(user_id.eq(user_id_in))
-            .count()
-            .first::<i64>(&mut gconn);
+            .distinct_on(txhash)
+            .group_by((user_id, txhash, timestamp))
+            .load::<i64>(&mut gconn)?;
 
-        Ok(result?)
+        Ok(result.len() as i64)
     }
 
     pub fn get_stat_count_period_tx_user(
@@ -582,8 +582,8 @@ impl Claimed {
 }
 
 impl TokenWhitelist {
-    pub fn get_whitelist(conn: &mut PgConnection) -> Result<Vec<TokenWhitelist>, RWDError> {
-        let result = token_whitelist::table.load::<TokenWhitelist>(conn)?;
+    pub fn get_whitelist() -> Result<Vec<TokenWhitelist>, RWDError> {
+        let result = token_whitelist::table.load::<TokenWhitelist>(&mut establish_connection()?)?;
         Ok(result)
     }
 
@@ -1120,20 +1120,92 @@ impl WlAddresses {
 }
 
 impl WlAlloc {
-    pub fn get_whitelist(conn: &mut PgConnection, id_in: i64) -> Result<Vec<String>, RWDError> {
+    pub fn get_whitelist(id_in: &i64) -> Result<Vec<String>, RWDError> {
         let result = wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
             .select(wladdresses::payment_address)
-            .load::<String>(conn)?;
+            .load::<String>(&mut establish_connection()?)?;
         Ok(result)
     }
 
-    pub fn check_stake_address_whitelist(
-        id_in: i64,
+    pub fn get_whitelist_entries(
+        user_id_in: &i64,
+        whitelist_id_in: &i64,
+    ) -> Result<Vec<WlEntry>, RWDError> {
+        Whitelist::get_whitelist(user_id_in, whitelist_id_in)?;
+        let result = wlalloc::table
+            .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
+            .filter(wlalloc::wl.eq(whitelist_id_in))
+            .select((
+                wladdresses::id,
+                wladdresses::payment_address,
+                wladdresses::stake_address,
+                wlalloc::wl,
+                wlalloc::addr,
+                wlalloc::specific_asset,
+            ))
+            .load::<WlEntry>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
+    pub fn get_address_whitelist(id_in: &i64, payaddr: &String) -> Result<Vec<WlEntry>, RWDError> {
+        let result = wlalloc::table
+            .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
+            .filter(wladdresses::payment_address.eq(payaddr))
+            .filter(wlalloc::wl.eq(id_in))
+            .select((
+                wladdresses::id,
+                wladdresses::payment_address,
+                wladdresses::stake_address,
+                wlalloc::wl,
+                wlalloc::addr,
+                wlalloc::specific_asset,
+            ))
+            .load::<WlEntry>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
+    pub fn get_address_allocations(payaddr: &String) -> Result<Vec<WlEntry>, RWDError> {
+        let result = wlalloc::table
+            .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
+            .filter(wladdresses::payment_address.eq(payaddr))
+            .select((
+                wladdresses::id,
+                wladdresses::payment_address,
+                wladdresses::stake_address,
+                wlalloc::wl,
+                wlalloc::addr,
+                wlalloc::specific_asset,
+            ))
+            .load::<WlEntry>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
+    pub fn get_specific_address_allocations(
+        payaddr: &String,
+        asset: &serde_json::Value,
+    ) -> Result<WlEntry, RWDError> {
+        let result = wlalloc::table
+            .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
+            .filter(wladdresses::payment_address.eq(payaddr))
+            .filter(wlalloc::specific_asset.eq(asset).nullable())
+            .select((
+                wladdresses::id,
+                wladdresses::payment_address,
+                wladdresses::stake_address,
+                wlalloc::wl,
+                wlalloc::addr,
+                wlalloc::specific_asset,
+            ))
+            .first::<WlEntry>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
+    pub fn check_stake_address_in_whitelist(
+        id_in: &i64,
         stake_address: &String,
-    ) -> Result<Vec<WlAddresses>, RWDError> {
-        let conn = &mut establish_connection()?;
+    ) -> Result<Vec<WlEntry>, RWDError> {
         let result = wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
@@ -1142,96 +1214,186 @@ impl WlAlloc {
                 wladdresses::id,
                 wladdresses::payment_address,
                 wladdresses::stake_address,
+                wlalloc::wl,
+                wlalloc::addr,
+                wlalloc::specific_asset,
             ))
-            .load::<WlAddresses>(conn)?;
+            .load::<WlEntry>(&mut establish_connection()?)?;
         Ok(result)
     }
 
-    pub fn check_pay_address_whitelist(
-        id_in: i64,
+    pub fn check_pay_address_in_whitelist(
+        id_in: &i64,
         address: &String,
-    ) -> Result<Vec<WlAddresses>, RWDError> {
-        let conn = &mut establish_connection()?;
+    ) -> Result<Vec<WlEntry>, RWDError> {
         let result = wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
             .filter(wladdresses::payment_address.eq(address).nullable())
-            .filter(wladdresses::stake_address.is_null())
             .select((
                 wladdresses::id,
                 wladdresses::payment_address,
                 wladdresses::stake_address,
+                wlalloc::wl,
+                wlalloc::addr,
+                wlalloc::specific_asset,
             ))
-            .load::<WlAddresses>(conn)?;
+            .load::<WlEntry>(&mut establish_connection()?)?;
         Ok(result)
     }
 
     pub fn create_alloc<'a>(
-        conn: &mut PgConnection,
         wl_in: &'a i64,
         addr_in: &'a i64,
+        specific_asset: Option<&'a SpecificAsset>,
     ) -> Result<WlAlloc, RWDError> {
+        let sa = if let Some(s) = specific_asset {
+            Some(serde_json::to_value(s)?)
+        } else {
+            None
+        };
+
         let new_entry = WlAllocNew {
             wl: wl_in,
             addr: addr_in,
+            specific_asset: sa.as_ref(),
         };
-
-        Ok(diesel::insert_into(wlalloc::table)
+        match diesel::insert_into(wlalloc::table)
             .values(&new_entry)
-            .get_result::<WlAlloc>(conn)?)
+            .get_result::<WlAlloc>(&mut establish_connection()?)
+        {
+            Ok(o) => Ok(o),
+            Err(_) => Ok(diesel::update(
+                wlalloc::table
+                    .filter(wlalloc::addr.eq(addr_in))
+                    .filter(wlalloc::wl.eq(wl_in)),
+            )
+            .set(wlalloc::specific_asset.eq(serde_json::json!(specific_asset)))
+            .get_result::<WlAlloc>(&mut establish_connection()?)?),
+        }
     }
 
-    pub fn remove_wlentry<'a>(
-        conn: &mut PgConnection,
+    pub fn update_alloc<'a>(
         wl_in: &'a i64,
         addr_in: &'a i64,
-    ) -> Result<usize, RWDError> {
-        let result = diesel::delete(wlalloc::table.find((wl_in, addr_in))).execute(conn)?;
+        specific_asset_in: Option<&'a SpecificAsset>,
+    ) -> Result<WlAlloc, RWDError> {
+        let sa = if let Some(s) = specific_asset_in {
+            Some(serde_json::to_value(s)?)
+        } else {
+            None
+        };
+
+        Ok(diesel::update(
+            wlalloc::table
+                .filter(wlalloc::wl.eq(wl_in))
+                .filter(wlalloc::addr.eq(addr_in)),
+        )
+        .set(wlalloc::specific_asset.eq(sa))
+        .get_result::<WlAlloc>(&mut establish_connection()?)?)
+    }
+
+    pub fn remove_wlentry<'a>(wl_in: &'a i64, addr_in: &'a i64) -> Result<usize, RWDError> {
+        let result = diesel::delete(wlalloc::table.find((wl_in, addr_in)))
+            .execute(&mut establish_connection()?)?;
 
         Ok(result)
     }
 
-    pub fn remove_wl(conn: &mut PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
-        let result = diesel::delete(wlalloc::table.filter(wlalloc::wl.eq(wl_in))).execute(conn)?;
+    pub fn remove_wl(wl_in: &i64) -> Result<usize, RWDError> {
+        let result = diesel::delete(wlalloc::table.filter(wlalloc::wl.eq(wl_in)))
+            .execute(&mut establish_connection()?)?;
         Ok(result)
     }
 }
 
 impl Whitelist {
-    pub fn get_whitelist(conn: &mut PgConnection, id_in: i64) -> Result<Whitelist, RWDError> {
+    pub fn get_whitelist(user_id_in: &i64, id_in: &i64) -> Result<Whitelist, RWDError> {
         let result = whitelist::table
             .filter(whitelist::id.eq(id_in))
-            .first::<Whitelist>(conn)?;
+            .filter(whitelist::user_id.eq(user_id_in))
+            .first::<Whitelist>(&mut establish_connection()?)?;
         Ok(result)
     }
 
-    pub fn create_wladdress(
-        conn: &mut PgConnection,
+    pub fn get_whitelists(user_id_in: &i64) -> Result<Whitelist, RWDError> {
+        let result = whitelist::table
+            .filter(whitelist::user_id.eq(user_id_in))
+            .first::<Whitelist>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
+    pub fn create_whitelist(
+        user_id_in: &i64,
         max_addr_repeat: &i32,
+        wl_type: &WhitelistType,
+        description: &String,
+        notes: &String,
     ) -> Result<Whitelist, RWDError> {
-        let new_entry = WhitelistNew { max_addr_repeat };
+        let new_entry = WhitelistNew {
+            user_id: user_id_in,
+            max_addr_repeat,
+            wl_type,
+            description,
+            notes,
+        };
 
         Ok(diesel::insert_into(whitelist::table)
             .values(&new_entry)
-            .get_result::<Whitelist>(conn)?)
+            .get_result::<Whitelist>(&mut establish_connection()?)?)
     }
 
     pub fn add_to_wl<'a>(
-        conn: &mut PgConnection,
         wl_in: &'a i64,
         address: &'a String,
         stake_address: Option<&'a String>,
+        specific_asset: Option<&'a SpecificAsset>,
     ) -> Result<WlAlloc, RWDError> {
-        let raddr = WlAddresses::create_wladdress(conn, address, stake_address)?;
-        let ralloc = WlAlloc::create_alloc(conn, wl_in, &raddr.id)?;
+        let raddr = match WlAddresses::create_wladdress(
+            &mut establish_connection()?,
+            address,
+            stake_address,
+        ) {
+            Ok(o) => o,
+            Err(e) => {
+                log::error!("Error creating new wladdress: {:?}", e.to_string());
+                let addr = WlAddresses::get_address(address.to_string())?;
+                if addr.is_empty() {
+                    return Err(RWDError::new("Could also not find address"));
+                }
+                addr[0].clone()
+            }
+        };
+        let ralloc = WlAlloc::create_alloc(wl_in, &raddr.id, specific_asset)?;
         Ok(ralloc)
     }
 
-    pub fn remove_wl(conn: &mut PgConnection, wl_in: &i64) -> Result<usize, RWDError> {
-        let _result = WlAlloc::remove_wl(conn, wl_in)?;
+    pub fn remove_from_wl<'a>(
+        user_id: &'a i64,
+        wl_id: &'a i64,
+        address: &'a String,
+    ) -> Result<(), RWDError> {
+        Whitelist::get_whitelist(user_id, wl_id)?;
 
-        let result =
-            diesel::delete(whitelist::table.filter(whitelist::id.eq(wl_in))).execute(conn)?;
+        let allocs = WlAlloc::get_address_whitelist(wl_id, address)?;
+
+        for a in &allocs {
+            WlAlloc::remove_wlentry(&a.wl, &a.alloc_id)?;
+        }
+        let addr_id = allocs[0].alloc_id;
+        let allocs = WlAlloc::get_address_allocations(address)?;
+
+        if allocs.is_empty() {
+            WlAddresses::remove_wladdress(&mut establish_connection()?, addr_id)?;
+        }
+        Ok(())
+    }
+
+    pub fn remove_wl(user_id_in: &i64, wl_in: &i64) -> Result<usize, RWDError> {
+        Whitelist::get_whitelist(user_id_in, wl_in)?;
+        WlAlloc::remove_wl(wl_in)?;
+        let result = diesel::delete(whitelist::table.filter(whitelist::id.eq(wl_in)))
+            .execute(&mut establish_connection()?)?;
         Ok(result)
     }
 }

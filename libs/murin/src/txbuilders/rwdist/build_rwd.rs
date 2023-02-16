@@ -107,14 +107,14 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         }
         raw_metadata.push("rewards distributed to:".to_string());
 
-        debug!("Datum Metadata: {:?}\n", raw_metadata);
+        trace!("Datum Metadata: {:?}\n", raw_metadata);
 
         let mut metalist = clib::metadata::MetadataList::new();
         metalist.add(&clib::metadata::TransactionMetadatum::new_text(
             "smartclaimz.io".to_string(),
         )?);
         for dat in raw_metadata {
-            debug!("Datum Metadata Iterator: {:?}", dat);
+            trace!("Datum Metadata Iterator: {:?}", dat);
             metalist.add(&clib::metadata::TransactionMetadatum::new_bytes(
                 dat.as_bytes().to_vec(),
             )?);
@@ -167,18 +167,18 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
                         }
                         acc
                     });
-            let mut rwd_val = RewardHandle::total_value(c_rewards)?;
-            let min_utxo_val = calc_min_ada_for_utxo(&rwd_val, None);
-            rwd_val.set_coin(&min_utxo_val);
+            let rwd_val = RewardHandle::total_value(c_rewards)?;
+            let min_utxo_val =
+                min_ada_for_utxo(&TransactionOutput::new(&recipient_address, &rwd_val))?.amount();
             let mut zcrwd_val = rwd_val.clone();
             zcrwd_val.set_coin(&cutils::to_bignum(0));
 
             log::debug!("script wallet getter");
             let script_wallet = wallets.get_wallet_cid(*id)?;
 
-            let sink = Sink::new(&recipient_address, &rwd_val);
+            let sink = Sink::new(&recipient_address, &min_utxo_val);
             let mut source = Source::new(&script_wallet.script.unwrap().script_addr);
-            source.add_subtraction(&cutils::Value::new(&min_utxo_val));
+            source.add_subtraction(&cutils::Value::new(&min_utxo_val.coin()));
             source.set_pay_value(zcrwd_val);
             let trans = Transfer::new(&source, &vec![sink]);
             transfers.push(trans);
@@ -200,7 +200,7 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         if let Some(f) = &self.stxd.get_fee() {
             contract_fee += f;
         }
-        log::debug!("any wallet call.....");
+        //log::debug!("any wallet call.....");
         let any_script_wallet = wallets.get_wallet_cid(rwd_contract_ids[0])?;
 
         let cfee_val = cutils::Value::new(&cutils::to_bignum(contract_fee));
@@ -252,7 +252,7 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
 
         for id in rwd_contract_ids {
             log::debug!("wallet_id: {:?}", id);
-            log::debug!("wallets: {:?}", self.wallets);
+            //log::debug!("wallets: {:?}", self.wallets);
             let w = builder.wallets.get_wallet_cid(id)?;
             native_scripts.add(&w.script.as_ref().unwrap().script);
 

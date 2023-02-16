@@ -8,10 +8,8 @@
 */
 pub use crate::error::SleipnirError;
 use chrono::{DateTime, Utc};
-use dvltath::vault::kv::vault_get;
-use hugin::{database::TBDrasilUser, encryption, TBCaPayment};
-use murin::utils::{from_bignum, to_bignum};
-use zeroize::Zeroize;
+use hugin::TBCaPayment;
+use murin::utils::from_bignum;
 
 pub async fn create_rev_payout(
     user_id: i64,
@@ -119,10 +117,9 @@ pub async fn approve_payout(
     user_id: &i64,
     payout_id: &i64,
     pw: &String,
-    mfa: &String,
+    _mfa: &str,
 ) -> Result<(), SleipnirError> {
-    let user =
-        hugin::TBDrasilUser::get_user_by_user_id(&mut hugin::establish_connection()?, user_id)?;
+    let user = hugin::TBDrasilUser::get_user_by_user_id(user_id)?;
 
     let msg = hugin::TBCaPaymentHash::find_by_payid(payout_id)?[0]
         .payment_hash

@@ -7,17 +7,14 @@
 #################################################################################
 */
 
-use gungnir::{Discount, DiscountNew};
+use gungnir::Discount;
 use mimir::TokenInfoMint;
-use murin::clib::{address::Address, utils::from_bignum};
-use murin::{make_fingerprint, MurinError, Tokens, TransactionUnspentOutputs};
-
-use crate::MarketplaceActions;
+use murin::{make_fingerprint, Tokens, TransactionUnspentOutputs};
 
 pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
     let discounts = Discount::get_discounts(cid, uid);
 
-    if let Err(_) = discounts {
+    if discounts.is_err() {
         return 0;
     }
     let mut discounts = discounts.unwrap();

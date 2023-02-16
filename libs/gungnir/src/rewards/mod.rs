@@ -11,6 +11,7 @@
 pub mod api;
 pub use api::*;
 use serde::{Deserialize, Serialize};
+use strum::Display;
 
 use crate::error::RWDError;
 
@@ -34,7 +35,7 @@ pub fn establish_connection() -> Result<PgConnection, RWDError> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, DbEnum)]
-#[DieselTypePath = "crate::schema::sql_types::Calculationmode"]
+#[ExistingTypePath = "crate::schema::sql_types::Calculationmode"]
 pub enum Calculationmode {
     #[db_rename = "custom"]
     Custom,
@@ -272,6 +273,17 @@ pub struct AirDropParameterNew<'a> {
     pub whitelist_ids: Option<&'a Vec<i64>>,
 }
 
+#[derive(Queryable, Debug, Clone)]
+// return type for a single whitelist entry for a project
+pub struct WlEntry {
+    pub id: i64,
+    pub payment_address: String,
+    pub stake_address: Option<String>,
+    pub wl: i64,
+    pub alloc_id: i64,
+    pub specific_asset: Option<serde_json::Value>, //Specific Asset
+}
+
 #[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(table_name = wladdresses)]
 pub struct WlAddresses {
@@ -287,12 +299,21 @@ pub struct WlAddressesNew<'a> {
     pub stake_address: Option<&'a String>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct SpecificAsset {
+    pub project_id: i64,
+    pub assetname_b: String,
+    pub fingerprint: String,
+    pub amount: u64,
+}
+
 #[derive(Queryable, Identifiable, Debug, Clone)]
 #[diesel(primary_key(wl, addr))]
 #[diesel(table_name = wlalloc)]
 pub struct WlAlloc {
     pub wl: i64,
     pub addr: i64,
+    pub specific_asset: Option<serde_json::Value>, //Specific Asset
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -300,13 +321,32 @@ pub struct WlAlloc {
 pub struct WlAllocNew<'a> {
     pub wl: &'a i64,
     pub addr: &'a i64,
+    pub specific_asset: Option<&'a serde_json::Value>, //Specific Asset
 }
 
-#[derive(Queryable, Identifiable, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, DbEnum, Display)]
+#[ExistingTypePath = "crate::schema::sql_types::WhitelistType"]
+pub enum WhitelistType {
+    // A legit user is contained in the whitelist and limited by max mints per user, not contained users cannot mint
+    #[db_rename = "RandomContained"]
+    RandomContained,
+    // A user is allowed to mint a preconfigured specific asset. No unspecified mints.
+    #[db_rename = "SpecificAsset"]
+    SpecificAsset,
+    // Users are preallocated randomly to a token from a whitelist (mix of RandomContained and SpecificAsset)
+    #[db_rename = "RandomPreallocated"]
+    RandomPreallocated,
+}
+
+#[derive(Queryable, Identifiable, Debug, Clone, Serialize, Deserialize)]
 #[diesel(table_name = whitelist)]
 pub struct Whitelist {
     pub id: i64,
+    pub user_id: i64,
     pub max_addr_repeat: i32,
+    pub wl_type: WhitelistType,
+    pub description: String,
+    pub notes: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -314,7 +354,11 @@ pub struct Whitelist {
 #[derive(Insertable, Debug, Clone)]
 #[diesel(table_name = whitelist)]
 pub struct WhitelistNew<'a> {
+    pub user_id: &'a i64,
     pub max_addr_repeat: &'a i32,
+    pub wl_type: &'a WhitelistType,
+    pub description: &'a String,
+    pub notes: &'a String,
 }
 
 #[derive(Queryable, Identifiable, Debug, Clone, Serialize, Deserialize)]

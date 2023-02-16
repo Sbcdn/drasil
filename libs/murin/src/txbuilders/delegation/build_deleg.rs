@@ -58,7 +58,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         let delegators_address: caddr::Address = gtxd.get_stake_address();
 
         let delegators_address_bech32 = delegators_address.to_bech32(None)?;
-        info!("Delegator Stake Address: {:?}", delegators_address_bech32);
+        log::info!("Delegator Stake Address: {:?}", delegators_address_bech32);
 
         let owner_base_addr = caddr::BaseAddress::from_address(&owner_address).unwrap();
         let owner_stakecred = owner_base_addr.stake_cred();

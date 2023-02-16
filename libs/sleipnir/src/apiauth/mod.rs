@@ -22,7 +22,7 @@ pub enum Permissions {
 }
 
 impl Permissions {
-    pub fn from_str(role: &str) -> Permissions {
+    pub fn str_to_role(role: &str) -> Permissions {
         match role {
             "1" => Permissions::RewardClaimRequest,
             "2" => Permissions::RewardClaimCreateContract,
@@ -52,8 +52,7 @@ pub struct ApiClaims {
 }
 
 pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String, SleipnirError> {
-    let mut dconn = hugin::establish_connection()?;
-    let user = hugin::database::TBDrasilUser::get_user_by_user_id(&mut dconn, uid)?;
+    let user = hugin::database::TBDrasilUser::get_user_by_user_id(uid)?;
 
     if !user.email_verified
     //&& check_identification(u.identification)

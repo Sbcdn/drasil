@@ -29,8 +29,8 @@ pub struct RewardHandle {
     fingerprint: String,
     policy: String,
     tokenname: String,
-    tot_earned: u64,
-    tot_claimed: u64,
+    tot_earned: i128,
+    tot_claimed: i128,
     last_calc_epoch: i64,
 }
 

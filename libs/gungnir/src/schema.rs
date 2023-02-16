@@ -11,6 +11,10 @@ pub mod sql_types {
     #[derive(diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "Calculationmode"))]
     pub struct Calculationmode;
+
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "whitelisttype"))]
+    pub struct WhitelistType;
 }
 
 table! {
@@ -108,13 +112,18 @@ table! {
     wlalloc (wl,addr) {
         wl -> Int8,
         addr -> Int8,
+        specific_asset -> Nullable<Jsonb>,
     }
 }
 
 table! {
     whitelist (id) {
         id -> Int8,
+        user_id -> Int8,
         max_addr_repeat -> Int4,
+        wl_type -> crate::schema::sql_types::WhitelistType,
+        description -> Text,
+        notes -> Text,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }

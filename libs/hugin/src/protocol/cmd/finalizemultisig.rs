@@ -7,15 +7,15 @@
 #################################################################################
 */
 use crate::datamodel::MultiSigType;
-use crate::{establish_connection, CmdError, Parse, TBContracts};
+use crate::{CmdError, Parse, TBContracts};
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 use gungnir::models::{MintProject, MintReward, Nft};
-use murin::make_fingerprint;
 use murin::minter::models::{CMintHandle, ColMinterTxData};
+use murin::{get_bech32_stake_address_from_str, make_fingerprint};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -182,6 +182,7 @@ impl FinalizeMultiSig {
 
                 ret = self.finalize_rwd(raw_tx.clone()).await?;
 
+                //Todo: processed must happen before finalize rwd
                 for h in &handles {
                     MintReward::process_mintreward(h.1.id, h.1.project_id, &h.1.pay_addr)?;
                     for a in h.1.nft_ids.clone() {
@@ -257,8 +258,6 @@ impl FinalizeMultiSig {
     async fn finalize_rwd(&self, raw_tx: murin::RawTx) -> crate::Result<String> {
         use crate::database::drasildb::*;
         use murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
-
-        let mut drasildbcon = establish_connection()?;
         let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
         let mut pvks = Vec::<String>::new();
         log::debug!("TxData in Finalize: {:?}", tx_data);
@@ -268,7 +267,6 @@ impl FinalizeMultiSig {
                 crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
 
             let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-                &mut drasildbcon,
                 cid,
                 &(self.customer_id as i64),
                 &contract.version,
@@ -293,7 +291,6 @@ impl FinalizeMultiSig {
         use crate::database::drasildb::*;
         use murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
 
-        let mut drasildbcon = establish_connection()?;
         let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
         let mut pvks = Vec::<String>::new();
 
@@ -302,7 +299,6 @@ impl FinalizeMultiSig {
                 crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
 
             let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-                &mut drasildbcon,
                 cid,
                 &(self.customer_id as i64),
                 &contract.version,
@@ -326,7 +322,6 @@ impl FinalizeMultiSig {
         use crate::database::drasildb::*;
         use murin::txbuilders::rwdist::finalize_utxopti::finalize_utxopti;
 
-        let mut drasildbcon = establish_connection()?;
         let contract_ids = raw_tx.get_contract_id()?;
         let mut pvks = Vec::<String>::new();
 
@@ -335,7 +330,6 @@ impl FinalizeMultiSig {
                 crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)?;
 
             let keyloc = TBMultiSigLoc::get_multisig_keyloc(
-                &mut drasildbcon,
                 cid,
                 &(self.customer_id as i64),
                 &contract.version,
