@@ -84,4 +84,3 @@ Public Key for JWT Certificate:
 For log output activate RUST_LOG by settign the trace level, default is error. 
 
 `RUST_LOG=info`
-
