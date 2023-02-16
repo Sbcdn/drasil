@@ -59,13 +59,10 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let oneshotwallet = murin::wallet::create_wallet();
     let oneshotpolicy = murin::minter::create_onshot_policy(&oneshotwallet.3, slot as u64);
 
-    log::debug!("Connect to platform db...");
-    let mut drasildbcon = crate::database::drasildb::establish_connection()?;
     log::debug!("Check contract...");
     let contract = TBContracts::get_liquidity_wallet(&bms.customer_id())?;
     log::debug!("Try to determine additional data...");
     let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-        &mut drasildbcon,
         &contract.contract_id,
         &contract.user_id,
         &contract.version,

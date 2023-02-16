@@ -204,10 +204,10 @@ impl TransactionUnspentOutputs {
     pub fn find_utxo_index(&self, elem: &TransactionUnspentOutput) -> Option<usize> {
         let elem_hash = elem.input().transaction_id();
         let elem_index = elem.input().index();
-        debug!("Elemhash: {:?}, ElemIndex: {:?}", elem_hash, elem_index);
+        trace!("Elemhash: {:?}, ElemIndex: {:?}", elem_hash, elem_index);
         for i in 0..self.0.len() {
             let txi = self.0[i].input();
-            debug!("Input: {:?}", txi);
+            trace!("Input: {:?}", txi);
             if txi.transaction_id().to_bytes() == elem_hash.to_bytes() && txi.index() == elem_index
             {
                 debug!(
@@ -273,37 +273,37 @@ impl TransactionUnspentOutputs {
     pub fn optimize_on_assets(&mut self, assets: Tokens) -> Result<(), MurinError> {
         let tot_val_utxos = self.calc_total_value()?;
         let needed_val = tokens_to_value(&assets);
-        let overhead_value = tot_val_utxos.clamped_sub(&needed_val);
-        if overhead_value.multiasset().is_some() {
-            let mut overhead_tok = value_to_tokens(&overhead_value)?;
-            let mut list_of_utxo_tokens = Vec::<(Tokens, TransactionUnspentOutput)>::new();
-            for t in self.0.clone().iter() {
-                list_of_utxo_tokens.push((value_to_tokens(&t.output().amount())?, t.clone()));
-            }
+        if let Ok(overhead_value) = tot_val_utxos.checked_sub(&needed_val) {
+            if overhead_value.multiasset().is_some() {
+                let mut overhead_tok = value_to_tokens(&overhead_value)?;
+                let mut list_of_utxo_tokens = Vec::<(Tokens, TransactionUnspentOutput)>::new();
+                for t in self.0.clone().iter() {
+                    list_of_utxo_tokens.push((value_to_tokens(&t.output().amount())?, t.clone()));
+                }
 
-            for tokens in &list_of_utxo_tokens {
-                let diff = token_diff(&tokens.0, &overhead_tok);
-                debug!("Diff: {:?}", diff);
-                match diff.len() {
-                    0 => {
-                        continue;
-                    }
-                    _ => {
-                        if let Some(k) = list_of_utxo_tokens.iter().find(|k| k.0 == diff) {
-                            debug!("Found k: {:?}", k);
-                            if let Some(pos) = self.find_utxo_index(&k.1) {
-                                self.swap_remove(pos);
-                                overhead_tok =
-                                    value_to_tokens(&tot_val_utxos.clamped_sub(&needed_val))?;
+                for tokens in &list_of_utxo_tokens {
+                    let diff = token_diff(&tokens.0, &overhead_tok);
+                    trace!("Diff: {:?}", diff);
+                    match diff.len() {
+                        0 => {
+                            continue;
+                        }
+                        _ => {
+                            if let Some(k) = list_of_utxo_tokens.iter().find(|k| k.0 == diff) {
+                                trace!("Found k: {:?}", k);
+                                if let Some(pos) = self.find_utxo_index(&k.1) {
+                                    self.swap_remove(pos);
+                                    overhead_tok =
+                                        value_to_tokens(&tot_val_utxos.clamped_sub(&needed_val))?;
+                                }
                             }
                         }
                     }
                 }
+                return Ok(());
             }
-            Ok(())
-        } else {
-            Ok(())
         }
+        Ok(())
     }
 
     pub fn add_if_not_contained(&mut self, addons: &TransactionUnspentOutput) -> Option<()> {
@@ -457,7 +457,7 @@ impl TransactionUnspentOutputs {
         debug!("Elemhash: {:?}, ElemIndex: {:?}", elem_hash, elem_index);
         for i in 0..self.0.len() {
             let txi = self.0[i].input();
-            debug!("Input: {:?}", txi);
+            trace!("Input: {:?}", txi);
             if txi.transaction_id().to_bytes() == elem_hash.to_bytes() && txi.index() == elem_index
             {
                 debug!(
@@ -490,13 +490,13 @@ impl TransactionUnspentOutputs {
     pub fn contains_any(&self, elems: &TransactionUnspentOutputs) -> bool {
         for i in 0..self.0.len() {
             let txi_self = self.0[i].input();
-            debug!("Input: {:?}", txi_self);
+            trace!("Input: {:?}", txi_self);
             for j in 0..elems.len() {
                 let txi_other = elems.get(j).input();
                 if txi_self.transaction_id().to_bytes() == txi_other.transaction_id().to_bytes()
                     && txi_self.index() == txi_other.index()
                 {
-                    debug!("Utxo set contains minimum one utxo of the other set");
+                    trace!("Utxo set contains minimum one utxo of the other set");
                     return true;
                 }
             }
@@ -523,7 +523,7 @@ impl TransactionUnspentOutputs {
         if let Some(b) = band {
             (min, max) = TransactionUnspentOutputs::band_value(value, b);
         }
-        println!("Band Values: Min: {:?}; Max: {:?}", min, max);
+        trace!("Band Values: Min: {:?}; Max: {:?}", min, max);
         let f: TransactionUnspentOutputs = self
             .0
             .iter()
@@ -627,11 +627,47 @@ impl TransactionUnspentOutputs {
         None
     }
 
+    pub fn find_utxo_containing_policy(
+        &self,
+        policy: &String,
+    ) -> Result<TransactionUnspentOutputs, super::MurinError> {
+        let policy = ccrypto::ScriptHash::from_bytes(hex::decode(policy)?)?;
+        let mut out = TransactionUnspentOutputs::new();
+        self.0.iter().for_each(|n| {
+            let ma = n.output().amount().multiasset();
+            if let Some(multi) = ma {
+                let policies = multi.get(&policy);
+                if policies.is_some() {
+                    out.add(n)
+                }
+            }
+        });
+        Ok(out)
+    }
+
+    pub fn find_utxos_containing_asset(
+        &self,
+        policy: &ccrypto::ScriptHash,
+        assetname: &clib::AssetName,
+    ) -> Result<TransactionUnspentOutputs, super::MurinError> {
+        let mut out = TransactionUnspentOutputs::new();
+        self.0.iter().for_each(|n| {
+            let ma = n.output().amount().multiasset();
+            if let Some(multi) = ma {
+                let asset = multi.get_asset(policy, assetname);
+                if asset.compare(&cutils::to_bignum(0)) == 1 {
+                    out.add(n)
+                }
+            }
+        });
+        Ok(out)
+    }
+
     pub fn remove_used_utxos(&mut self, used: Vec<crate::utxomngr::usedutxos::UsedUtxo>) {
         for u in used {
             if let Some(i) = self.find_utxo_by_txhash(u.get_txhash(), u.get_index()) {
                 let d = self.swap_remove(i);
-                debug!("Deleted: {:?}", d);
+                trace!("Deleted: {:?}", d);
             }
         }
     }
@@ -759,16 +795,10 @@ pub fn check_overhead_tokens(tok_l: &Tokens, tok_r: &Tokens) -> Tokens {
 pub fn acc_tokens(tok_l: &Tokens, tok_r: &Tokens) -> Tokens {
     let mut out = Tokens::new();
     for tok in tok_l {
-        match find_tokenindex_by_policy_assetname(tok_r, &tok.0, &tok.1) {
-            Some(s) => {
-                let r = tok.2.clamped_sub(&tok_r[s].2);
-                if cutils::from_bignum(&r) == 0 {
-                    debug!("Found utxo which can be kick optimized");
-                    out.push((tok.0.clone(), tok.1.clone(), tok.2))
-                }
-            }
-            None => {
-                //out.push((tok.0.clone(),tok.1.clone(),tok.2))
+        if let Some(s) = find_tokenindex_by_policy_assetname(tok_r, &tok.0, &tok.1) {
+            if let Ok(_bn) = tok.2.checked_sub(&tok_r[s].2) {
+                debug!("Found utxo which can be kick optimized");
+                out.push((tok.0.clone(), tok.1.clone(), tok.2))
             }
         }
     }

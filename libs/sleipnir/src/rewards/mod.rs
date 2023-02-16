@@ -119,12 +119,7 @@ pub async fn depricate_contract(
     user_id: i64,
     contract_id: i64,
 ) -> Result<serde_json::Value, SleipnirError> {
-    let resp = hugin::TBContracts::depricate_contract(
-        &mut hugin::database::establish_connection()?,
-        &(user_id),
-        &(contract_id),
-        &true,
-    )?;
+    let resp = hugin::TBContracts::depricate_contract(&(user_id), &(contract_id), &true)?;
 
     Ok(json!(resp))
 }
@@ -153,8 +148,10 @@ pub async fn get_rwd_contracts_for_user(user_id: i64) -> Result<serde_json::Valu
 
     let current_date = chrono::Utc::now();
     let first: chrono::NaiveDateTime =
-        chrono::NaiveDate::from_ymd(current_date.year(), current_date.month(), 1)
-            .and_hms(00, 00, 00);
+        chrono::NaiveDate::from_ymd_opt(current_date.year(), current_date.month(), 1)
+            .unwrap()
+            .and_hms_opt(00, 00, 00)
+            .unwrap();
     let date_time: chrono::DateTime<Utc> = chrono::Utc.from_local_datetime(&first).unwrap();
 
     let mut resp = Vec::<ViewAdmContracts>::new();
@@ -194,12 +191,7 @@ pub async fn reactivate_contract(
     user_id: i64,
     contract_id: i64,
 ) -> Result<serde_json::Value, SleipnirError> {
-    let resp = hugin::TBContracts::depricate_contract(
-        &mut hugin::database::establish_connection()?,
-        &(user_id),
-        &(contract_id),
-        &false,
-    )?;
+    let resp = hugin::TBContracts::depricate_contract(&(user_id), &(contract_id), &false)?;
 
     Ok(json!(resp))
 }
@@ -390,6 +382,7 @@ pub async fn get_user_txs(
             NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
         );
+        log::debug!("Parsed From: {}", from_t);
     }
 
     let mut to_t = chrono::Utc::now();
@@ -398,18 +391,17 @@ pub async fn get_user_txs(
             NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
         );
+        log::debug!("Parsed To: {}", to_t);
     }
 
-    let mut resp = 0;
-    match to {
+    let resp = match to {
         Some(_) => {
             let resp1 = gungnir::Claimed::get_stat_count_period_tx_user(&user, &from_t, &to_t);
-            println!("{:?}", resp1);
+            log::debug!("{:?}", resp1);
+            resp1?
         }
-        None => {
-            resp = gungnir::Claimed::get_stat_count_all_tx_user(&user)?;
-        }
-    }
+        None => gungnir::Claimed::get_stat_count_all_tx_user(&user)?,
+    };
 
     Ok(resp)
 }

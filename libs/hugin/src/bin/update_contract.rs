@@ -13,15 +13,13 @@ extern crate diesel;
 use std::io::stdin;
 
 fn main() -> Result<(), SystemDBError> {
-    let mut connection = establish_connection()?;
-
     println!("Please provide id (i64):");
     let mut db_id = String::new();
     stdin().read_line(&mut db_id).unwrap();
     let db_id = &db_id[..(db_id.len() - 1)];
     let db_id = db_id.parse::<i64>()?;
 
-    let contract_org = TBContracts::get_contract_by_id(&mut connection, db_id)?;
+    let contract_org = TBContracts::get_contract_by_id(db_id)?;
 
     println!("Please provide contract-id (i64):");
     println!("Leave empty to keep current value.");
@@ -49,7 +47,6 @@ fn main() -> Result<(), SystemDBError> {
         depri = depri_.parse::<bool>()?;
     }
     let contract = TBContracts::update_contract(
-        &mut connection,
         &db_id,
         &contract_id,
         contract_org

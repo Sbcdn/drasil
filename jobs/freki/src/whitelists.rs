@@ -37,26 +37,27 @@ pub(crate) async fn handle_whitelist_address(
         gungnir::Calculationmode::Custom => {
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::FixedAmountPerEpoch => {
-                    println!("Whitelist calculate with: FixedAmountPerEpoch");
+                    log::debug!("Whitelist calcualte with: FixedAmountPerEpoch");
+
                     let param: FixedAmountPerEpochType =
                         serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
 
                     handle_rewards(
                         &stake_addr,
                         twd,
-                        &BigDecimal::from_u64(param.amount * 1000000).unwrap(),
+                        &BigDecimal::from_i128(param.amount * 1000000).unwrap(),
                         table,
                         false,
                     )?;
                 }
                 CustomCalculationTypes::FixedAmountPerEpochNonAcc => {
-                    println!("Whitelist calculate with: FixedAmountPerEpochNonAcc");
+                    log::debug!("Whitelist calcualte with: FixedAmountPerEpochNonAcc");
                     let param: FixedAmountPerEpochType =
                         serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
                     handle_rewards(
                         &stake_addr,
                         twd,
-                        &BigDecimal::from_u64(param.amount * 1000000).unwrap(),
+                        &BigDecimal::from_i128(param.amount * 1000000).unwrap(),
                         table,
                         true,
                     )?;
@@ -78,9 +79,8 @@ pub(crate) async fn handle_whitelist(
     twd: &mut TwlData,
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
-    println!("Handle whitelist: {:?}", wl_link);
-    let mut conn = gungnir::establish_connection()?;
-    let addr_list = gungnir::WlAlloc::get_whitelist(&mut conn, wl_link.id)?;
+    log::debug!("Handle whitelist: {:?}", wl_link);
+    let addr_list = gungnir::WlAlloc::get_whitelist(&wl_link.id)?;
     for addr in addr_list {
         handle_whitelist_address(&addr, twd, table).await?;
     }

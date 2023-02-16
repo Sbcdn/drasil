@@ -226,8 +226,8 @@ pub fn perform_cancel(
     let slot = gtxd.get_current_slot() + 3000;
     let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee); //922321
     txbody.set_ttl(&cutils::to_bignum(slot));
-    debug!("\nTxOutputs: {:?}\n", txbody.outputs());
-    debug!("\nTxInouts: {:?}\n", txbody.inputs());
+    trace!("\nTxOutputs: {:?}\n", txbody.outputs());
+    trace!("\nTxInouts: {:?}\n", txbody.inputs());
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
     //Required Signer

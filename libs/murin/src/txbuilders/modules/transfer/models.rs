@@ -199,9 +199,13 @@ impl TransBuilder {
 
         self.transfers.iter_mut().for_each(|n| {
             log::debug!("Pay Address: {:?}", n.source.pay_addr);
-            log::debug!("Wallets: {:?}", self.wallets);
-            n.balance(self.wallets.get_wallet(&n.source.pay_addr).unwrap())
-                .unwrap();
+            log::trace!("Wallets: {:?}", self.wallets);
+            n.balance(
+                self.wallets
+                    .get_wallet(&n.source.pay_addr)
+                    .expect("TransWallet not found"),
+            )
+            .expect("Transaction does not balance")
         });
 
         //handles.push();
@@ -217,7 +221,7 @@ impl TransBuilder {
             self.transfers
                 .iter()
                 .fold(TransactionInputs::new(), |mut acc, n| {
-                    log::debug!("\n\nTransfer: {:?}", n);
+                    log::trace!("\n\nTransfer: {:?}", n);
                     n.txis.iter().for_each(|m| {
                         for i in 0..m.len() {
                             let txi = m.get(i);
@@ -264,8 +268,8 @@ impl TransBuilder {
         log::debug!("\n\nTXIn Val: {:?}", txins_val);
         log::debug!("\n\nTXOut Val: {:?}", txo_val);
         log::debug!("\n\nFee Val: {:?}", fee);
-        log::debug!("\n\nTxUnspentInputs: {:?}", txiuos);
-        log::debug!("\n\nTxOutputs: {:?}", txos);
+        log::trace!("\n\nTxUnspentInputs: {:?}", txiuos);
+        log::trace!("\n\nTxOutputs: {:?}", txos);
 
         if txins_val
             .checked_sub(&txo_val.checked_add(&Value::new(&fee)).unwrap())
@@ -504,7 +508,10 @@ impl Transfer {
             acc
         });
 
-        let mut change = in_value.checked_sub(&out_value)?;
+        log::debug!("In value: {:?}", in_value);
+        log::debug!("Out Value: {:?}", out_value);
+
+        let mut change = in_value;
         for modificator in &self.source.modificator {
             match modificator {
                 TransModificator::Add(v) => {
@@ -515,6 +522,10 @@ impl Transfer {
                 }
             }
         }
+
+        let change = change.checked_sub(&out_value);
+        log::trace!("Change in balance: {:?}", change);
+        let change = change?;
 
         let mut txos = self
             .sinks
@@ -527,12 +538,12 @@ impl Transfer {
                 acc
             });
         let change_txo = TransactionOutput::new(&self.source.pay_addr, &change);
-        log::debug!("Change in Transfer: {:?}", change_txo);
+        log::trace!("Change in Transfer: {:?}", change_txo);
         txos.add(&change_txo);
-        log::debug!("/nTransactionOutputs in t.balance: {:?}", txos);
+        log::trace!("/nTransactionOutputs in t.balance: {:?}", txos);
         self.txos = Some(txos);
         self.txis = self.source.get_txinputs();
-        log::debug!("/n Self.TXOS in t.balance: {:?}", self.txos);
+        log::trace!("/n Self.TXOS in t.balance: {:?}", self.txos);
 
         Ok(())
     }

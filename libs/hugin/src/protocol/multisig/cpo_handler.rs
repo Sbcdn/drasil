@@ -8,9 +8,7 @@
 */
 
 use crate::admin::get_vaddr;
-use crate::ca_payment;
 use crate::error::SystemDBError;
-use crate::establish_connection;
 use crate::BuildMultiSig;
 use crate::CaValue;
 use crate::TBCaPayment;
@@ -32,9 +30,9 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     let po = TBCaPayment::find(&poid.get_po_id())?;
 
     if po.stauts_pa == "cancel" || po.stauts_bl.is_some() {
-        return Err(Box::new(SystemDBError::Custom(format!(
-            "ERROR payout is invalid",
-        ))));
+        return Err(Box::new(SystemDBError::Custom(
+            "ERROR payout is invalid".to_string(),
+        )));
     }
 
     log::debug!("Verify password...");
@@ -47,7 +45,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     }
 
     log::debug!("Try to connect to drasil db and get user...");
-    let user = TBDrasilUser::get_user_by_user_id(&mut establish_connection()?, &po.user_id)?;
+    let user = TBDrasilUser::get_user_by_user_id(&po.user_id)?;
 
     //Trigger Build and submit payout transaction
     let contract = TBContracts::get_contract_uid_cid(po.user_id, po.contract_id)?;
@@ -96,12 +94,8 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
         .expect("MimirError: cannot find address utxos");
     gtxd.set_inputs(utxos);
 
-    log::debug!("Try to establish database connection...");
-    let mut drasildbcon = crate::database::drasildb::establish_connection()?;
-
     log::debug!("Try to determine additional data...");
     let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-        &mut drasildbcon,
         &contract.contract_id,
         &contract.user_id,
         &contract.version,
@@ -141,7 +135,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
         &user.user_id,
         &[contract.contract_id],
     );
-    debug!("RAWTX data: {:?}", tx);
+    trace!("RAWTX data: {:?}", tx);
 
     let used_utxos = tx.get_usedutxos().clone();
     let txh = murin::finalize_rwd(

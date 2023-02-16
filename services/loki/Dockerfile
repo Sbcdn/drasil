@@ -1,4 +1,4 @@
-FROM rust:1.61.0-slim-bullseye as base
+FROM rust:1.67.0-slim-bullseye as base
 RUN apt update -y
 RUN apt install -y --no-install-recommends \
     ca-certificates \

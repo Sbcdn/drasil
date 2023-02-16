@@ -93,18 +93,20 @@ pub async fn import_nfts_from_csv_metadata(
     mint_pid: i64,
 ) -> Result<usize, SleipnirError> {
     let mut rdr = csv::Reader::from_reader(csv);
-    //let n = rdr.clone().records().count();
-    //log::debug!("Count: {:?}", n);
-    log::debug!("Reader: {:?}", rdr);
+    let mut trdr = csv::Reader::from_reader(csv);
+    let n = trdr.records().count();
+    log::debug!("Count: {:?}", n);
+    //log::debug!("Reader has headers: {:?}", rdr.has_headers());
     let mut counter = 0;
     for result in rdr.records() {
+        log::debug!("A Record was found: {:?}", result);
         if let Ok(record) = result {
             for n in record.iter() {
-                println!("Try to parse from json...: {}", n);
+                log::debug!("Try to parse from json...: {}", n);
                 let assets = murin::minter::AssetMetadata::from_json(n)?;
-                println!("Try to import from asset metadata...");
+                log::debug!("Try to import from asset metadata...");
                 let nfts = import_from_asset_metadata(user_id, mint_pid, assets).await?;
-                println!("\n Imported Nfts: {:?}", nfts);
+                log::debug!("\n Total Imported Nfts: {:?}", nfts);
                 counter += nfts.len();
             }
         } else {
@@ -156,8 +158,11 @@ pub async fn import_from_asset_metadata(
             Some(&serde_json::json!(asset).to_string()),
             None,
         )
-        .await?;
-        nfts.push(nft);
+        .await;
+        if let Err(e) = &nft {
+            log::error!("Error on NFT creation in reward database: {}", e);
+        }
+        nfts.push(nft?);
     }
     Ok(nfts)
 }

@@ -23,4 +23,5 @@ members = [
     "libs/dvltath",
     "services/loki",
     "worker/work_loki",
+    "worker/jobs",
 ]

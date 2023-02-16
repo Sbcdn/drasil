@@ -10,7 +10,7 @@
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use gungnir::{Rewards, TokenInfo};
-use murin::{minter::models::CMintHandle, TxData};
+use murin::TxData;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Error, str::FromStr};
 
@@ -736,11 +736,17 @@ impl ScriptSpecParams {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum WalletType {
+    #[serde(alias = "Nami", rename(deserialize = "nami"))]
     Nami,
+    #[serde(alias = "ccvault", rename(deserialize = "eternl"))]
     Eternl,
+    #[serde(alias = "Gero", rename(deserialize = "gero"))]
     Gero,
+    #[serde(alias = "Flint", rename(deserialize = "flint"))]
     Flint,
+    #[serde(alias = "Yoroi", rename(deserialize = "yoroi"))]
     Yoroi,
+    #[serde(alias = "Typhon", rename(deserialize = "typhon"))]
     Typhon,
 }
 
@@ -750,7 +756,7 @@ impl FromStr for WalletType {
         match src {
             "nami" => Ok(WalletType::Nami),
             "gero" => Ok(WalletType::Gero),
-            "ccvault" => Ok(WalletType::Eternl),
+            "eternl" => Ok(WalletType::Eternl),
             "flint" => Ok(WalletType::Flint),
             "yoroi" => Ok(WalletType::Yoroi),
             "typhon" => Ok(WalletType::Typhon),
@@ -767,7 +773,7 @@ impl ToString for WalletType {
         match &self {
             WalletType::Nami => "nami".to_string(),
             WalletType::Eternl => "gero".to_string(),
-            WalletType::Gero => "ccvault".to_string(),
+            WalletType::Gero => "eternl".to_string(),
             WalletType::Flint => "flint".to_string(),
             WalletType::Yoroi => "yoroi".to_string(),
             WalletType::Typhon => "typhon".to_string(),
@@ -990,8 +996,8 @@ pub struct RewardHandle {
     pub fingerprint: String,
     pub policy: String,
     pub tokenname: String,
-    pub tot_earned: u64,
-    pub tot_claimed: u64,
+    pub tot_earned: i128,
+    pub tot_claimed: i128,
     pub last_calc_epoch: i64,
 }
 
@@ -1004,10 +1010,10 @@ impl RewardHandle {
             policy: ti.policy.clone(),
             tokenname: ti.tokenname.clone().unwrap(),
             tot_earned: (rwd.tot_earned.clone() / &BigDecimal::from_i32(1000000).unwrap())
-                .to_u64()
+                .to_i128()
                 .unwrap(),
 
-            tot_claimed: rwd.tot_claimed.clone().to_u64().unwrap(),
+            tot_claimed: rwd.tot_claimed.clone().to_i128().unwrap(),
             last_calc_epoch: rwd.last_calc_epoch,
         }
     }

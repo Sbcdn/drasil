@@ -28,9 +28,9 @@ pub enum MimirError {
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
     #[error(transparent)]
-    UTF8Error(#[from]  std::string::FromUtf8Error),
-   
-    
+    UTF8Error(#[from] std::string::FromUtf8Error),
+    #[error("Could not find metadata for token")]
+    NotOnChainMetadataFound,
 }
 
 impl From<std::string::String> for MimirError {

@@ -359,18 +359,23 @@ mod handlers {
         let mut client = connect_odin().await;
         let action = ContractAction::from_str(&action).unwrap();
         let cmd = BuildContract::new(customer_id, contract.clone(), action, *payload.clone());
-        let response = match client.build_cmd::<BuildContract>(cmd).await {
+        match client.build_cmd::<BuildContract>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
-                Ok(resp) => warp::reply::json(&resp),
-                Err(e) => warp::reply::json(&ReturnError::new(&e.to_string())),
-            },
-            Err(otherwise) => warp::reply::json(&ReturnError::new(&otherwise.to_string())),
-        };
+                Ok(resp) => Ok(warp::reply::with_status(
+                    warp::reply::json(&resp),
+                    warp::http::StatusCode::OK,
+                )),
 
-        Ok(warp::reply::with_status(
-            response,
-            warp::http::StatusCode::OK,
-        ))
+                Err(e) => Ok(warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&e.to_string())),
+                    warp::http::StatusCode::PRECONDITION_FAILED,
+                )),
+            },
+            Err(otherwise) => Ok(warp::reply::with_status(
+                warp::reply::json(&ReturnError::new(&otherwise.to_string())),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )),
+        }
     }
 
     pub async fn multisig_exec_build(
@@ -401,17 +406,33 @@ mod handlers {
         };
         let mut client = connect_odin().await;
         let cmd = BuildMultiSig::new(customer_id, multisig_type.clone(), *payload.clone());
-        let response = match client.build_cmd::<BuildMultiSig>(cmd).await {
+        match client.build_cmd::<BuildMultiSig>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
-                Ok(resp) => warp::reply::json(&resp),
-                Err(e) => warp::reply::json(&ReturnError::new(&e.to_string())),
+                Ok(resp) => Ok(warp::reply::with_status(
+                    warp::reply::json(&resp),
+                    warp::http::StatusCode::OK,
+                )),
+
+                Err(e) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
+                    Ok(resp) => Ok(warp::reply::with_status(
+                        warp::reply::json(&resp),
+                        warp::http::StatusCode::OK,
+                    )),
+
+                    Err(e) => {
+                        log::error!("Error could not deserialize Unsigned Transactions: {}", e);
+                        Ok(warp::reply::with_status(
+                            warp::reply::json(&ReturnError::new(&e.to_string())),
+                            warp::http::StatusCode::CONFLICT,
+                        ))
+                    }
+                },
             },
-            Err(otherwise) => warp::reply::json(&ReturnError::new(&otherwise.to_string())),
-        };
-        Ok(warp::reply::with_status(
-            response,
-            warp::http::StatusCode::OK,
-        ))
+            Err(otherwise) => Ok(warp::reply::with_status(
+                warp::reply::json(&ReturnError::new(&otherwise.to_string())),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            )),
+        }
     }
 
     pub async fn stdtx_exec_build(
@@ -434,15 +455,21 @@ mod handlers {
 
         let response = match client.build_cmd::<BuildStdTx>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
-                Ok(resp) => warp::reply::json(&resp),
-                Err(e) => warp::reply::json(&ReturnError::new(&e.to_string())),
+                Ok(resp) => {
+                    warp::reply::with_status(warp::reply::json(&resp), warp::http::StatusCode::OK)
+                }
+
+                Err(e) => warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&e.to_string())),
+                    warp::http::StatusCode::PRECONDITION_FAILED,
+                ),
             },
-            Err(otherwise) => warp::reply::json(&ReturnError::new(&otherwise.to_string())),
+            Err(otherwise) => warp::reply::with_status(
+                warp::reply::json(&ReturnError::new(&otherwise.to_string())),
+                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+            ),
         };
-        Ok(warp::reply::with_status(
-            response,
-            warp::http::StatusCode::OK,
-        ))
+        Ok(response)
     }
 
     pub async fn contract_exec_finalize(
@@ -464,14 +491,18 @@ mod handlers {
             payload.get_signature(),
         );
         let response = match client.build_cmd(cmd).await {
-            Ok(res) => warp::reply::json(&TxHash::new(&res)),
-            Err(e) => warp::reply::json(&ReturnError::new(&e.to_string())),
+            Ok(res) => warp::reply::with_status(
+                warp::reply::json(&TxHash::new(&res)),
+                warp::http::StatusCode::OK,
+            ),
+
+            Err(e) => warp::reply::with_status(
+                warp::reply::json(&ReturnError::new(&e.to_string())),
+                warp::http::StatusCode::PRECONDITION_FAILED,
+            ),
         };
 
-        Ok(warp::reply::with_status(
-            response,
-            warp::http::StatusCode::OK,
-        ))
+        Ok(response)
     }
 
     pub async fn multisig_exec_finalize(
@@ -494,14 +525,18 @@ mod handlers {
             payload.get_signature(),
         );
         let response = match client.build_cmd(cmd).await {
-            Ok(res) => warp::reply::json(&TxHash::new(&res)),
-            Err(e) => warp::reply::json(&ReturnError::new(&e.to_string())),
+            Ok(res) => warp::reply::with_status(
+                warp::reply::json(&TxHash::new(&res)),
+                warp::http::StatusCode::OK,
+            ),
+
+            Err(e) => warp::reply::with_status(
+                warp::reply::json(&ReturnError::new(&e.to_string())),
+                warp::http::StatusCode::PRECONDITION_FAILED,
+            ),
         };
 
-        Ok(warp::reply::with_status(
-            response,
-            warp::http::StatusCode::OK,
-        ))
+        Ok(response)
     }
 
     pub async fn stdtx_exec_finalize(
@@ -518,13 +553,17 @@ mod handlers {
         let mut client = connect_odin().await;
         let cmd = FinalizeStdTx::new(customer_id, txtype.clone(), tx_id, payload.get_signature());
         let response = match client.build_cmd(cmd).await {
-            Ok(res) => warp::reply::json(&TxHash::new(&res)),
-            Err(e) => warp::reply::json(&ReturnError::new(&e.to_string())),
+            Ok(res) => warp::reply::with_status(
+                warp::reply::json(&TxHash::new(&res)),
+                warp::http::StatusCode::OK,
+            ),
+
+            Err(e) => warp::reply::with_status(
+                warp::reply::json(&ReturnError::new(&e.to_string())),
+                warp::http::StatusCode::PRECONDITION_FAILED,
+            ),
         };
 
-        Ok(warp::reply::with_status(
-            response,
-            warp::http::StatusCode::OK,
-        ))
+        Ok(response)
     }
 }

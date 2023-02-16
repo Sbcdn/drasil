@@ -41,6 +41,12 @@ pub enum Error {
     EmailNotVerified,
     #[error("internal error: {:?}", self)]
     Custom(String),
+    #[error("rmq error: {0}")]
+    RMQError(#[from] lapin::Error),
+    #[error("rmq pool error: {0}")]
+    RMQPoolError(#[from] deadpool_lapin::PoolError),
+    #[error("rate limitation")]
+    RateLimitReachedError,
 }
 
 #[derive(Serialize, Debug)]
@@ -88,6 +94,12 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
 
 impl From<MurinError> for Error {
     fn from(err: MurinError) -> Self {
+        Error::Custom(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
         Error::Custom(err.to_string())
     }
 }

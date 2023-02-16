@@ -375,7 +375,7 @@ pub fn check_any_utxo_used(
         }
     };
     let mut members = Vec::<String>::new();
-    debug!("Input UTxOs: '{:?}'", txuos);
+    trace!("Input UTxOs: '{:?}'", txuos);
     for j in 0..txuos.len() {
         members.push(
             hex::encode(txuos.get(j).input().transaction_id().to_bytes())

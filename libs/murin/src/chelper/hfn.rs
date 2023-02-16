@@ -12,6 +12,9 @@ use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{
     address as caddr, crypto as ccrypto, plutus, tx_builder as ctxb, utils as cutils,
 };
+use clib::address::BaseAddress;
+use clib::address::EnterpriseAddress;
+use clib::address::StakeCredKind;
 use std::io::{self, BufRead};
 
 use crate::txbuilders;
@@ -1522,7 +1525,14 @@ pub fn balance_tx(
             let value = unspent_output.output().amount();
             let input_address_pkey = get_stake_address(&unspent_output.output().address());
             let senders_addr_pkey = get_stake_address(senders_addr);
-
+            let enterprise = if let Some(ent) =
+                EnterpriseAddress::from_address(&unspent_output.output().address())
+            {
+                ent.payment_cred().kind()
+            } else {
+                StakeCredKind::Script
+            };
+            let base = BaseAddress::from_address(senders_addr);
             debug!(
                 "\nInputs Address: {:?}",
                 hex::encode(input_address_pkey.to_bytes())
@@ -1531,7 +1541,8 @@ pub fn balance_tx(
                 "Senders Key: {:?}\n",
                 hex::encode(senders_addr_pkey.to_bytes())
             );
-            let matching_addresses = input_address_pkey == senders_addr_pkey;
+            let matching_addresses = (input_address_pkey == senders_addr_pkey)
+                || (base.is_some() && enterprise == StakeCredKind::Key);
             if matching_addresses {
                 *acc_change = acc_change.checked_add(&value).unwrap();
             } else {

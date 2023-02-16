@@ -17,20 +17,25 @@ use murin::{
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, UOError>;
 
-pub async fn optimize(addr: &String, uid: i64, cid: i64) -> Result<()> {
+pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
+    log::debug!("Try to connect to dbsync...");
     let mut dbsconn = mimir::establish_connection()?;
-    let contract_utxos = mimir::get_address_utxos(&mut dbsconn, addr)?;
-
+    let contract_utxos = mimir::get_address_utxos(&mut dbsconn, &addr)?;
+    log::debug!("Calculate thresholds...");
     let ada_utxos = contract_utxos.get_coin_only();
     let mut t_utxos = contract_utxos.get_token_only();
     let ada_on_token_utxos = t_utxos.coin_sum();
     let tokens = t_utxos.sum_avail_tokens();
     let mut tokens_on_contract = murin::Tokens::new();
-
+    log::debug!("Get token whitelistsings...");
     let twl = gungnir::TokenWhitelist::get_rwd_contract_tokens(cid, uid)?;
+    log::debug!("Get contracts...");
     let contract = hugin::TBContracts::get_contract_uid_cid(uid, cid)?;
+    log::debug!("Decode native script...");
     let ns = &murin::clib::NativeScript::from_bytes(hex::decode(contract.plutus.clone())?)?;
+    log::debug!("Decode address...");
     let addr = murin::b_decode_addr_na(&contract.address)?;
+    log::debug!("Get tokens on contract...");
     for t in tokens {
         let tmp = twl.iter().find(|n| {
             hex::encode(t.0.to_bytes()) == n.policy_id
@@ -41,8 +46,11 @@ pub async fn optimize(addr: &String, uid: i64, cid: i64) -> Result<()> {
         }
     }
     // ToDo: Check if conditions for reallocation are met or to return without working
+    log::debug!("Try to get contract liquidity...");
     let liquidity = murin::clib::utils::from_bignum(&contract.get_contract_liquidity());
     let difference = liquidity as i64 - ada_on_token_utxos as i64;
+
+    log::debug!("Try to reallocate tokens...");
     let transactions = match difference <= 0 {
         true => reallocate_tokens(&mut t_utxos, &tokens_on_contract, &addr, ns, liquidity)?,
         false => {
@@ -53,9 +61,9 @@ pub async fn optimize(addr: &String, uid: i64, cid: i64) -> Result<()> {
         }
     };
     let mut txhs = Vec::<String>::new();
-    println!("\nTransactions: \n");
+    log::debug!("\nTransactions: \n");
     for tx in transactions {
-        println!("Tx: {}", tx.0.to_hex());
+        log::debug!("Tx: for {:?}\n{}", &contract.address, tx.0.to_hex());
         let txh = submit_tx(
             tx.0,
             tx.1,
@@ -66,7 +74,7 @@ pub async fn optimize(addr: &String, uid: i64, cid: i64) -> Result<()> {
         .await?;
         txhs.push(txh);
     }
-    println!("\n TxHashes: {:?}", txhs);
+    log::debug!("\n TxHashes for: {:?}, {:?}", &contract.address, txhs);
 
     Ok(())
 }
@@ -127,15 +135,16 @@ fn reallocate_tokens(
     let mut out = Vec::<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>::new();
     //let ada = t_utxos.coin_sum();
     let (std_value, minutxo, utxo_count) = get_values_and_tamt_per_utxo(tokens, liquidity);
-    println!("\n\nTUTXO: BEFORE FILTER: \n{:?}\n\n", t_utxos);
+    log::trace!("\n\nTUTXO: BEFORE FILTER: \n{:?}\n\n", t_utxos);
     let set = t_utxos.filter_values(&std_value, Some(20))?;
     let utxo_count = (utxo_count as usize - set.len()) as u64;
     t_utxos.delete_set(&set);
-    println!("\n\nTUTXO: After FILTER: \n{:?}\n\n", t_utxos);
+    log::trace!("\n\nTUTXO: After FILTER: \n{:?}\n\n", t_utxos);
 
-    println!("Std Value: {:?}", std_value);
-    println!("Min UTxO value: {:?}", minutxo);
-    println!("UTxO Count: {:?}", utxo_count);
+    log::debug!("Std Value: {:?}", std_value);
+    log::debug!("Min UTxO value: {:?}", minutxo);
+    log::debug!("UTxO Count: {:?}", utxo_count);
+    log::debug!("Contract Address: {:?}", addr.to_bech32(None));
 
     // ToDo: Build recursive transactions
     txbuilder(t_utxos, &std_value, utxo_count, &mut out, addr, script)?;
@@ -198,12 +207,12 @@ fn txbuilder(
 
     match (utxos.len(), utxo_amt, r) {
         (_, 0, _) | (0, _, _) | (_, _, Err(_)) => {
-            println!("Stop transaction building");
+            log::debug!("Stop transaction building");
             Ok(())
         }
         _ => {
-            println!("Continue building transactions");
-            let (tx, mut used_utxos, new_utxo_amt) =
+            log::debug!("Continue building transactions");
+            let (tx, used_utxos, _new_utxo_amt) =
                 make_new_tx(utxos, std_value, &utxo_amt, addr, script)?;
             //.expect("Could not create transaction");
             utxos.delete_set(&used_utxos);
@@ -282,7 +291,8 @@ fn add_utxos(
             .unwrap(),
     );
     let security = murin::clib::utils::to_bignum(
-        murin::clib::utils::from_bignum(&needed_value.coin()) + (2 * murin::htypes::MIN_ADA),
+        murin::clib::utils::from_bignum(&needed_value.coin())
+            + (utxo_amt / 2 * murin::htypes::MIN_ADA),
     );
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
@@ -344,7 +354,7 @@ fn add_utxos(
         || (utxo_amt - outputs.len() as u64) == 0
         || r.is_err()
     {
-        println!("Exit add_outputs on if");
+        log::debug!("Exit add_outputs on if");
         Ok((
             tmp_tx,
             utxos.to_owned(),
@@ -354,7 +364,7 @@ fn add_utxos(
             addr.to_owned(),
         ))
     } else {
-        println!("Add more utxos");
+        log::debug!("Add more utxos");
         let txb = murin::clib::TransactionBody::new_tx_body(&inputs, &outputs, &fee);
         let mut transaction = murin::clib::Transaction::new(&txb, &transaction.witness_set(), None);
         add_utxos(
