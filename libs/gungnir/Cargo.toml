@@ -27,8 +27,9 @@ diesel = { version = "2.0.0", features = [
     "chrono",
     "64-column-tables",
     "r2d2",
+    "serde_json",
 ] }
-diesel-derive-enum = { version = "2.0.0-rc.0", features = ["postgres"] }
+diesel-derive-enum = { version = "2.0.0", features = ["postgres"] }
 diesel-dynamic-schema = "0.2.0"
 bigdecimal = { version = "0.3.0", features = ["serde"] }
 chrono = { version = "0.4.19", features = ["serde"] }
@@ -39,7 +40,8 @@ serde_json = "1.0.79"
 hex = "0.4"
 rand = "0.8.5"
 itertools = "0.10.3"
-
+strum = { version = "0.24", features = ["derive"] }
+strum_macros = "0.24"
 
 mimir = { path = "../mimir", version = "0.1.0", optional = true }
 structopt = { version = "0.3.26", optional = true }

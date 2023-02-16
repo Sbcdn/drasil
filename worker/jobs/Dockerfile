@@ -26,24 +26,23 @@ RUN adduser \
     "${USER}"
 
 FROM base as builder
-WORKDIR /odin-build
-ENV CARGO_HOME=/odin-build/.cargo
+WORKDIR /drasil_jobs-build
+ENV CARGO_HOME=/drasil_jobs-build/.cargo
 COPY ./Cargo.toml ./                       
 COPY ./.cargo/config $CARGO_HOME/config
 COPY ./.cargo/git $CARGO_HOME/git
 COPY ./src ./src
-COPY ./protocol_parameters_babbage.json ./protocol_parameters_babbage.json
 COPY ./.cargo/libs/hugin /libs/hugin
 COPY ./.cargo/libs/murin /libs/murin
 COPY ./.cargo/libs/gungnir /libs/gungnir
 COPY ./.cargo/libs/mimir /libs/mimir
+COPY ./.cargo/libs/sleipnir /libs/sleipnir
 COPY ./.cargo/libs/dvltath /libs/dvltath
 RUN cargo build --release --target x86_64-unknown-linux-gnu
 
-FROM gcr.io/distroless/cc as odin
-WORKDIR /odin
-COPY --from=builder /odin-build/target/x86_64-unknown-linux-gnu/release/odin /usr/bin
-COPY --from=builder /odin-build/protocol_parameters_babbage.json /odin/protocol_parameters_babbage.json
+FROM gcr.io/distroless/cc as drasil_jobs
+WORKDIR /drasil_jobs
+COPY --from=builder /drasil_jobs-build/target/x86_64-unknown-linux-gnu/release/drasil_jobs /usr/bin
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
@@ -80,19 +79,10 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr/lib/x86_64-li
 COPY --from=builder /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/libcrypt.so.1
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libffi.so.7 /usr/lib/x86_64-linux-gnu/libffi.so.7
 
-ENV REWARD_DB_URL=x 
-ENV DBSYNC_DB_URL=x 
-ENV PLATFORM_DB_URL=x 
-ENV REDIS_CLUSTER=x
-ENV TX_SUBMIT_ENDPOINT1=x
-ENV TX_SUBMIT_ENDPOINT2=x
-ENV TX_SUBMIT_ENDPOINT3=x
-ENV USED_UTXO_DATASTORE_1=x
-ENV USED_UTXO_DATASTORE_2=x
-ENV USED_UTXO_DATASTORE_3=x
-
-EXPOSE 6142
+ENV AMQP_ADDR="amqp://rmq:rmq@127.0.0.1:5672/%2f"
+ENV QUEUE_NAME="drasil_jobs"
+ENV CONSUMER_NAME="drasil_jobs_default"
 
 USER drasil:drasil
 
-CMD ["odin"]
+CMD ["drasil_jobs"]

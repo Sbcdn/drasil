@@ -17,14 +17,22 @@ use crate::{
 use diesel::pg::upsert::on_constraint;
 use dvltath::vault::kv::{vault_get, vault_store};
 use error::SystemDBError;
-use murin::PerformTxb;
-use murin::{
-    crypto::{Ed25519Signature, PrivateKey, PublicKey},
-    get_network_from_address, TransactionUnspentOutputs, TxData,
-};
+use murin::crypto::{Ed25519Signature, PrivateKey, PublicKey};
 use sha2::Digest;
 
 impl TBContracts {
+    pub fn get_all_active_rwd_contracts() -> Result<Vec<TBContracts>, SystemDBError> {
+        use crate::schema::contracts::dsl::*;
+        let result = contracts
+            .filter(
+                contract_type
+                    .eq(&crate::datamodel::models::MultiSigType::SpoRewardClaim.to_string()),
+            )
+            .filter(depricated.eq(false))
+            .load::<TBContracts>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
     pub fn get_liquidity_wallet(user_id_in: &i64) -> Result<TBContracts, SystemDBError> {
         use crate::schema::contracts::dsl::*;
         let result = contracts
@@ -45,7 +53,6 @@ impl TBContracts {
     }
 
     pub fn get_contract_for_user(
-        conn: &mut PgConnection,
         uid: i64,
         ctype: String,
         vers: Option<f32>,
@@ -55,7 +62,7 @@ impl TBContracts {
             .filter(user_id.eq(&uid))
             .filter(contract_type.eq(&ctype))
             .order(version.desc())
-            .load::<TBContracts>(conn)?;
+            .load::<TBContracts>(&mut establish_connection()?)?;
 
         let err = SystemDBError::Custom(format!(
             "no contract found for user-id: '{}' and contract type '{}'",
@@ -80,7 +87,6 @@ impl TBContracts {
     }
 
     pub fn get_active_contract_for_user(
-        conn: &mut PgConnection,
         uid: i64,
         ctype: String,
         vers: Option<f32>,
@@ -91,7 +97,7 @@ impl TBContracts {
             .filter(contract_type.eq(&ctype))
             .filter(depricated.eq(false))
             .order(version.desc())
-            .load::<TBContracts>(conn)?;
+            .load::<TBContracts>(&mut establish_connection()?)?;
 
         let err = SystemDBError::Custom(format!(
             "no contract found for user-id: '{}' and contract type '{}'",
@@ -168,12 +174,11 @@ impl TBContracts {
         Ok(contract_id_new)
     }
 
-    pub fn get_contract_by_id(
-        conn: &mut PgConnection,
-        id_in: i64,
-    ) -> Result<TBContracts, SystemDBError> {
+    pub fn get_contract_by_id(id_in: i64) -> Result<TBContracts, SystemDBError> {
         use crate::schema::contracts::dsl::*;
-        let result = contracts.find(id_in).first::<TBContracts>(conn)?;
+        let result = contracts
+            .find(id_in)
+            .first::<TBContracts>(&mut establish_connection()?)?;
         Ok(result)
     }
 
@@ -210,7 +215,6 @@ impl TBContracts {
     }
 
     pub fn update_contract<'a>(
-        conn: &mut PgConnection,
         id_in: &'a i64,
         contract_id_new: &'a i64,
         description_new: Option<&'a str>,
@@ -223,13 +227,12 @@ impl TBContracts {
                 description.eq(description_new),
                 depricated.eq(depricated_new),
             ))
-            .get_result::<TBContracts>(conn)?;
+            .get_result::<TBContracts>(&mut establish_connection()?)?;
 
         Ok(contract)
     }
 
     pub fn depricate_contract<'a>(
-        conn: &mut PgConnection,
         user_id_in: &'a i64,
         contract_id_in: &'a i64,
         depricated_in: &'a bool,
@@ -241,7 +244,7 @@ impl TBContracts {
                 .filter(contract_id.eq(contract_id_in)),
         )
         .set(depricated.eq(depricated_in))
-        .get_result::<TBContracts>(conn)?;
+        .get_result::<TBContracts>(&mut establish_connection()?)?;
         Ok(contract)
     }
 }
@@ -276,7 +279,6 @@ impl TBMultiSigLoc {
     }
 
     pub fn get_multisig_keyloc(
-        conn: &mut PgConnection,
         contract_id_in: &i64,
         user_id_in: &i64,
         version_in: &f32,
@@ -286,7 +288,7 @@ impl TBMultiSigLoc {
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .filter(version.eq(&version_in))
-            .load::<TBMultiSigLoc>(conn)?;
+            .load::<TBMultiSigLoc>(&mut establish_connection()?)?;
 
         let err = SystemDBError::Custom(format!("no multisig key location found for contract-id: '{}' User-id: '{}'  , version: '{}'; \n Result: {:?}"
                 ,contract_id_in, user_id_in, version_in, result));
@@ -300,34 +302,28 @@ impl TBMultiSigLoc {
 }
 
 impl TBDrasilUser {
-    fn get_next_user_id(conn: &mut PgConnection) -> Result<i64, SystemDBError> {
+    fn get_next_user_id() -> Result<i64, SystemDBError> {
         use crate::schema::drasil_user::dsl::*;
         let result = drasil_user
             .select(user_id)
             .order_by(user_id.desc())
-            .first::<i64>(conn)?;
+            .first::<i64>(&mut establish_connection()?)?;
         Ok(result + 1)
     }
 
-    fn get_user_by_mail(
-        conn: &mut PgConnection,
-        email_in: &String,
-    ) -> Result<TBDrasilUser, SystemDBError> {
+    fn get_user_by_mail(email_in: &String) -> Result<TBDrasilUser, SystemDBError> {
         use crate::schema::drasil_user::dsl::*;
         let result = drasil_user
             .filter(email.eq(email_in))
-            .first::<TBDrasilUser>(conn)?;
+            .first::<TBDrasilUser>(&mut establish_connection()?)?;
         Ok(result)
     }
 
-    pub fn get_user_by_user_id(
-        conn: &mut PgConnection,
-        user_id_in: &i64,
-    ) -> Result<TBDrasilUser, SystemDBError> {
+    pub fn get_user_by_user_id(user_id_in: &i64) -> Result<TBDrasilUser, SystemDBError> {
         use crate::schema::drasil_user::dsl::*;
         let result = drasil_user
             .filter(user_id.eq(user_id_in))
-            .first::<TBDrasilUser>(conn)?;
+            .first::<TBDrasilUser>(&mut establish_connection()?)?;
         Ok(result)
     }
 
@@ -336,7 +332,7 @@ impl TBDrasilUser {
             password_hash::{PasswordHash, PasswordVerifier},
             Argon2,
         };
-        let user = TBDrasilUser::get_user_by_mail(&mut establish_connection()?, email)?;
+        let user = TBDrasilUser::get_user_by_mail(email)?;
         Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
         Ok(user)
     }
@@ -346,7 +342,7 @@ impl TBDrasilUser {
             password_hash::{PasswordHash, PasswordVerifier},
             Argon2,
         };
-        let user = TBDrasilUser::get_user_by_user_id(&mut establish_connection()?, user_id)?;
+        let user = TBDrasilUser::get_user_by_user_id(user_id)?;
         Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
         Ok(user)
     }
@@ -376,7 +372,7 @@ impl TBDrasilUser {
             Argon2,
         };
         let mut conn = establish_connection()?;
-        let nuser_id = TBDrasilUser::get_next_user_id(&mut conn);
+        let nuser_id = TBDrasilUser::get_next_user_id();
         let user_id = match nuser_id {
             Ok(id) => id,
             Err(e) => {
@@ -419,7 +415,7 @@ impl TBDrasilUser {
             cwallet_verified: &false,
             drslpubkey: &pubkey,
         };
-        let user = match TBDrasilUser::get_user_by_mail(&mut conn, email) {
+        let user = match TBDrasilUser::get_user_by_mail(email) {
             Ok(u) => {
                 if u.email_verified {
                     return Err(SystemDBError::Custom(
@@ -440,7 +436,7 @@ impl TBDrasilUser {
     pub fn verify_email(email_in: &String) -> Result<TBDrasilUser, SystemDBError> {
         use crate::schema::drasil_user::dsl::*;
         let mut conn = establish_connection()?;
-        let user = TBDrasilUser::get_user_by_mail(&mut conn, email_in)?;
+        let user = TBDrasilUser::get_user_by_mail(email_in)?;
 
         let user_updated = diesel::update(drasil_user.find(user.id))
             .set((email_verified.eq(true),))

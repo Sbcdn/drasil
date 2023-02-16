@@ -49,7 +49,7 @@ impl Connection {
                 self.buffer.advance(len);
                 Ok(Some(frame))
             }
-            Err(Incomplete) => (Ok(None)),
+            Err(Incomplete) => Ok(None),
             Err(e) => Err(e.into()),
         }
     }

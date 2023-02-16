@@ -1,7 +1,8 @@
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
 PROJECT=drasil
-IMAGE=utxopti
+IMAGE=drasil_jobs
 VERSION=v1.0
+
 build:
 	cargo update
 	cargo fetch
@@ -17,4 +18,3 @@ run:
 
 push:
 	sudo docker push $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION)
-

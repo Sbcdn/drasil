@@ -367,7 +367,7 @@ pub fn lookup_token_holders(
 pub fn lookup_nft_token_holders(policy: &String) -> Result<Vec<EligableWallet>, MimirError> {
     let mut conn = crate::establish_connection()?;
 
-    let pbyte = hex::decode(&policy)?;
+    let pbyte = hex::decode(policy)?;
 
     let mut holders = unspent_utxos::table
         .inner_join(ma_tx_out::table.on(unspent_utxos::id.eq(ma_tx_out::tx_out_id)))
@@ -424,16 +424,20 @@ pub fn get_mint_metadata(fingerprint_in: &String) -> Result<TokenInfoMint, Mimir
             BigDecimal,
             Option<serde_json::Value>,
             Vec<u8>,
-        )>(&mut conn)?;
+        )>(&mut conn);
 
-    Ok(TokenInfoMint {
-        fingerprint: metadata.0,
-        policy: hex::encode(metadata.1),
-        tokenname: String::from_utf8(metadata.2)?,
-        meta_key: metadata.3.to_i64().unwrap(),
-        json: metadata.4,
-        txhash: hex::encode(metadata.5),
-    })
+    if let Ok(meta) = metadata {
+        return Ok(TokenInfoMint {
+            fingerprint: meta.0,
+            policy: hex::encode(meta.1),
+            tokenname: String::from_utf8(meta.2)?,
+            meta_key: meta.3.to_i64().unwrap(),
+            json: meta.4,
+            txhash: hex::encode(meta.5),
+        });
+    }
+
+    Err(MimirError::NotOnChainMetadataFound)
 }
 
 /*

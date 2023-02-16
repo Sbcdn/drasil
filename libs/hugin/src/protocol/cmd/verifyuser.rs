@@ -49,9 +49,7 @@ impl VerifyUser {
 
     /// Apply verify user
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        let mut dconn = crate::database::establish_connection()?;
-        let user =
-            crate::database::TBDrasilUser::get_user_by_user_id(&mut dconn, &(self.user_id as i64))?;
+        let user = crate::database::TBDrasilUser::get_user_by_user_id(&(self.user_id as i64))?;
 
         if let Some(token) = user.api_pubkey {
             if token == self.bearer_token {

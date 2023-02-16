@@ -31,11 +31,12 @@ struct Opt {
 #[tokio::main]
 pub async fn main() -> Result<()> {
     let opt = Opt::from_args();
+    pretty_env_logger::init();
 
     let current_epoch = mimir::get_epoch(&mut mimir::establish_connection()?)? as i64;
     let calc_epoch = current_epoch - 2;
-    println!("Current Epoch: {}", current_epoch);
-    println!("Calculation Epoch: {}", calc_epoch);
+    log::debug!("Current Epoch: {}", current_epoch);
+    log::debug!("Calculation Epoch: {}", calc_epoch);
     if opt.epoch.is_some() && opt.epoch.unwrap() > calc_epoch {
         return Err(gungnir::RWDError::new(
             "It is not possible to calculate rewards for the current or future epochs",
@@ -52,10 +53,10 @@ pub async fn main() -> Result<()> {
         while i < calc_epoch && b {
             let mut whitelist = get_token_whitelist(calc_epoch).await?;
             whitelist.retain(|w| w.start_epoch <= i);
-            println!("Whitelist: {:?}", whitelist);
+            log::debug!("Whitelist: {:?}", whitelist);
             for mut entry in whitelist {
                 if check_contract_is_active(&entry)? {
-                    println!("Entered: {:?}", entry);
+                    log::debug!("Entered: {:?}", entry);
                     handle_lists(&mut entry, i, &mut table).await?
                     //   tokio::spawn(async move {
                     //       if let Err(err) = handle_pools(&mut entry,i).await {
@@ -67,20 +68,21 @@ pub async fn main() -> Result<()> {
             }
             i += 1;
         }
-        println!(
+        log::debug!(
             "Rewards successfully calucalted for epochs {:?} to {:?}",
-            opt.epoch, i
+            opt.epoch,
+            i
         );
     } else {
         let mut whitelist = get_token_whitelist(calc_epoch).await?;
         whitelist.retain(|w| w.start_epoch <= i);
-        println!("Whitelist: {:?}", whitelist);
+        log::debug!("Whitelist: {:?}", whitelist);
         for mut entry in whitelist {
             if check_contract_is_active(&entry)? {
                 handle_lists(&mut entry, i, &mut table).await?
             }
         }
-        println!("Rewards successfully calucalted for epoch: {:?}", i);
+        log::debug!("Rewards successfully calucalted for epoch: {:?}", i);
     }
 
     let mut bpath = "/".to_string();
@@ -109,7 +111,7 @@ pub async fn main() -> Result<()> {
     let credentials = Credentials::default().unwrap();
     let bucket = Bucket::new(bucket_name, region, credentials)?;
     let response_data = bucket.put_object(bpath, data.as_bytes()).await?;
-    println!("S3 Response: {:?}", response_data.1);
+    log::debug!("S3 Response: {:?}", response_data.1);
 
     Ok(())
 }

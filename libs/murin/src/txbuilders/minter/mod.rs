@@ -265,11 +265,19 @@ impl MetadataOther {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Source {
+    String(String),
+    Vec(Vec<String>),
+}
+
+impl Source {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetadataFile {
     pub name: String,
     #[serde(rename(serialize = "mediaType", deserialize = "mediaType"))]
     pub media_type: String,
-    pub src: Vec<String>,
+    pub src: serde_json::Value, // Source -> The problem is the deserialization on the Source type as it has on serde side no implementation, need to be doen with serde_json::Value
     pub other: Option<Vec<MetadataOther>>,
 }
 
@@ -282,7 +290,11 @@ impl MetadataFile {
             }
             serde_json::Value::Array(arr) => {
                 Ok(arr.iter().fold(Vec::<MetadataFile>::new(), |mut acc, n| {
-                    acc.extend(MetadataFile::from_json(n).unwrap().into_iter());
+                    log::debug!(
+                        "Value to hand over recursivley to Metadatafile::from_json:\n {:?}",
+                        n
+                    );
+                    acc.push(serde_json::from_value::<MetadataFile>(n.clone()).unwrap());
                     acc
                 }))
             }
@@ -413,7 +425,7 @@ impl Cip25Metadata {
         Cip25Metadata {
             assets: Vec::<AssetMetadata>::new(),
             other: None,
-            version: "1.0".to_string(),
+            version: "2.0".to_string(),
         }
     }
 }
@@ -433,20 +445,15 @@ pub fn mintasset_into_tokenasset(m: Vec<MintTokenAsset>, p: clib::PolicyID) -> V
 
 pub fn make_mint_metadata(
     raw_metadata: &Cip25Metadata,
-    // tokens: Vec<TokenAsset>,
     policy_id: clib::PolicyID,
 ) -> std::result::Result<clib::metadata::GeneralTransactionMetadata, MurinError> {
     pub use clib::metadata::*;
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    //Auxiliary Data
-    //  Plutus Script and Metadata
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     let policy_str = hex::encode(policy_id.to_bytes());
     let mut toplevel_metadata = clib::metadata::GeneralTransactionMetadata::new();
     //let mut raw_metadata =  Vec::<String>::new();
 
-    debug!("RawMetadata: {:?}", raw_metadata);
+    //debug!("RawMetadata: {:?}", raw_metadata);
 
     // Check if all tokens have metadata available
     /* let mut i = 0;
@@ -466,9 +473,11 @@ pub fn make_mint_metadata(
     */
     let mut metamap = clib::metadata::MetadataMap::new();
     let mut assetmap = MetadataMap::new();
+
     for asset in &raw_metadata.assets {
         make_721_asset_entry(asset, &mut assetmap)?;
     }
+    log::debug!("\nAssetmap: {:?}\n", assetmap);
     let metadatum = clib::metadata::TransactionMetadatum::new_map(&assetmap);
     metamap.insert_str(&policy_str, &metadatum)?;
     metamap.insert_str(
@@ -658,11 +667,7 @@ pub fn make_mint_metadata_from_json(
     policy_id: clib::PolicyID,
 ) -> std::result::Result<clib::metadata::GeneralTransactionMetadata, MurinError> {
     pub use clib::metadata::*;
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    //Auxiliary Data
-    //  Plutus Script and Metadata
-    /////////////////////////////////////////////////////////////////////////////////////////////////////
+
     let policy_str = hex::encode(policy_id.to_bytes());
     let mut toplevel_metadata = clib::metadata::GeneralTransactionMetadata::new();
     //let mut raw_metadata =  Vec::<String>::new();
@@ -713,7 +718,9 @@ pub fn make_721_asset_entry(
     assetmap: &mut clib::metadata::MetadataMap,
 ) -> std::result::Result<(), MurinError> {
     pub use clib::metadata::*;
+
     let mut asset_metadata = MetadataMap::new();
+
     if let Some(name) = &asset.name {
         asset_metadata.insert_str(
             "name",
@@ -740,7 +747,7 @@ pub fn make_721_asset_entry(
     let mut desc_array = MetadataList::new();
     if let Some(descritpion) = &asset.description {
         if descritpion.len() == 1 {
-            chunk_string(assetmap, "description", &descritpion[0])?
+            chunk_string(&mut asset_metadata, "description", &descritpion[0])?
         } else {
             for line in descritpion.clone() {
                 desc_array.add(&clib::metadata::TransactionMetadatum::new_text(line)?);
@@ -767,9 +774,31 @@ pub fn make_721_asset_entry(
                 &clib::metadata::TransactionMetadatum::new_text(f.media_type)?,
             )?;
             let mut filelist = MetadataList::new();
-            for s in f.src {
-                filelist.add(&clib::metadata::TransactionMetadatum::new_text(s)?)
+            match f.src {
+                Value::String(s) => {
+                    filelist.add(&clib::metadata::TransactionMetadatum::new_text(s)?)
+                }
+                Value::Array(v) => {
+                    for s in v {
+                        if let Ok(t) = serde_json::from_value::<String>(s) {
+                            filelist.add(&clib::metadata::TransactionMetadatum::new_text(t)?)
+                        }
+                    }
+                }
+                Value::Null => {
+                    return Err(MurinError::new(
+                        "Null not implemented to restore metadata file source",
+                    ))
+                }
+                Value::Bool(_) => panic!("Bool not implemented to restore metadata file source"),
+                Value::Number(_) => {
+                    panic!("Number not implemented to restore metadata file source")
+                }
+                Value::Object(_) => {
+                    panic!("Object not implemented to restore metadata file source")
+                }
             }
+
             filemap.insert_str(
                 "src",
                 &clib::metadata::TransactionMetadatum::new_list(&filelist),

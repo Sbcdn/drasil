@@ -79,7 +79,6 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     gtxd.set_user_id(bms.customer_id());
 
     info!("establish database connections...");
-    let mut dcon = crate::database::drasildb::establish_connection()?;
     let mut gcon = gungnir::establish_connection()?;
 
     info!("check rewards and collect contract ids...");
@@ -105,8 +104,8 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
                 .map_err(|_| murin::MurinError::new(""))?,
             &rwd.get_fingerprint(),
             rwd.get_contract_id(),
-            gtxd.get_user_id().unwrap() as i64,
-            murin::clib::utils::from_bignum(&rwd.get_amount().unwrap()) as i64,
+            gtxd.get_user_id().unwrap(),
+            murin::clib::utils::from_bignum(&rwd.get_amount().unwrap()) as i128,
         )
         .is_err()
         {
@@ -235,7 +234,6 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     let mut keylocs = Vec::<TBMultiSigLoc>::new();
     for c in &contract {
         keylocs.push(crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &mut dcon,
             &c.contract_id,
             &c.user_id,
             &c.version,
@@ -277,7 +275,6 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     let mut dbsync = mimir::establish_connection()?;
     for c in contract {
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &mut dcon,
             &c.contract_id,
             &c.user_id,
             &c.version,
@@ -292,6 +289,8 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
                 str: "The contract does not contain utxos, please try again later".to_string(),
             }
             .into());
+        } else {
+            log::info!("UTxO Count for TransWallet: {}", wallet_utxos.len());
         }
 
         let ident = crate::encryption::mident(&c.user_id, &c.contract_id, &c.version, &c.address);
@@ -347,7 +346,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         &(bms.customer_id()),
         &gtxd.get_contract_id().unwrap(),
     );
-    debug!("RAWTX data: {:?}", tx);
+    trace!("RAWTX data: {:?}", tx);
 
     info!("create response...");
     let ret = create_response(

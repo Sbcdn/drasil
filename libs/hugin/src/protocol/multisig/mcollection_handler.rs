@@ -91,9 +91,6 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     gtxd.set_contract_id(contract_ids);
 
     log::debug!("Try to establish database connection...");
-    let mut drasildbcon = crate::database::drasildb::establish_connection()?;
-    let mut gcon = gungnir::establish_connection()?;
-
     let mut fees = Vec::<ServiceFees>::new();
     let mut ns_scripts = Vec::<NativeScript>::new();
     let mut whitelists = Vec::<Whitelist>::new();
@@ -101,7 +98,6 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     log::debug!("Try to determine additional data...");
     for c in mintprojects.iter_mut() {
         let kl = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &mut drasildbcon,
             &c.2.contract_id,
             &c.2.user_id,
             &c.2.version,
@@ -116,7 +112,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         ns_scripts.push(NativeScript::from_bytes(hex::decode(&c.2.plutus)?)?);
         if let Some(whitelist) = &c.1.whitelists {
             for w in whitelist.iter() {
-                whitelists.push(gungnir::Whitelist::get_whitelist(&mut gcon, *w)?);
+                whitelists.push(gungnir::Whitelist::get_whitelist(&c.2.user_id, w)?);
             }
         }
     }
@@ -128,7 +124,10 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         _ => Ordering::Less,
     });
     // Contains highest contract fee
-    let mut fees = vec![fees.last().unwrap().clone()];
+    let mut fees = match fees.last() {
+        Some(s) => vec![s.clone()],
+        None => vec![],
+    };
 
     let mut r = Vec::<i64>::new();
     for c in &mintprojects {

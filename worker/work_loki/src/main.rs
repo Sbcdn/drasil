@@ -98,8 +98,6 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
                 serde_json::from_str(std::str::from_utf8(&deliv.data)?)?;
             log::debug!("Data {:?}", data);
             // Acknowledge message if successfull
-            log::debug!("try to esteblish connection ...");
-            let gcon = &mut gungnir::establish_connection()?;
             log::debug!("try to get mint project ...");
             let mp = match gungnir::minting::models::MintProject::get_mintproject_by_id(data.mpid) {
                 Ok(o) => o,
@@ -189,23 +187,23 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
 
             // check whitelists
             let valid_addresses = if let Some(wl) = mp.whitelists.clone() {
-                let mut va = Vec::<(gungnir::WlAddresses, i64)>::new();
+                let mut va = Vec::<(gungnir::WlEntry, i64)>::new();
 
                 for w in wl {
                     let claim_wl =
-                        gungnir::WlAlloc::check_pay_address_whitelist(w, &data.claim_addr)?;
+                        gungnir::WlAlloc::check_pay_address_in_whitelist(&w, &data.claim_addr)?;
                     if !claim_wl.is_empty() {
                         va.extend(claim_wl.into_iter().map(|n| (n, w)));
                         payment_addr = data.claim_addr.clone();
                         break;
                     } else {
                         va.extend(
-                            gungnir::WlAlloc::check_stake_address_whitelist(w, &stake_address)?
+                            gungnir::WlAlloc::check_stake_address_in_whitelist(&w, &stake_address)?
                                 .into_iter()
                                 .map(|n| (n, w)),
                         );
                         va.extend(
-                            gungnir::WlAlloc::check_pay_address_whitelist(w, &payment_addr)?
+                            gungnir::WlAlloc::check_pay_address_in_whitelist(&w, &payment_addr)?
                                 .into_iter()
                                 .map(|n| (n, w)),
                         );
