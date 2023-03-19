@@ -39,6 +39,19 @@ impl Rewards {
         Ok(result)
     }
 
+    pub fn get_client_rewards(
+        conn: &mut PgConnection,
+        stake_addr_in: String,
+        user_id_in: i64,
+    ) -> Result<Vec<Rewards>, RWDError> {
+        use crate::schema::rewards::dsl::*;
+        let result = rewards
+            .filter(stake_addr.eq(&stake_addr_in))
+            .filter(user_id.eq(&user_id_in))
+            .load::<Rewards>(conn)?;
+        Ok(result)
+    }
+
     pub fn get_specific_asset_reward(
         conn: &mut PgConnection,
         payment_addr_in: &String,

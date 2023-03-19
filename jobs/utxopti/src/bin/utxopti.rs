@@ -19,8 +19,7 @@ pub async fn main() -> Result<()> {
     println!("Checking contracts...");
     'outer: for contract in contracts {
         let _lq = contract.get_contract_liquidity();
-        let utxos =
-            mimir::get_address_utxos(&mut mimir::establish_connection()?, &contract.address)?;
+        let utxos = mimir::get_address_utxos(&contract.address)?;
 
         let twl = gungnir::TokenWhitelist::get_whitelist()?;
 

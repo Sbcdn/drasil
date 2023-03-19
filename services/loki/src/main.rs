@@ -6,6 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+#![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 
 mod auth;

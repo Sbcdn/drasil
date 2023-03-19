@@ -6,6 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+#![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 mod error;
 
@@ -153,6 +154,9 @@ mod filters {
             .or(get_token_info())
             .or(get_user_tokens())
             .or(get_avail_mintrewards())
+            .or(get_cl_rewards_for_stake_addr())
+            .or(post_assethandles())
+            .or(get_avail_mintrewards_user())
             .or(resp_option())
         // .or(warp::get().and(warp::any().map(warp::reply)))
     }
@@ -182,6 +186,17 @@ mod filters {
             .and(auth())
             .and(warp::path::param::<String>())
             .and_then(handlers::handle_all_rewards_for_stake_addr)
+    }
+
+    /// Get all available rewards for a client a stake address
+    pub fn get_cl_rewards_for_stake_addr(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("rwd")
+            .and(warp::path("cl"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::path::param::<String>())
+            .and_then(handlers::handle_rewards_for_client_stake_addr)
     }
 
     /// Get rewards for a stake address for a specific contract
@@ -256,6 +271,27 @@ mod filters {
             .and_then(handlers::handle_all_mint_rewards_for_stake_addr)
     }
 
+    pub fn get_avail_mintrewards_user(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("mird")
+            .and(warp::path("cl"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::path::param::<String>())
+            .and_then(handlers::handle_cl_mint_rewards_for_stake_addr)
+    }
+
+    pub fn post_assethandles(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("wallet")
+            .and(warp::path("assets"))
+            .and(warp::path("addresses"))
+            .and(warp::post())
+            .and(auth())
+            .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
+            .and_then(handlers::handle_asset_for_addresses)
+    }
+
     fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
         use super::auth::authorize;
         use warp::{
@@ -270,13 +306,16 @@ mod filters {
 
 ///Handlers
 mod handlers {
-    use cardano_serialization_lib::address::Address;
+    use cardano_serialization_lib::{
+        address::Address, crypto::ScriptHash, utils::from_bignum, AssetName,
+    };
     use gungnir::models::{MintProject, MintReward};
     use hugin::{
         datamodel::{ClaimedHandle, RewardHandle},
         MintProjectHandle, MintRewardHandle,
     };
-    use std::convert::Infallible;
+    use murin::make_fingerprint;
+    use std::{convert::Infallible, str::from_utf8};
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct ReturnError {
@@ -353,6 +392,50 @@ mod handlers {
             contract_id as i64,
             customer_id as i64,
         );
+
+        let response = match rewards {
+            Ok(rwds) => {
+                let mut ret = Vec::<RewardHandle>::new();
+                for rwd in rwds {
+                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
+                        Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
+                        Err(_) => {
+                            log::info!(
+                                "Error: coudl not find token info for {:?}",
+                                rwd.fingerprint
+                            );
+                        }
+                    }
+                }
+                warp::reply::json(&ret)
+            }
+            Err(otherwise) => {
+                log::info!("{:?}", otherwise);
+                warp::reply::json(&ReturnError::new(&otherwise.to_string()))
+            }
+        };
+
+        Ok(warp::reply::with_status(
+            response,
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    /// execute build multisig for <multisig_type> for customer <customer_id> with <payload>
+    pub async fn handle_rewards_for_client_stake_addr(
+        customer_id: u64,
+        stake_addr: String,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let bech32addr = match get_bech32_from_bytes(stake_addr) {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e);
+            }
+        };
+        let mut gconn =
+            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
+        let rewards =
+            gungnir::Rewards::get_client_rewards(&mut gconn, bech32addr, customer_id as i64);
 
         let response = match rewards {
             Ok(rwds) => {
@@ -653,5 +736,175 @@ mod handlers {
                 ))
             }
         }
+    }
+
+    pub async fn handle_cl_mint_rewards_for_stake_addr(
+        user_id: u64,
+        stake_addr: String,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let bech32addr = match get_bech32_from_bytes(stake_addr) {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e);
+            }
+        };
+
+        let payaddr = match mimir::select_addr_of_first_transaction(&bech32addr) {
+            Ok(a) => a,
+            Err(e) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&e.to_string()),
+                    warp::http::StatusCode::NO_CONTENT,
+                ))
+            }
+        };
+
+        let rewards = MintReward::get_avail_mintrewards_cl_by_addr(user_id as i64, &payaddr);
+        println!("Rewards: {rewards:?}");
+        match rewards {
+            Ok(rwds) => {
+                let mut ret = Vec::<MintRewardHandle>::new();
+                for rwd in rwds {
+                    match MintProject::get_mintproject_by_id_active(rwd.project_id) {
+                        Ok(p) => ret.push(MintRewardHandle {
+                            id: rwd.id,
+                            addr: rwd.pay_addr,
+                            project: MintProjectHandle {
+                                project_name: p.project_name,
+                                collection_name: p.collection_name,
+                                author: p.author,
+                                image: None,
+                            },
+                        }),
+                        Err(e) => {
+                            log::info!("Error: could not find active mint project");
+                            return Ok(warp::reply::with_status(
+                                warp::reply::json(&e.to_string()),
+                                warp::http::StatusCode::NO_CONTENT,
+                            ));
+                        }
+                    }
+                }
+
+                Ok(warp::reply::with_status(
+                    warp::reply::json(&ret),
+                    warp::http::StatusCode::OK,
+                ))
+            }
+            Err(otherwise) => {
+                log::info!("{:?}", otherwise);
+
+                Ok(warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&otherwise.to_string())),
+                    warp::http::StatusCode::NO_CONTENT,
+                ))
+            }
+        }
+    }
+
+    pub async fn handle_asset_for_addresses(
+        _: u64,
+        addresses: Vec<String>,
+    ) -> Result<impl warp::Reply, Infallible> {
+        /*
+        let bech32addr = match get_bech32_from_bytes(&stake_addr) {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e);
+            }
+        };
+
+        let ident_address = match mimir::select_addr_of_first_transaction(&bech32addr) {
+            Ok(a) => a,
+            Err(e) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&e.to_string()),
+                    warp::http::StatusCode::NO_CONTENT,
+                ))
+            }
+        };
+         */
+
+        let mut utxos = murin::TransactionUnspentOutputs::new();
+
+        for a in &addresses {
+            let us = mimir::get_address_utxos(a).unwrap();
+            utxos.merge(us);
+        }
+
+        let mut handles = Vec::<hugin::AssetHandle>::new();
+        for u in utxos {
+            let v = u.output().amount();
+            let ada = v.coin();
+            handles.push(hugin::AssetHandle {
+                fingerprint: None,
+                policy: None,
+                tokenname: None,
+                amount: from_bignum(&ada),
+                metadata: None,
+            });
+            if let Some(multis) = v.multiasset() {
+                let policies = multis.keys();
+                for p in 0..policies.len() {
+                    let policy = policies.get(p);
+                    if let Some(assets) = multis.get(&policy) {
+                        let k = assets.keys();
+                        for a in 0..k.len() {
+                            let asset = k.get(a);
+                            let amt = assets.get(&asset).unwrap();
+                            let fingerprint =
+                                make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
+                                    .unwrap();
+                            handles.push(hugin::AssetHandle {
+                                fingerprint: Some(fingerprint),
+                                policy: Some(policy.to_hex()),
+                                tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                                amount: from_bignum(&amt),
+                                metadata: None,
+                            })
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut handles_summed = Vec::<hugin::AssetHandle>::new();
+
+        for h in &handles {
+            if handles_summed
+                .iter()
+                .filter(|n| h.same_asset(n))
+                .collect::<Vec<&hugin::AssetHandle>>()
+                .is_empty()
+            {
+                let sum = handles
+                    .iter()
+                    .fold(hugin::AssetHandle::new_empty(), |mut acc, f| {
+                        if h.same_asset(f) {
+                            acc.amount = acc.amount.checked_add(h.amount).unwrap();
+
+                            if acc.metadata.is_none() && f.metadata.is_some() {
+                                acc.metadata = h.metadata.clone()
+                            }
+                            if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                acc.fingerprint = h.fingerprint.clone()
+                            }
+                            if acc.policy.is_none() && f.policy.is_some() {
+                                acc.policy = h.policy.clone()
+                            }
+                            if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                acc.tokenname = h.tokenname.clone()
+                            }
+                        }
+                        acc
+                    });
+                handles_summed.push(sum)
+            }
+        }
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&handles_summed),
+            warp::http::StatusCode::OK,
+        ))
     }
 }

@@ -146,15 +146,8 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     let _username = txp.user();
 
     // TODO
-    if txp.inputs().is_none() || txp.inputs().unwrap_or(empty_vec).is_empty() {
+    if txp.utxos().is_none() || txp.utxos().unwrap_or(empty_vec).is_empty() {
         // Get inputs from dbsync and format them to TransactionUnspentOutputs (byte encoded or not ? )
-    }
-
-    if txp.outputs().is_some() {
-        return Err(CmdError::Custom {
-            str: "ERROR outputs must be None for this contract type".to_string(),
-        }
-        .into());
     }
 
     if txp.collateral().is_some()
@@ -166,16 +159,16 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
         .into());
     }
 
-    if txp.sending_wal_addrs().is_empty() {
+    if txp.used_addresses().is_empty() {
         return Err(CmdError::Custom {
             str: "ERROR no wallet address provided".to_string(),
         }
         .into());
     }
 
-    if txp.sending_stake_addr().is_some() {
-        let addresses = murin::cip30::decode_addresses(&txp.sending_wal_addrs()).await?;
-        let stake_addr = murin::cip30::decode_addr(&txp.sending_stake_addr().unwrap()).await?;
+    if txp.stake_addr().is_some() {
+        let addresses = murin::cip30::decode_addresses(&txp.used_addresses()).await?;
+        let stake_addr = murin::cip30::decode_addr(&txp.stake_addr().unwrap()).await?;
         let mut rewardaddr = get_reward_address(&stake_addr)?;
         for address in addresses {
             if BaseAddress::from_address(&address).is_some() {

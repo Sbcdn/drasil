@@ -18,14 +18,14 @@ pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
         return 0;
     }
     let mut discounts = discounts.unwrap();
-    println!("\nFound Discounts: {:?}", discounts);
+    log::debug!("\nFound Discounts: {discounts:?}");
     let mut policys = discounts.iter().fold(Vec::<String>::new(), |mut acc, n| {
         acc.push(n.policy_id());
         acc
     });
 
     let wallet_tokens = utxos.sum_avail_tokens();
-    println!("\nWallet Tokens: {:?}", wallet_tokens);
+    log::debug!("\nWallet Tokens: {wallet_tokens:?}");
     let mut avail_token = Tokens::new();
     for p in policys {
         let t: Tokens = wallet_tokens
@@ -35,7 +35,7 @@ pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
             .collect();
         avail_token.extend(t.iter().cloned());
     }
-    println!("\nAvail Tokens: {:?}", avail_token);
+    log::debug!("\nAvail Tokens: {:?}", avail_token);
     let mut del = Vec::<usize>::new();
     for (i, d) in discounts.iter_mut().enumerate() {
         let b: Vec<_> = if let Some(f) = d.fingerprint.to_owned() {
@@ -56,10 +56,10 @@ pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
         }
     }
     for d in del.iter().enumerate() {
-        println!("\nDelete: {:?}", d.1 - d.0);
+        log::debug!("\nDelete: {:?}", d.1 - d.0);
         discounts.remove(d.1 - d.0);
     }
-    println!("\nDiscounts2: {:?}", discounts);
+    log::debug!("\nDiscounts2: {:?}", discounts);
     if !del.is_empty() {
         policys = discounts.iter().fold(Vec::<String>::new(), |mut acc, n| {
             acc.push(n.policy_id());
@@ -75,18 +75,18 @@ pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
             avail_token.extend(t.iter().cloned());
         }
     }
-    println!("\nAvail Tokens2: {:?}", avail_token);
+    log::debug!("\nAvail Tokens2: {avail_token:?}");
     let mut metadata = Vec::<TokenInfoMint>::new();
     for t in avail_token.iter() {
-        println!("\nToken iter: {:?}\n", t);
+        log::debug!("\nToken iter: {:?}\n", t);
         let m = mimir::get_mint_metadata(
             &make_fingerprint(&hex::encode(t.0.to_bytes()), &hex::encode(t.1.name())).unwrap(),
         )
         .unwrap();
-        println!("\nMetadata iter: {:?}\n", m);
+        log::debug!("\nMetadata iter: {:?}\n", m);
         metadata.push(m);
     }
-    println!("Metadata: {:?}", metadata);
+    log::debug!("Metadata: {:?}", metadata);
     let mut dvalues = Vec::<i64>::new();
     for meta in metadata {
         let d: Vec<_> = discounts
@@ -95,11 +95,11 @@ pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
             .collect();
         let v = if let Some(x) = meta.json {
             let o = x.as_object().unwrap();
-            println!("metaobject: {:?}", o);
+            log::debug!("metaobject: {:?}", o);
             let cs = o.get(&meta.policy).unwrap().as_object().unwrap();
-            println!("cs: {:?}", cs);
+            log::debug!("cs: {:?}", cs);
             let mut elem = cs.get(&meta.tokenname).unwrap();
-            println!("elem1: {:?}", elem);
+            log::debug!("elem1: {:?}", elem);
             for n in &d[0].metadata_path {
                 elem = match elem.as_object() {
                     Some(o) => match o.get(n) {
@@ -109,7 +109,7 @@ pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
                     None => break,
                 };
             }
-            println!("elem2: {:?}", elem);
+            log::debug!("elem2: {:?}", elem);
             if let Some(x) = elem.as_i64() {
                 x
             } else if let Some(x) = elem.as_str() {
@@ -133,7 +133,7 @@ pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
         dvalues.push(v);
     }
     dvalues.sort();
-    println!("Dvalues sort: {:?}", dvalues);
+    log::debug!("Dvalues sort: {:?}", dvalues);
     if dvalues.is_empty() {
         0
     } else {

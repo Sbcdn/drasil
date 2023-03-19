@@ -27,11 +27,12 @@ pub(crate) async fn handle_stake(
             log::debug!("Calcualte with: RelationalToAdaStake");
             let mut token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
 
-            if let Ok(decimal) =
-                serde_json::from_str::<BigDecimal>(&twd.modificator_equ.clone().unwrap())
-            {
-                token_earned *= decimal
-            };
+            if let Some(modi) = &twd.modificator_equ {
+                if let Ok(decimal) = serde_json::from_str::<BigDecimal>(modi) {
+                    token_earned *= decimal
+                };
+            }
+
             handle_rewards(&stake.stake_addr, twd, &token_earned, table, false)?;
         }
 

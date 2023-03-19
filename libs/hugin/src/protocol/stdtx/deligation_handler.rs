@@ -6,7 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::datamodel::ScriptSpecParams;
+use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::BuildStdTx;
 use crate::CmdError;
@@ -15,10 +15,10 @@ use murin::PerformTxb;
 pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<String> {
     match bst
         .transaction_pattern()
-        .script()
+        .operation()
         .ok_or("ERROR: No specific contract data supplied")?
     {
-        ScriptSpecParams::StakeDelegation { .. } => (),
+        Operation::StakeDelegation { .. } => (),
         _ => {
             return Err(CmdError::Custom {
                 str: format!("ERROR wrong data provided for '{:?}'", bst.tx_type()),
@@ -29,7 +29,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
 
     let mut delegtxd = bst
         .transaction_pattern()
-        .script()
+        .operation()
         .unwrap()
         .into_stake_delegation()
         .await?;

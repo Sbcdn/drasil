@@ -18,13 +18,13 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     log::debug!("Entered Oneshot Minter...");
     let minttxd = bms
         .transaction_pattern()
-        .script()
+        .operation()
         .unwrap()
         .into_mintdata()
         .await?;
     log::debug!("Minter Txd: {:?}", minttxd);
     let mut txp = bms.transaction_pattern();
-    txp.set_sending_wal_addrs(&[minttxd.get_payment_addr_bech32()?]);
+    txp.set_used_addrses(&[minttxd.get_payment_addr_bech32()?]);
     log::debug!("Transaction Patter: {:?}\n", &txp);
     log::debug!("Try to create general transaction data...");
     let mut gtxd = txp.into_txdata().await?;
@@ -82,7 +82,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
 
     log::debug!("Set utxos for input...");
-    gtxd.set_inputs(mimir::get_address_utxos(&mut dbsync, &contract.address)?);
+    gtxd.set_inputs(mimir::get_address_utxos(&contract.address)?);
 
     log::debug!("Try to build transactions...");
     let txb_param: murin::txbuilders::minter::build_oneshot_mint::AtOSMParams = (

@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+#![allow(opaque_hidden_inferred_bound)]
 /*
 #################################################################################
 # Business Source License           See LICENSE.md for full license information.#
@@ -243,6 +245,15 @@ fn endpoints(
         .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::bytes()))
         .and_then(handler::mint::entrp_create_nfts_from_csv_s);
 
+    // Reactivate a Depricated Reward Contract
+    let enterprise_post_reactivate_reward_contract = enterprise_post
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("act"))
+        .and(warp::path("sprwc"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::entrp_reactivate_sporwc);
+
     // Create a new mint project
     let enterprise_post_create_mint_project = enterprise_post
         .clone()
@@ -302,6 +313,15 @@ fn endpoints(
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::remove_pools);
 
+    // Create a new reward contract
+    let enterprise_post_create_lqdt_wallet = enterprise_post
+        .clone()
+        .and(warp::path("wal"))
+        .and(warp::path("cr"))
+        .and(warp::path("lqdt"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::adm::adm_create_lqdt);
+
     // Create an empty whitelist
     let enterprise_post_create_whitelist = enterprise_post
         .clone()
@@ -333,6 +353,7 @@ fn endpoints(
         .or(enterprise_post_alloc_nfts_to_mp)
         .or(enterprise_post_import_nfts_csv_meta)
         .or(enterprise_post_import_nfts_csv_meta_2)
+        .or(enterprise_post_reactivate_reward_contract)
         .or(enterprise_post_create_mint_project)
         .or(enterprise_post_create_reward_contract)
         .or(enterprise_post_deprecate_reward_contract)
@@ -340,6 +361,7 @@ fn endpoints(
         .or(enterprise_post_add_token_sporwc)
         .or(enterprise_post_rm_token_sporwc)
         .or(enterprise_post_rm_pools)
+        .or(enterprise_post_create_lqdt_wallet)
         .or(enterprise_post_create_whitelist)
         .or(enterprise_post_delete_whitelist)
         .or(enterprise_post_import_whitelist);
@@ -354,17 +376,6 @@ fn endpoints(
     let _retailer_get = retailer_route.clone().and(warp::get());
 
     let retailer_post = retailer_route.clone().and(warp::post());
-
-    // Reactivate a Depricated Reward Contract
-    let enterprise_post_reactivate_reward_contract = retailer_post
-        .clone()
-        .and(warp::path("ms"))
-        .and(warp::path("act"))
-        .and(warp::path("sprwc"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::entrp_reactivate_sporwc);
-
-    let _retailer = enterprise_post_reactivate_reward_contract;
 
     // Drasil Admin Routes
 
@@ -394,19 +405,7 @@ fn endpoints(
         .and(warp::path("list"))
         .and_then(handler::adm::adm_list_payouts);
 
-    // Create a new reward contract
-    let adm_post_create_lqdt_wallet = adm_post
-        .clone()
-        .and(warp::path("wal"))
-        .and(warp::path("cr"))
-        .and(warp::path("lqdt"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::adm::adm_create_lqdt);
-
-    let admin = adm_create_payout
-        .or(adm_exec_payout)
-        .or(adm_list_payouts)
-        .or(adm_post_create_lqdt_wallet);
+    let admin = adm_create_payout.or(adm_exec_payout).or(adm_list_payouts);
 
     // Routes
     login_route
