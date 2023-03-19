@@ -6,6 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
+#![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 
 mod clientapi;
@@ -444,6 +445,7 @@ mod handlers {
 
         match tx_type {
             StdTxType::DelegateStake => {}
+            StdTxType::StandardTx => {}
         }
         let payload = match payload {
             TXPWrapper::TransactionPattern(txp) => txp,

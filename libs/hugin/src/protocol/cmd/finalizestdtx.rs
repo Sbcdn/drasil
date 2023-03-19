@@ -107,6 +107,14 @@ impl FinalizeStdTx {
                 };
                 self.finalize_delegation(raw_tx.clone()).await?
             }
+            StdTxType::StandardTx => {
+                if let Err(e) =
+                    murin::stdtx::StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())
+                {
+                    return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a standard transaction, {:?}",e.to_string())}.into());
+                };
+                self.finalize_delegation(raw_tx.clone()).await?
+            }
         };
 
         // store used Utxos into utxo manager and store txhash for ovserver

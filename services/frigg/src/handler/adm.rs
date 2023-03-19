@@ -17,11 +17,11 @@
 
 use super::get_user_from_string;
 use crate::WebResult;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use warp::Reply;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CrLqdtContr {
     network: u8,
 }
@@ -35,13 +35,10 @@ pub async fn adm_create_lqdt(uid: String, cparam: CrLqdtContr) -> WebResult<impl
     let user = get_user_from_string(&uid).await?;
 
     let addr = sleipnir::administration::create_lqdt_wallet(net, &user).await?;
-    Ok(warp::reply::with_status(
-        warp::reply::json(&json!({ "address": addr })),
-        warp::http::StatusCode::CREATED,
-    ))
+    Ok(serde_json::json!({ "address": addr }).to_string())
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CrPayout {
     contract_id: i64,
     ada: i64,

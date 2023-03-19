@@ -76,6 +76,10 @@ impl BuildStdTx {
                 Ok(s) => s,
                 Err(e) => e.to_string(),
             },
+            StdTxType::StandardTx => match stdtx::handle_stx(&self).await {
+                Ok(s) => s,
+                Err(e) => e.to_string(),
+            },
         };
 
         response = Frame::Bulk(Bytes::from(

@@ -112,12 +112,13 @@ impl FinalizeMultiSig {
                 {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a reward distribution transaction, {:?}",e.to_string())}.into());
                 };
-                ret = self.finalize_rwd(raw_tx.clone()).await?;
+                
 
                 let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
                 let rwd_data = murin::RWDTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
 
                 let mut gcon = gungnir::establish_connection()?;
+
                 for handle in rwd_data.get_rewards() {
                     let fingerprint = murin::chelper::make_fingerprint(
                         &hex::encode(handle.get_policy_id()?.to_bytes()),
@@ -140,7 +141,7 @@ impl FinalizeMultiSig {
                         &ret.clone(),
                         None,
                         None,
-                    )?;
+                    );
                     gungnir::Rewards::update_claimed(
                         &mut gcon,
                         &tx_data.get_stake_address().to_bech32(None).unwrap(),
@@ -148,7 +149,7 @@ impl FinalizeMultiSig {
                         &handle.get_contract_id(),
                         &raw_tx.get_user_id()?,
                         &murin::clib::utils::from_bignum(&handle.get_amount()?),
-                    )?;
+                    );
                 }
             }
             MultiSigType::NftCollectionMinter => {

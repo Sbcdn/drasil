@@ -19,7 +19,7 @@ pub async fn create_rev_payout(
     let contract = hugin::TBContracts::get_contract_uid_cid(user_id, contract_id)?;
 
     let mut mconn = mimir::establish_connection()?;
-    let address_utxos = mimir::get_address_utxos(&mut mconn, &contract.address)?;
+    let address_utxos = mimir::get_address_utxos(&contract.address)?;
 
     let total_value = address_utxos.calc_total_value()?;
     let contract_lqdty = contract.get_contract_liquidity();
@@ -43,7 +43,7 @@ pub async fn create_custom_payout(
     log::debug!("Try to connect to dbsync...");
     let mut mconn = mimir::establish_connection()?;
     log::debug!("Try to find contract utxos...");
-    let address_utxos = mimir::get_address_utxos(&mut mconn, &contract.address)?;
+    let address_utxos = mimir::get_address_utxos(&contract.address)?;
     log::debug!("Try to calculate total value...");
     let total_value = address_utxos.calc_total_value()?;
     log::debug!("Try to get contract liquidity...");
