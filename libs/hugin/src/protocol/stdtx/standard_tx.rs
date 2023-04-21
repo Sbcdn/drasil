@@ -12,6 +12,7 @@ use crate::BuildStdTx;
 use crate::CmdError;
 
 use murin::clib::address::Address;
+use murin::TransactionUnspentOutputs;
 
 use murin::modules::transfer::models::{TransWallet, TransWallets};
 use murin::stdtx::build_wallet_asset_transfer::{AtSATBuilder, AtSATParams};
@@ -55,6 +56,8 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
     }
     log::debug!("Checks okay...");
 
+    let mut bsstp = bss.transaction_pattern().clone();
+
     log::debug!("Try to create raw data...");
     let std_asset_txd = bss
         .transaction_pattern()
@@ -63,7 +66,34 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
         .into_stdassettx()
         .await?;
 
-    let mut gtxd = bss.transaction_pattern().into_txdata().await?;
+    let addresses =
+        std_asset_txd
+            .wallet_addresses
+            .iter()
+            .fold(Vec::<String>::new(), |mut acc, n| {
+                acc.push(n.to_bech32(None).unwrap());
+                acc
+            });
+    bsstp.set_used_addrses(&addresses);
+
+    log::debug!("Try to create raw data2...");
+    let mut gtxd = bsstp.into_txdata().await?;
+    log::debug!("Try to create raw data3...");
+    if !std_asset_txd.wallet_addresses.is_empty() {
+        let wallet_utxos = std_asset_txd.wallet_addresses.iter().fold(
+            TransactionUnspentOutputs::new(),
+            |mut acc, n| {
+                acc.merge(mimir::get_address_utxos(&n.to_bech32(None).unwrap()).unwrap());
+                acc
+            },
+        );
+        gtxd.set_inputs(wallet_utxos);
+
+        // ToDo: go through all addresses and check all stake keys are equal
+        let sa = murin::get_reward_address(&std_asset_txd.wallet_addresses[0])?;
+        gtxd.set_stake_address(sa);
+        gtxd.set_senders_addresses(std_asset_txd.wallet_addresses.clone());
+    }
 
     log::debug!("Try to determine slot...");
     let mut dbsync = match mimir::establish_connection() {
@@ -109,7 +139,15 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
     let txb_param: AtSATParams = (&std_asset_txd, &wallets, &first_addr);
     let asset_transfer = AtSATBuilder::new(txb_param);
     let builder = murin::TxBuilder::new(&gtxd, &vec![]);
-    let bld_tx = builder.build(&asset_transfer).await?;
+    let bld_tx = builder.build(&asset_transfer).await;
+
+    if let Err(err) = &bld_tx {
+        return Err(CmdError::Custom {
+            str: err.to_string(),
+        }
+        .into());
+    }
+    let bld_tx = bld_tx?;
 
     log::debug!("Try to create raw tx...");
     let tx = murin::utxomngr::RawTx::new(

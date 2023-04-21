@@ -44,7 +44,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
         Ok(ba) => ba,
         Err(e) => {
             return Err(CmdError::Custom {
-                str: format!("Could not convert Stake Address;' {:?}'", e),
+                str: format!("Could not convert Stake Address;' {e:?}'"),
             }
             .into());
         }

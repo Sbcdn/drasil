@@ -9,6 +9,7 @@
 #![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 mod error;
+mod models;
 
 use std::env;
 use std::str;
@@ -142,6 +143,8 @@ mod auth {
 
 ///Filters
 mod filters {
+    use crate::models::{QAddresses, QStakeAddress};
+
     use super::handlers;
     use warp::Filter;
 
@@ -156,6 +159,8 @@ mod filters {
             .or(get_avail_mintrewards())
             .or(get_cl_rewards_for_stake_addr())
             .or(post_assethandles())
+            .or(get_assethandles())
+            .or(get_assethandles_stakeaddress())
             .or(get_avail_mintrewards_user())
             .or(resp_option())
         // .or(warp::get().and(warp::any().map(warp::reply)))
@@ -289,7 +294,29 @@ mod filters {
             .and(warp::post())
             .and(auth())
             .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
-            .and_then(handlers::handle_asset_for_addresses)
+            .and_then(handlers::handle_post_asset_for_addresses)
+    }
+
+    pub fn get_assethandles(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("wallet")
+            .and(warp::path("assets"))
+            .and(warp::path("addresses"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::query::<QAddresses>())
+            .and_then(handlers::handle_get_asset_for_addresses)
+    }
+
+    pub fn get_assethandles_stakeaddress(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("wallet")
+            .and(warp::path("assets"))
+            .and(warp::path("stake_address"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::query::<QStakeAddress>())
+            .and_then(handlers::handle_asset_for_stake_address)
     }
 
     fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
@@ -306,9 +333,7 @@ mod filters {
 
 ///Handlers
 mod handlers {
-    use cardano_serialization_lib::{
-        address::Address, crypto::ScriptHash, utils::from_bignum, AssetName,
-    };
+    use cardano_serialization_lib::{address::Address, utils::from_bignum};
     use gungnir::models::{MintProject, MintReward};
     use hugin::{
         datamodel::{ClaimedHandle, RewardHandle},
@@ -316,6 +341,8 @@ mod handlers {
     };
     use murin::make_fingerprint;
     use std::{convert::Infallible, str::from_utf8};
+
+    use crate::models::{QAddresses, QStakeAddress};
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct ReturnError {
@@ -343,7 +370,7 @@ mod handlers {
         let mut gconn =
             gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
         let rewards = gungnir::Rewards::get_rewards_stake_addr(&mut gconn, bech32addr);
-        println!("Rewards: {:?}", rewards);
+        log::debug!("Rewards: {rewards:?}");
         let response = match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<RewardHandle>::new();
@@ -696,7 +723,7 @@ mod handlers {
         };
 
         let rewards = MintReward::get_avail_mintrewards_by_addr(&payaddr);
-        println!("Rewards: {:?}", rewards);
+        log::debug!("Rewards: {rewards:?}");
         match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<MintRewardHandle>::new();
@@ -760,7 +787,7 @@ mod handlers {
         };
 
         let rewards = MintReward::get_avail_mintrewards_cl_by_addr(user_id as i64, &payaddr);
-        println!("Rewards: {rewards:?}");
+        log::debug!("Rewards: {rewards:?}");
         match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<MintRewardHandle>::new();
@@ -802,28 +829,103 @@ mod handlers {
         }
     }
 
-    pub async fn handle_asset_for_addresses(
+    pub async fn handle_post_asset_for_addresses(
         _: u64,
         addresses: Vec<String>,
     ) -> Result<impl warp::Reply, Infallible> {
-        /*
-        let bech32addr = match get_bech32_from_bytes(&stake_addr) {
-            Ok(s) => s,
-            Err(e) => {
-                return make_error(e);
-            }
-        };
+        let mut utxos = murin::TransactionUnspentOutputs::new();
 
-        let ident_address = match mimir::select_addr_of_first_transaction(&bech32addr) {
-            Ok(a) => a,
+        for a in &addresses {
+            let us = mimir::get_address_utxos(a).unwrap();
+            utxos.merge(us);
+        }
+
+        let mut handles = Vec::<hugin::AssetHandle>::new();
+        for u in utxos {
+            let v = u.output().amount();
+            let ada = v.coin();
+            handles.push(hugin::AssetHandle {
+                fingerprint: None,
+                policy: None,
+                tokenname: None,
+                amount: from_bignum(&ada),
+                metadata: None,
+            });
+            if let Some(multis) = v.multiasset() {
+                let policies = multis.keys();
+                for p in 0..policies.len() {
+                    let policy = policies.get(p);
+                    if let Some(assets) = multis.get(&policy) {
+                        let k = assets.keys();
+                        for a in 0..k.len() {
+                            let asset = k.get(a);
+                            let amt = assets.get(&asset).unwrap();
+                            let fingerprint =
+                                make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
+                                    .unwrap();
+                            handles.push(hugin::AssetHandle {
+                                fingerprint: Some(fingerprint),
+                                policy: Some(policy.to_hex()),
+                                tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                                amount: from_bignum(&amt),
+                                metadata: None,
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        log::debug!("Handles: {:?}", handles);
+        let mut handles_summed = Vec::<hugin::AssetHandle>::new();
+
+        for h in &handles {
+            if handles_summed
+                .iter()
+                .filter(|n| h.same_asset(n))
+                .collect::<Vec<&hugin::AssetHandle>>()
+                .is_empty()
+            {
+                let sum = handles
+                    .iter()
+                    .fold(hugin::AssetHandle::new_empty(), |mut acc, f| {
+                        if h.same_asset(f) {
+                            acc.amount = acc.amount.checked_add(f.amount).unwrap();
+
+                            if acc.metadata.is_none() && f.metadata.is_some() {
+                                acc.metadata = h.metadata.clone()
+                            }
+                            if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                acc.fingerprint = h.fingerprint.clone()
+                            }
+                            if acc.policy.is_none() && f.policy.is_some() {
+                                acc.policy = h.policy.clone()
+                            }
+                            if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                acc.tokenname = h.tokenname.clone()
+                            }
+                        }
+                        acc
+                    });
+                handles_summed.push(sum)
+            }
+        }
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&handles_summed),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    pub async fn handle_get_asset_for_addresses(
+        _: u64,
+        addresses: QAddresses,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let addresses = match serde_json::from_str::<Vec<String>>(&addresses.addresses) {
+            Ok(u) => u,
             Err(e) => {
-                return Ok(warp::reply::with_status(
-                    warp::reply::json(&e.to_string()),
-                    warp::http::StatusCode::NO_CONTENT,
-                ))
+                return make_error(e.to_string());
             }
         };
-         */
 
         let mut utxos = murin::TransactionUnspentOutputs::new();
 
@@ -867,7 +969,7 @@ mod handlers {
                 }
             }
         }
-
+        log::debug!("Handles: {:?}", handles);
         let mut handles_summed = Vec::<hugin::AssetHandle>::new();
 
         for h in &handles {
@@ -881,7 +983,111 @@ mod handlers {
                     .iter()
                     .fold(hugin::AssetHandle::new_empty(), |mut acc, f| {
                         if h.same_asset(f) {
-                            acc.amount = acc.amount.checked_add(h.amount).unwrap();
+                            acc.amount = acc.amount.checked_add(f.amount).unwrap();
+
+                            if acc.metadata.is_none() && f.metadata.is_some() {
+                                acc.metadata = h.metadata.clone()
+                            }
+                            if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                acc.fingerprint = h.fingerprint.clone()
+                            }
+                            if acc.policy.is_none() && f.policy.is_some() {
+                                acc.policy = h.policy.clone()
+                            }
+                            if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                acc.tokenname = h.tokenname.clone()
+                            }
+                        }
+                        acc
+                    });
+                handles_summed.push(sum)
+            }
+        }
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&handles_summed),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    pub async fn handle_asset_for_stake_address(
+        _: u64,
+        stake_address: QStakeAddress,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let stake_address = stake_address.stake_address;
+        let bstake_addr = match murin::b_decode_addr(&stake_address).await {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e.to_string());
+            }
+        };
+        let reward_address = match murin::get_reward_address(&bstake_addr) {
+            Ok(r) => r,
+            Err(e) => {
+                return make_error(e.to_string());
+            }
+        };
+
+        let utxos = match mimir::get_stake_address_utxos(
+            &mut mimir::establish_connection().unwrap(),
+            &reward_address.to_bech32(None).unwrap(),
+        ) {
+            Ok(u) => u,
+            Err(e) => {
+                return make_error(e.to_string());
+            }
+        };
+
+        let mut handles = Vec::<hugin::AssetHandle>::new();
+        for u in utxos {
+            let v = u.output().amount();
+            let ada = v.coin();
+            handles.push(hugin::AssetHandle {
+                fingerprint: None,
+                policy: None,
+                tokenname: None,
+                amount: from_bignum(&ada),
+                metadata: None,
+            });
+            if let Some(multis) = v.multiasset() {
+                let policies = multis.keys();
+                for p in 0..policies.len() {
+                    let policy = policies.get(p);
+                    if let Some(assets) = multis.get(&policy) {
+                        let k = assets.keys();
+                        for a in 0..k.len() {
+                            let asset = k.get(a);
+                            let amt = assets.get(&asset).unwrap();
+                            let fingerprint =
+                                make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
+                                    .unwrap();
+                            handles.push(hugin::AssetHandle {
+                                fingerprint: Some(fingerprint),
+                                policy: Some(policy.to_hex()),
+                                tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                                amount: from_bignum(&amt),
+                                metadata: None,
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        log::debug!("Handles: {:?}", handles);
+        let mut handles_summed = Vec::<hugin::AssetHandle>::new();
+
+        for h in &handles {
+            if handles_summed
+                .iter()
+                .filter(|n| h.same_asset(n))
+                .collect::<Vec<&hugin::AssetHandle>>()
+                .is_empty()
+            {
+                let sum = handles
+                    .iter()
+                    .fold(hugin::AssetHandle::new_empty(), |mut acc, f| {
+                        if h.same_asset(f) {
+                            acc.amount = acc.amount.checked_add(f.amount).unwrap();
 
                             if acc.metadata.is_none() && f.metadata.is_some() {
                                 acc.metadata = h.metadata.clone()
@@ -908,3 +1114,4 @@ mod handlers {
         ))
     }
 }
+ 

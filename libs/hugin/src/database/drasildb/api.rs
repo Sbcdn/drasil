@@ -99,8 +99,7 @@ impl TBContracts {
             .load::<TBContracts>(&mut establish_connection()?)?;
 
         let err = SystemDBError::Custom(format!(
-            "no contract found for user-id: '{}' and contract type '{}'",
-            uid, ctype
+            "no contract found for user-id: '{uid}' and contract type '{ctype}'"
         ));
 
         if let Some(v) = vers {
@@ -289,8 +288,8 @@ impl TBMultiSigLoc {
             .filter(version.eq(&version_in))
             .load::<TBMultiSigLoc>(&mut establish_connection()?)?;
 
-        let err = SystemDBError::Custom(format!("no multisig key location found for contract-id: '{}' User-id: '{}'  , version: '{}'; \n Result: {:?}"
-                ,contract_id_in, user_id_in, version_in, result));
+        let err = SystemDBError::Custom(format!("no multisig key location found for contract-id: '{contract_id_in}' User-id: '{user_id_in}'  , version: '{version_in}'; \n Result: {result:?}"
+                ));
 
         if let Some(r) = result.get(0) {
             return Ok(r.clone());

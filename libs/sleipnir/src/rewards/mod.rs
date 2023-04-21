@@ -222,8 +222,7 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
     if let Some(endepoch) = twl.end_epoch {
         if endepoch <= current_epoch || endepoch <= start_epoch {
             return Err(SleipnirError::new(&format!(
-                "End epoch: {}, needs to be in future and after start epoch: {:?}",
-                endepoch, start_epoch
+                "End epoch: {endepoch}, needs to be in future and after start epoch: {start_epoch:?}"
             )));
         }
     }
@@ -234,8 +233,7 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
         for pool in &ps {
             if !mimir::find_avail_pool(pool)? || models::WhitelistLink::is_wl_link(pool) {
                 return Err(SleipnirError::new(&format!(
-                    "One of the pools is not existing or retired: {}",
-                    pool
+                    "One of the pools is not existing or retired: {pool}"
                 )));
             }
         }

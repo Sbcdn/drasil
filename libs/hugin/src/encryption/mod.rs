@@ -100,12 +100,12 @@ pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError>
         if read_count == BUFFER_LEN {
             let ciphertext = stream_encryptor
                 .encrypt_next(buffer.as_slice())
-                .map_err(|err| murin::MurinError::new(&format!("Encrypting: {}", err)))?;
+                .map_err(|err| murin::MurinError::new(&format!("Encrypting: {err}")))?;
             dist.write_all(&ciphertext)?;
         } else {
             let ciphertext = stream_encryptor
                 .encrypt_last(&buffer[..read_count])
-                .map_err(|err| murin::MurinError::new(&format!("Encrypting: {}", err)))?;
+                .map_err(|err| murin::MurinError::new(&format!("Encrypting: {err}")))?;
             dist.write_all(&ciphertext)?;
             break;
         }
@@ -151,7 +151,7 @@ pub fn decrypt(encrypted_source: &String, password: &String) -> Result<String, M
 
     let argon2_config = argon2_config();
     let mut key = rargon2::hash_raw(password.as_bytes(), &salt, &argon2_config)
-        .map_err(|err| murin::MurinError::new(&format!("{}", err)))?;
+        .map_err(|err| murin::MurinError::new(&format!("{err}")))?;
 
     let aead = XChaCha20Poly1305::new(key[..32].as_ref().into());
     let mut stream_decryptor = stream::DecryptorBE32::from_aead(aead, nonce.as_ref().into());
@@ -165,14 +165,14 @@ pub fn decrypt(encrypted_source: &String, password: &String) -> Result<String, M
         if read_count == BUFFER_LEN {
             let plaintext = stream_decryptor
                 .decrypt_next(buffer.as_slice())
-                .map_err(|err| murin::MurinError::new(&format!("Decrypting: {}", err)))?;
+                .map_err(|err| murin::MurinError::new(&format!("Decrypting: {err}")))?;
             dist.write_all(&plaintext)?;
         } else if read_count == 0 {
             break;
         } else {
             let plaintext = stream_decryptor
                 .decrypt_last(&buffer[..read_count])
-                .map_err(|err| murin::MurinError::new(&format!("Decrypting: {}", err)))?;
+                .map_err(|err| murin::MurinError::new(&format!("Decrypting: {err}")))?;
             dist.write_all(&plaintext)?;
             break;
         }
@@ -184,7 +184,7 @@ pub fn decrypt(encrypted_source: &String, password: &String) -> Result<String, M
 
     let bytes = dist
         .into_inner()
-        .map_err(|err| murin::MurinError::new(&format!("{}", err)))?;
+        .map_err(|err| murin::MurinError::new(&format!("{err}")))?;
     let string = String::from_utf8(bytes)?;
 
     Ok(string)

@@ -34,5 +34,5 @@ fn main() {
 
     let ident = mident(&opt.u, &opt.c, &opt.v, &opt.a);
 
-    println!("{}", ident);
+    println!("{ident}");
 }

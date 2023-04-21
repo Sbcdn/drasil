@@ -199,16 +199,17 @@ impl TransBuilder {
 
         // Balance all transfers
         //let mut handles = Vec::<_>::new();
-        self.transfers.iter_mut().for_each(|n| {
-            log::debug!("Pay Address: {:?}", n.source.pay_addr);
+        //self.transfers.iter_mut().for_each(|n| {
+        //    log::debug!("Pay Address: {:?}", n.source.pay_addr);
+        //    log::trace!("Wallets: {:?}", self.wallets);
+        //    let r = n.balance(self.wallets.get_wallet(&n.source.pay_addr)?)?;
+        //});
+
+        for t in &mut self.transfers {
+            log::debug!("Pay Address: {:?}", t.source.pay_addr);
             log::trace!("Wallets: {:?}", self.wallets);
-            n.balance(
-                self.wallets
-                    .get_wallet(&n.source.pay_addr)
-                    .expect("TransWallet not found"),
-            )
-            .expect("Transaction does not balance")
-        });
+            t.balance(self.wallets.get_wallet(&t.source.pay_addr)?)?;
+        }
 
         //handles.push();
 

@@ -1,4 +1,3 @@
-use hugin::authentication::Role;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 use warp::{ws::Message, Filter};
@@ -147,8 +146,6 @@ mod filters {
 mod auth {
     use crate::error::{self, Error};
     use chrono::prelude::*;
-    use hugin::client::connect;
-    use hugin::VerifyUser;
     use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
     use serde::{Deserialize, Serialize};
 
@@ -251,7 +248,7 @@ mod handlers {
     use tokio::sync::mpsc;
     use tokio::time::Duration;
     use tokio_stream::wrappers::UnboundedReceiverStream;
-    use uuid::{uuid, Uuid};
+    use uuid::Uuid;
     use warp::ws::{Message, WebSocket};
 
     #[derive(Serialize)]
@@ -283,7 +280,7 @@ mod handlers {
                 println!("No clients connected, skip sending data");
                 continue;
             }
-            println!("{} connected client(s)", connected_client_count);
+            log::debug!("{} connected client(s)", connected_client_count);
 
             clients.lock().await.iter().for_each(|(_, client)| {
                 if let Some(sender) = &client.sender {
@@ -300,20 +297,20 @@ mod handlers {
         ws: warp::ws::Ws,
         clients: Clients,
     ) -> Result<impl warp::Reply, Infallible> {
-        println!("ws_handler");
+        log::debug!("ws_handler");
         Ok(ws.on_upgrade(move |socket| client_connection(user_id, socket, clients)))
         //
     }
 
     async fn client_connection(user_id: u64, ws: WebSocket, clients: Clients) {
-        println!("establishing client connection... {:?}", ws);
+        log::debug!("establishing client connection... {:?}", ws);
 
         let (client_ws_sender, mut client_ws_rcv) = ws.split();
         let (client_sender, client_rcv) = mpsc::unbounded_channel();
         let client_rcv = UnboundedReceiverStream::new(client_rcv);
         tokio::task::spawn(client_rcv.forward(client_ws_sender).map(|result| {
             if let Err(e) = result {
-                println!("error sending websocket msg: {}", e);
+                log::debug!("error sending websocket msg: {}", e);
             }
         }));
 
@@ -337,39 +334,33 @@ mod handlers {
             client_msg(uuid.clone(), msg, &clients).await;
         }
         clients.lock().await.remove(&uuid);
-        println!("{} disconnected", uuid);
+        log::debug!("{} disconnected", uuid);
     }
 
     async fn client_msg(client_id: String, msg: Message, clients: &Clients) {
-        println!("received message from {}: {:?}", client_id, msg);
+        log::debug!("received message from {}: {:?}", client_id, msg);
         let message = match msg.to_str() {
             Ok(v) => v,
             Err(_) => return,
         };
         if message == "alive" || message == "alive\n" {
             let locked = clients.lock().await;
-            match locked.get(&client_id) {
-                Some(v) => {
-                    if let Some(sender) = &v.sender {
-                        log::info!("sending alive");
-                        let _ = sender.send(Ok(Message::text("yes")));
-                    }
+            if let Some(v) = locked.get(&client_id) {
+                if let Some(sender) = &v.sender {
+                    log::info!("sending alive");
+                    let _ = sender.send(Ok(Message::text("yes")));
                 }
-                None => (),
             }
         };
         if message == "new_token" {
             let locked = clients.lock().await;
-            match locked.get(&client_id) {
-                Some(v) => {
-                    if let Some(sender) = &v.sender {
-                        log::info!("sending alive");
-                        let _ = sender.send(Ok(Message::binary(
-                            serde_json::to_string(&generate_new_token(v).unwrap()).unwrap(),
-                        )));
-                    }
+            if let Some(v) = locked.get(&client_id) {
+                if let Some(sender) = &v.sender {
+                    log::info!("sending alive");
+                    let _ = sender.send(Ok(Message::binary(
+                        serde_json::to_string(&generate_new_token(v).unwrap()).unwrap(),
+                    )));
                 }
-                None => (),
             }
         };
     }
