@@ -13,8 +13,8 @@ fn main() -> Result<(), MurinError> {
     let plaintext = rpassword::prompt_password_stdout("cipher:")?;
     let mut password = rpassword::prompt_password_stdout("password:").unwrap();
     let cipher = hugin::encryption::encrypt(&plaintext, &password).unwrap();
-    println!("Plaintext:\n {}\n", plaintext);
-    println!("Ciphertext:\n {}\n", cipher);
+    println!("Plaintext:\n {plaintext}\n");
+    println!("Ciphertext:\n {cipher}\n");
     password.zeroize();
 
     println!("Decrypt: \n");
@@ -23,7 +23,7 @@ fn main() -> Result<(), MurinError> {
     let wallet_decr =
         hugin::encryption::decrypt(&cipher, &password).expect("Could not encrypt data");
     password.zeroize();
-    println!("Decrypted: \n{}\n", wallet_decr);
+    println!("Decrypted: \n{wallet_decr}\n");
 
     Ok(())
 }

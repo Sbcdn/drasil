@@ -19,8 +19,7 @@ pub type Result<T> = std::result::Result<T, UOError>;
 
 pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
     log::debug!("Try to connect to dbsync...");
-    let mut dbsconn = mimir::establish_connection()?;
-    let contract_utxos = mimir::get_address_utxos(&mut dbsconn, &addr)?;
+    let contract_utxos = mimir::get_address_utxos(&addr)?;
     log::debug!("Calculate thresholds...");
     let ada_utxos = contract_utxos.get_coin_only();
     let mut t_utxos = contract_utxos.get_token_only();

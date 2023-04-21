@@ -53,16 +53,13 @@ pub fn select_addr_of_first_transaction(stake_address_in: &str) -> Result<String
 }
 
 /// get all utxos of an address
-pub fn get_address_utxos(
-    conn: &mut PgConnection,
-    addr: &String,
-) -> Result<murin::TransactionUnspentOutputs, MimirError> {
+pub fn get_address_utxos(addr: &String) -> Result<murin::TransactionUnspentOutputs, MimirError> {
     let unspent = unspent_utxos::table
         .filter(unspent_utxos::address.eq(addr))
-        .load::<UnspentUtxo>(conn)?;
+        .load::<UnspentUtxo>(&mut establish_connection()?)?;
     let mut utxos = murin::TransactionUnspentOutputs::new();
     for u in unspent {
-        utxos.add(&u.to_txuo(conn)?);
+        utxos.add(&u.to_txuo(&mut establish_connection()?)?);
     }
     Ok(utxos)
 }

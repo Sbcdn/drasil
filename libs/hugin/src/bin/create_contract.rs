@@ -67,6 +67,6 @@ fn main() -> Result<(), SystemDBError> {
         &false,
     )?;
 
-    println!("Success! added: \n {:?}", contract);
+    println!("Success! added: \n {contract:?}");
     Ok(())
 }

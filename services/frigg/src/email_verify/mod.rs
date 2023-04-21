@@ -110,7 +110,7 @@ impl Email {
 
         match mailer {
             Ok(_) => Ok("Email sent successfully!".to_string()),
-            Err(e) => Err(Error::Custom(format!("Could not send email: {:?}", e))),
+            Err(e) => Err(Error::Custom(format!("Could not send email: {e:?}"))),
         }
     }
 }

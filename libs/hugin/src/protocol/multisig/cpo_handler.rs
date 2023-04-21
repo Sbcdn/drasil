@@ -23,7 +23,7 @@ use murin::TxData;
 pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result<String> {
     let poid = bms
         .transaction_pattern()
-        .script()
+        .operation()
         .unwrap()
         .into_cpo()
         .await?;
@@ -90,8 +90,8 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     gtxd.set_current_slot(slot as u64);
     log::info!("DB Sync Slot: {}", slot);
 
-    let utxos = mimir::get_address_utxos(&mut dbsync, &contract.address)
-        .expect("MimirError: cannot find address utxos");
+    let utxos =
+        mimir::get_address_utxos(&contract.address).expect("MimirError: cannot find address utxos");
     gtxd.set_inputs(utxos);
 
     log::debug!("Try to determine additional data...");

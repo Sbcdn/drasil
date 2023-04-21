@@ -147,7 +147,7 @@ pub async fn main() -> crate::Result<()> {
     pretty_env_logger::init();
     let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
     let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
-    let listener = TcpListener::bind(&format!("{}:{}", host, port)).await?;
+    let listener = TcpListener::bind(&format!("{host}:{port}")).await?;
 
     run(listener, signal::ctrl_c()).await
 }

@@ -17,10 +17,7 @@
 
 use deadpool_lapin::Pool;
 use serde::{Deserialize, Serialize};
-use sleipnir::{
-    whitelist::{AllocateSpecificAssetsToMintProject, ImportWhitelistFromCSV, WlNew},
-    WhitelistType,
-};
+use sleipnir::whitelist::{AllocateSpecificAssetsToMintProject, ImportWhitelistFromCSV, WlNew};
 use warp::Reply;
 
 use crate::{
@@ -64,12 +61,12 @@ pub async fn import_whitelist_from_csv(
     let job = sleipnir::jobs::JobTypes::ImportWhitelist(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
-        eprintln!("can't connect to rmq, {}", e);
+        log::error!("can't connect to rmq, {}", e);
         warp::reject::custom(crate::error::Error::RMQPoolError(e))
     })?;
 
     let channel = rmq_con.create_channel().await.map_err(|e| {
-        eprintln!("can't create channel, {}", e);
+        log::error!("can't create channel, {}", e);
         warp::reject::custom(crate::error::Error::RMQError(e))
     })?;
 
@@ -95,12 +92,12 @@ pub async fn import_whitelist_from_csv(
         )
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(crate::error::Error::RMQError(e))
         })?
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(crate::error::Error::RMQError(e))
         })?;
     Ok(
@@ -124,12 +121,12 @@ pub async fn allocate_whitelist_to_mp(
     let job = sleipnir::jobs::JobTypes::AllocateSpecificAssetsToMintProject(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
-        eprintln!("can't connect to rmq, {}", e);
+        log::error!("can't connect to rmq, {}", e);
         warp::reject::custom(crate::error::Error::RMQPoolError(e))
     })?;
 
     let channel = rmq_con.create_channel().await.map_err(|e| {
-        eprintln!("can't create channel, {}", e);
+        log::error!("can't create channel, {}", e);
         warp::reject::custom(crate::error::Error::RMQError(e))
     })?;
 
@@ -155,12 +152,12 @@ pub async fn allocate_whitelist_to_mp(
         )
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(crate::error::Error::RMQError(e))
         })?
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(crate::error::Error::RMQError(e))
         })?;
     Ok(
@@ -184,12 +181,12 @@ pub async fn random_allocate_whitelist_to_mp(
     let job = sleipnir::jobs::JobTypes::RandomAllocateWhitelistToMintProject(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
-        eprintln!("can't connect to rmq, {}", e);
+        log::error!("can't connect to rmq, {}", e);
         warp::reject::custom(crate::error::Error::RMQPoolError(e))
     })?;
 
     let channel = rmq_con.create_channel().await.map_err(|e| {
-        eprintln!("can't create channel, {}", e);
+        log::error!("can't create channel, {}", e);
         warp::reject::custom(crate::error::Error::RMQError(e))
     })?;
 
@@ -215,12 +212,12 @@ pub async fn random_allocate_whitelist_to_mp(
         )
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(crate::error::Error::RMQError(e))
         })?
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(crate::error::Error::RMQError(e))
         })?;
     Ok(

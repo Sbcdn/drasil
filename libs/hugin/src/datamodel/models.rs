@@ -10,11 +10,17 @@
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use gungnir::{Rewards, TokenInfo};
-use murin::TxData;
+use murin::{
+    b_decode_addr_na,
+    clib::address::Address,
+    stdtx::{AssetTransfer, StdAssetHandle},
+    utils::to_bignum,
+    AssetName, PolicyID, TxData,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Error, str::FromStr};
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum ContractType {
     MarketPlace,
     NftShop,
@@ -43,7 +49,7 @@ impl FromStr for ContractType {
             "tokmint" => Ok(ContractType::TokenMinter),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Contract Type {} does not exist", src),
+                format!("Contract Type {src} does not exist"),
             )),
         }
     }
@@ -84,7 +90,7 @@ impl FromStr for MarketplaceActions {
             "update" => Ok(MarketplaceActions::Update),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Marketplace Action {} does not exist", src),
+                format!("Marketplace Action {src} does not exist"),
             )),
         }
     }
@@ -124,7 +130,7 @@ impl FromStr for MultiSigType {
             "utxopti" => Ok(MultiSigType::UTxOpti),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Transaction Type {} does not exist", src),
+                format!("Transaction Type {src} does not exist"),
             )),
         }
     }
@@ -165,6 +171,7 @@ impl FromStr for Utxopti {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum StdTxType {
     DelegateStake,
+    StandardTx,
 }
 
 impl FromStr for StdTxType {
@@ -172,9 +179,10 @@ impl FromStr for StdTxType {
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
             "stakedelegation" => Ok(StdTxType::DelegateStake),
+            "StandardTx" => Ok(StdTxType::StandardTx),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Transaction Type {} does not exist", src),
+                format!("Transaction Type {src} does not exist"),
             )),
         }
     }
@@ -183,7 +191,8 @@ impl FromStr for StdTxType {
 impl ToString for StdTxType {
     fn to_string(&self) -> String {
         match &self {
-            &Self::DelegateStake => "stakedelegation".to_string(),
+            Self::DelegateStake => "stakedelegation".to_string(),
+            Self::StandardTx => "Standard".to_string(),
         }
     }
 }
@@ -220,7 +229,7 @@ impl FromStr for ContractAction {
             )),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("ContractAction '{}' does not exist", src),
+                format!("ContractAction '{src}' does not exist"),
             )),
         }
     }
@@ -313,6 +322,46 @@ pub enum TXPWrapper {
     TransactionPattern(Box<TransactionPattern>),
     Signature(Signature),
     OneShotMinter(OneShotMintPayload),
+    WalletTransaction(),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct WalletTransactionPattern {
+    user: Option<String>,
+    contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
+    wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
+    #[serde(alias = "sending_wal_addrs")]
+    used_addresses: Option<Vec<String>>,
+    unused_addresses: Option<Vec<String>>,
+    #[serde(alias = "sending_stake_addr")]
+    stake_address: Option<String>,
+    change_address: Option<String>,
+    #[serde(alias = "inputs")]
+    utxos: Option<Vec<String>>,
+    excludes: Option<Vec<String>>,
+    collateral: Option<Vec<String>>,
+    network: Option<u64>,
+    #[serde(alias = "script")]
+    operation: Operation,
+}
+
+impl WalletTransactionPattern {
+    pub fn into_txp(&self) -> TransactionPattern {
+        TransactionPattern {
+            user: None,
+            contract_id: None,
+            wallet_type: None,
+            used_addresses: Vec::<String>::new(),
+            stake_address: None,
+            change_address: None,
+            utxos: Some(Vec::<String>::new()),
+            excludes: None,
+            collateral: None,
+            operation: self.operation.clone(),
+            network: 0,
+            unused_addresses: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -320,30 +369,36 @@ pub struct TransactionPattern {
     user: Option<String>,
     contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
     wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
-    sending_wal_addrs: Vec<String>,
-    sending_stake_addr: Option<String>,
-    outputs: Option<Vec<String>>,
-    inputs: Option<Vec<String>>,
+    #[serde(alias = "sending_wal_addrs")]
+    used_addresses: Vec<String>,
+    unused_addresses: Option<Vec<String>>,
+    #[serde(alias = "sending_stake_addr")]
+    stake_address: Option<String>,
+    change_address: Option<String>,
+    #[serde(alias = "inputs")]
+    utxos: Option<Vec<String>>,
     excludes: Option<Vec<String>>,
     collateral: Option<Vec<String>>,
-    script: ScriptSpecParams,
+    #[serde(alias = "script")]
+    operation: Operation,
     network: u64,
 }
 
 impl TransactionPattern {
-    pub fn new_empty(customer_id: u64, script_spec: &ScriptSpecParams, network: u64) -> Self {
+    pub fn new_empty(customer_id: u64, script_spec: &Operation, network: u64) -> Self {
         TransactionPattern {
             user: Some(customer_id.to_string()),
             contract_id: None,
             wallet_type: None,
-            sending_wal_addrs: Vec::<String>::new(),
-            sending_stake_addr: None,
-            outputs: None,
-            inputs: Some(Vec::<String>::new()),
+            used_addresses: Vec::<String>::new(),
+            stake_address: None,
+            change_address: None,
+            utxos: Some(Vec::<String>::new()),
             excludes: None,
             collateral: None,
-            script: script_spec.clone(),
+            operation: script_spec.clone(),
             network,
+            unused_addresses: None,
         }
     }
 
@@ -364,28 +419,24 @@ impl TransactionPattern {
         self.wallet_type.clone()
     }
 
-    pub fn sending_wal_addrs(&self) -> Vec<String> {
-        self.sending_wal_addrs.clone()
+    pub fn used_addresses(&self) -> Vec<String> {
+        self.used_addresses.clone()
     }
 
-    pub fn set_sending_wal_addrs(&mut self, vec: &[String]) {
-        self.sending_wal_addrs = vec.to_owned();
+    pub fn set_used_addrses(&mut self, vec: &[String]) {
+        self.used_addresses = vec.to_owned();
     }
 
     pub fn set_contract_id(&mut self, n: u64) {
         self.contract_id = Some(n);
     }
 
-    pub fn sending_stake_addr(&self) -> Option<String> {
-        self.sending_stake_addr.clone()
+    pub fn stake_addr(&self) -> Option<String> {
+        self.stake_address.clone()
     }
 
-    pub fn outputs(&self) -> Option<Vec<String>> {
-        self.outputs.clone()
-    }
-
-    pub fn inputs(&self) -> Option<Vec<String>> {
-        self.inputs.clone()
+    pub fn utxos(&self) -> Option<Vec<String>> {
+        self.utxos.clone()
     }
 
     pub fn excludes(&self) -> Option<Vec<String>> {
@@ -409,12 +460,12 @@ impl TransactionPattern {
         self.network
     }
 
-    pub fn script(&self) -> Option<ScriptSpecParams> {
-        Some(self.script.clone())
+    pub fn operation(&self) -> Option<Operation> {
+        Some(self.operation.clone())
     }
 
     pub async fn into_txdata(&self) -> Result<murin::txbuilders::TxData, murin::error::MurinError> {
-        let inputs = match self.inputs() {
+        let inputs = match self.utxos() {
             None => {
                 return Err(murin::error::MurinError::new(
                     "Cannot build transaction data, no inputs provided",
@@ -423,7 +474,7 @@ impl TransactionPattern {
             Some(data) => data,
         };
 
-        let saddr = match self.sending_stake_addr() {
+        let saddr = match self.stake_addr() {
             Some(sa) => match murin::wallet::decode_addr(&sa).await {
                 Ok(addr) => Some(addr),
                 Err(_) => None,
@@ -438,7 +489,7 @@ impl TransactionPattern {
 
         let mut txd = TxData::new(
             Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
-            murin::wallet::decode_addresses(&self.sending_wal_addrs()).await?,
+            murin::wallet::decode_addresses(&self.used_addresses()).await?,
             saddr,
             murin::wallet::get_transaction_unspent_outputs(
                 inputs.as_ref(),
@@ -449,12 +500,6 @@ impl TransactionPattern {
             murin::wallet::get_network_kind(self.network).await?,
             0u64,
         )?;
-
-        if let Some(outputs) = self.outputs() {
-            txd.set_outputs(
-                murin::wallet::get_transaction_unspent_outputs(&outputs, None, None).await?,
-            )
-        }
 
         if let Some(collateral) = self.collateral() {
             txd.set_collateral(murin::wallet::get_transaction_unspent_output(&collateral).await?)
@@ -471,7 +516,7 @@ impl TransactionPattern {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ScriptSpecParams {
+pub enum Operation {
     SpoRewardClaim {
         rewards: Vec<murin::RewardHandle>,
         recipient_stake_addr: String,
@@ -514,6 +559,10 @@ pub enum ScriptSpecParams {
     StakeDelegation {
         poolhash: String,
     },
+    StdTx {
+        transfers: Vec<TransferHandle>,
+        wallet_addresses: Option<Vec<String>>,
+    },
     CPO {
         po_id: i64,
         pw: String,
@@ -526,7 +575,7 @@ pub enum ScriptSpecParams {
     },
 }
 
-impl ScriptSpecParams {
+impl Operation {
     pub async fn into_mp(
         &self,
         avail_inputs: murin::TransactionUnspentOutputs,
@@ -535,7 +584,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::marketplace::MpTxData;
 
         match self {
-            ScriptSpecParams::Marketplace {
+            Operation::Marketplace {
                 tokens,
                 metadata,
                 royalties_addr,
@@ -575,7 +624,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::rwdist::RWDTxData;
 
         match self {
-            ScriptSpecParams::SpoRewardClaim {
+            Operation::SpoRewardClaim {
                 rewards,
                 recipient_stake_addr,
                 recipient_payment_addr,
@@ -592,6 +641,68 @@ impl ScriptSpecParams {
         }
     }
 
+    pub async fn into_stdassettx(
+        &self,
+    ) -> Result<murin::txbuilders::stdtx::StandardTxData, murin::error::MurinError> {
+        use murin::error::MurinError;
+        use murin::txbuilders::stdtx::StandardTxData;
+
+        match self {
+            Operation::StdTx {
+                transfers,
+                wallet_addresses,
+            } => {
+                let mut trans = Vec::<AssetTransfer>::new();
+                for t in transfers {
+                    let receiver = b_decode_addr_na(&t.receiving_address).unwrap();
+                    let mut assets = Vec::<StdAssetHandle>::new();
+                    for n in &t.asset_handles {
+                        let policy = if let Some(p) = &n.policy {
+                            Some(PolicyID::from_hex(p)?)
+                        } else {
+                            None
+                        };
+                        let tokenname = if let Some(tn) = &n.tokenname {
+                            Some(AssetName::new(hex::decode(tn)?)?)
+                        } else {
+                            None
+                        };
+
+                        assets.push(StdAssetHandle {
+                            fingerprint: n.fingerprint.clone().as_ref().map(|f| f.to_string()),
+                            policy,
+                            tokenname,
+                            amount: to_bignum(n.amount),
+                            metadata: if let Some(metadata) = &n.metadata {
+                                Some(serde_json::from_str(metadata)?)
+                            } else {
+                                None
+                            },
+                        })
+                    }
+                    trans.push(AssetTransfer { receiver, assets })
+                }
+                let wal_addr = if let Some(addr) = wallet_addresses {
+                    let r = addr.iter().fold(Vec::<Address>::new(), |mut acc, a| {
+                        acc.push(b_decode_addr_na(a).unwrap());
+                        acc
+                    });
+                    r
+                } else {
+                    vec![]
+                };
+
+                Ok(StandardTxData {
+                    wallet_addresses: wal_addr,
+                    transfers: trans,
+                })
+            }
+            _ => Err(MurinError::new(
+                "provided wrong specfic paramters for the transaction type",
+            )),
+        }
+    }
+
     pub async fn into_colmintdata(
         &self,
     ) -> Result<murin::txbuilders::minter::models::ColMinterTxData, murin::error::MurinError> {
@@ -599,7 +710,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::minter::models::*;
 
         match self {
-            ScriptSpecParams::NftCollectionMinter { mint_handles } => {
+            Operation::NftCollectionMinter { mint_handles } => {
                 let mut out = Vec::<CMintHandle>::new();
                 for handle in mint_handles {
                     let mrwd =
@@ -631,7 +742,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::minter::MinterTxData;
 
         match self {
-            ScriptSpecParams::Minter {
+            Operation::Minter {
                 mint_tokens,
                 receiver_stake_addr,
                 receiver_payment_addr,
@@ -675,7 +786,7 @@ impl ScriptSpecParams {
                     *contract_id,
                 ))
             }
-            ScriptSpecParams::ClApiOneShotMint {
+            Operation::ClApiOneShotMint {
                 tokennames,
                 amounts,
                 metadata,
@@ -713,7 +824,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::delegation::DelegTxData;
 
         match self {
-            ScriptSpecParams::StakeDelegation { poolhash } => Ok(DelegTxData::new(poolhash)?),
+            Operation::StakeDelegation { poolhash } => Ok(DelegTxData::new(poolhash)?),
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this transaction",
             )),
@@ -725,7 +836,7 @@ impl ScriptSpecParams {
         use murin::txbuilders::CPO;
 
         match self {
-            ScriptSpecParams::CPO { po_id, pw } => Ok(CPO::new(*po_id, pw.to_owned())),
+            Operation::CPO { po_id, pw } => Ok(CPO::new(*po_id, pw.to_owned())),
 
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this transaction",
@@ -762,7 +873,7 @@ impl FromStr for WalletType {
             "typhon" => Ok(WalletType::Typhon),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Wallet '{}' not supportet or wrong typed input", src),
+                format!("Wallet '{src}' not supportet or wrong typed input"),
             )),
         }
     }
@@ -880,8 +991,8 @@ pub struct OneShotMintPayload {
 }
 
 impl OneShotMintPayload {
-    pub fn into_script_spec(&self) -> ScriptSpecParams {
-        ScriptSpecParams::ClApiOneShotMint {
+    pub fn into_script_spec(&self) -> Operation {
+        Operation::ClApiOneShotMint {
             tokennames: self.tokennames.to_owned(),
             amounts: self.amounts.to_owned(),
             metadata: self.metadata.to_owned(),
@@ -1032,4 +1143,48 @@ pub struct MintProjectHandle {
     pub collection_name: String,
     pub author: String,
     pub image: Option<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
+pub struct AssetHandle {
+    pub fingerprint: Option<String>,
+    pub policy: Option<String>,
+    pub tokenname: Option<String>,
+    pub amount: u64,
+    pub metadata: Option<String>,
+}
+
+impl AssetHandle {
+    pub fn same_asset(&self, other: &Self) -> bool {
+        match self.policy {
+            Some(_) => {
+                self.fingerprint == other.fingerprint
+                    && self.policy == other.policy
+                    && self.tokenname == other.tokenname
+            }
+            None => {
+                other.policy.is_none()
+                    && other.fingerprint.is_none()
+                    && other.tokenname.is_none()
+                    && self.tokenname.is_none()
+                    && self.fingerprint.is_none()
+            }
+        }
+    }
+
+    pub fn new_empty() -> Self {
+        AssetHandle {
+            fingerprint: None,
+            policy: None,
+            tokenname: None,
+            amount: 0,
+            metadata: None,
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct TransferHandle {
+    pub receiving_address: String,
+    pub asset_handles: Vec<AssetHandle>,
 }

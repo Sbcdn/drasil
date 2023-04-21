@@ -96,8 +96,8 @@ async fn main() -> Result<(), SystemDBError> {
     .await?;
 
     if opt.output.is_some() {
-        println!("Encrypted Wallet Data: {}", wallet_encr);
-        println!("Wallet Address: {:?}", bech32_address);
+        println!("Encrypted Wallet Data: {wallet_encr}");
+        println!("Wallet Address: {bech32_address:?}");
         println!("Public Key: {:?}", hex::encode(wallet.3.to_bytes()));
         println!("Vkey: {:?}", wallet.4);
         println!("Skey: {:?}", wallet.5);
@@ -110,7 +110,7 @@ async fn main() -> Result<(), SystemDBError> {
         hugin::encryption::decrypt(&cipher, &password).expect("Could not encrypt data");
     password.zeroize();
 
-    println!("Decrypted: \n{}", wallet_decr);
+    println!("Decrypted: \n{wallet_decr}");
 
     Ok(())
 }

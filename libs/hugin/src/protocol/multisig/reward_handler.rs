@@ -6,7 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::datamodel::ScriptSpecParams;
+use crate::datamodel::Operation;
 use crate::protocol::{create_response, determine_contracts};
 use crate::{discount, CmdError};
 use crate::{BuildMultiSig, TBMultiSigLoc};
@@ -18,10 +18,10 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     info!("verify transaction data...");
     match bms
         .transaction_pattern()
-        .script()
+        .operation()
         .ok_or("ERROR: No specific contract data supplied")?
     {
-        ScriptSpecParams::SpoRewardClaim {
+        Operation::SpoRewardClaim {
             rewards,
             recipient_stake_addr,
             recipient_payment_addr,
@@ -29,7 +29,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             let err = Err(CmdError::Custom {
                 str: format!(
                     "ERROR wrong data provided for script specific parameters: '{:?}'",
-                    bms.transaction_pattern().script()
+                    bms.transaction_pattern().operation()
                 ),
             }
             .into());
@@ -62,7 +62,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     info!("create raw data...");
     let mut rwdtxd = bms
         .transaction_pattern()
-        .script()
+        .operation()
         .unwrap()
         .into_rwd()
         .await?;
@@ -281,7 +281,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         )?;
         info!("retrieve blockchain data...");
 
-        let wallet_utxos = mimir::get_address_utxos(&mut dbsync, &c.address)?;
+        let wallet_utxos = mimir::get_address_utxos(&c.address)?;
         if wallet_utxos.is_empty() {
             // ToDO :
             // Send Email to Admin that not enough tokens are available on the script

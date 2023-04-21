@@ -295,7 +295,28 @@ pub async fn allocate_specific_assets_to_mintproject(
                         )
                         .is_err()
                         {
-                            continue 'a;
+                            if let Ok(mrwd) =
+                                MintReward::get_mintreward_by_nft_ids(vec![binassetname.to_vec()])
+                            {
+                                if mrwd.project_id == anb.project_id
+                                    && mrwd.v_nfts_b == vec![mint_value.to_bytes()]
+                                    && mrwd.pay_addr != payaddr
+                                {
+                                    MintReward::update_payaddr(mrwd.id, &payaddr)?;
+                                } else if mrwd.project_id == anb.project_id
+                                    && mrwd.v_nfts_b == vec![mint_value.to_bytes()]
+                                    && mrwd.pay_addr == payaddr
+                                {
+                                    log::debug!("all up to date nothing to do ...")
+                                } else {
+                                    log::error!(
+                                        "Something is wrong with this mint reward: {}",
+                                        mrwd.id
+                                    )
+                                }
+                            } else {
+                                continue 'a;
+                            }
                         }
                     }
                 }

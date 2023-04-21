@@ -75,8 +75,7 @@ impl std::str::FromStr for Calculationmode {
             "relationaltoadastake" => Ok(Calculationmode::RelationalToADAStake),
             "airdrop" => Ok(Calculationmode::AirDrop),
             _ => Err(RWDError::new(&format!(
-                "Calculationmode {} does not exist",
-                src
+                "Calculationmode {src} does not exist"
             ))),
         }
     }

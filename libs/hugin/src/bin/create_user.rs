@@ -30,7 +30,7 @@ struct Opt {
 async fn main() -> Result<(), SystemDBError> {
     let opt = Opt::from_args();
     let t = TBContracts::get_next_contract_id(&opt.user_id)?;
-    println!("Established Connection Test: {:?}", t);
+    println!("Established Connection Test: {t:?}");
 
     let user = TBDrasilUser::create_user(
         None,
@@ -52,7 +52,7 @@ async fn main() -> Result<(), SystemDBError> {
     )
     .await?;
 
-    println!("Created user: {:?}", user);
+    println!("Created user: {user:?}");
 
     Ok(())
 }

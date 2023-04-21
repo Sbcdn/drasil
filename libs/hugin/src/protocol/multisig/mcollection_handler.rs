@@ -8,7 +8,7 @@ use std::cmp::Ordering;
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::datamodel::ScriptSpecParams;
+use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::{discount, BuildMultiSig, TBContracts};
 use crate::{CmdError, TBMultiSigLoc};
@@ -21,14 +21,14 @@ use murin::{NativeScript, PerformTxb, ServiceFees};
 pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     match bms
         .transaction_pattern()
-        .script()
+        .operation()
         .ok_or("ERROR: No specific contract data supplied")?
     {
-        ScriptSpecParams::NftCollectionMinter { mint_handles } => {
+        Operation::NftCollectionMinter { mint_handles } => {
             let err = Err(CmdError::Custom {
                 str: format!(
                     "ERROR wrong data provided for script specific parameters: '{:?}'",
-                    bms.transaction_pattern().script()
+                    bms.transaction_pattern().operation()
                 ),
             }
             .into());
@@ -58,7 +58,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     log::debug!("Try to create raw data...");
     let minttxd = bms
         .transaction_pattern()
-        .script()
+        .operation()
         .unwrap()
         .into_colmintdata()
         .await?;
@@ -153,7 +153,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                     || mr.pay_addr != first_address.to_bech32(None).unwrap()
                 {
                     return Err(CmdError::Custom {
-                        str: format!("ERROR invalid mint reward '{:?}'", mr),
+                        str: format!("ERROR invalid mint reward '{mr:?}'"),
                     }
                     .into());
                 }
@@ -165,7 +165,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 if let Some(x) = m.value()?.compare(&tv) {
                     if x != 0 {
                         return Err(CmdError::Custom {
-                            str: format!("ERROR claim values dont match '{:?}'", mr),
+                            str: format!("ERROR claim values dont match '{mr:?}'"),
                         }
                         .into());
                     }
@@ -173,7 +173,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             }
             Err(e) => {
                 return Err(CmdError::Custom {
-                    str: format!("ERROR mint reward does not exist: '{:?}'", e),
+                    str: format!("ERROR mint reward does not exist: '{e:?}'"),
                 }
                 .into());
             }
@@ -196,6 +196,12 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 &mp[0].1.nft_table_name,
                 &nftb.name(),
             )?;
+            if nft.minted {
+                return Err(CmdError::Custom {
+                    str: format!("ERROR Nft already minted: '{mh:?}'"),
+                }
+                .into());
+            }
             if let Some(metadata) = &nft.metadata {
                 metadataassets.push(serde_json::from_str(metadata)?)
             }

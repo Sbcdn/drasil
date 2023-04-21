@@ -7,7 +7,7 @@
 #################################################################################
 */
 use crate::datamodel::{
-    ContractAction, ContractType, MarketplaceActions, ScriptSpecParams, TransactionPattern,
+    ContractAction, ContractType, MarketplaceActions, Operation, TransactionPattern,
 };
 use crate::{CmdError, Parse};
 use crate::{Connection, Frame, IntoFrame};
@@ -127,10 +127,10 @@ impl BuildContract {
     async fn handle_marketplace(&self) -> crate::Result<String> {
         match self
             .transaction_pattern()
-            .script()
+            .operation()
             .ok_or("ERROR: No specific contract data supplied")?
         {
-            ScriptSpecParams::Marketplace {
+            Operation::Marketplace {
                 tokens,
                 metadata,
                 selling_price,
@@ -149,7 +149,7 @@ impl BuildContract {
                     return Err(CmdError::Custom {
                         str: format!(
                             "ERROR wrong data provided for script specific parameters: '{:?}'",
-                            self.transaction_pattern().script()
+                            self.transaction_pattern().operation()
                         ),
                     }
                     .into());
@@ -166,7 +166,7 @@ impl BuildContract {
         let mut gtxd = self.transaction_pattern().into_txdata().await?;
         let mptxd = self
             .transaction_pattern()
-            .script()
+            .operation()
             .unwrap()
             .into_mp(gtxd.clone().get_inputs())
             .await?;
