@@ -63,9 +63,9 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         }
 
         //let native_script_address = self.script_addr.clone();
-        let recipient_address = self.stxd.get_payment_addr();
+        let reward_recipient_address = self.stxd.get_payment_addr();
 
-        let mut builder = TransBuilder::new(&recipient_address);
+        let mut builder = TransBuilder::new(&reward_recipient_address);
 
         let wallets = if let Some(mut w) = self.wallets.to_owned() {
             w.wallets.iter_mut().for_each(|n| {
@@ -91,7 +91,7 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         //Auxiliary Data
         //  Plutus Script and Metadata
         /////////////////////////////////////////////////////////////////////////////////////////////////////
-        let recipient_address_bech32 = recipient_address.to_bech32(None)?;
+        let recipient_address_bech32 = reward_recipient_address.to_bech32(None)?;
 
         let recipient_address_bech32_1 = &recipient_address_bech32[0..62];
         let recipient_address_bech32_2 = &recipient_address_bech32[62..];
@@ -169,14 +169,15 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
                     });
             let rwd_val = RewardHandle::total_value(c_rewards)?;
             let min_utxo_val =
-                min_ada_for_utxo(&TransactionOutput::new(&recipient_address, &rwd_val))?.amount();
+                min_ada_for_utxo(&TransactionOutput::new(&reward_recipient_address, &rwd_val))?
+                    .amount();
             let mut zcrwd_val = rwd_val.clone();
             zcrwd_val.set_coin(&cutils::to_bignum(0));
 
             log::debug!("script wallet getter");
             let script_wallet = wallets.get_wallet_cid(*id)?;
 
-            let sink = Sink::new(&recipient_address, &min_utxo_val);
+            let sink = Sink::new(&reward_recipient_address, &min_utxo_val);
             let mut source = Source::new(&script_wallet.script.unwrap().script_addr);
             source.add_subtraction(&cutils::Value::new(&min_utxo_val.coin()));
             source.set_pay_value(zcrwd_val);
@@ -204,27 +205,27 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         let any_script_wallet = wallets.get_wallet_cid(rwd_contract_ids[0])?;
 
         let cfee_val = cutils::Value::new(&cutils::to_bignum(contract_fee));
-        let sink2 = Sink::new(&any_script_wallet.script.unwrap().script_addr, &cfee_val);
+        let contract_fee_sink =
+            Sink::new(&any_script_wallet.script.unwrap().script_addr, &cfee_val);
 
-        let mut source2 = Source::new(&recipient_address);
-        source2.set_pay_value(cfee_val);
+        let mut fee_paying_source = Source::new(&reward_recipient_address);
+        fee_paying_source.set_pay_value(cfee_val);
 
         for t in transfers.clone() {
             let v = t.get_source().get_modificator();
             for m in v {
                 match m {
                     models::TransModificator::Add(d) => {
-                        source2.add_subtraction(&d);
+                        fee_paying_source.add_subtraction(&d);
                     }
                     models::TransModificator::Sub(d) => {
-                        source2.add_addition(&d);
+                        fee_paying_source.add_addition(&d);
                     }
                 }
             }
         }
 
-        let trans2 = Transfer::new(&source2, &vec![sink2]);
-        transfers.push(trans2);
+        transfers.push(Transfer::new(&fee_paying_source, &vec![contract_fee_sink]));
 
         builder.transfers = transfers;
         builder.wallets = wallets;

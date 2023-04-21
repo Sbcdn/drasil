@@ -39,8 +39,7 @@ impl std::str::FromStr for ADTokenType {
             "FungibleToken" => Ok(ADTokenType::FungibleToken),
             "NonFungibleToken" => Ok(ADTokenType::NonFungibleToken),
             _ => Err(SleipnirError::new(&format!(
-                "Cannot parse '{}' into ADTokenType",
-                src
+                "Cannot parse '{src}' into ADTokenType"
             ))),
         }
     }
@@ -93,8 +92,7 @@ impl std::str::FromStr for ADSelType {
             comb => {
                 if !comb.contains('|') {
                     return Err(SleipnirError::new(&format!(
-                        "Cannot parse '{}' into AdSelType",
-                        src
+                        "Cannot parse '{src}' into AdSelType"
                     )));
                 }
                 let csplit: Vec<&str> = comb.split('|').collect();
@@ -148,8 +146,7 @@ impl std::str::FromStr for ADDistType {
             "FixedAmountPerWallet" => Ok(ADDistType::FixedAmountPerWallet),
             "TokenPool" => Ok(ADDistType::TokenPool),
             _ => Err(SleipnirError::new(&format!(
-                "Cannot parse '{}' into AdSelType",
-                src
+                "Cannot parse '{src}' into AdSelType"
             ))),
         }
     }
@@ -210,15 +207,13 @@ pub async fn create_airdrop(
     let current_epoch = mimir::get_epoch(&mut mconn)? as i64;
     if start_epoch < current_epoch {
         return Err(SleipnirError::new(&format!(
-            "Start epoch: {} cannot be smaller than the current epoch: : {:?}",
-            start_epoch, current_epoch
+            "Start epoch: {start_epoch} cannot be smaller than the current epoch: : {current_epoch:?}"
         )));
     }
     if let Some(endepoch) = end_epoch {
         if endepoch <= current_epoch || endepoch <= start_epoch {
             return Err(SleipnirError::new(&format!(
-                "End epoch: {}, needs to be in future and after start epoch: {:?}",
-                endepoch, start_epoch
+                "End epoch: {endepoch}, needs to be in future and after start epoch: {start_epoch:?}"
             )));
         }
     }
@@ -317,7 +312,7 @@ pub async fn create_airdrop(
 
     //start epoch defines when the airdrop can happen / end epoch accordingly restricts the airdrop on epochs
 
-    let twl = gungnir::TokenWhitelist::create_twl_entry(
+    let _twl = gungnir::TokenWhitelist::create_twl_entry(
         &mut gconn,
         &fingerprint,
         &policy_id,
@@ -334,7 +329,7 @@ pub async fn create_airdrop(
     )?;
 
     // Select whitelisting method for airdrop
-    let whitelist = airdrop_whitelist_selection(
+    airdrop_whitelist_selection(
         user_id,
         c_id,
         &airdrop_sel_type,

@@ -19,7 +19,7 @@ impl Parse {
         let array = match frame {
             Frame::Array(array) => array,
             frame => {
-                return Err(format!("protocol error; epected array type, got {:?}", frame).into())
+                return Err(format!("protocol error; epected array type, got {frame:?}").into())
             }
         };
 
@@ -39,8 +39,7 @@ impl Parse {
                 .map(|s| s.to_string())
                 .map_err(|_| "protocol error; invalid string".into()),
             frame => Err(format!(
-                "protocol error; expected simple frame or bulk frame, got {:?}",
-                frame
+                "protocol error; expected simple frame or bulk frame, got {frame:?}"
             )
             .into()),
         }
@@ -51,8 +50,7 @@ impl Parse {
             Frame::Simple(s) => Ok(Bytes::from(s.into_bytes())),
             Frame::Bulk(data) => Ok(data),
             frame => Err(format!(
-                "protocol error; expected simple frame or bulk frame, got {:?}",
-                frame
+                "protocol error; expected simple frame or bulk frame, got {frame:?}"
             )
             .into()),
         }
@@ -67,7 +65,7 @@ impl Parse {
             Frame::Integer(v) => Ok(v),
             Frame::Simple(data) => atoi::<u64>(data.as_bytes()).ok_or_else(|| MSG.into()),
             Frame::Bulk(data) => atoi::<u64>(&data).ok_or_else(|| MSG.into()),
-            frame => Err(format!("protocol error; expected int frame but got {:?}", frame).into()),
+            frame => Err(format!("protocol error; expected int frame but got {frame:?}").into()),
         }
     }
 

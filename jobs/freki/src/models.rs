@@ -22,10 +22,10 @@ impl fmt::Display for AddrSrc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::GPools(p) => {
-                write!(f, "{},", p)
+                write!(f, "{p},")
             }
             Self::Whitelist(w) => {
-                write!(f, "{},", w)
+                write!(f, "{w},")
             }
         }
     }

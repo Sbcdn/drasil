@@ -1,3 +1,4 @@
+#![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 use dvltath::error::Error;
 

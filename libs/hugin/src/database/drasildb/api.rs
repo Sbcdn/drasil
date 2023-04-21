@@ -12,7 +12,7 @@ use crate::{
     client::connect,
     encryption::{decrypt, encrypt},
     schema::{contracts, email_verification_token, multisig_keyloc},
-    BuildMultiSig, ScriptSpecParams, TransactionPattern,
+    BuildMultiSig, Operation, TransactionPattern,
 };
 use diesel::pg::upsert::on_constraint;
 use dvltath::vault::kv::{vault_get, vault_store};
@@ -65,8 +65,7 @@ impl TBContracts {
             .load::<TBContracts>(&mut establish_connection()?)?;
 
         let err = SystemDBError::Custom(format!(
-            "no contract found for user-id: '{}' and contract type '{}'",
-            uid, ctype
+            "no contract found for user-id: '{uid}' and contract type '{ctype}'"
         ));
 
         if let Some(v) = vers {
@@ -100,8 +99,7 @@ impl TBContracts {
             .load::<TBContracts>(&mut establish_connection()?)?;
 
         let err = SystemDBError::Custom(format!(
-            "no contract found for user-id: '{}' and contract type '{}'",
-            uid, ctype
+            "no contract found for user-id: '{uid}' and contract type '{ctype}'"
         ));
 
         if let Some(v) = vers {
@@ -290,8 +288,8 @@ impl TBMultiSigLoc {
             .filter(version.eq(&version_in))
             .load::<TBMultiSigLoc>(&mut establish_connection()?)?;
 
-        let err = SystemDBError::Custom(format!("no multisig key location found for contract-id: '{}' User-id: '{}'  , version: '{}'; \n Result: {:?}"
-                ,contract_id_in, user_id_in, version_in, result));
+        let err = SystemDBError::Custom(format!("no multisig key location found for contract-id: '{contract_id_in}' User-id: '{user_id_in}'  , version: '{version_in}'; \n Result: {result:?}"
+                ));
 
         if let Some(r) = result.get(0) {
             return Ok(r.clone());
@@ -671,7 +669,7 @@ impl TBCaPayment {
             crate::MultiSigType::CustomerPayout,
             TransactionPattern::new_empty(
                 self.user_id.try_into().unwrap(),
-                &ScriptSpecParams::CPO {
+                &Operation::CPO {
                     po_id: self.id,
                     pw: pw.to_string(),
                 },

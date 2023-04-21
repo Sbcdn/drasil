@@ -18,9 +18,7 @@ use diesel::prelude::*;
 use diesel::sql_types::{Bool, Bytea, Int8, Nullable, Timestamptz, Varchar};
 
 impl MintProject {
-    pub fn get_mintproject_by_id(
-        id_in: i64,
-    ) -> Result<MintProject, RWDError> {
+    pub fn get_mintproject_by_id(id_in: i64) -> Result<MintProject, RWDError> {
         let conn = &mut establish_connection()?;
         let result = mint_projects::table
             .filter(mint_projects::id.eq(id_in))
@@ -28,9 +26,7 @@ impl MintProject {
         Ok(result)
     }
 
-    pub fn get_mintproject_by_id_active(
-        id_in: i64,
-    ) -> Result<MintProject, RWDError> {
+    pub fn get_mintproject_by_id_active(id_in: i64) -> Result<MintProject, RWDError> {
         let conn = &mut establish_connection()?;
         let result = mint_projects::table
             .filter(mint_projects::id.eq(id_in))
@@ -39,10 +35,7 @@ impl MintProject {
         Ok(result)
     }
 
-    pub fn get_mintproject_by_uid_cid(
-        uid_in: i64,
-        cid_in: i64,
-    ) -> Result<MintProject, RWDError> {
+    pub fn get_mintproject_by_uid_cid(uid_in: i64, cid_in: i64) -> Result<MintProject, RWDError> {
         let conn = &mut establish_connection()?;
         let result = mint_projects::table
             .filter(mint_projects::user_id.eq(uid_in))
@@ -91,9 +84,9 @@ impl MintProject {
         };
         log::debug!("try to insert mint project into db...");
         let q = diesel::insert_into(mint_projects::table)
-        .values(&new_entry)
-        .get_result::<MintProject>(conn);
-        println!("insert error: {:?}", q);
+            .values(&new_entry)
+            .get_result::<MintProject>(conn);
+        println!("insert error: {q:?}");
         Ok(q?)
     }
 
@@ -179,13 +172,13 @@ type HNft<'a> = (
 );
 
 impl Nft {
-    pub async fn db_client() -> Result<tokio_postgres::Client,RWDError>{
+    pub async fn db_client() -> Result<tokio_postgres::Client, RWDError> {
         let (client, connection) =
             tokio_postgres::connect(&std::env::var("REWARDS_DB_URL")?, tokio_postgres::NoTls)
                 .await?;
         tokio::spawn(async move {
             if let Err(error) = connection.await {
-                eprintln!("Connection error: {}", error);
+                eprintln!("Connection error: {error}");
             }
         });
         Ok(client)
@@ -229,7 +222,6 @@ impl Nft {
         Ok((table, t_clmns))
     }
 
-       
     pub fn get_nfts_by_pid(
         conn: &mut PgConnection,
         pid_in: i64,
@@ -272,7 +264,7 @@ impl Nft {
             .first::<Nft>(conn)?;
         Ok(result)
     }
-    
+
     #[async_recursion]
     pub async fn claim_random_unminted_nft(
         pid_in: i64,
@@ -288,21 +280,19 @@ impl Nft {
         log::debug!("spawn connection...");
         tokio::spawn(async move {
             if let Err(error) = connection.await {
-                eprintln!("Connection error: {}", error);
+                eprintln!("Connection error: {error}");
             }
         });
 
         let rnd_nft_query = format!(
-            "SELECT * FROM {} TABLESAMPLE SYSTEM_ROWS(1) WHERE claim_addr IS NULL AND tx_hash IS NULL AND minted = false",
-            table_name
+            "SELECT * FROM {table_name} TABLESAMPLE SYSTEM_ROWS(1) WHERE claim_addr IS NULL AND tx_hash IS NULL AND minted = false"
         );
         let mut rows = client.query(&rnd_nft_query, &[]).await?;
         log::debug!("First Select: {:?}", rows);
-        let nft : Nft;
+        let nft: Nft;
         if rows.is_empty() || rows.len() > 1 {
             let last_nft_query = format!(
-                "SELECT * FROM {} WHERE claim_addr IS NULL AND tx_hash IS NULL AND minted = false",
-                table_name
+                "SELECT * FROM {table_name} WHERE claim_addr IS NULL AND tx_hash IS NULL AND minted = false"
             );
             rows = client.query(&last_nft_query, &[]).await?;
             log::debug!("Second Select: {:?}", rows);
@@ -310,7 +300,7 @@ impl Nft {
                 0 => {
                     log::error!("Couldn't find valid asset");
                     return Err(RWDError::new("Couldn't find valid nft to claim"));
-                },
+                }
                 _ => {
                     use rand::Rng;
                     let rnd = rand::thread_rng().gen_range(0..rows.len());
@@ -331,9 +321,7 @@ impl Nft {
                         updated_at: rows[rnd].get("updated_at"),
                     };
                 }
-                
             }
-            
         } else {
             nft = Nft {
                 project_id: rows[0].get("project_id"),
@@ -352,26 +340,25 @@ impl Nft {
                 updated_at: rows[0].get("updated_at"),
             };
         }
-        println!("\nNFT: {:?}", nft);
+        println!("\nNFT: {nft:?}");
 
         Nft::set_nft_claim_addr(&pid_in, table_name, &nft.asset_name_b, claim_addr_in).await?;
 
         let check = format!(
-            "SELECT * FROM {} WHERE claim_addr = $1 AND tx_hash IS NULL AND minted = false",
-            table_name
+            "SELECT * FROM {table_name} WHERE claim_addr = $1 AND tx_hash IS NULL AND minted = false"
         );
 
         let result = client.query(&check, &[claim_addr_in]).await;
         log::debug!("check: {:?}", rows);
 
-        println!("{:?}", result);
+        println!("{result:?}");
         match result {
             Ok(o) => {
-                log::debug!("result: {:?}",o);
+                log::debug!("result: {:?}", o);
                 return Ok(Some(nft));
             }
             Err(_) => {
-                println!("Tries: {:?}",tries);
+                println!("Tries: {tries:?}");
                 if tries < 5 {
                     return Nft::claim_random_unminted_nft(
                         pid_in,
@@ -394,7 +381,7 @@ impl Nft {
         let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
         let result = table
-            .select(clmns)    
+            .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.8.eq(claim_addr_in))
             .load::<Nft>(conn)?;
@@ -417,10 +404,7 @@ impl Nft {
         Ok(result)
     }
 
-    pub fn get_all_claimed_unminted(
-        pid_in: i64,
-        table: &str,
-    ) -> Result<Vec<Nft>, RWDError> {
+    pub fn get_all_claimed_unminted(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
         let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
         let result = table
@@ -432,10 +416,7 @@ impl Nft {
         Ok(result)
     }
 
-    pub fn get_all_minted(
-        pid_in: i64,
-        table: &str,
-    ) -> Result<Vec<Nft>, RWDError> {
+    pub fn get_all_minted(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
         let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
         let result = table
@@ -446,10 +427,7 @@ impl Nft {
         Ok(result)
     }
 
-    pub fn get_all_unconfirmed(
-        pid_in: i64,
-        table: &str,
-    ) -> Result<Vec<Nft>, RWDError> {
+    pub fn get_all_unconfirmed(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
         let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
         let result = table
@@ -461,29 +439,25 @@ impl Nft {
         Ok(result)
     }
 
-/*
-            project_id,   //0
-            asset_name_b, //1
-            asset_name,   //2
-            fingerprint,  //3
-            nft_id,       //4
-            file_name,    //5
-            ipfs_hash,    //6
-            metadata,     //7
-            claim_addr,   //8
-            minted,       //9
-            tx_hash,      //10
-            confirmed,    //11
-            created_at,   //12
-            updated_at,   //13
+    /*
+                project_id,   //0
+                asset_name_b, //1
+                asset_name,   //2
+                fingerprint,  //3
+                nft_id,       //4
+                file_name,    //5
+                ipfs_hash,    //6
+                metadata,     //7
+                claim_addr,   //8
+                minted,       //9
+                tx_hash,      //10
+                confirmed,    //11
+                created_at,   //12
+                updated_at,   //13
 
-*/
+    */
 
-
-    pub fn get_all_confirmed(
-        pid_in: i64,
-        table: &str,
-    ) -> Result<Vec<Nft>, RWDError> {
+    pub fn get_all_confirmed(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
         let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
         let result = table
@@ -516,14 +490,14 @@ impl Nft {
         log::debug!("spawn connection...");
         tokio::spawn(async move {
             if let Err(error) = connection.await {
-                eprintln!("Connection error: {}", error);
+                eprintln!("Connection error: {error}");
             }
         });
 
-        let insert_query = format!("INSERT INTO {} 
+        let insert_query = format!("INSERT INTO {table_name} 
         (project_id, asset_name_b, asset_name, fingerprint, nft_id, file_name, ipfs_hash, metadata, claim_addr, minted, confirmed) 
         VALUES 
-        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",table_name);
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)");
 
         let q = client
             .query(
@@ -545,18 +519,12 @@ impl Nft {
             .await;
 
         if q.is_err() {
-            log::debug!("NFT existed already or another error {:?}", q)               
+            log::debug!("NFT existed already or another error {:?}", q)
         }
 
-        let nft = Nft::get_nft_by_assetnameb(
-            *project_id,
-            table_name,
-            asset_name_b,
-        )?;
+        let nft = Nft::get_nft_by_assetnameb(*project_id, table_name, asset_name_b)?;
 
-        Ok(nft) 
-
-        
+        Ok(nft)
     }
 
     pub async fn set_nft_minted<'a>(
@@ -567,12 +535,15 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {} SET minted = true, tx_hash=$1 WHERE project_id=$2 AND fingerprint=$3 AND minted is false AND tx_hash is Null",
-            table_name, 
+            "UPDATE {table_name} SET minted = true, tx_hash=$1 WHERE project_id=$2 AND fingerprint=$3 AND minted is false AND tx_hash is Null", 
         );
-        let rows = client.query(&update_query, &[txhash_in, &pid_in, fingerprint]).await?;
+        let rows = client
+            .query(&update_query, &[txhash_in, &pid_in, fingerprint])
+            .await?;
         if !rows.is_empty() {
-            return Err(RWDError::new(&format!("Could not set NFT: {} to minted = true", fingerprint)));
+            return Err(RWDError::new(&format!(
+                "Could not set NFT: {fingerprint} to minted = true"
+            )));
         }
         Ok(())
     }
@@ -583,18 +554,19 @@ impl Nft {
         fingerprint: &'a String,
         txhash_in: &'a String,
     ) -> Result<(), RWDError> {
-
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {} SET confirmed = true WHERE project_id=$1 AND fingerprint=$2 AND minted = true AND tx_hash=$3",
-            table_name, 
+            "UPDATE {table_name} SET confirmed = true WHERE project_id=$1 AND fingerprint=$2 AND minted = true AND tx_hash=$3", 
         );
-        let rows = client.query(&update_query, &[pid_in, fingerprint,txhash_in]).await?;
+        let rows = client
+            .query(&update_query, &[pid_in, fingerprint, txhash_in])
+            .await?;
         if !rows.is_empty() {
-            return Err(RWDError::new(&format!("Could not set NFT: {} to confirmed = true", fingerprint)));
+            return Err(RWDError::new(&format!(
+                "Could not set NFT: {fingerprint} to confirmed = true"
+            )));
         }
         Ok(())
-
     }
 
     pub async fn set_nft_claim_addr<'a>(
@@ -605,12 +577,16 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {} SET claim_addr = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false AND tx_hash IS NULL",
-            table_name, 
+            "UPDATE {table_name} SET claim_addr = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false AND tx_hash IS NULL", 
         );
-        let rows = client.query(&update_query, &[claim_addr, &pid_in, asset_name_b]).await?;
+        let rows = client
+            .query(&update_query, &[claim_addr, &pid_in, asset_name_b])
+            .await?;
         if !rows.is_empty() {
-            return Err(RWDError::new(&format!("Could not set claim addr for NFT: {}", hex::encode(asset_name_b))));
+            return Err(RWDError::new(&format!(
+                "Could not set claim addr for NFT: {}",
+                hex::encode(asset_name_b)
+            )));
         }
         Ok(())
     }
@@ -623,13 +599,17 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {} SET ipfs_hash = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false",
-            table_name, 
+            "UPDATE {table_name} SET ipfs_hash = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false", 
         );
 
-        let rows = client.query(&update_query, &[ipfs_hash, &pid_in, &asset_name_b]).await?;
+        let rows = client
+            .query(&update_query, &[ipfs_hash, &pid_in, &asset_name_b])
+            .await?;
         if !rows.is_empty() {
-            return Err(RWDError::new(&format!("Could not set ipfs hash for NFT: {}", hex::encode(asset_name_b))));
+            return Err(RWDError::new(&format!(
+                "Could not set ipfs hash for NFT: {}",
+                hex::encode(asset_name_b)
+            )));
         }
         Ok(())
     }
@@ -642,23 +622,26 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {} SET metadata = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false",
-            table_name, 
+            "UPDATE {table_name} SET metadata = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false", 
         );
-        let rows = client.query(&update_query, &[metadata, &pid_in, asset_name_b]).await?;
+        let rows = client
+            .query(&update_query, &[metadata, &pid_in, asset_name_b])
+            .await?;
         if !rows.is_empty() {
-            return Err(RWDError::new(&format!("Could not set metadata for NFT: {}", hex::encode(asset_name_b))));
+            return Err(RWDError::new(&format!(
+                "Could not set metadata for NFT: {}",
+                hex::encode(asset_name_b)
+            )));
         }
         Ok(())
     }
 
-
     /*
     TODO:
       On Mint-Project creation a user needs to set if a mint project will contain double IPFS images / filenames.
-      This means an IPFS link / image / file can occur for more than one NFT. 
-      For this case the database constraints which block the doublets needs to be excluded from the creation query. 
-      For this case the drasil system can obviously not ensure that an NFT is uniquly minted. 
+      This means an IPFS link / image / file can occur for more than one NFT.
+      For this case the database constraints which block the doublets needs to be excluded from the creation query.
+      For this case the drasil system can obviously not ensure that an NFT is uniquly minted.
       The same might apply if you want Semi-Fungible Tokens but that needs anyway additional concepts.
     */
     pub async fn create_nft_table(str: &String) -> Result<(), RWDError> {
@@ -670,13 +653,13 @@ impl Nft {
         log::debug!("spawn connection...");
         tokio::spawn(async move {
             if let Err(error) = connection.await {
-                eprintln!("Connection error: {}", error);
+                eprintln!("Connection error: {error}");
             }
         });
 
         log::debug!("try to create table...");
         let create_str = format!(
-            "CREATE TABLE IF NOT EXISTS {} (
+            "CREATE TABLE IF NOT EXISTS {str} (
             project_id BIGINT NOT NULL,
             asset_name_b BYTEA PRIMARY KEY,
             asset_name VARCHAR NOT NULL,
@@ -692,18 +675,16 @@ impl Nft {
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
             CREATE TRIGGER set_timestamp
-            BEFORE UPDATE ON {}
+            BEFORE UPDATE ON {str}
             FOR EACH ROW
-            EXECUTE PROCEDURE trigger_set_timestamp();",
-            str, str
-        );//DROP TRIGGER IF EXISTS set_timestamp ON {};
+            EXECUTE PROCEDURE trigger_set_timestamp();"
+        ); //DROP TRIGGER IF EXISTS set_timestamp ON {};
 
         client.batch_execute(&create_str).await?;
 
         Ok(())
     }
 }
-
 
 impl MintReward {
     pub fn get_mintrewards_by_pid_addr(
@@ -728,12 +709,38 @@ impl MintReward {
         Ok(result)
     }
 
-    pub fn get_mintreward_by_id(
-        id_in: i64,
-    ) -> Result<MintReward, RWDError> {
-        
+    pub fn get_avail_mintrewards_cl_by_addr(
+        user_id_in: i64,
+        pay_addr_in: &String,
+    ) -> Result<Vec<MintReward>, RWDError> {
+        let projects = mint_projects::table
+            .filter(mint_projects::user_id.eq(user_id_in))
+            .load::<MintProject>(&mut establish_connection()?)?;
+        let mut mintrewards = Vec::<MintReward>::new();
+        for p in projects {
+            mintrewards.extend(
+                mint_rewards::table
+                    .filter(mint_rewards::pay_addr.eq(pay_addr_in))
+                    .filter(mint_rewards::project_id.eq(p.id))
+                    .filter(mint_rewards::processed.eq(false))
+                    .filter(mint_rewards::minted.eq(false))
+                    .load::<MintReward>(&mut establish_connection()?)?
+                    .into_iter(),
+            )
+        }
+        Ok(mintrewards)
+    }
+
+    pub fn get_mintreward_by_id(id_in: i64) -> Result<MintReward, RWDError> {
         let result = mint_rewards::table
             .filter(mint_rewards::id.eq(id_in))
+            .first::<MintReward>(&mut establish_connection()?)?;
+        Ok(result)
+    }
+
+    pub fn get_mintreward_by_nft_ids(ids_in: Vec<Vec<u8>>) -> Result<MintReward, RWDError> {
+        let result = mint_rewards::table
+            .filter(mint_rewards::nft_ids.eq(ids_in))
             .first::<MintReward>(&mut establish_connection()?)?;
         Ok(result)
     }
@@ -745,7 +752,6 @@ impl MintReward {
         pay_addr: &'a String,
         nft_ids: Vec<&'a Vec<u8>>,
         v_nfts_b: Vec<&'a Vec<u8>>, // serialized clib::utils::Value
-
     ) -> Result<MintReward, RWDError> {
         let conn = &mut establish_connection()?;
 
@@ -761,10 +767,24 @@ impl MintReward {
         };
         log::debug!("try to insert mint reward into db...");
         let q = diesel::insert_into(mint_rewards::table)
-        .values(&new_entry)
-        .get_result::<MintReward>(conn);
-        println!("insert error?: {:?}", q);
+            .values(&new_entry)
+            .get_result::<MintReward>(conn);
+        println!("insert error?: {q:?}");
         Ok(q?)
+    }
+
+    pub fn update_payaddr(id_in: i64, pay_addr_in: &String) -> Result<MintReward, RWDError> {
+        log::debug!("try to update payaddr on mint reward...");
+        let conn = &mut establish_connection()?;
+        let mintreward = diesel::update(
+            mint_rewards::table
+                .filter(mint_rewards::id.eq(id_in))
+                .filter(mint_rewards::processed.eq(false))
+                .filter(mint_rewards::minted.eq(false)),
+        )
+        .set((mint_rewards::pay_addr.eq(pay_addr_in),))
+        .get_result::<MintReward>(conn)?;
+        Ok(mintreward)
     }
 
     pub fn process_mintreward(
@@ -774,26 +794,25 @@ impl MintReward {
     ) -> Result<MintReward, RWDError> {
         let conn = &mut establish_connection()?;
         let mint_reward = MintReward::get_mintreward_by_id(id_in)?;
-        
-        if mint_reward.pay_addr != *pay_addr_in || mint_reward.processed || mint_reward.minted || mint_reward.project_id != pid_in {
-            return Err(RWDError::new("The provided mintreward is invalid"))
+
+        if mint_reward.pay_addr != *pay_addr_in
+            || mint_reward.processed
+            || mint_reward.minted
+            || mint_reward.project_id != pid_in
+        {
+            return Err(RWDError::new("The provided mintreward is invalid"));
         }
         let mp = MintProject::get_mintproject_by_id(mint_reward.project_id)?;
         for nft_id in &mint_reward.nft_ids {
-            let nft  = Nft::get_nft_by_assetnameb(mint_reward.project_id, &mp.nft_table_name, nft_id)?;
+            let nft =
+                Nft::get_nft_by_assetnameb(mint_reward.project_id, &mp.nft_table_name, nft_id)?;
             if nft.claim_addr.unwrap() != *pay_addr_in || nft.minted {
-                return Err(RWDError::new("invalid minting request"))
+                return Err(RWDError::new("invalid minting request"));
             }
         }
-        let mintreward = diesel::update(
-            mint_rewards::table
-                .filter(mint_rewards::id.eq(id_in))
-        )
-        .set((
-            mint_rewards::processed.eq(true),
-            
-        ))
-        .get_result::<MintReward>(conn)?;
+        let mintreward = diesel::update(mint_rewards::table.filter(mint_rewards::id.eq(id_in)))
+            .set((mint_rewards::processed.eq(true),))
+            .get_result::<MintReward>(conn)?;
         Ok(mintreward)
     }
 
@@ -804,31 +823,23 @@ impl MintReward {
     ) -> Result<MintReward, RWDError> {
         let conn = &mut establish_connection()?;
         let mint_reward = MintReward::get_mintreward_by_id(id_in)?;
-        
-        if mint_reward.pay_addr != *pay_addr_in || !mint_reward.processed || mint_reward.minted || mint_reward.project_id != pid_in {
-            return Err(RWDError::new("The provided mintreward is invalid"))
+
+        if mint_reward.pay_addr != *pay_addr_in
+            || !mint_reward.processed
+            || mint_reward.minted
+            || mint_reward.project_id != pid_in
+        {
+            return Err(RWDError::new("The provided mintreward is invalid"));
         }
-        let mintreward = diesel::update(
-            mint_rewards::table
-                .filter(mint_rewards::id.eq(id_in))
-        )
-        .set((
-            mint_rewards::minted.eq(true),
-            
-        ))
-        .get_result::<MintReward>(conn)?;
+        let mintreward = diesel::update(mint_rewards::table.filter(mint_rewards::id.eq(id_in)))
+            .set((mint_rewards::minted.eq(true),))
+            .get_result::<MintReward>(conn)?;
         Ok(mintreward)
     }
 }
 
-
-
-
-
-
-
 #[cfg(test)]
-mod tests { 
+mod tests {
     use super::*;
 
     #[tokio::test]
@@ -838,41 +849,43 @@ mod tests {
             "", // set db connection string
         );
         let gcon = &mut establish_connection().unwrap();
-        
+
         MintProject::remove_mintproject(gcon, &99991).unwrap();
         log::debug!("try to connect...");
         let client = Nft::db_client().await.unwrap();
-        let drop = client.batch_execute("DROP TABLE IF EXISTS test_table;").await;
+        let drop = client
+            .batch_execute("DROP TABLE IF EXISTS test_table;")
+            .await;
         match drop {
             Ok(_) => (),
             Err(e) => {
-                eprintln!("Drop error: {}", e);
+                eprintln!("Drop error: {e}");
             }
         }
 
         MintProject::create_mintproject(
-             &"TestProject".to_string(), 
-            &0, 
-            &99, 
-            None, 
-            &Utc::now(), 
-            None, 
-            &"CIP25Metadata".to_string(), 
-            None, 
-            None, 
-            &"Test Collection".to_string(), 
-            &"Test0r".to_string(), 
-            &"A Test Project".to_string(), 
-            Some(&"test".to_string()), 
+            &"TestProject".to_string(),
+            &0,
+            &99,
+            None,
+            &Utc::now(),
+            None,
+            &"CIP25Metadata".to_string(),
+            None,
+            None,
+            &"Test Collection".to_string(),
+            &"Test0r".to_string(),
+            &"A Test Project".to_string(),
+            Some(&"test".to_string()),
             Some(&1),
-            &"test_table".to_string(), 
-            &true
-        ).unwrap();
-
+            &"test_table".to_string(),
+            &true,
+        )
+        .unwrap();
 
         models::Nft::create_nft_table(&"test_table".to_string())
             .await
-            .unwrap();      
+            .unwrap();
 
         let nft = Nft::create_nft(
             "test_table",
@@ -888,7 +901,7 @@ mod tests {
         )
         .await
         .unwrap();
-        
+
         let claim1 = minting::models::Nft::claim_random_unminted_nft(
             99991,
             "test_table",
@@ -897,8 +910,8 @@ mod tests {
         )
         .await;
 
-        assert_eq!(claim1,Ok(Some(nft)));
- 
+        assert_eq!(claim1, Ok(Some(nft)));
+
         let claim2 = minting::models::Nft::claim_random_unminted_nft(
             99991,
             "test_table",
@@ -908,15 +921,17 @@ mod tests {
         .await;
         match claim2 {
             Ok(Some(nft)) => {
-                panic!("second claim should fail, claimed NFT: {:?}", nft);
+                panic!("second claim should fail, claimed NFT: {nft:?}");
             }
-            Ok(x) => {assert_eq!(x,None);}
+            Ok(x) => {
+                assert_eq!(x, None);
+            }
             Err(e) => {
-                println!("Error: {}", e);
+                println!("Error: {e}");
             }
         }
-        let claims = Nft::get_all_claimed_unminted(99991,"test_table").unwrap();
-        println!("Claims: {:?}", claims);
+        let claims = Nft::get_all_claimed_unminted(99991, "test_table").unwrap();
+        println!("Claims: {claims:?}");
 
         let _ = Nft::create_nft(
             "test_table",
@@ -933,74 +948,99 @@ mod tests {
         .await
         .unwrap();
 
-        let all_claimed = Nft::get_all_claimed_unminted(99991,"test_table").unwrap();
-        assert_eq!(all_claimed.len(),1);
-        let all_minted = Nft::get_all_minted(99991,"test_table").unwrap();
-        assert_eq!(all_minted.len(),0);
-        let all_unconfirmed = Nft::get_all_unconfirmed(99991,"test_table").unwrap();
-        assert_eq!(all_unconfirmed.len(),0);
-        let all_confirmed = Nft::get_all_confirmed(99991,"test_table").unwrap();
-        assert_eq!(all_confirmed.len(),0);
-            
+        let all_claimed = Nft::get_all_claimed_unminted(99991, "test_table").unwrap();
+        assert_eq!(all_claimed.len(), 1);
+        let all_minted = Nft::get_all_minted(99991, "test_table").unwrap();
+        assert_eq!(all_minted.len(), 0);
+        let all_unconfirmed = Nft::get_all_unconfirmed(99991, "test_table").unwrap();
+        assert_eq!(all_unconfirmed.len(), 0);
+        let all_confirmed = Nft::get_all_confirmed(99991, "test_table").unwrap();
+        assert_eq!(all_confirmed.len(), 0);
 
         Nft::set_nft_ipfs(
             &99991,
             "test_table",
             &"MyAsset2".to_string().as_bytes().to_vec(),
-            &"bafybeihcyruaeza8uyjd6ugfcbcrqumejf6uf353e5etdkhotqffwtguva".to_string()
-        ).await.unwrap();
+            &"bafybeihcyruaeza8uyjd6ugfcbcrqumejf6uf353e5etdkhotqffwtguva".to_string(),
+        )
+        .await
+        .unwrap();
 
-        let nft_ = Nft::get_nft_by_assetnameb(99991, "test_table", &"MyAsset2".to_string().as_bytes().to_vec()).unwrap();
-        assert_eq!(nft_.ipfs_hash.unwrap(),"bafybeihcyruaeza8uyjd6ugfcbcrqumejf6uf353e5etdkhotqffwtguva");
+        let nft_ = Nft::get_nft_by_assetnameb(
+            99991,
+            "test_table",
+            &"MyAsset2".to_string().as_bytes().to_vec(),
+        )
+        .unwrap();
+        assert_eq!(
+            nft_.ipfs_hash.unwrap(),
+            "bafybeihcyruaeza8uyjd6ugfcbcrqumejf6uf353e5etdkhotqffwtguva"
+        );
 
         Nft::set_nft_metadata(
             &99991,
             "test_table",
             &"MyAsset2".to_string().as_bytes().to_vec(),
-            &"{\"name\":\"This is Token1\"}".to_string()
-        ).await.unwrap();
+            &"{\"name\":\"This is Token1\"}".to_string(),
+        )
+        .await
+        .unwrap();
 
-        let nft_ = Nft::get_nft_by_assetname_str(99991, "test_table", &"MyAsset2".to_string()).unwrap();
-        assert_eq!(nft_.metadata.unwrap(),"{\"name\":\"This is Token1\"}".to_string());
+        let nft_ =
+            Nft::get_nft_by_assetname_str(99991, "test_table", &"MyAsset2".to_string()).unwrap();
+        assert_eq!(
+            nft_.metadata.unwrap(),
+            "{\"name\":\"This is Token1\"}".to_string()
+        );
 
         Nft::set_nft_claim_addr(
             &99991,
             "test_table",
             &"MyAsset2".to_string().as_bytes().to_vec(),
-            &"addr_test1wpqkdeh52adpqf57n83xhaze4gkzr9u2mfwa23lcfnpgdzs72t77u".to_string()
-        ).await.unwrap();
+            &"addr_test1wpqkdeh52adpqf57n83xhaze4gkzr9u2mfwa23lcfnpgdzs72t77u".to_string(),
+        )
+        .await
+        .unwrap();
 
-        let nft_ = Nft::get_nft_by_claim_addr(99991, &"addr_test1wpqkdeh52adpqf57n83xhaze4gkzr9u2mfwa23lcfnpgdzs72t77u".to_string(),"test_table").unwrap();
-        assert_eq!(nft_[0].clone().ipfs_hash.unwrap(),"bafybeihcyruaeza8uyjd6ugfcbcrqumejf6uf353e5etdkhotqffwtguva");
+        let nft_ = Nft::get_nft_by_claim_addr(
+            99991,
+            &"addr_test1wpqkdeh52adpqf57n83xhaze4gkzr9u2mfwa23lcfnpgdzs72t77u".to_string(),
+            "test_table",
+        )
+        .unwrap();
+        assert_eq!(
+            nft_[0].clone().ipfs_hash.unwrap(),
+            "bafybeihcyruaeza8uyjd6ugfcbcrqumejf6uf353e5etdkhotqffwtguva"
+        );
 
-        let all_claimed = Nft::get_all_claimed_unminted(99991,"test_table").unwrap();
-        assert_eq!(all_claimed.len(),2);
+        let all_claimed = Nft::get_all_claimed_unminted(99991, "test_table").unwrap();
+        assert_eq!(all_claimed.len(), 2);
 
         Nft::set_nft_minted(
             &99991,
             "test_table",
             &"asset19chwwkp2pftlxdsxszv6edyj070j4nvhah5ugd".to_string(),
-            &"3ac4574762c5ed6bfd7a6e4e23759bff0a8febd679f1316e232ff080134dae2f".to_string()
-        ).await.unwrap();
+            &"3ac4574762c5ed6bfd7a6e4e23759bff0a8febd679f1316e232ff080134dae2f".to_string(),
+        )
+        .await
+        .unwrap();
 
-        let all_minted = Nft::get_all_minted(99991,"test_table").unwrap();
-        assert_eq!(all_minted.len(),1);
+        let all_minted = Nft::get_all_minted(99991, "test_table").unwrap();
+        assert_eq!(all_minted.len(), 1);
 
-        let all_unconfirmed = Nft::get_all_unconfirmed(99991,"test_table").unwrap();
-        assert_eq!(all_unconfirmed.len(),1);
+        let all_unconfirmed = Nft::get_all_unconfirmed(99991, "test_table").unwrap();
+        assert_eq!(all_unconfirmed.len(), 1);
 
         Nft::set_nft_confirmed(
             &99991,
             "test_table",
             &"asset19chwwkp2pftlxdsxszv6edyj070j4nvhah5ugd".to_string(),
-            &"3ac4574762c5ed6bfd7a6e4e23759bff0a8febd679f1316e232ff080134dae2f".to_string()
-        ).await.unwrap();     
-       
-        let all_confirmed = Nft::get_all_confirmed(99991,"test_table").unwrap();
-        assert_eq!(all_confirmed.len(),1);
+            &"3ac4574762c5ed6bfd7a6e4e23759bff0a8febd679f1316e232ff080134dae2f".to_string(),
+        )
+        .await
+        .unwrap();
 
+        let all_confirmed = Nft::get_all_confirmed(99991, "test_table").unwrap();
+        assert_eq!(all_confirmed.len(), 1);
     }
-
-
-
 }

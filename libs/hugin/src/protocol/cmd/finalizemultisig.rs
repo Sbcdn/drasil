@@ -14,8 +14,8 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 use gungnir::models::{MintProject, MintReward, Nft};
+use murin::make_fingerprint;
 use murin::minter::models::{CMintHandle, ColMinterTxData};
-use murin::{get_bech32_stake_address_from_str, make_fingerprint};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -112,12 +112,12 @@ impl FinalizeMultiSig {
                 {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a reward distribution transaction, {:?}",e.to_string())}.into());
                 };
-                ret = self.finalize_rwd(raw_tx.clone()).await?;
 
                 let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
                 let rwd_data = murin::RWDTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
 
                 let mut gcon = gungnir::establish_connection()?;
+
                 for handle in rwd_data.get_rewards() {
                     let fingerprint = murin::chelper::make_fingerprint(
                         &hex::encode(handle.get_policy_id()?.to_bytes()),
@@ -172,7 +172,7 @@ impl FinalizeMultiSig {
                         let nft = Nft::get_nft_by_assetnameb(p.id, &p.nft_table_name, &a)?;
                         if nft.minted || mrwd.processed || mrwd.minted {
                             return Err(CmdError::Custom {
-                                str: format!("ERROR mint already processed, {:?}", nft),
+                                str: format!("ERROR mint already processed, {nft:?}"),
                             }
                             .into());
                         }

@@ -183,30 +183,33 @@ impl TransBuilder {
     */
     pub fn build(&mut self, fee: BigNum) -> Result<(), TransferError> {
         // Apply fees
-        let fee_transfer = self.find_transfer(&self.fee_addr);
-        if fee_transfer.is_none() {
+
+        log::debug!("Transfers:\n{:?}", self.transfers);
+        if let Some(mut fee_transfer) = self.find_transfer(&self.fee_addr) {
+            log::debug!("\n\n\nBefore FeeSet: \n{:?}\n", self.transfers);
+            fee_transfer.0.source.add_fee(&fee)?;
+            self.replace_transfer((&fee_transfer.0, fee_transfer.1))?;
+            log::debug!("\n\n\nAfter FeeSet: \n{:?}\n", self.transfers);
+        } else {
+            //ToDo: Do not error out, add fee to sending wallet
             return Err(TransferError::Custom(
                 "no transfer for specified fee_addr exists".to_string(),
             ));
         }
-        log::debug!("\n\n\nBefore FeeSet: \n{:?}\n", self.transfers);
-        let mut fee_transfer = fee_transfer.unwrap();
-        fee_transfer.0.source.add_fee(&fee)?;
-        self.replace_transfer((&fee_transfer.0, fee_transfer.1))?;
-        log::debug!("\n\n\nAfter FeeSet: \n{:?}\n", self.transfers);
+
         // Balance all transfers
         //let mut handles = Vec::<_>::new();
+        //self.transfers.iter_mut().for_each(|n| {
+        //    log::debug!("Pay Address: {:?}", n.source.pay_addr);
+        //    log::trace!("Wallets: {:?}", self.wallets);
+        //    let r = n.balance(self.wallets.get_wallet(&n.source.pay_addr)?)?;
+        //});
 
-        self.transfers.iter_mut().for_each(|n| {
-            log::debug!("Pay Address: {:?}", n.source.pay_addr);
+        for t in &mut self.transfers {
+            log::debug!("Pay Address: {:?}", t.source.pay_addr);
             log::trace!("Wallets: {:?}", self.wallets);
-            n.balance(
-                self.wallets
-                    .get_wallet(&n.source.pay_addr)
-                    .expect("TransWallet not found"),
-            )
-            .expect("Transaction does not balance")
-        });
+            t.balance(self.wallets.get_wallet(&t.source.pay_addr)?)?;
+        }
 
         //handles.push();
 

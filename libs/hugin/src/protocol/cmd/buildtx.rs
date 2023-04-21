@@ -8,7 +8,7 @@
 */
 use crate::datamodel::{StdTxType, TransactionPattern};
 use crate::protocol::stdtx;
-use crate::{CmdError, Parse};
+use crate::Parse; // CmdError
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
@@ -61,8 +61,8 @@ impl BuildStdTx {
     }
 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        let mut response =
-            Frame::Simple("ERROR: Could not build multisignature transaction".to_string());
+        /*
+        ToDo: Include Addresses Only Format to the check
 
         if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
             log::debug!("{:?}", response);
@@ -70,15 +70,19 @@ impl BuildStdTx {
             dst.write_frame(&response).await?;
             return Err(Box::new(CmdError::InvalidData));
         }
-
+        */
         let ret = match self.tx_type() {
             StdTxType::DelegateStake => match stdtx::handle_stake_delegation(&self).await {
                 Ok(s) => s,
                 Err(e) => e.to_string(),
             },
+            StdTxType::StandardTx => match stdtx::handle_stx(&self).await {
+                Ok(s) => s,
+                Err(e) => e.to_string(),
+            },
         };
 
-        response = Frame::Bulk(Bytes::from(
+        let response = Frame::Bulk(Bytes::from(
             bc::DefaultOptions::new()
                 .with_varint_encoding()
                 .serialize(&ret)?,

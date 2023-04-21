@@ -68,12 +68,12 @@ pub async fn entrp_create_nfts_from_csv(
     let job = sleipnir::jobs::JobTypes::ImportNFTsFromCsv(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
-        eprintln!("can't connect to rmq, {}", e);
+        log::error!("can't connect to rmq, {}", e);
         warp::reject::custom(error::Error::RMQPoolError(e))
     })?;
 
     let channel = rmq_con.create_channel().await.map_err(|e| {
-        eprintln!("can't create channel, {}", e);
+        log::error!("can't create channel, {}", e);
         warp::reject::custom(error::Error::RMQError(e))
     })?;
 
@@ -99,12 +99,12 @@ pub async fn entrp_create_nfts_from_csv(
         )
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(error::Error::RMQError(e))
         })?
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(error::Error::RMQError(e))
         })?;
     Ok(

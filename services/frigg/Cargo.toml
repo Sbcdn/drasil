@@ -25,6 +25,7 @@ license = "LICENSE.md"
 readme = "README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
 
+
 [dependencies]
 jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 tokio = { version = "1", features = ["full"] }

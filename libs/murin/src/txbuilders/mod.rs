@@ -456,8 +456,7 @@ impl core::str::FromStr for TxData {
             })
         } else {
             Err(MurinError::new(&format!(
-                "Error the provided string '{}' cannot be parsed into 'TxData' ",
-                src
+                "Error the provided string '{src}' cannot be parsed into 'TxData' "
             )))
         }
     }
@@ -1514,7 +1513,7 @@ pub async fn submit_endpoint(
             debug!("Taking more than five seconds");
             Ok((
                 "".to_string(),
-                format!("ERROR: '{:?}' is not available", endpoint),
+                format!("ERROR: '{endpoint:?}' is not available"),
                 false,
             ))
         }
@@ -1526,7 +1525,7 @@ pub async fn submit_endpoint(
                 let r_status = resp.status();
                 let resp_text = resp.text().await?;
                 if r_status != http::StatusCode::ACCEPTED {
-                    err = format!("ERROR on tx submission: {:?}", resp_text);
+                    err = format!("ERROR on tx submission: {resp_text:?}");
                     debug!("Error, Endpoint: {} : {:?}", endpoint, err);
                 } else {
                     txhash = resp_text.replace('\"', "");
@@ -1537,7 +1536,7 @@ pub async fn submit_endpoint(
             }
             Err(e) => Ok((
                 "".to_string(),
-                format!("ERROR: '{:?}' is not available", e),
+                format!("ERROR: '{e:?}' is not available"),
                 false,
             )),
         },
