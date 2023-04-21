@@ -375,7 +375,7 @@ fn endpoints(
 
     let _retailer_get = retailer_route.clone().and(warp::get());
 
-    let retailer_post = retailer_route.clone().and(warp::post());
+    //let retailer_post = retailer_route.clone().and(warp::post());
 
     // Drasil Admin Routes
 
@@ -542,7 +542,7 @@ pub async fn verify_email(payload: email_verify::RegistrationMessage) -> WebResu
 }
 
 pub async fn user_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello User {}", uid))
+    Ok(format!("Hello User {uid}"))
 }
 
 pub async fn enterprise_post_handler(
@@ -550,17 +550,17 @@ pub async fn enterprise_post_handler(
     _param: String,
     _json: String,
 ) -> WebResult<impl Reply> {
-    Ok(format!("Hello Enterprise {}", uid))
+    Ok(format!("Hello Enterprise {uid}"))
 }
 
 pub async fn enterprise_get_handler(uid: String, param: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello Enterprise {}, p: {}", uid, param))
+    Ok(format!("Hello Enterprise {uid}, p: {param}"))
 }
 
 pub async fn retailer_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello Retailer {}", uid))
+    Ok(format!("Hello Retailer {uid}"))
 }
 
 pub async fn admin_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello Admin {}", uid))
+    Ok(format!("Hello Admin {uid}"))
 }

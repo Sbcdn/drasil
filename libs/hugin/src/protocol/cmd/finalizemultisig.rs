@@ -14,8 +14,8 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 use gungnir::models::{MintProject, MintReward, Nft};
+use murin::make_fingerprint;
 use murin::minter::models::{CMintHandle, ColMinterTxData};
-use murin::{get_bech32_stake_address_from_str, make_fingerprint};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -112,7 +112,6 @@ impl FinalizeMultiSig {
                 {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a reward distribution transaction, {:?}",e.to_string())}.into());
                 };
-                
 
                 let tx_data = murin::TxData::from_str(raw_tx.get_txrawdata())?;
                 let rwd_data = murin::RWDTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
@@ -141,7 +140,7 @@ impl FinalizeMultiSig {
                         &ret.clone(),
                         None,
                         None,
-                    );
+                    )?;
                     gungnir::Rewards::update_claimed(
                         &mut gcon,
                         &tx_data.get_stake_address().to_bech32(None).unwrap(),
@@ -149,7 +148,7 @@ impl FinalizeMultiSig {
                         &handle.get_contract_id(),
                         &raw_tx.get_user_id()?,
                         &murin::clib::utils::from_bignum(&handle.get_amount()?),
-                    );
+                    )?;
                 }
             }
             MultiSigType::NftCollectionMinter => {
@@ -173,7 +172,7 @@ impl FinalizeMultiSig {
                         let nft = Nft::get_nft_by_assetnameb(p.id, &p.nft_table_name, &a)?;
                         if nft.minted || mrwd.processed || mrwd.minted {
                             return Err(CmdError::Custom {
-                                str: format!("ERROR mint already processed, {:?}", nft),
+                                str: format!("ERROR mint already processed, {nft:?}"),
                             }
                             .into());
                         }

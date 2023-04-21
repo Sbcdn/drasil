@@ -54,7 +54,7 @@ pub async fn verify_approval_drsl(msg: &str, sign: &str) -> Result<bool, SystemD
 }
 
 // ToDO: TWO FACTOR AUTHENTICATION
-pub async fn get_vaddr(user: &i64) -> Result<String, SystemDBError> {
+pub async fn get_vaddr(_user: &i64) -> Result<String, SystemDBError> {
     // ToDo:
     // Get useres idvidually verified wallet for this user
 

@@ -206,7 +206,10 @@ mod auth {
         reject, Rejection,
     };
 
-    use hugin::{client::connect, OneShotMintPayload, TXPWrapper, TransactionPattern};
+    use hugin::{
+        client::connect, OneShotMintPayload, TXPWrapper, TransactionPattern,
+        WalletTransactionPattern,
+    };
     use hugin::{Signature, VerifyUser};
 
     const BEARER: &str = "Bearer ";
@@ -232,13 +235,17 @@ mod auth {
             TXPWrapper::TransactionPattern(Box::new(txp))
         } else if let Ok(s) = serde_json::from_str::<Signature>(std::str::from_utf8(&b).unwrap()) {
             TXPWrapper::Signature(s)
+        } else if let Ok(wal) =
+            serde_json::from_str::<WalletTransactionPattern>(std::str::from_utf8(&b).unwrap())
+        {
+            TXPWrapper::TransactionPattern(Box::new(wal.into_txp()))
         } else {
             TXPWrapper::OneShotMinter(
                 serde_json::from_str::<OneShotMintPayload>(std::str::from_utf8(&b).unwrap())
                     .unwrap(),
             )
         };
-        println!("\n\nBody: {:?}\n\n", b);
+        log::debug!("\n\nBody: {b:?}\n\n");
         match jwt_from_header(&headers) {
             Ok(jwt) => {
                 let decoded = decode::<ApiClaims>(
@@ -260,10 +267,7 @@ mod auth {
                         return Err(reject::custom(Error::JWTTokenError));
                     }
                 };
-                println!(
-                    "Authentication successful: User_id: {:?}; txp: {:?}",
-                    user_id, txp_out
-                );
+                log::debug!("Authentication successful: User_id: {user_id:?}; txp: {txp_out:?}");
                 Ok((user_id, txp_out))
             }
 
@@ -367,10 +371,20 @@ mod handlers {
                     warp::http::StatusCode::OK,
                 )),
 
-                Err(e) => Ok(warp::reply::with_status(
-                    warp::reply::json(&ReturnError::new(&e.to_string())),
-                    warp::http::StatusCode::PRECONDITION_FAILED,
-                )),
+                Err(_) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
+                    Ok(resp) => Ok(warp::reply::with_status(
+                        warp::reply::json(&resp),
+                        warp::http::StatusCode::OK,
+                    )),
+
+                    Err(e) => {
+                        log::error!("Error could not deserialize Unsigned Transactions: {}", e);
+                        Ok(warp::reply::with_status(
+                            warp::reply::json(&ReturnError::new(&e.to_string())),
+                            warp::http::StatusCode::CONFLICT,
+                        ))
+                    }
+                },
             },
             Err(otherwise) => Ok(warp::reply::with_status(
                 warp::reply::json(&ReturnError::new(&otherwise.to_string())),
@@ -414,14 +428,14 @@ mod handlers {
                     warp::http::StatusCode::OK,
                 )),
 
-                Err(e) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
+                Err(_) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
                     Ok(resp) => Ok(warp::reply::with_status(
                         warp::reply::json(&resp),
                         warp::http::StatusCode::OK,
                     )),
 
                     Err(e) => {
-                        log::error!("Error could not deserialize Unsigned Transactions: {}", e);
+                        log::error!("Error could not deserialize Unsigned Transaction: {}", e);
                         Ok(warp::reply::with_status(
                             warp::reply::json(&ReturnError::new(&e.to_string())),
                             warp::http::StatusCode::CONFLICT,
@@ -454,24 +468,33 @@ mod handlers {
         let mut client = connect_odin().await;
 
         let cmd = BuildStdTx::new(customer_id, tx_type.clone(), *payload.clone());
-
-        let response = match client.build_cmd::<BuildStdTx>(cmd).await {
+        match client.build_cmd::<BuildStdTx>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
-                Ok(resp) => {
-                    warp::reply::with_status(warp::reply::json(&resp), warp::http::StatusCode::OK)
-                }
+                Ok(resp) => Ok(warp::reply::with_status(
+                    warp::reply::json(&resp),
+                    warp::http::StatusCode::OK,
+                )),
 
-                Err(e) => warp::reply::with_status(
-                    warp::reply::json(&ReturnError::new(&e.to_string())),
-                    warp::http::StatusCode::PRECONDITION_FAILED,
-                ),
+                Err(_) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
+                    Ok(resp) => Ok(warp::reply::with_status(
+                        warp::reply::json(&resp),
+                        warp::http::StatusCode::OK,
+                    )),
+
+                    Err(e) => {
+                        log::error!("Error could not deserialize Unsigned Transaction: {}", e);
+                        Ok(warp::reply::with_status(
+                            warp::reply::json(&ReturnError::new(&e.to_string())),
+                            warp::http::StatusCode::CONFLICT,
+                        ))
+                    }
+                },
             },
-            Err(otherwise) => warp::reply::with_status(
+            Err(otherwise) => Ok(warp::reply::with_status(
                 warp::reply::json(&ReturnError::new(&otherwise.to_string())),
                 warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            ),
-        };
-        Ok(response)
+            )),
+        }
     }
 
     pub async fn contract_exec_finalize(

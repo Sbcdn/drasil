@@ -92,7 +92,7 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         let aux_data = clib::metadata::AuxiliaryData::new();
         // ToDo:set messages into metadata from wallet
-        let aux_data_hash = hash_auxiliary_data(&aux_data);
+        let _aux_data_hash = hash_auxiliary_data(&aux_data);
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         //Add Inputs and Outputs
@@ -159,7 +159,7 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
 
         builder.transfers = transfers;
         builder.wallets = wallets;
-        builder.build(*fee).unwrap(); // ToDo: Implement error
+        builder.build(*fee)?;
 
         let saved_input_txuos = builder.tx.clone().unwrap().0;
         let vkey_counter = hfn::get_vkey_count(&builder.tx.as_ref().unwrap().0, None);

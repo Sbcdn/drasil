@@ -31,7 +31,7 @@ fn main() -> Result<(), MurinError> {
     };
     let fp = make_fingerprint(&opt.policy, &tn)?;
 
-    println!("Fingerprint: {:?}", fp);
+    println!("Fingerprint: {fp:?}");
 
     Ok(())
 }

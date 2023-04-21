@@ -225,7 +225,7 @@ async fn get_wrapped_secret_id(client: &VaultClient, role_id: &str) -> String {
 
 async fn lstore_wrapper_token(token: &String, file: &String) {
     let mut file =
-        std::fs::File::create(file).unwrap_or_else(|_| panic!("Could not create file: {}", file));
+        std::fs::File::create(file).unwrap_or_else(|_| panic!("Could not create file: {file}"));
     file.write_all(token.as_bytes())
         .expect("Could not write to file");
 }

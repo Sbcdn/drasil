@@ -153,7 +153,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                     || mr.pay_addr != first_address.to_bech32(None).unwrap()
                 {
                     return Err(CmdError::Custom {
-                        str: format!("ERROR invalid mint reward '{:?}'", mr),
+                        str: format!("ERROR invalid mint reward '{mr:?}'"),
                     }
                     .into());
                 }
@@ -165,7 +165,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 if let Some(x) = m.value()?.compare(&tv) {
                     if x != 0 {
                         return Err(CmdError::Custom {
-                            str: format!("ERROR claim values dont match '{:?}'", mr),
+                            str: format!("ERROR claim values dont match '{mr:?}'"),
                         }
                         .into());
                     }
@@ -173,7 +173,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             }
             Err(e) => {
                 return Err(CmdError::Custom {
-                    str: format!("ERROR mint reward does not exist: '{:?}'", e),
+                    str: format!("ERROR mint reward does not exist: '{e:?}'"),
                 }
                 .into());
             }
@@ -198,7 +198,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             )?;
             if nft.minted {
                 return Err(CmdError::Custom {
-                    str: format!("ERROR Nft already minted: '{:?}'", mh),
+                    str: format!("ERROR Nft already minted: '{mh:?}'"),
                 }
                 .into());
             }

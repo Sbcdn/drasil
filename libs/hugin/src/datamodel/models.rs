@@ -49,7 +49,7 @@ impl FromStr for ContractType {
             "tokmint" => Ok(ContractType::TokenMinter),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Contract Type {} does not exist", src),
+                format!("Contract Type {src} does not exist"),
             )),
         }
     }
@@ -90,7 +90,7 @@ impl FromStr for MarketplaceActions {
             "update" => Ok(MarketplaceActions::Update),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Marketplace Action {} does not exist", src),
+                format!("Marketplace Action {src} does not exist"),
             )),
         }
     }
@@ -130,7 +130,7 @@ impl FromStr for MultiSigType {
             "utxopti" => Ok(MultiSigType::UTxOpti),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Transaction Type {} does not exist", src),
+                format!("Transaction Type {src} does not exist"),
             )),
         }
     }
@@ -191,8 +191,8 @@ impl FromStr for StdTxType {
 impl ToString for StdTxType {
     fn to_string(&self) -> String {
         match &self {
-            &StdTxType::DelegateStake => "stakedelegation".to_string(),
-            &StdTxType::StandardTx => "Standard".to_string(),
+            Self::DelegateStake => "stakedelegation".to_string(),
+            Self::StandardTx => "Standard".to_string(),
         }
     }
 }
@@ -229,7 +229,7 @@ impl FromStr for ContractAction {
             )),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("ContractAction '{}' does not exist", src),
+                format!("ContractAction '{src}' does not exist"),
             )),
         }
     }
@@ -322,6 +322,46 @@ pub enum TXPWrapper {
     TransactionPattern(Box<TransactionPattern>),
     Signature(Signature),
     OneShotMinter(OneShotMintPayload),
+    WalletTransaction(),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct WalletTransactionPattern {
+    user: Option<String>,
+    contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
+    wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
+    #[serde(alias = "sending_wal_addrs")]
+    used_addresses: Option<Vec<String>>,
+    unused_addresses: Option<Vec<String>>,
+    #[serde(alias = "sending_stake_addr")]
+    stake_address: Option<String>,
+    change_address: Option<String>,
+    #[serde(alias = "inputs")]
+    utxos: Option<Vec<String>>,
+    excludes: Option<Vec<String>>,
+    collateral: Option<Vec<String>>,
+    network: Option<u64>,
+    #[serde(alias = "script")]
+    operation: Operation,
+}
+
+impl WalletTransactionPattern {
+    pub fn into_txp(&self) -> TransactionPattern {
+        TransactionPattern {
+            user: None,
+            contract_id: None,
+            wallet_type: None,
+            used_addresses: Vec::<String>::new(),
+            stake_address: None,
+            change_address: None,
+            utxos: Some(Vec::<String>::new()),
+            excludes: None,
+            collateral: None,
+            operation: self.operation.clone(),
+            network: 0,
+            unused_addresses: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -618,12 +658,12 @@ impl Operation {
                     let mut assets = Vec::<StdAssetHandle>::new();
                     for n in &t.asset_handles {
                         let policy = if let Some(p) = &n.policy {
-                            Some(PolicyID::from_hex(&p)?)
+                            Some(PolicyID::from_hex(p)?)
                         } else {
                             None
                         };
                         let tokenname = if let Some(tn) = &n.tokenname {
-                            Some(AssetName::new(hex::decode(&tn)?)?)
+                            Some(AssetName::new(hex::decode(tn)?)?)
                         } else {
                             None
                         };
@@ -833,7 +873,7 @@ impl FromStr for WalletType {
             "typhon" => Ok(WalletType::Typhon),
             _ => Err(Error::new(
                 std::io::ErrorKind::InvalidData,
-                format!("Wallet '{}' not supportet or wrong typed input", src),
+                format!("Wallet '{src}' not supportet or wrong typed input"),
             )),
         }
     }
@@ -1116,9 +1156,20 @@ pub struct AssetHandle {
 
 impl AssetHandle {
     pub fn same_asset(&self, other: &Self) -> bool {
-        self.fingerprint == other.fingerprint
-            && self.policy == other.policy
-            && self.tokenname == other.tokenname
+        match self.policy {
+            Some(_) => {
+                self.fingerprint == other.fingerprint
+                    && self.policy == other.policy
+                    && self.tokenname == other.tokenname
+            }
+            None => {
+                other.policy.is_none()
+                    && other.fingerprint.is_none()
+                    && other.tokenname.is_none()
+                    && self.tokenname.is_none()
+                    && self.fingerprint.is_none()
+            }
+        }
     }
 
     pub fn new_empty() -> Self {
