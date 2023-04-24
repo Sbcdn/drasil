@@ -46,11 +46,11 @@ pub fn blake2b160(data: &[u8]) -> [u8; 20] {
 }
 
 pub fn string_to_policy(str: &String) -> Result<clib::PolicyID, MurinError> {
-    Ok(clib::PolicyID::from_bytes(hex::decode(&str)?)?)
+    Ok(clib::PolicyID::from_bytes(hex::decode(str)?)?)
 }
 
 pub fn string_to_assetname(str: &String) -> Result<clib::AssetName, MurinError> {
-    Ok(clib::AssetName::new(hex::decode(&str)?)?)
+    Ok(clib::AssetName::new(hex::decode(str)?)?)
 }
 
 pub fn u64_to_bignum(n: u64) -> cutils::BigNum {
