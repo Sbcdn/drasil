@@ -90,15 +90,12 @@ pub async fn get_transaction_unspent_outputs(
     // Filter exculdes if there are some
     if enc_excl.is_some() {
         for excl in enc_excl.unwrap() {
-            utxos = utxos.into_iter().filter(|utxo| *utxo != *excl).collect();
+            utxos.retain(|utxo| *utxo != *excl);
         }
     }
     // filter collateral if there is some
     if col_utxo.is_some() {
-        utxos = utxos
-            .into_iter()
-            .filter(|utxo| *utxo != *col_utxo.unwrap())
-            .collect();
+        utxos.retain(|utxo| *utxo != *col_utxo.unwrap());
     }
     // convert to TransactionunspentOutputs
     for utxo in utxos {
@@ -393,7 +390,6 @@ pub fn restore_bip0039_wallet(
 
 #[cfg(test)]
 mod tests {
-    use cardano_serialization_lib::StakeCredentials;
 
     use crate::{create_bip0039_wallet, restore_bip0039_wallet};
 
@@ -416,7 +412,7 @@ mod tests {
         ];
         let mut wal = Vec::<String>::new();
         wallet.iter().for_each(|n| wal.push(n.to_string()));
-        let skey = "10e892baf1a2dc4a14d90a0660a3f8155c1429ac4cb611f43f882c8c4bf2104fd2bdbccfd238068e36c2666fe2ca6563e0ebf4082d710f8a1367b5b2c95875b697ea593ac107552864a0ccd285d4d0cbbcfeee44200ba68028d34fbeaf050417";
+        let _skey = "10e892baf1a2dc4a14d90a0660a3f8155c1429ac4cb611f43f882c8c4bf2104fd2bdbccfd238068e36c2666fe2ca6563e0ebf4082d710f8a1367b5b2c95875b697ea593ac107552864a0ccd285d4d0cbbcfeee44200ba68028d34fbeaf050417";
         let restored = restore_bip0039_wallet(wal, Some("Otto".to_string())).unwrap();
         //assert_eq!(skey, restored.0);
 
@@ -440,9 +436,9 @@ mod tests {
         let ac1_private_key = account_key1.to_raw_key(); // for signatures
         let ac1_public_key = account_key1.to_raw_key().to_public();
         let ac1_public_key_hash = account_key1.to_raw_key().to_public().hash(); // for Native Script Input / Verification
-        let vkey1 = "5840".to_string()
+        let _vkey1 = "5840".to_string()
             + &((hex::encode(ac1_public_key.as_bytes())) + &hex::encode(ac1_chaincode.clone())); // .vkey
-        let skey1 = "5880".to_string()
+        let _skey1 = "5880".to_string()
             + &(hex::encode(ac1_private_key.as_bytes())
                 + &hex::encode(ac1_public_key.as_bytes())
                 + &hex::encode(ac1_chaincode)); // .skey

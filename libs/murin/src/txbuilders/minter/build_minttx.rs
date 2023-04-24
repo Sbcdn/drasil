@@ -14,10 +14,9 @@ use crate::{htypes::*, ServiceFees};
 
 use crate::minter::models::CMintHandle;
 use crate::txbuilders::{calc_min_ada_for_utxo, harden, input_selection, TxBO};
-use crate::wallet::*;
 use crate::TxData;
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
+use cardano_serialization_lib::{crypto as ccrypto, utils as cutils};
 use clib::address::Address;
 
 use super::models::{ColMinterTxData, PriceCMintHandle};

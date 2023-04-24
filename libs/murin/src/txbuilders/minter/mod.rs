@@ -242,8 +242,7 @@ impl core::str::FromStr for MinterTxData {
             })
         } else {
             Err(MurinError::new(&format!(
-                "Error the provided string '{}' cannot be parsed into 'RWDTxData' ",
-                src
+                "Error the provided string '{src}' cannot be parsed into 'RWDTxData' "
             )))
         }
     }
@@ -687,7 +686,7 @@ pub fn make_mint_metadata_from_json(
         }
     }
     if tokens.len() != i {
-        return Err(MurinError::new(&format!("Error provided metadata and tokens to mint are not fitting, please provide correct metadata: \n {:?}",raw_metadata)));
+        return Err(MurinError::new(&format!("Error provided metadata and tokens to mint are not fitting, please provide correct metadata: \n {raw_metadata:?}")));
     }
 
     let mut metamap = clib::metadata::MetadataMap::new();

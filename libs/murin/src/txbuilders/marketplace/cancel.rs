@@ -251,7 +251,7 @@ pub fn perform_cancel(
         col_inputs.add(&collateral.input());
         txbody.set_collateral(&col_inputs);
     };
-    if txbody.collateral() == None {
+    if txbody.collateral().is_none() {
         return Err(MurinError::new("Error: No collateral provided"));
     }
     //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ pub fn perform_cancel(
     let costmodel = plutus::CostModel::new();
 
     cstmodls.insert(&lang, &costmodel);
-    let lang_sb = hex::decode(&LV_PLUTUSV1).unwrap();
+    let lang_sb = hex::decode(LV_PLUTUSV1).unwrap();
     debug!("Lang from sb: {:?}", lang_sb);
 
     let mut buf = Vec::new();
