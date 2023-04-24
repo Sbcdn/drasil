@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use crate::MurinError;
 use cardano_serialization_lib::{
     plutus::{CostModel as ClibCostModel, Costmdls, Language},
@@ -110,7 +111,7 @@ impl ProtocolParameters {
         let mut v1 = ClibCostModel::new();
         let mut v2 = ClibCostModel::new();
         if self.cost_models.plutus_v1.0.is_object() {
-            for (i, (key, value)) in self
+            for (i, (_key, value)) in self
                 .cost_models
                 .plutus_v1
                 .0
@@ -128,7 +129,7 @@ impl ProtocolParameters {
         }
 
         if self.cost_models.plutus_v2.0.is_object() {
-            for (i, (key, value)) in self
+            for (i, (_key, value)) in self
                 .cost_models
                 .plutus_v2
                 .0

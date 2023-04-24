@@ -1,9 +1,9 @@
 use super::error::TxToolsError;
-use super::models::{MintTokenAsset, TokenAsset};
+use super::models::TokenAsset;
 use crate::clib;
 use crate::clib::{
     address::Address,
-    utils::{from_bignum, to_bignum, Value},
+    utils::{to_bignum, Value},
 };
 use crate::{TransactionUnspentOutput, TransactionUnspentOutputs};
 

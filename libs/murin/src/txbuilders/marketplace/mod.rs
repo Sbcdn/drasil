@@ -160,10 +160,7 @@ impl core::str::FromStr for MpTxData {
             Err(MurinError::new(
                 //std::io::Error::new(
                 //    std::io::ErrorKind::InvalidData,
-                &format!(
-                    "Error the provided string '{}' cannot be parsed into 'MpTxData' ",
-                    src
-                ),
+                &format!("Error the provided string '{src}' cannot be parsed into 'MpTxData' ",),
             ))
         }
     }

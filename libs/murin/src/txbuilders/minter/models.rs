@@ -9,8 +9,7 @@
 
 use crate::{get_reward_address, MurinError};
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::address as caddr;
-use clib::{address::BaseAddress, utils::BigNum};
+use clib::utils::BigNum;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str};
 
