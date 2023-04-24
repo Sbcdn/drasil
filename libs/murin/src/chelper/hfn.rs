@@ -170,11 +170,8 @@ pub fn _ccli_query_utxos_address(
                 }
 
                 let mut output = clib::TransactionOutput::new(addr, &val);
-                match datumhash {
-                    Some(dh) => {
-                        output.set_data_hash(&dh);
-                    }
-                    None => {}
+                if let Some(dh) = datumhash {
+                    output.set_data_hash(&dh);
                 }
 
                 let txuo = TransactionUnspentOutput::new(
@@ -222,23 +219,20 @@ pub fn find_token_in_utxo(
     tn: &clib::AssetName,
 ) -> Option<usize> {
     let multi = utxo.output().amount().multiasset();
-    match multi {
-        Some(multi) => {
-            for _ in 0..multi.keys().len() {
-                match multi.get(cs) {
-                    Some(assets) => {
-                        for j in 0..assets.len() {
-                            match assets.get(tn) {
-                                Some(_) => return Some(j),
-                                None => continue,
-                            }
+    if let Some(multi) = multi {
+        for _ in 0..multi.keys().len() {
+            match multi.get(cs) {
+                Some(assets) => {
+                    for j in 0..assets.len() {
+                        match assets.get(tn) {
+                            Some(_) => return Some(j),
+                            None => continue,
                         }
                     }
-                    None => continue,
                 }
+                None => continue,
             }
         }
-        None => { /* Do nothing*/ }
     }
     None
 }
@@ -280,9 +274,8 @@ pub fn _query_utxos_by_address_from_cli(
 
     for i in 0..addresses.len() {
         let addr = addresses.get(i).unwrap();
-        match _ccli_query_utxos_address(addr, "testnet".to_string()) {
-            Some(utxos) => txuos.merge(utxos),
-            None => {}
+        if let Some(utxos) = _ccli_query_utxos_address(addr, "testnet".to_string()) {
+            txuos.merge(utxos)
         }
     }
     debug!("My Utxos: \n{:?}\n", txuos);
@@ -302,10 +295,7 @@ pub fn get_smart_contract(
         }
         None => {
             //
-            Err(MurinError::new(&format!(
-                "Smart Contract not valid {:?}",
-                sc
-            )))
+            Err(MurinError::new(&format!("Smart Contract not valid {sc:?}")))
         }
     }
 }
@@ -374,13 +364,10 @@ pub fn get_vkey_count(
             addresses.push(txuos.get(txi).output().address().to_bytes());
         }
     }
-    match col {
-        Some(c) => {
-            if !txuos.contains_address(c.output().address()) {
-                vkey_counter += 1;
-            }
+    if let Some(c) = col {
+        if !txuos.contains_address(c.output().address()) {
+            vkey_counter += 1;
         }
-        None => {}
     }
     debug!(
         "Addresses: {:?}, InputTxUO Len: {:?}\n",
@@ -1116,7 +1103,7 @@ pub fn find_suitable_coins(
     //Fee need to be considered in needed value
 
     let coins = cutils::from_bignum(&nv.coin());
-    let max_coins = coins + (coins / 100 * overhead as u64); // Coins + Overhead in %
+    let max_coins = coins + (coins / 100 * overhead); // Coins + Overhead in %
 
     let mut acc = 0u64;
     let mut selection = TransactionUnspentOutputs::new();
@@ -1479,7 +1466,7 @@ pub fn input_selection(
 pub fn balance_tx(
     input_txuos: &mut TransactionUnspentOutputs,
     // script_outputs : Option<&TransactionUnspentOutput>,
-    tokens: &Tokens, //&Vec<(ccrypto::ScriptHash, clib::AssetName, BigNum)>,
+    _tokens: &Tokens, //&Vec<(ccrypto::ScriptHash, clib::AssetName, BigNum)>,
     txos: &mut clib::TransactionOutputs,
     already_paid: Option<&cutils::Value>,
     fee: &cutils::BigNum,
@@ -1556,7 +1543,7 @@ pub fn balance_tx(
             // call this function recursivley
             balance_tx(
                 input_txuos,
-                tokens,
+                _tokens,
                 txos,
                 already_paid,
                 fee,
@@ -1619,7 +1606,7 @@ pub fn balance_tx(
                 if !*fee_paied {
                     overhead.set_coin(&overhead.coin().checked_add(fee).unwrap());
                 }
-                panic!("\nERROR: Transaction does not balance: {:?} overhead, fee paied: {:?}, outputs paied: {:?}",overhead,fee_paied,txos_paied);
+                panic!("\nERROR: Transaction does not balance: {overhead:?} overhead, fee paied: {fee_paied:?}, outputs paied: {txos_paied:?}");
             }
             debug!("Accumulated Change is Zero?: {:?}", acc_change);
             Ok(txos.clone())

@@ -312,10 +312,7 @@ impl core::str::FromStr for RWDTxData {
             Err(MurinError::new(
                 //std::io::Error::new(
                 //    std::io::ErrorKind::InvalidData,
-                &format!(
-                    "Error the provided string '{}' cannot be parsed into 'RWDTxData' ",
-                    src
-                ),
+                &format!("Error the provided string '{src}' cannot be parsed into 'RWDTxData' "),
             ))
         }
     }

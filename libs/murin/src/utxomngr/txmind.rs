@@ -226,8 +226,7 @@ pub fn read_raw_tx(key: &String) -> Result<RawTx, MurinError> {
     };
 
     let err = MurinError::new(&format!(
-        "Error in decoding Redis Data for 'RawTx' : {:?}",
-        response
+        "Error in decoding Redis Data for 'RawTx' : {response:?}"
     ));
 
     Ok(RawTx::new(

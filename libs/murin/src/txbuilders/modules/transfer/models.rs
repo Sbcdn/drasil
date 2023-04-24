@@ -308,7 +308,7 @@ impl TransBuilder {
         Ok(())
     }
 
-    pub fn get_fee_addr(&self) -> Address {
+    pub fn _get_fee_addr(&self) -> Address {
         self.fee_addr.clone()
     }
 }
@@ -325,7 +325,7 @@ pub(crate) struct Source {
     pay_value: Option<Value>,
     txis: Option<TransactionInputs>,
     txiuo: Option<TransactionUnspentOutputs>,
-    redeemer: Option<clib::plutus::Redeemers>,
+    _redeemer: Option<clib::plutus::Redeemers>,
     modificator: Vec<TransModificator>,
 }
 
@@ -336,7 +336,7 @@ impl Source {
             pay_value: None,
             txis: None,
             txiuo: None,
-            redeemer: None,
+            _redeemer: None,
             modificator: Vec::<TransModificator>::new(),
         }
     }
@@ -358,8 +358,8 @@ impl Source {
         self.pay_value = Some(value);
     }
 
-    pub fn set_redeemer(&mut self, redeemer: clib::plutus::Redeemers) {
-        self.redeemer = Some(redeemer);
+    pub fn _set_redeemer(&mut self, redeemer: clib::plutus::Redeemers) {
+        self._redeemer = Some(redeemer);
     }
 
     pub fn set_txinputs(&mut self, txis: TransactionInputs) {
@@ -373,12 +373,12 @@ impl Source {
     pub fn get_modificator(&self) -> Vec<TransModificator> {
         self.modificator.clone()
     }
-    pub fn get_pay_value(&self) -> Option<Value> {
+    pub fn _get_pay_value(&self) -> Option<Value> {
         self.pay_value.clone()
     }
 
-    pub fn get_redeemer(&self) -> Option<clib::plutus::Redeemers> {
-        self.redeemer.clone()
+    pub fn _get_redeemer(&self) -> Option<clib::plutus::Redeemers> {
+        self._redeemer.clone()
     }
 
     pub fn get_txinputs(&self) -> Option<TransactionInputs> {
@@ -467,7 +467,7 @@ impl Sink {
         self.txos = Some(txos.clone());
     }
 
-    pub fn set_plutus_data(&mut self, pd: TransPData) {
+    pub fn _set_plutus_data(&mut self, pd: TransPData) {
         self.plutus_data = Some(pd);
     }
 }
