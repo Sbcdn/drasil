@@ -10,33 +10,90 @@ use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::BuildStdTx;
 use crate::CmdError;
+use murin::b_decode_addr_na;
+use murin::clib;
 use murin::PerformTxb;
+use murin::TransactionUnspentOutputs;
 
 pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<String> {
     match bst
         .transaction_pattern()
         .operation()
-        .ok_or("ERROR: No specific contract data supplied")?
+        .ok_or("ERROR: No transaction specific data supplied for stake delegation")?
     {
         Operation::StakeDelegation { .. } => (),
         _ => {
             return Err(CmdError::Custom {
-                str: format!("ERROR wrong data provided for '{:?}'", bst.tx_type()),
+                str: format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()),
             }
             .into());
         }
     }
+    let op = &bst.transaction_pattern().operation().unwrap();
+    let (mut delegtxd, addresses) = match op {
+        Operation::StakeDelegation {
+            poolhash: _,
+            addresses,
+        } => (op.into_stake_delegation().await?, addresses),
+        _ => {
+            return Err(CmdError::Custom {
+                str: format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()),
+            }
+            .into())
+        }
+    };
+    // intotxdata only works with the transaction pattern, we also need to make the address pattern accaptebale
 
-    let mut delegtxd = bst
-        .transaction_pattern()
-        .operation()
-        .unwrap()
-        .into_stake_delegation()
-        .await?;
-    let mut gtxd = bst.transaction_pattern().into_txdata().await?;
+    let wal_addr = if let Some(addr) = addresses {
+        let r = addr
+            .iter()
+            .fold(Vec::<clib::address::Address>::new(), |mut acc, a| {
+                acc.push(b_decode_addr_na(a).unwrap());
+                acc
+            });
+        r
+    } else {
+        vec![]
+    };
+    let addresses = wal_addr.iter().fold(Vec::<String>::new(), |mut acc, n| {
+        acc.push(n.to_bech32(None).unwrap());
+        acc
+    });
+    debug!("stake delegation addresses: {:?}", addresses);
+    let mut bst_tmp = bst.transaction_pattern().clone();
+    bst_tmp.set_used_addresses(&addresses[..]);
+    debug!(
+        "bst.transaction_pattern().used_addresses: {:?}",
+        bst_tmp.used_addresses()
+    );
+    let mut gtxd = bst_tmp.into_txdata().await?;
     gtxd.set_user_id(bst.customer_id());
 
-    let mut dbsync = mimir::establish_connection()?;
+    if !wal_addr.is_empty() {
+        let wallet_utxos = wal_addr
+            .iter()
+            .fold(TransactionUnspentOutputs::new(), |mut acc, n| {
+                acc.merge(mimir::get_address_utxos(&n.to_bech32(None).unwrap()).unwrap());
+                acc
+            });
+        gtxd.set_inputs(wallet_utxos);
+
+        // ToDo: go through all addresses and check all stake keys are equal
+        let sa = murin::get_reward_address(&wal_addr[0])?;
+        gtxd.set_stake_address(sa);
+        gtxd.set_senders_addresses(wal_addr.clone());
+    }
+
+    log::debug!("Try to determine slot...");
+    let mut dbsync = match mimir::establish_connection() {
+        Ok(conn) => conn,
+        Err(e) => {
+            return Err(CmdError::Custom {
+                str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()),
+            }
+            .into());
+        }
+    };
     let slot = mimir::get_slot(&mut dbsync)?;
     gtxd.set_current_slot(slot as u64);
 

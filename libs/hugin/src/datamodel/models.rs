@@ -423,7 +423,7 @@ impl TransactionPattern {
         self.used_addresses.clone()
     }
 
-    pub fn set_used_addrses(&mut self, vec: &[String]) {
+    pub fn set_used_addresses(&mut self, vec: &[String]) {
         self.used_addresses = vec.to_owned();
     }
 
@@ -558,6 +558,7 @@ pub enum Operation {
     Auction {},
     StakeDelegation {
         poolhash: String,
+        addresses: Option<Vec<String>>,
     },
     StdTx {
         transfers: Vec<TransferHandle>,
@@ -673,11 +674,7 @@ impl Operation {
                             policy,
                             tokenname,
                             amount: to_bignum(n.amount),
-                            metadata: if let Some(metadata) = &n.metadata {
-                                Some(serde_json::from_str(metadata)?)
-                            } else {
-                                None
-                            },
+                            metadata: n.metadata.as_ref().cloned(),
                         })
                     }
                     trans.push(AssetTransfer { receiver, assets })
@@ -824,7 +821,10 @@ impl Operation {
         use murin::txbuilders::delegation::DelegTxData;
 
         match self {
-            Operation::StakeDelegation { poolhash } => Ok(DelegTxData::new(poolhash)?),
+            Operation::StakeDelegation {
+                poolhash,
+                addresses: _,
+            } => Ok(DelegTxData::new(poolhash)?),
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this transaction",
             )),
@@ -1151,7 +1151,7 @@ pub struct AssetHandle {
     pub policy: Option<String>,
     pub tokenname: Option<String>,
     pub amount: u64,
-    pub metadata: Option<String>,
+    pub metadata: Option<serde_json::Value>,
 }
 
 impl AssetHandle {
