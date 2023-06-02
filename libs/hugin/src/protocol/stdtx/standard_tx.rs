@@ -74,7 +74,7 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
                 acc.push(n.to_bech32(None).unwrap());
                 acc
             });
-    bsstp.set_used_addrses(&addresses);
+    bsstp.set_used_addresses(&addresses);
 
     log::debug!("Try to create raw data2...");
     let mut gtxd = bsstp.into_txdata().await?;
