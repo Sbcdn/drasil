@@ -24,7 +24,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
         .await?;
     log::debug!("Minter Txd: {:?}", minttxd);
     let mut txp = bms.transaction_pattern();
-    txp.set_used_addrses(&[minttxd.get_payment_addr_bech32()?]);
+    txp.set_used_addresses(&[minttxd.get_payment_addr_bech32()?]);
     log::debug!("Transaction Patter: {:?}\n", &txp);
     log::debug!("Try to create general transaction data...");
     let mut gtxd = txp.into_txdata().await?;

@@ -863,12 +863,13 @@ mod handlers {
                             let fingerprint =
                                 make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
                                     .unwrap();
+                            let metadata = mimir::get_mint_metadata(&fingerprint).unwrap();
                             handles.push(hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
                                 tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
                                 amount: from_bignum(&amt),
-                                metadata: None,
+                                metadata: metadata.json,
                             })
                         }
                     }
@@ -957,12 +958,13 @@ mod handlers {
                             let fingerprint =
                                 make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
                                     .unwrap();
+                            let metadata = mimir::get_mint_metadata(&fingerprint).unwrap();
                             handles.push(hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
                                 tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
                                 amount: from_bignum(&amt),
-                                metadata: None,
+                                metadata: metadata.json,
                             })
                         }
                     }
@@ -1061,12 +1063,13 @@ mod handlers {
                             let fingerprint =
                                 make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
                                     .unwrap();
+                            let metadata = mimir::get_mint_metadata(&fingerprint).unwrap();
                             handles.push(hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
                                 tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
                                 amount: from_bignum(&amt),
-                                metadata: None,
+                                metadata: metadata.json,
                             })
                         }
                     }
@@ -1114,4 +1117,3 @@ mod handlers {
         ))
     }
 }
- 
