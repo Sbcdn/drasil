@@ -1,10 +1,3 @@
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-
 [package]
 name = "sleipnir"
 version = "0.1.0"
@@ -40,11 +33,6 @@ mimir = { path = "../mimir", version = "0.1.0" }
 gungnir = { path = "../gungnir", version = "0.1.0" }
 hugin = { path = "../hugin", version = "0.1.0" }
 dvltath = { path = "../dvltath", version = "0.1.0" }
-
-#gungnir = { git = "ssh://git@github.com/sbcdn/gungnir.git", branch="main" }
-#mimir = { git = "ssh://git@github.com/sbcdn/mimir.git", branch="main" }
-#murin = { git = "ssh://git@github.com/sbcdn/murin.git", branch="main" }
-#hugin = { git = "ssh://git@github.com/sbcdn/hugin.git", branch="main" }
 
 [features]
 clib = ["structopt"]

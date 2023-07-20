@@ -10,7 +10,6 @@ Visit us at [drasil.io](https://www.drasil.io)
 
 * [Documentation](https://docs.drasil.io/)
 
-* [License]( https://www.drasil.io/licenses/LICENSE-1.0)
 
 ## Mythology
 The word "Drasil" derives from "Yggdrasil" which described the "world tree" in Norse mythology, although there are several different transalations and interpretations, some of which you can find below. We chose Drasil as we imagine this application framework as providing the branches of a large tree, the "World tree" bearing Cardanos applications.
@@ -60,3 +59,28 @@ Drasils individual services require the setting of many parameters which are pas
 ## Architecture
 
 ...coming soon...
+
+## Quick Guide for James
+
+Folders:
+- jobs : does include all binaries which should run as cron-jobs (is for the Reward system only)
+- libs : includes all libraries, this is the core
+   - dvlth : is a sidecar binary for odin and frigg, dvlth communicates with HashiCorp Vault and exchanges secrets (expire after 3s) via filesystem (temp volume mapping)
+- services : are the main binaries 
+   - frigg: Admin Backend-Server for th eno-code plattform
+   - heimdallr: Transaction Building Gateway to Odin, web facing endpoint
+   - loki : Websocket Bridge For NFT Minting and other asynchronous user interactions via jobs and queues
+   - odin : runs the core library as a service, transaction building, authentication, private key handling etc. the only service allowed to interact with oding it heimdallr, odin is isolated with access to vault / system and reward database, heimdallr has no access to those databases
+   - vidar : REST API to retrieve Reward and Minting information
+   - wsauth : test program oyu can ignore for the moment
+- worker : binaries performing work on redis, the databases or just processing jobs from the job queue
+   - geri : Cardano Chain Follower and Clean Up System for redis cache and pending utxo memory
+   - jobs : job processor for general drasil jobs
+   - work_loki : minting system worker (is isolated from the rest, has some special needs)
+
+   Additionally we need a Redis Database, two Postgres Databases and a DBsync (third postgres database)
+   There is also the Cardano-Data-Provider which abstarcts some stuff from this libraries and take it into its own repository.
+   The CDP hasits own binary (the wallet backend).
+   Then there is the csl-common library which unifies some functions.
+
+For a "simple" start go with odin, heimdallr, cdp, redis and the postgres databases that is the minimal setup.
