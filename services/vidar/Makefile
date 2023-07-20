@@ -33,9 +33,13 @@ push:
 push-mainnet:
 	sudo docker push $(REGISTRY)/$(MAINNET_PROJECT)/$(IMAGE):$(VERSION)
 
+#GOOGLEREG=europe-west2-docker.pkg.dev
+#PROJECT_GOOGLE=mystic-torus-339723
+#REPO_GOOGLE=drasil-mainnet
+
 GOOGLEREG=europe-west2-docker.pkg.dev
-PROJECT_GOOGLE=mystic-torus-339723
-REPO_GOOGLE=drasil-mainnet
+PROJECT_GOOGLE=kebvmwbusajq
+REPO_GOOGLE=prod-kube-repo
 
 build-mainnet-google:
 	cargo update
