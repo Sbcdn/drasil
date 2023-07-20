@@ -1,11 +1,3 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 #![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 mod error;

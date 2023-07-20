@@ -10,8 +10,6 @@ By using a loadbalancer between several 'Heimdallr' and 'Odin' instances it is p
 
 * [Documentation](https://docs.drasil.io/)
 
-* [License]( https://www.drasil.io/licenses/LICENSE-1.0)
-
 ## Mythology
 Odin (/ˈoʊdɪn/; from Old Norse: Óðinn, IPA: [ˈoːðenː]) is a widely revered god in Germanic paganism. Norse mythology, the source of most surviving information about him, associates him with wisdom, healing, death, royalty, the gallows, knowledge, war, battle, victory, sorcery, poetry, frenzy, and the runic alphabet, and depicts him as the husband of the goddess Frigg. In wider Germanic mythology and paganism, the god was also known in Old English as Wōden, in Old Saxon as Uuôden, in Old Dutch as Wuodan, in Old Frisian as Wêda, and in Old High German as Wuotan, all ultimately stemming from the Proto-Germanic theonym *Wōđanaz, meaning 'lord of frenzy', or 'leader of the possessed'.
 
