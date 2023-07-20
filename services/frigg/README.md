@@ -5,8 +5,6 @@ Frigg provides an API to operate a client portal to configure and manage client 
 
 * [Documentation](https://docs.drasil.io/reward-and-distribution/drasil-rewards-api/reward-information)
 
-* [License]( https://www.drasil.io/licenses/LICENSE-1.0)
-
 ## Mythology
 Frigg (/frɪɡ/; Old Norse: [ˈfriɡː])[1] is a goddess, one of the Æsir, in Germanic mythology. In Norse mythology, the source of most surviving information about her, she is associated with marriage, prophecy, clairvoyance and motherhood, and dwells in the wetland halls of Fensalir. In wider Germanic mythology, she is known in Old High German as Frīja, in Langobardic as Frēa, in Old English as Frīg, in Old Frisian as Frīa, and in Old Saxon as Frī, all ultimately stemming from the Proto-Germanic theonym *Frijjō, meaning '(the) Beloved' or '(the) Free'. Nearly all sources portray her as the wife of the god Odin.
 

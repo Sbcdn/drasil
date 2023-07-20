@@ -1,13 +1,3 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Business Source License v1.0                                  #
-# Open Source Release: 36 month after release date                              #
-# Open Source License: GNU Public License v2.0                                  #
-# Licensor: Drasil Association (info@drasil.io)                                 #
-#################################################################################
-*/
 use super::models::*;
 use crate::SleipnirError;
 use chrono::{DateTime, NaiveDateTime, Utc};

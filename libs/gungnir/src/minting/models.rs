@@ -1,11 +1,3 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 use crate::schema::{mint_projects, mint_rewards, nft_table};
 use chrono::serde::ts_seconds::serialize as to_ts;
 use chrono::{DateTime, Utc};

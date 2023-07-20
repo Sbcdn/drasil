@@ -1,9 +1,3 @@
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
 [package]
 name = "utxopti"
 version = "0.1.0"
@@ -15,7 +9,6 @@ documentation = "https://docs.drasil.io"
 license = "LICENSE.md"
 readme = "README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
