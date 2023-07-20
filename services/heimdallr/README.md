@@ -7,7 +7,6 @@ The transaction builder as well as infrastructure APIs are made accessible by 'H
 
 * [Documentation](https://docs.drasil.io/)
 
-* [License]( https://www.drasil.io/licenses/LICENSE-1.0)
 
 ## Mythology
 In Norse mythology, Heimdall (from Old Norse Heimdallr, [ˈhɛimˌdɑlːz̠]) is a god who keeps watch for invaders and the onset of Ragnarök from his dwelling Himinbjörg, where the burning rainbow bridge Bifröst meets the sky. He is attested as possessing foreknowledge and keen senses, particularly eyesight and hearing. The god and his possessions are described in enigmatic manners. For example, Heimdall is gold-toothed, "the head is called his sword," and he is "the whitest of the gods."

@@ -4,14 +4,6 @@ use cardano_serialization_lib::{address::Address, utils::BigNum, AssetName, Poli
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 pub mod build_cpo;
 pub mod build_wallet_asset_transfer;
 
