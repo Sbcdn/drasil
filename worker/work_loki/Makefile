@@ -19,9 +19,13 @@ run:
 push:
 	sudo docker push $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION)
 
+#GOOGLEREG=europe-west2-docker.pkg.dev
+#PROJECT_GOOGLE=mystic-torus-339723
+#REPO_GOOGLE=drasil-mainnet
+
 GOOGLEREG=europe-west2-docker.pkg.dev
-PROJECT_GOOGLE=mystic-torus-339723
-REPO_GOOGLE=drasil-mainnet
+PROJECT_GOOGLE=kebvmwbusajq
+REPO_GOOGLE=prod-kube-repo
 
 build-mainnet-google:
 	cargo update
@@ -47,7 +51,7 @@ build-mainnet-google:
 	echo "git-fetch-with-cli = true" > .cargo/config
 	cp -R ~/.cargo/git .cargo/git
 	cp -R ../../libs .cargo/libs
-	sudo docker build -t $(GOOGLEREG)/$(PROJECT_GOOGLE)/$(REPO_GOOGLE)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
+	docker build -t $(GOOGLEREG)/$(PROJECT_GOOGLE)/$(REPO_GOOGLE)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
 
 push-mainnet-google:
 	docker push $(GOOGLEREG)/$(PROJECT_GOOGLE)/$(REPO_GOOGLE)/$(IMAGE):$(VERSION)
