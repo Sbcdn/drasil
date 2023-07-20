@@ -258,15 +258,16 @@ mod auth {
                 let user_id = decoded.claims.sub.parse::<u64>().map_err(|_| {
                     reject::custom(Error::Custom("Could not parse customer id".to_string()))
                 })?;
-                let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
-                let cmd = VerifyUser::new(user_id, jwt);
-                log::info!("try to verify user ...");
-                match client.build_cmd::<VerifyUser>(cmd).await {
-                    Ok(_) => {}
-                    Err(_) => {
-                        return Err(reject::custom(Error::JWTTokenError));
-                    }
-                };
+                // Deactivates User Identification, only API token validity checked
+                //let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
+                //let cmd = VerifyUser::new(user_id, jwt);
+                //log::info!("try to verify user ...");
+                //match client.build_cmd::<VerifyUser>(cmd).await {
+                //    Ok(_) => {}
+                //    Err(_) => {
+                //        return Err(reject::custom(Error::JWTTokenError));
+                //    }
+                //};
                 log::debug!("Authentication successful: User_id: {user_id:?}; txp: {txp_out:?}");
                 Ok((user_id, txp_out))
             }
@@ -465,8 +466,9 @@ mod handlers {
             TXPWrapper::TransactionPattern(txp) => txp,
             _ => return Ok(badreq),
         };
+        log::debug!("Try to connect to odin...");
         let mut client = connect_odin().await;
-
+        log::debug!("Create Command...");
         let cmd = BuildStdTx::new(customer_id, tx_type.clone(), *payload.clone());
         match client.build_cmd::<BuildStdTx>(cmd).await {
             Ok(ok) => match UnsignedTransaction::from_str(&ok) {
