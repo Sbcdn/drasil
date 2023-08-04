@@ -1,4 +1,4 @@
 target/
-services/heimdallr/.cargo
+*.cargo
 .idea
 .vscode
