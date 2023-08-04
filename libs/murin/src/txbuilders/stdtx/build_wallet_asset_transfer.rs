@@ -2,14 +2,20 @@ use super::StandardTxData;
 use crate::error::MurinError;
 use crate::hfn::{self};
 use crate::min_ada_for_utxo;
-use crate::modules::transfer::models::{Sink, Source, TransBuilder, TransWallets, Transfer};
-use crate::txbuilders::TxBO;
+use crate::modules::transfer::models::{Sink, Source, TransBuilder, TransWallets, TransWallet, Transfer};
+use crate::txbuilders::{TxBO, harden};
 use crate::PerformTxb;
 use crate::TxData;
+
 use cardano_serialization_lib as clib;
+use cardano_serialization_lib::utils as cutils;
 use clib::address::Address;
+use clib::metadata::GeneralTransactionMetadata;
 use clib::utils::{hash_auxiliary_data, to_bignum};
 use clib::{MultiAsset, TransactionOutput};
+use std::mem::size_of_val;
+
+
 
 // One Shot Minter Builder Type
 #[derive(Debug, Clone)]
@@ -43,12 +49,25 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         &self,
         fee: &clib::utils::BigNum,
         gtxd: &TxData,
-        _: &[String],
+        pvks: &[String],
         fcrun: bool,
     ) -> std::result::Result<TxBO, MurinError> {
+
+        if size_of_val(pvks) > 64 {
+            return Err(MurinError::new("pvks must be max 64 bytes"));
+        }
+        pvks.iter().for_each(|s| {
+            if size_of_val(s) > 64 {
+                panic!("pvks element must be max 64 bytes");
+            }
+            if s.len() > 100 {
+                panic!("pvks element must have max 100 characters");
+            }
+        });
+
         if fcrun {
             info!("--------------------------------------------------------------------------------------------------------");
-            info!("-----------------------------------------Fee calcualtion------------------------------------------------");
+            info!("-----------------------------------------Fee Calculation------------------------------------------------");
             info!("---------------------------------------------------------------------------------------------------------\n");
         } else {
             info!("--------------------------------------------------------------------------------------------------------");
@@ -82,9 +101,21 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         //Auxiliary Data
         //  Plutus Script and Metadata
         /////////////////////////////////////////////////////////////////////////////////////////////////////
-        let aux_data = clib::metadata::AuxiliaryData::new();
+        
+        // aux_data_hash
         // ToDo:set messages into metadata from wallet
-        let _aux_data_hash = hash_auxiliary_data(&aux_data);
+        let mut aux_data = clib::metadata::AuxiliaryData::new();
+        let mut gtm = GeneralTransactionMetadata::new();
+
+        pvks.iter().enumerate().for_each(|(i, s)|{
+            gtm.insert(
+                &clib::utils::BigNum::from_str(&i.to_string()).unwrap(), 
+                &clib::metadata::TransactionMetadatum::new_text(s.to_string()).unwrap()
+            );
+        });
+
+        aux_data.set_metadata(&gtm);
+        let aux_data_hash = hash_auxiliary_data(&aux_data);
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         //Add Inputs and Outputs
@@ -165,15 +196,106 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         );
         txbody.set_ttl(&slot);
 
-        //txbody.set_auxiliary_data_hash(&aux_data_hash);
-
-        debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
-        debug!("--------------------Iteration Ended------------------------------");
-        info!("Vkey Counter: {:?}", vkey_counter);
+        txbody.set_auxiliary_data_hash(&aux_data_hash);
 
         // empty witness
-        let txwitness = clib::TransactionWitnessSet::new();
+        let mut txwitness = clib::TransactionWitnessSet::new();
 
+        let mut vkeywitnesses = clib::crypto::Vkeywitnesses::new();
+        let root_key1 = clib::crypto::Bip32PrivateKey::from_bytes(&hex::decode(&pvks[0])?)?;
+        let account_key1 = root_key1
+            .derive(harden(1852u32))
+            .derive(harden(1815u32))
+            .derive(harden(0u32));
+        let prv1 = account_key1.to_raw_key(); // for signatures
+        let vkwitness_1d1 = cutils::make_vkey_witness(&cutils::hash_transaction(&txbody), &prv1);
+        vkeywitnesses.add(&vkwitness_1d1);
+        txwitness.set_vkeys(&vkeywitnesses);
+
+        debug!("TxWitness: {:?}", hex::encode(txwitness.to_bytes()));
+        debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
+        debug!("--------------------Iteration Ended------------------------------");
+        debug!("Vkey Counter at End: {:?}", vkey_counter);
         Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::super::*;
+    use std::str::FromStr;
+    use crate::modules::transfer::models::TransWallet;
+    // use hugin::protocol::cmd::FinalizeStdTx;
+
+    #[test]
+    fn test1() -> Result<(), MurinError>{
+        
+        // standard_tx_data
+        // let tx_id = "5091ba0e8cc9a3d63468c27b5269bc4665e6f1be7c1c025f1bb4fd2ff2ff7d0a".to_string(); //tx hash
+        // let raw_tx = crate::utxomngr::txmind::read_raw_tx(&tx_id)?; // fails test
+        // let raw_tx = crate::utxomngr::txmind::read_raw_tx(&"".to_string())?; // fails test
+        // let raw_tx = crate::utxomngr::txmind::read_raw_tx(
+        //     hugin::protocol::cmd::FinalizeStdTx::new() // importing hugin => cyclic package dependency
+        // )?;
+        // let standard_tx_data = StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
+        // let standard_tx_data = StandardTxData::from_str(&"".to_string())?;
+
+        // // trans_wallets
+        // let mut trans_wallets = TransWallets::new();
+        // let pay_addr = Address::from_hex("")?;
+        // let utxos = &TransactionUnspentOutputs::new();
+        // let trans_wallet = TransWallet::new(
+        //     &pay_addr,
+        //     &utxos,
+        // );
+        // trans_wallets.add_wallet(&trans_wallet);
+
+        // // address
+        // let address = Address::from_hex("")?;
+
+        // // transaction builder
+        // let at_sat_builder = AtSATBuilder::new((
+        //     &standard_tx_data,
+        //     &trans_wallets,
+        //     &address,
+        // ));
+
+        // left side
+        // let perform_txb = at_sat_builder.perform_txb(
+        //     &clib::utils::BigNum::from_str("0").unwrap(),
+        //     &TxData::new(
+        //         Some(vec![0]),
+        //         vec![Address::from_hex("").unwrap()],
+        //         Some(Address::from_hex("").unwrap()),
+        //         TransactionUnspentOutputs::new(),
+        //         clib::NetworkIdKind::Testnet,
+        //         100,
+        //     ).unwrap(),
+        //     &["".to_string()],
+        //     true,
+        // ).unwrap();
+
+        // right side
+        let txbo = (
+            clib::TransactionBody::new_tx_body(
+                &clib::TransactionInputs::new(),
+                &clib::TransactionOutputs::new(),
+                &clib::utils::BigNum::from_str("0").unwrap()
+            ),
+            clib::TransactionWitnessSet::new(),
+            clib::metadata::AuxiliaryData::new(),
+            TransactionUnspentOutputs::new(),
+            0,
+        );
+
+        // // assertions
+        // assert_eq!(perform_txb.0, txbo.0);
+        // assert_eq!(perform_txb.1, txbo.1);
+        // assert_eq!(perform_txb.2, txbo.2);
+        // // assert_eq!(perform_txb.3, txbo.3); // TransactionUnspentOutputs
+        // assert_eq!(perform_txb.4, txbo.4);
+
+        Ok(())
     }
 }
