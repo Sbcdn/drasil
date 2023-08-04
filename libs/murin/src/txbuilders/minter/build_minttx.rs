@@ -238,8 +238,8 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         let mut vkeywitnesses = ccrypto::Vkeywitnesses::new();
         vkeywitnesses.add(&vkwitness_1d1);
         txwitness.set_vkeys(&vkeywitnesses);
+        
         debug!("TxWitness: {:?}", hex::encode(txwitness.to_bytes()));
-
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
         debug!("--------------------Iteration Ended------------------------------");
         debug!("Vkey Counter at End: {:?}", vkey_counter);
