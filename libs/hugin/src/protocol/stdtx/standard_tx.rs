@@ -164,3 +164,202 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
     )?;
     Ok(serde_json::json!(ret).to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::FinalizeStdTx;
+    use crate::datamodel::models::StdTxType;
+    use murin::{
+        clib::address::Address,
+        MurinError, 
+        txbuilders::{
+            stdtx::{
+                StandardTxData,
+                build_wallet_asset_transfer::AtSATBuilder,
+            },
+            modules::transfer::models::TransWallets,
+            PerformTxb,
+        },
+    };
+    use std::str::FromStr;
+    use std::env::set_var;
+
+    #[test]
+    fn test2() -> Result<(), MurinError> {
+        // // hugin env
+        // set_var("ADM_USER", "trsfasfue");
+        // set_var("POW", "trsfasfue");
+        // set_var("ODIN_URL", "trsfasfue");
+        // set_var("PLATFORM_DB_URL", "trsfasfue");
+        // set_var("MOUNT", "trsfasfue");
+        // set_var("VPATH", "trsfasfue");
+
+        // // dvltath
+        // set_var("VSOCKET_PATH", "trsfasfue");
+        // set_var("OROLE_ID", "trsfasfue");
+        // set_var("OSECRET_ID", "trsfasfue");
+        // set_var("RUST_LOG", "trsfasfue");
+        // set_var("VAULT_TOKEN", "trsfasfue");
+
+        // // gungnir env
+        // set_var("REWARDS_DB_URL", "trsfasfue");
+
+        // // mimir env
+        // set_var("DBSYNC_DB_URL", "trsfasfue");
+
+        // // murin env
+        // set_var("CARDANO_CLI_PATH", "trsfasfue");
+        // set_var("CARDANO_PROTOCOL_PARAMETER_PATH", "trsfasfue");
+        // set_var("TX_SUBMIT_ENDPOINT1", "trsfasfue");
+        // set_var("TX_SUBMIT_ENDPOINT2", "trsfasfue");
+        // set_var("TX_SUBMIT_ENDPOINT3", "trsfasfue");
+
+        set_var("REDIS_DB", "redis://127.0.0.1:6379"); // required env
+
+        // set_var("REDIS_DB_URL_UTXOMIND", "trsfasfue");
+        // set_var("REDIS_DB_URL_REPLICA", "trsfasfue");
+
+        set_var("REDIS_CLUSTER", "false"); // required env
+
+        // set_var("TXGSET", "tfsafasrue");
+        // set_var("USED_UTXO_DATASTORE_1", "trsfasfue");
+        // set_var("USED_UTXO_DATASTORE_2", "trfsafue");
+        // set_var("USED_UTXO_DATASTORE_3", "trfsafsaue");
+        // set_var("PENDING_TX_DATASTORE_1", "sfsafa");
+        // set_var("PENDING_TX_DATASTORE_2", "fasfsaf");
+        // set_var("PENDING_TX_DATASTORE_3", "fsafasf");
+
+        // // sleipnir env
+        // set_var("JWT_KEY", "trsfasfue");
+        // set_var("DRASIL_REWARD_DB", "trsfasfue");
+
+        // // frigg env
+        // set_var("JWT_PUB_KEY", "trsfasfue");
+        // set_var("RUST_LOG", "trsfasfue");
+        // set_var("POD_HOST", "trsfasfue");
+        // set_var("POD_PORT", "trsfasfue");
+        // set_var("VERIFICATION_LINK", "trsfasfue");
+        // set_var("SMTP_USER", "trsfasfue");
+        // set_var("SMTP_PW", "trsfasfue");
+        // set_var("FROM_EMAIL", "trsfasfue");
+        // set_var("EMAIL_API_KEY", "trsfasfue");
+        // set_var("AMQP_ADDR", "trsfasfue");
+        // set_var("QUEUE_NAME", "trsfasfue");
+        // set_var("CONSUMER_NAME", "trsfasfue");
+
+        // // heimdallr env
+        // set_var("JWT_PUB_KEY", "trsfasfue");
+        // set_var("ODIN_URL", "trsfasfue");
+
+        // // loki env
+        // set_var("AMWP_ADDR", "trsfasfue");
+
+        // // geri env
+        // set_var("STREAM_TRIMMER", "trsfasfue");
+        // set_var("STREAMS", "trsfasfue");
+        // set_var("TIMEOUT", "trsfasfue");
+
+        // post-env
+        let customer_id = 10;
+        let txtype: StdTxType = StdTxType::StandardTx;
+        let tx_id = "9e24114313ae441c1b68125a0cef284c141a3f6ef270fc5608e255424a3c3219".to_string();
+        let signature = "100818258204949628654d1fabf39d007ecd9c7ab92df8b1ed349a1d3dd57da62390d378e03
+            5840dbabd6d0cfb4d01b1986f98dde29e64dbda251a9887d68272d417f0dab4410cf313d3578aa8182fa5f0b1310c7ca
+            d2be27e34c1bc7465310fa44a6112ede7d05f5d90103a100a1190539a269636f6d706c6574656400646e616d656b6865
+            6c6c6f20776f726c64".to_string();
+        let finalize_std_tx: FinalizeStdTx = FinalizeStdTx::new(
+            customer_id,
+            txtype,
+            tx_id,
+            signature,
+        );
+        let raw_tx = murin::utxomngr::txmind::read_raw_tx(&finalize_std_tx.get_tx_id())?;
+        let standard_tx_data: StandardTxData = murin::stdtx::StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
+
+        let trans_wallets: TransWallets = TransWallets::new();
+        let address: Address = Address::from_hex("")?;
+        let atsat_params: (&StandardTxData, &TransWallets, &Address) = (
+            &standard_tx_data, 
+            &trans_wallets, 
+            &address
+        );
+        let _atsat_builder = AtSATBuilder::new(atsat_params);
+        Ok(())
+    }
+
+    // #[test]
+    // fn test1() -> Result<(), MurinError>{
+        
+    //     // standard_tx_data
+    //     let customer_id = 0;
+    //     let txtype = crate::StdTxType::DelegateStake;
+    //     let tx_id = "5091ba0e8cc9a3d63468c27b5269bc4665e6f1be7c1c025f1bb4fd2ff2ff7d0a".to_string(); //tx hash
+    //     let signature = "".to_string();
+    //     let cmd = FinalizeStdTx::new(
+    //         customer_id,
+    //         txtype,
+    //         tx_id,
+    //         signature,
+    //     );
+
+    //     let raw_tx = txmind::read_raw_tx(&cmd.get_tx_id())?;
+    //     let standard_tx_data = StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
+
+    //     // trans_wallets
+    //     let mut trans_wallets = TransWallets::new();
+    //     let pay_addr = Address::from_hex("")?;
+    //     let utxos = &TransactionUnspentOutputs::new();
+    //     let trans_wallet = TransWallet::new(
+    //         &pay_addr,
+    //         &utxos,
+    //     );
+    //     trans_wallets.add_wallet(&trans_wallet);
+
+    //     // address
+    //     let address = Address::from_hex("")?;
+
+    //     // transaction builder
+    //     let at_sat_builder = AtSATBuilder::new((
+    //         &standard_tx_data,
+    //         &trans_wallets,
+    //         &address,
+    //     ));
+
+    //     // left side
+    //     let perform_txb = at_sat_builder.perform_txb(
+    //         &clib::utils::BigNum::from_str("0").unwrap(),
+    //         &TxData::new(
+    //             Some(vec![0]),
+    //             vec![Address::from_hex("").unwrap()],
+    //             Some(Address::from_hex("").unwrap()),
+    //             TransactionUnspentOutputs::new(),
+    //             clib::NetworkIdKind::Testnet,
+    //             100,
+    //         ).unwrap(),
+    //         &["".to_string()],
+    //         true,
+    //     ).unwrap();
+
+    //     // right side
+    //     let txbo = (
+    //         clib::TransactionBody::new_tx_body(
+    //             &clib::TransactionInputs::new(),
+    //             &clib::TransactionOutputs::new(),
+    //             &clib::utils::BigNum::from_str("0").unwrap()
+    //         ),
+    //         clib::TransactionWitnessSet::new(),
+    //         clib::metadata::AuxiliaryData::new(),
+    //         TransactionUnspentOutputs::new(),
+    //         0,
+    //     );
+
+    //     // assertions
+    //     assert_eq!(perform_txb.0, txbo.0);
+    //     assert_eq!(perform_txb.1, txbo.1);
+    //     assert_eq!(perform_txb.2, txbo.2);
+    //     // assert_eq!(perform_txb.3, txbo.3); // TransactionUnspentOutputs
+    //     assert_eq!(perform_txb.4, txbo.4);
+
+    //     Ok(())
+    // }
+}
