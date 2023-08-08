@@ -683,7 +683,6 @@ impl Operation {
                 Ok(StandardTxData {
                     wallet_addresses: wal_addr,
                     transfers: trans,
-                    metadata: None,
                 })
             }
             _ => Err(MurinError::new(

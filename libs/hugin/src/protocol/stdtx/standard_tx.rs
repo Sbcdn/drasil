@@ -214,7 +214,7 @@ mod tests {
         // set_var("TX_SUBMIT_ENDPOINT2", "trsfasfue");
         // set_var("TX_SUBMIT_ENDPOINT3", "trsfasfue");
 
-        set_var("REDIS_DB", "redis://127.0.0.1:6379"); // required env
+        set_var("REDIS_DB", "redis://127.0.0.1:6379/0"); // required env
 
         // set_var("REDIS_DB_URL_UTXOMIND", "trsfasfue");
         // set_var("REDIS_DB_URL_REPLICA", "trsfasfue");

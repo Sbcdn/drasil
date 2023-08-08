@@ -26,7 +26,6 @@ pub struct AssetTransfer {
 pub struct StandardTxData {
     pub wallet_addresses: Vec<Address>,
     pub transfers: Vec<AssetTransfer>,
-    pub metadata: Option<Vec<String>>,
 }
 
 impl Display for StandardTxData {
