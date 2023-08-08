@@ -49,21 +49,9 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         &self,
         fee: &clib::utils::BigNum,
         gtxd: &TxData,
-        pvks: &[String],
+        _: &[String],
         fcrun: bool,
     ) -> std::result::Result<TxBO, MurinError> {
-
-        if size_of_val(pvks) > 64 {
-            return Err(MurinError::new("pvks must be max 64 bytes"));
-        }
-        pvks.iter().for_each(|s| {
-            if size_of_val(s) > 64 {
-                panic!("pvks element must be max 64 bytes");
-            }
-            if s.len() > 100 {
-                panic!("pvks element must have max 100 characters");
-            }
-        });
 
         if fcrun {
             info!("--------------------------------------------------------------------------------------------------------");
@@ -107,12 +95,10 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         let mut aux_data = clib::metadata::AuxiliaryData::new();
         let mut gtm = GeneralTransactionMetadata::new();
 
-        pvks.iter().enumerate().for_each(|(i, s)|{
-            gtm.insert(
-                &clib::utils::BigNum::from_str(&i.to_string()).unwrap(), 
-                &clib::metadata::TransactionMetadatum::new_text(s.to_string()).unwrap()
-            );
-        });
+        gtm.insert(
+            &clib::utils::BigNum::from_str("0").unwrap(), 
+            &clib::metadata::TransactionMetadatum::new_text("".to_string()).unwrap()
+        );
 
         aux_data.set_metadata(&gtm);
         let aux_data_hash = hash_auxiliary_data(&aux_data);
@@ -199,18 +185,7 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         txbody.set_auxiliary_data_hash(&aux_data_hash);
 
         // empty witness
-        let mut txwitness = clib::TransactionWitnessSet::new();
-
-        let mut vkeywitnesses = clib::crypto::Vkeywitnesses::new();
-        let root_key1 = clib::crypto::Bip32PrivateKey::from_bytes(&hex::decode(&pvks[0])?)?;
-        let account_key1 = root_key1
-            .derive(harden(1852u32))
-            .derive(harden(1815u32))
-            .derive(harden(0u32));
-        let prv1 = account_key1.to_raw_key(); // for signatures
-        let vkwitness_1d1 = cutils::make_vkey_witness(&cutils::hash_transaction(&txbody), &prv1);
-        vkeywitnesses.add(&vkwitness_1d1);
-        txwitness.set_vkeys(&vkeywitnesses);
+        let txwitness = clib::TransactionWitnessSet::new();
 
         debug!("TxWitness: {:?}", hex::encode(txwitness.to_bytes()));
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
