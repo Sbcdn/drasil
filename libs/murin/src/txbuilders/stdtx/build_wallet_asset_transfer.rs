@@ -95,10 +95,32 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         let mut aux_data = clib::metadata::AuxiliaryData::new();
         let mut gtm = GeneralTransactionMetadata::new();
 
-        gtm.insert(
-            &clib::utils::BigNum::from_str("0").unwrap(), 
-            &clib::metadata::TransactionMetadatum::new_text("".to_string()).unwrap()
-        );
+        self.stxd.transfers.iter().for_each(|t| {
+            if let Some(m) = &t.metadata {
+                m.iter().for_each(|m| {
+                    if m.len() > 100 {
+                        panic!("Message must have max 100 characters.");
+                    }
+                    let mut byte_string_array: Vec<String> = vec![];
+                    let single_byte_string = m.clone().into_bytes();
+                    if single_byte_string.len() > 64 {
+                        single_byte_string.chunks(64).for_each(|a| {
+                            let component_byte_string = String::from_utf8(a.to_vec()).unwrap();
+                            byte_string_array.push(component_byte_string);
+                        });
+                    } else {
+                        byte_string_array.push(
+                            String::from_utf8(single_byte_string.to_vec()).unwrap()
+                        );
+                    }
+
+                    gtm.insert(
+                        &clib::utils::BigNum::from_str("0").unwrap(), 
+                        &clib::metadata::TransactionMetadatum::new_text(m.to_string()).unwrap()
+                    );
+                });
+            }
+        });
 
         aux_data.set_metadata(&gtm);
         let aux_data_hash = hash_auxiliary_data(&aux_data);
@@ -185,7 +207,8 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         txbody.set_auxiliary_data_hash(&aux_data_hash);
 
         // empty witness
-        let txwitness = clib::TransactionWitnessSet::new();
+        let mut txwitness = clib::TransactionWitnessSet::new();
+        // txwitness.
 
         debug!("TxWitness: {:?}", hex::encode(txwitness.to_bytes()));
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
