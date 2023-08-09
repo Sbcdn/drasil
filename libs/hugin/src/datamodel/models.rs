@@ -1179,4 +1179,5 @@ impl AssetHandle {
 pub struct TransferHandle {
     pub receiving_address: String,
     pub asset_handles: Vec<AssetHandle>,
+    pub message: Option<String>,
 }
