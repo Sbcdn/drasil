@@ -8,14 +8,10 @@ use crate::PerformTxb;
 use crate::TxData;
 
 use cardano_serialization_lib as clib;
-use cardano_serialization_lib::utils as cutils;
 use clib::address::Address;
 use clib::metadata::GeneralTransactionMetadata;
 use clib::utils::{hash_auxiliary_data, to_bignum};
 use clib::{MultiAsset, TransactionOutput};
-use std::mem::size_of_val;
-
-
 
 // One Shot Minter Builder Type
 #[derive(Debug, Clone)]

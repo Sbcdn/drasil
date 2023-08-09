@@ -188,8 +188,8 @@ mod tests {
     use std::env::set_var;
     use murin::modules::transfer::models::TransWallet;
 
-    #[test]
-    fn test2() -> Result<(), MurinError> {
+    #[tokio::test]
+    async fn test2() -> Result<(), MurinError> {
         // // hugin env
         // set_var("ADM_USER", "trsfasfue");
         // set_var("POW", "trsfasfue");
@@ -219,6 +219,7 @@ mod tests {
         // set_var("TX_SUBMIT_ENDPOINT3", "trsfasfue"); // needed if you wanna submit
 
         set_var("REDIS_DB", "redis://127.0.0.1:6379/0"); // required env
+        set_var("REDIS_DB_URL_UTXOMIND","redis://127.0.0.1:6379/0"); // required env
         set_var("REDIS_CLUSTER", "false"); // required env
 
         // set_var("TXGSET", "tfsafasrue");
@@ -268,23 +269,60 @@ mod tests {
             d2be27e34c1bc7465310fa44a6112ede7d05f5d90103a100a1190539a269636f6d706c6574656400646e616d656b6865
             6c6c6f20776f726c64".to_string();
 
-        let std_asset_txd: StandardTxData = StandardTxData::from_str("")?;
+        let std_asset_txd: StandardTxData = StandardTxData::from_str("{
+            \"wallet_addresses\": [
+                \"addr_test1qqt86eq9972q3qttj6ztje97llasktzfzvhmdccqjlqjaq2cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qy6q5t2\",
+                \"addr_test1qpg8ehvgj9zxrx59et72yjn2p02xwsm3l89jwj8ujcj63ujcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw23emu\",
+                \"addr_test1qqdp3cry5vc2gfjljctdu638tvkcqfx40fjunht9hrmru5zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qnaxxgs\",
+                \"addr_test1qr2mw080ujz0unmpn9lx5ftfuewc6htyr6v3a0svul2zgezcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qgryf7t\",
+                \"addr_test1qr7tqh7tsg4lut3jv6tsfwlv464m6knjjw90ugyz8uzgr6zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qt0jxzj\",
+                \"addr_test1qrscurjp292sxv24sepj7ghq4ydkkekzaz53zwfswcna6ljcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6q8pu3l5\",
+                \"addr_test1qqssrphse6qmp9h0ksu5vfmsx99tfl2lc6rhvy2spd5wr86cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw59j4j\",
+                \"addr_test1qqgagc0fy6nm0qe4h8zqxsg952tqjeg7l7j0agd0cx4u25zcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qxvept2\",
+                \"addr_test1qrjmru0chcxw0q7y099k2elzr45sh77gafkzj75xqwe66zzcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qthp2py\",
+                \"addr_test1qq78tygxpu7a53rz7m6jnrtf5s8sc6dvg63jz80uyqrfswzcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qhe9ekw\",
+                \"addr_test1qpvntdhn6s9d09z72f75atv8ha8qax46a5tfpcf7cp2jwm6cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6ql87t33\",
+                \"addr_test1qqrja5l2hdl5gdyz7xvm948jg7vc9ed0uzp28yqgveaxww6cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qkw5xzz\",
+                \"addr_test1qpzmsl9qfyzlh94049ya2ffjy8akvhmrhc6azdccmdyn2j2cer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qzudgs9\"
+            ],
+            \"transfers\":[
+            {
+                \"receiver\":\"addr_test1qpg8ehvgj9zxrx59et72yjn2p02xwsm3l89jwj8ujcj63ujcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw23emu\",
+                \"assets\" : [
+                    {
+                        \"amount\": \"5000000\"
+                    },
+                    {
+                        \"fingerprint\":\"asset10q8zsrnx5plw0k2l2e8slcjf4htuvu42jxrgl8\",
+                        \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
+                        \"tokenname\":\"7441726b\",
+                        \"amount\": \"200\"
+                    }
+                ],
+                \"metadata\" : [\"Hello My friend this is for you\"]
+            }
+        ]
+        }")?;
+        // wallet_addresses: Vec<Address>,
+        // transfers: Vec<AssetTransfer>,
+
         let mut wallets: TransWallets = TransWallets::new();
 
         let inputs: murin::TransactionUnspentOutputs = murin::TransactionUnspentOutputs::new();
         let network: murin::NetworkIdKind = murin::NetworkIdKind::Testnet;
 
+        let first_addr = Address::from_bech32("addr_test1qpg8ehvgj9zxrx59et72yjn2p02xwsm3l89jwj8ujcj63ujcer3t74yn0dm8xqnr7rtwhkqcrpsmphwcf0mlmn39ry6qw23emu")?;
+
         let gtxd: murin::TxData = murin::TxData::new(
             None,
-            vec![],
+            vec![
+                first_addr.clone()
+            ],
             None,
             inputs,
             network,
             0,
         )?;
-
-        let first_address_str = mimir::select_addr_of_first_transaction(&gtxd.get_stake_address().to_bech32(None)?).unwrap();
-        let first_addr = Address::from_bech32(&first_address_str)?;
 
         let uw = TransWallet::new(&first_addr, &gtxd.get_inputs());
         wallets.add_wallet(&uw);
@@ -310,35 +348,35 @@ mod tests {
         let txb_param: (&StandardTxData, &TransWallets, &Address) = (&std_asset_txd, &wallets, &first_addr);
         let asset_transfer = AtSATBuilder::new(txb_param);
         let builder = murin::TxBuilder::new(&gtxd, &vec![]);
-        let _ = async{
-            log::debug!("Try to create raw tx...");
-            let bld_tx = builder.build(&asset_transfer).await.unwrap();
-            let tx = murin::utxomngr::RawTx::new(
-                &bld_tx.get_tx_body(),
-                &bld_tx.get_txwitness(),
-                &bld_tx.get_tx_unsigned(),
-                &bld_tx.get_metadata(),
-                &gtxd.to_string(),
-                &std_asset_txd.to_string(),
-                &bld_tx.get_used_utxos(),
-                &hex::encode(gtxd.get_stake_address().to_bytes()),
-                &(bss.customer_id()),
-                &[],
-            );
-            debug!("RAWTX data: {:?}", tx);
-        };
+        log::debug!("Try to create raw tx...");
+        let bld_tx = builder.build(&asset_transfer).await?;
+        let raw_tx = murin::utxomngr::RawTx::new(
+            &bld_tx.get_tx_body(),
+            &bld_tx.get_txwitness(),
+            &bld_tx.get_tx_unsigned(),
+            &bld_tx.get_metadata(),
+            &gtxd.to_string(),
+            &std_asset_txd.to_string(),
+            &bld_tx.get_used_utxos(),
+            &hex::encode(gtxd.get_stake_address().to_bytes()),
+            &(bss.customer_id()),
+            &[],
+        );
+        debug!("RAWTX data: {:?}", raw_tx);
         
+        debug!("Try to store raw tx...");
+        let tx_id = murin::utxomngr::txmind::store_raw_tx(&raw_tx)?;
+
         let finalize_std_tx: FinalizeStdTx = FinalizeStdTx::new(
             customer_id,
             txtype,
             tx_id,
             signature,
         );
-        let raw_tx = murin::utxomngr::txmind::read_raw_tx(&finalize_std_tx.get_tx_id())?;
-        let standard_tx_data: StandardTxData = murin::stdtx::StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
 
-        debug!("Try to store raw tx...");
-        let tx_id = murin::utxomngr::txmind::store_raw_tx(&raw_tx)?;
+        let raw_tx = murin::utxomngr::txmind::read_raw_tx(&finalize_std_tx.get_tx_id())?;
+        // let raw_tx = murin::utxomngr::txmind::read_raw_tx(&tx_id)?;
+        let standard_tx_data: StandardTxData = murin::stdtx::StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
 
         let trans_wallets: TransWallets = TransWallets::new();
         let address: Address = Address::from_hex("")?;
