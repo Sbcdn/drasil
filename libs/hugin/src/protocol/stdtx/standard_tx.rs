@@ -169,6 +169,9 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
 mod tests {
     use crate::FinalizeStdTx;
     use crate::datamodel::models::StdTxType;
+    use crate::BuildStdTx;
+    use crate::datamodel::TransactionPattern;
+    use crate::Operation;
     use murin::{
         clib::address::Address,
         MurinError, 
@@ -183,6 +186,7 @@ mod tests {
     };
     use std::str::FromStr;
     use std::env::set_var;
+    use murin::modules::transfer::models::TransWallet;
 
     #[test]
     fn test2() -> Result<(), MurinError> {
@@ -264,30 +268,66 @@ mod tests {
             d2be27e34c1bc7465310fa44a6112ede7d05f5d90103a100a1190539a269636f6d706c6574656400646e616d656b6865
             6c6c6f20776f726c64".to_string();
 
+        let std_asset_txd: StandardTxData = StandardTxData::from_str("")?;
+        let mut wallets: TransWallets = TransWallets::new();
+
+        let inputs: murin::TransactionUnspentOutputs = murin::TransactionUnspentOutputs::new();
+        let network: murin::NetworkIdKind = murin::NetworkIdKind::Testnet;
+
+        let gtxd: murin::TxData = murin::TxData::new(
+            None,
+            vec![],
+            None,
+            inputs,
+            network,
+            0,
+        )?;
+
+        let first_address_str = mimir::select_addr_of_first_transaction(&gtxd.get_stake_address().to_bech32(None)?).unwrap();
+        let first_addr = Address::from_bech32(&first_address_str)?;
+
+        let uw = TransWallet::new(&first_addr, &gtxd.get_inputs());
+        wallets.add_wallet(&uw);
+
+        let script_spec: Operation = Operation::StdTx{
+            transfers: vec![],
+            wallet_addresses: None,
+        };
+
+        let txpattern: TransactionPattern = TransactionPattern::new_empty(
+            customer_id,
+            &script_spec,
+            0,
+        );
+
+        let bss: BuildStdTx = BuildStdTx::new(
+            customer_id, 
+            txtype.clone(),
+            txpattern,
+        );
+
         // build tx
-        let txb_param: AtSATParams = (&std_asset_txd, &wallets, &first_addr);
+        let txb_param: (&StandardTxData, &TransWallets, &Address) = (&std_asset_txd, &wallets, &first_addr);
         let asset_transfer = AtSATBuilder::new(txb_param);
         let builder = murin::TxBuilder::new(&gtxd, &vec![]);
-        let bld_tx = builder.build(&asset_transfer).await;
-
-        log::debug!("Try to create raw tx...");
-        let tx = murin::utxomngr::RawTx::new(
-            &bld_tx.get_tx_body(),
-            &bld_tx.get_txwitness(),
-            &bld_tx.get_tx_unsigned(),
-            &bld_tx.get_metadata(),
-            &gtxd.to_string(),
-            &std_asset_txd.to_string(),
-            &bld_tx.get_used_utxos(),
-            &hex::encode(gtxd.get_stake_address().to_bytes()),
-            &(bss.customer_id()),
-            &[],
-        );
-        debug!("RAWTX data: {:?}", tx);
-
-        debug!("Try to store raw tx...");
-        let tx_id = murin::utxomngr::txmind::store_raw_tx(raw_tx)?;
-
+        let _ = async{
+            log::debug!("Try to create raw tx...");
+            let bld_tx = builder.build(&asset_transfer).await.unwrap();
+            let tx = murin::utxomngr::RawTx::new(
+                &bld_tx.get_tx_body(),
+                &bld_tx.get_txwitness(),
+                &bld_tx.get_tx_unsigned(),
+                &bld_tx.get_metadata(),
+                &gtxd.to_string(),
+                &std_asset_txd.to_string(),
+                &bld_tx.get_used_utxos(),
+                &hex::encode(gtxd.get_stake_address().to_bytes()),
+                &(bss.customer_id()),
+                &[],
+            );
+            debug!("RAWTX data: {:?}", tx);
+        };
+        
         let finalize_std_tx: FinalizeStdTx = FinalizeStdTx::new(
             customer_id,
             txtype,
@@ -296,6 +336,9 @@ mod tests {
         );
         let raw_tx = murin::utxomngr::txmind::read_raw_tx(&finalize_std_tx.get_tx_id())?;
         let standard_tx_data: StandardTxData = murin::stdtx::StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
+
+        debug!("Try to store raw tx...");
+        let tx_id = murin::utxomngr::txmind::store_raw_tx(&raw_tx)?;
 
         let trans_wallets: TransWallets = TransWallets::new();
         let address: Address = Address::from_hex("")?;
@@ -307,80 +350,4 @@ mod tests {
         let _atsat_builder = AtSATBuilder::new(atsat_params);
         Ok(())
     }
-
-    // #[test]
-    // fn test1() -> Result<(), MurinError>{
-        
-    //     // standard_tx_data
-    //     let customer_id = 0;
-    //     let txtype = crate::StdTxType::DelegateStake;
-    //     let tx_id = "5091ba0e8cc9a3d63468c27b5269bc4665e6f1be7c1c025f1bb4fd2ff2ff7d0a".to_string(); //tx hash
-    //     let signature = "".to_string();
-    //     let cmd = FinalizeStdTx::new(
-    //         customer_id,
-    //         txtype,
-    //         tx_id,
-    //         signature,
-    //     );
-
-    //     let raw_tx = txmind::read_raw_tx(&cmd.get_tx_id())?;
-    //     let standard_tx_data = StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
-
-    //     // trans_wallets
-    //     let mut trans_wallets = TransWallets::new();
-    //     let pay_addr = Address::from_hex("")?;
-    //     let utxos = &TransactionUnspentOutputs::new();
-    //     let trans_wallet = TransWallet::new(
-    //         &pay_addr,
-    //         &utxos,
-    //     );
-    //     trans_wallets.add_wallet(&trans_wallet);
-
-    //     // address
-    //     let address = Address::from_hex("")?;
-
-    //     // transaction builder
-    //     let at_sat_builder = AtSATBuilder::new((
-    //         &standard_tx_data,
-    //         &trans_wallets,
-    //         &address,
-    //     ));
-
-    //     // left side
-    //     let perform_txb = at_sat_builder.perform_txb(
-    //         &clib::utils::BigNum::from_str("0").unwrap(),
-    //         &TxData::new(
-    //             Some(vec![0]),
-    //             vec![Address::from_hex("").unwrap()],
-    //             Some(Address::from_hex("").unwrap()),
-    //             TransactionUnspentOutputs::new(),
-    //             clib::NetworkIdKind::Testnet,
-    //             100,
-    //         ).unwrap(),
-    //         &["".to_string()],
-    //         true,
-    //     ).unwrap();
-
-    //     // right side
-    //     let txbo = (
-    //         clib::TransactionBody::new_tx_body(
-    //             &clib::TransactionInputs::new(),
-    //             &clib::TransactionOutputs::new(),
-    //             &clib::utils::BigNum::from_str("0").unwrap()
-    //         ),
-    //         clib::TransactionWitnessSet::new(),
-    //         clib::metadata::AuxiliaryData::new(),
-    //         TransactionUnspentOutputs::new(),
-    //         0,
-    //     );
-
-    //     // assertions
-    //     assert_eq!(perform_txb.0, txbo.0);
-    //     assert_eq!(perform_txb.1, txbo.1);
-    //     assert_eq!(perform_txb.2, txbo.2);
-    //     // assert_eq!(perform_txb.3, txbo.3); // TransactionUnspentOutputs
-    //     assert_eq!(perform_txb.4, txbo.4);
-
-    //     Ok(())
-    // }
 }
