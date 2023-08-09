@@ -525,11 +525,9 @@ impl Transfer {
                 }
             }
         }
-
         let change = change.checked_sub(&out_value);
         log::trace!("Change in balance: {:?}", change);
         let change = change?;
-
         let mut txos = self
             .sinks
             .iter()
