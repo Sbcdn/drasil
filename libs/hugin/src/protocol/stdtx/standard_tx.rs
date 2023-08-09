@@ -205,26 +205,22 @@ mod tests {
         // set_var("REWARDS_DB_URL", "trsfasfue");
 
         // // mimir env
-        // set_var("DBSYNC_DB_URL", "trsfasfue");
+        // set_var("DBSYNC_DB_URL", "trsfasfue"); // needed for live data, but not for test data
 
         // // murin env
         // set_var("CARDANO_CLI_PATH", "trsfasfue");
         // set_var("CARDANO_PROTOCOL_PARAMETER_PATH", "trsfasfue");
-        // set_var("TX_SUBMIT_ENDPOINT1", "trsfasfue");
-        // set_var("TX_SUBMIT_ENDPOINT2", "trsfasfue");
-        // set_var("TX_SUBMIT_ENDPOINT3", "trsfasfue");
+        // set_var("TX_SUBMIT_ENDPOINT1", "trsfasfue"); // needed if you wanna submit
+        // set_var("TX_SUBMIT_ENDPOINT2", "trsfasfue"); // needed if you wanna submit
+        // set_var("TX_SUBMIT_ENDPOINT3", "trsfasfue"); // needed if you wanna submit
 
         set_var("REDIS_DB", "redis://127.0.0.1:6379/0"); // required env
-
-        // set_var("REDIS_DB_URL_UTXOMIND", "trsfasfue");
-        // set_var("REDIS_DB_URL_REPLICA", "trsfasfue");
-
         set_var("REDIS_CLUSTER", "false"); // required env
 
         // set_var("TXGSET", "tfsafasrue");
-        // set_var("USED_UTXO_DATASTORE_1", "trsfasfue");
-        // set_var("USED_UTXO_DATASTORE_2", "trfsafue");
-        // set_var("USED_UTXO_DATASTORE_3", "trfsafsaue");
+        set_var("USED_UTXO_DATASTORE_1", "UTXOSTORE1"); // needed
+        set_var("USED_UTXO_DATASTORE_2", "UTXOSTORE2"); // needed
+        set_var("USED_UTXO_DATASTORE_3", "UTXOSTORE3"); // needed
         // set_var("PENDING_TX_DATASTORE_1", "sfsafa");
         // set_var("PENDING_TX_DATASTORE_2", "fasfsaf");
         // set_var("PENDING_TX_DATASTORE_3", "fsafasf");
@@ -259,7 +255,7 @@ mod tests {
         // set_var("STREAMS", "trsfasfue");
         // set_var("TIMEOUT", "trsfasfue");
 
-        // post-env
+        // data preparation
         let customer_id = 10;
         let txtype: StdTxType = StdTxType::StandardTx;
         let tx_id = "9e24114313ae441c1b68125a0cef284c141a3f6ef270fc5608e255424a3c3219".to_string();
@@ -267,6 +263,31 @@ mod tests {
             5840dbabd6d0cfb4d01b1986f98dde29e64dbda251a9887d68272d417f0dab4410cf313d3578aa8182fa5f0b1310c7ca
             d2be27e34c1bc7465310fa44a6112ede7d05f5d90103a100a1190539a269636f6d706c6574656400646e616d656b6865
             6c6c6f20776f726c64".to_string();
+
+        // build tx
+        let txb_param: AtSATParams = (&std_asset_txd, &wallets, &first_addr);
+        let asset_transfer = AtSATBuilder::new(txb_param);
+        let builder = murin::TxBuilder::new(&gtxd, &vec![]);
+        let bld_tx = builder.build(&asset_transfer).await;
+
+        log::debug!("Try to create raw tx...");
+        let tx = murin::utxomngr::RawTx::new(
+            &bld_tx.get_tx_body(),
+            &bld_tx.get_txwitness(),
+            &bld_tx.get_tx_unsigned(),
+            &bld_tx.get_metadata(),
+            &gtxd.to_string(),
+            &std_asset_txd.to_string(),
+            &bld_tx.get_used_utxos(),
+            &hex::encode(gtxd.get_stake_address().to_bytes()),
+            &(bss.customer_id()),
+            &[],
+        );
+        debug!("RAWTX data: {:?}", tx);
+
+        debug!("Try to store raw tx...");
+        let tx_id = murin::utxomngr::txmind::store_raw_tx(raw_tx)?;
+
         let finalize_std_tx: FinalizeStdTx = FinalizeStdTx::new(
             customer_id,
             txtype,
