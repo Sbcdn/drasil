@@ -2,7 +2,7 @@ name: "Build and push"
 on:
   push:
     tags:
-      - 'v*'
+      - 'heimdallr-v*'
 env:
   CARGO_TERM_COLOR: always
   CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -30,15 +30,18 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/${{github.repository}}
+          images: ghcr.io/heimdallr
+          tags: |
+            type=match,pattern=heimdallr-(.*),group=1
           flavor: latest=false
       - name: "Build image and push to GitHub Container Registry"
         uses: docker/build-push-action@v4
         with:
           push: true
-          no-cache: true
           context: ./
           file: .docker/Dockerfile-heimdallr
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
           tags: ${{ steps.meta.outputs.tags }}
