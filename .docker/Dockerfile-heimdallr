@@ -1,4 +1,4 @@
-FROM rust:1.67.0-slim-bullseye as base
+FROM rust:1.71.0-slim-bullseye as base
 RUN apt update -y
 RUN apt install -y --no-install-recommends \
     ca-certificates \
@@ -25,23 +25,23 @@ RUN adduser \
     --uid "${UID}" \
     "${USER}"
 
+RUN cargo install cargo-chef
+
+FROM base as planner
+WORKDIR /build
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
 FROM base as builder
-WORKDIR /heimdallr-build
-ENV CARGO_HOME=/heimdallr-build/.cargo
-COPY ./Cargo.toml ./                       
-COPY ./.cargo/config $CARGO_HOME/config
-#COPY ./.cargo/git $CARGO_HOME/git
-COPY ./src ./src
-COPY ./.cargo/libs/hugin /libs/hugin
-COPY ./.cargo/libs/murin /libs/murin
-COPY ./.cargo/libs/gungnir /libs/gungnir
-COPY ./.cargo/libs/mimir /libs/mimir
-COPY ./.cargo/libs/dvltath /libs/dvltath
-RUN cargo build --release --target x86_64-unknown-linux-gnu
+WORKDIR /build
+COPY --from=planner /build/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
+RUN cargo build --release --manifest-path services/heimdallr/Cargo.toml
 
 FROM gcr.io/distroless/cc as heimdallr
 WORKDIR /heimdallr
-COPY --from=builder /heimdallr-build/target/x86_64-unknown-linux-gnu/release/heimdallr /usr/bin
+COPY --from=builder /build/target/release/heimdallr /usr/bin
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
@@ -77,8 +77,6 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libhx509.so.5 /usr/lib/x86_64-linu
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr/lib/x86_64-linux-gnu/libsqlite3.so.0
 COPY --from=builder /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/libcrypt.so.1
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libffi.so.7 /usr/lib/x86_64-linux-gnu/libffi.so.7
-
-ENV ODIN_URL=x 
 
 EXPOSE 4000
 
