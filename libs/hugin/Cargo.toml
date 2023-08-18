@@ -35,6 +35,8 @@ rpassword = "5.0.1"
 vaultrs = { git = "https://github.com/Sbcdn/vaultrs.git", branch = "master" } #"0.6.2"
 sha2 = "0.10.2"
 bigdecimal = { version = "0.3.0", features = ["serde"] }
+strum = { version = "0.24", features = ["derive"] }
+strum_macros = "0.24"
 #google-authenticator = "0.3.0"
 
 murin = { path = "../murin", version = "0.1.0" }
