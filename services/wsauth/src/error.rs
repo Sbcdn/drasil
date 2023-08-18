@@ -14,8 +14,6 @@ pub enum Error {
     Custom(String),
     #[error("could not create jwt token")]
     JWTTokenCreationError,
-    #[error("not authorized: {:?}", self)]
-    NotAuthorized(String),
 }
 
 #[derive(Serialize, Debug)]

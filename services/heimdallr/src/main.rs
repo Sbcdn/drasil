@@ -1,4 +1,4 @@
-#![allow(opaque_hidden_inferred_bound)]
+#![allow(opaque_hidden_inferred_bound, unused_imports)]
 extern crate pretty_env_logger;
 
 mod clientapi;
@@ -190,6 +190,7 @@ mod filters {
 }
 
 mod auth {
+
     use crate::error::{self, Error};
     use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
     use serde::{Deserialize, Serialize};
@@ -199,7 +200,11 @@ mod auth {
     };
 
     use hugin::{
-        client::connect, OneShotMintPayload, TXPWrapper, TransactionPattern,
+        // Warning appears due to commented user login check on database
+        client::connect,
+        OneShotMintPayload,
+        TXPWrapper,
+        TransactionPattern,
         WalletTransactionPattern,
     };
     use hugin::{Signature, VerifyUser};
