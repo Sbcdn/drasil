@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+// Work in Progress
 use crate::error::SleipnirError;
 
 // Create Airdrop Parameters
