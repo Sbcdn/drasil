@@ -1,3 +1,10 @@
+#![allow(
+    dead_code,
+    clippy::too_many_arguments,
+    unused_assignments,
+    unused_variables
+)]
+// Work in Progress
 pub mod ad_params;
 pub mod ftairdrop;
 pub mod nftairdrop;
