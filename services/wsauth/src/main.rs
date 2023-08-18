@@ -1,3 +1,4 @@
+#![allow(opaque_hidden_inferred_bound)]
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{mpsc, Mutex};
 use warp::{ws::Message, Filter};
@@ -100,10 +101,6 @@ mod filters {
             message = "Invalid Body";
         } else if let Some(e) = err.find::<crate::error::Error>() {
             match e {
-                crate::error::Error::NotAuthorized(_error_message) => {
-                    code = StatusCode::UNAUTHORIZED;
-                    message = "Action not authorized";
-                }
                 crate::error::Error::JWTTokenError => {
                     code = StatusCode::BAD_GATEWAY;
                     message = "Action not authorized";

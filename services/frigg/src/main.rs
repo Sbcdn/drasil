@@ -326,7 +326,7 @@ fn endpoints(
         .clone()
         .and(warp::path("ws"))
         .and(warp::path("impcsv"))
-        .and(with_rmq(pool.clone()))
+        .and(with_rmq(pool))
         .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
         .and_then(handler::whitelist::import_whitelist_from_csv);
 
