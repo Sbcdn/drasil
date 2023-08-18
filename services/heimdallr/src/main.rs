@@ -300,23 +300,19 @@ mod handlers {
     };
     use std::env;
     use std::{convert::Infallible, str::FromStr};
+    use strum::VariantNames;
 
     async fn connect_odin() -> Client {
         connect(env::var("ODIN_URL").unwrap()).await.unwrap()
     }
 
     pub async fn contracts_list() -> Result<impl warp::Reply, Infallible> {
-        let mut ret = Vec::<String>::new();
-
-        for t in ContractType::CONTRTYPES.iter() {
-            ret.push(t.to_string())
-        }
-
-        for t in MultiSigType::MULTISIGTYPES.iter() {
-            ret.push(t.to_string())
-        }
-
-        Ok(warp::reply::json(&ret))
+        Ok(warp::reply::json(
+            &ContractType::VARIANTS
+                .iter()
+                .chain(MultiSigType::VARIANTS)
+                .collect::<Vec<_>>(),
+        ))
     }
 
     pub async fn contract_exec_build(
