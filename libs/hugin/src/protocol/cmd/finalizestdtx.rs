@@ -95,7 +95,7 @@ impl FinalizeStdTx {
                 if let Err(e) =
                     murin::delegation::DelegTxData::from_str(raw_tx.get_tx_specific_rawdata())
                 {
-                    return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a standard transaction, {:?}",e.to_string())}.into());
+                    return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a delegation transaction, {:?}",e.to_string())}.into());
                 };
                 self.finalize_delegation(raw_tx.clone()).await?
             }
