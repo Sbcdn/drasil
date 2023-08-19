@@ -73,13 +73,13 @@ impl BuildStdTx {
                 Err(e) => e.to_string(),
             },
         };
-
+        log::debug!("Return String before parsing into BC:\n{:?}", ret);
         let response = Frame::Bulk(Bytes::from(
             bc::DefaultOptions::new()
                 .with_varint_encoding()
                 .serialize(&ret)?,
         ));
-        log::debug!("{:?}", response);
+        log::debug!("Response before writing into Frame{:?}", response);
         dst.write_frame(&response).await?;
 
         Ok(())
