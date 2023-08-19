@@ -208,7 +208,7 @@ pub fn input_selection(
     let mut acc = Value::new(&to_bignum(0u64));
     let mut txins = clib::TransactionInputs::new();
 
-    let overhead = 100u64;
+    let overhead = 50u64;
 
     if let Some(token_utxos) = specific_input_utxos {
         for i in 0..token_utxos.len() {
