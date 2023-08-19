@@ -1,5 +1,6 @@
 use super::error::TxToolsError;
 use super::models::TokenAsset;
+use crate::cip30::get_stake_address;
 use crate::clib;
 use crate::clib::{
     address::Address,
@@ -118,12 +119,26 @@ pub fn find_token_utxos_na(
         for asset in &assets {
             let ins = inputs.clone();
             let mut needed_amt = asset.2;
-            info!("Set Needed Amount: {:?}", needed_amt);
-            info!("Input UTxOs count: {:?}", ins.len());
+            debug!("Set Needed Amount: {:?}", needed_amt);
+            debug!("Input UTxOs count: {:?}", ins.len());
+            debug!("Assets count: {:?}", assets.len());
+            debug!("Asset: {:?}", assets);
             for i in 0..ins.len() {
                 let unspent_output = ins.get(i);
                 if let Some(addr) = on_addr {
-                    if unspent_output.output().address().to_bytes() != addr.to_bytes() {
+                    if unspent_output.output().address().to_bytes() != addr.to_bytes()
+                        && if let Ok(stake_addr) = get_stake_address(addr) {
+                            if let Ok(stake_addr_2) =
+                                get_stake_address(&unspent_output.output().address())
+                            {
+                                stake_addr != stake_addr_2
+                            } else {
+                                true
+                            }
+                        } else {
+                            true
+                        }
+                    {
                         continue;
                     }
                 };
@@ -159,12 +174,14 @@ pub fn find_token_utxos_na(
             }
         }
     } else {
+        debug!("We fail here");
         return Err(TxToolsError::Custom(
             "ERROR: cannot find token utxos , one of the provided inputs is empty".to_string(),
         ));
     }
 
     if out.is_empty() {
+        debug!("Out is empty!");
         trace!("Inputs: {:?}", inputs);
         return Err(TxToolsError::Custom(
             "ERROR: The token is not available in the utxo set".to_string(),
@@ -191,7 +208,7 @@ pub fn input_selection(
     let mut acc = Value::new(&to_bignum(0u64));
     let mut txins = clib::TransactionInputs::new();
 
-    let overhead = 50u64;
+    let overhead = 100u64;
 
     if let Some(token_utxos) = specific_input_utxos {
         for i in 0..token_utxos.len() {
@@ -255,20 +272,15 @@ pub fn input_selection(
                 }
             }
         }
-        let token_selection = find_token_utxos_na(
-            &multiassets.clone(),
-            // &needed_value.clone(),
-            tokens_to_find,
-            on_addr,
-        )?; //find_token_utxos_na(&multiassets.clone(), tokens_to_find, on_addr)?;
+        let token_selection = find_token_utxos_na(&multiassets.clone(), tokens_to_find, on_addr)?;
         if !token_selection.is_empty() {
             for i in 0..token_selection.len() {
                 selection.add(&token_selection.get(i));
                 acc = acc
                     .checked_add(&token_selection.get(i).output().amount())
                     .unwrap();
-                //debug!("\n\nAdded Script Utxo to Acc Value : \n {:?}\n", acc);
-                // Delete script input from multi assets
+                trace!("\n\nAdded Script Utxo to Acc Value : \n {:?}\n", acc);
+                // Delete script input from multi assets to not select it again
                 if let Some(i) = multiassets.find_utxo_index(&token_selection.get(i)) {
                     multiassets.swap_remove(i);
                     //debug!(
@@ -283,18 +295,18 @@ pub fn input_selection(
     multiassets.sort_by_coin();
     purecoinassets.sort_by_coin();
 
-    //debug!("\n\nMULTIASSETS: {:?}\n\n", multiassets);
-    //debug!("\n\npurecoinassets: {:?}\n\n", purecoinassets);
+    debug!("\n\nMULTIASSETS: {:?}\n\n", multiassets);
+    debug!("\n\npurecoinassets: {:?}\n\n", purecoinassets);
 
     let utxo_count = multiassets.len() + purecoinassets.len();
     let mut max_run = 0;
-    //debug!("\n\nNV: {:?}", nv);
-    //debug!("\n\nNV: {:?}", acc);
-    //debug!(
-    //    "\nbefore while! Utxo Count: {:?}, {:?} \n",
-    //    utxo_count,
-    //    (nv.coin().compare(&acc.coin()) > 0)
-    //);
+    debug!("\n\nNV: {:?}", nv);
+    debug!("\n\nNV: {:?}", acc);
+    debug!(
+        "\nbefore while! Utxo Count: {:?}, {:?} \n",
+        utxo_count,
+        (nv.coin().compare(&acc.coin()) > 0)
+    );
     while nv.coin().compare(&acc.coin()) > 0 && max_run < utxo_count {
         nv = nv.checked_sub(&acc).unwrap();
 
@@ -316,7 +328,7 @@ pub fn input_selection(
             }
             let _ = multiassets.pop();
         } else {
-            // Fine enough Ada to pay the transaction
+            // Find enough Ada to pay the transaction
             let ret =
                 crate::chelper::hfn::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
             trace!("Return coinassets: {:?}", ret);

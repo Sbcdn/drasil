@@ -470,7 +470,7 @@ mod handlers {
                     warp::http::StatusCode::OK,
                 )),
 
-                Err(_) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
+                Err(e1) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
                     Ok(resp) => Ok(warp::reply::with_status(
                         warp::reply::json(&resp),
                         warp::http::StatusCode::OK,
@@ -479,7 +479,7 @@ mod handlers {
                     Err(e) => {
                         log::error!("Error could not deserialize Unsigned Transaction: {}", e);
                         Ok(warp::reply::with_status(
-                            warp::reply::json(&ReturnError::new(&e.to_string())),
+                            warp::reply::json(&ReturnError::new(&e1.to_string())),
                             warp::http::StatusCode::CONFLICT,
                         ))
                     }
