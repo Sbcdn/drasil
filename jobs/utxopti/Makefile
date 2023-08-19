@@ -1,3 +1,4 @@
+GOOGLEREG=europe-west2-docker.pkg.dev
 REGISTRY=default-route-openshift-image-registry.apps.testnet.drasil.org
 PROJECT=drasil
 IMAGE=utxopti
@@ -18,3 +19,18 @@ run:
 push:
 	sudo docker push $(REGISTRY)/$(PROJECT)/$(IMAGE):$(VERSION)
 
+TESTNET_PROJECT_GOOGLE=efvgtwmyqlpe
+TESTNET_REPO_GOOGLE=preview-testnet-registry
+
+build-testnet-google:
+	cargo update
+	cargo fetch
+	rm -rf .cargo
+	mkdir .cargo
+	echo "git-fetch-with-cli = true" > .cargo/config
+	cp -R ~/.cargo/git .cargo/git
+	cp -R ../../libs .cargo/libs
+	sudo docker build -t $(GOOGLEREG)/$(TESTNET_PROJECT_GOOGLE)/$(TESTNET_REPO_GOOGLE)/$(IMAGE):$(VERSION) -f Dockerfile --target $(IMAGE) .
+
+push-testnet-google:
+	docker push $(GOOGLEREG)/$(TESTNET_PROJECT_GOOGLE)/$(TESTNET_REPO_GOOGLE)/$(IMAGE):$(VERSION)
