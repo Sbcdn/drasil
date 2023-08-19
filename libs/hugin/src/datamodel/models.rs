@@ -10,8 +10,11 @@ use murin::{
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, io::Error, str::FromStr};
+use strum::{Display, EnumString, EnumVariantNames};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
+)]
 pub enum ContractType {
     MarketPlace,
     NftShop,
@@ -21,45 +24,9 @@ pub enum ContractType {
     Other,
 }
 
-impl ContractType {
-    pub const CONTRTYPES: [Self; 4] = [
-        Self::MarketPlace,
-        Self::NftShop,
-        Self::NftMinter,
-        Self::TokenMinter,
-    ];
-}
-
-impl FromStr for ContractType {
-    type Err = Error;
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        match src {
-            "mp" => Ok(ContractType::MarketPlace),
-            "nftshop" => Ok(ContractType::NftShop),
-            "nftmint" => Ok(ContractType::NftMinter),
-            "tokmint" => Ok(ContractType::TokenMinter),
-            _ => Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Contract Type {src} does not exist"),
-            )),
-        }
-    }
-}
-
-impl ToString for ContractType {
-    fn to_string(&self) -> String {
-        match &self {
-            ContractType::MarketPlace => "mp".to_string(),
-            ContractType::NftShop => "nftshop".to_string(),
-            ContractType::NftMinter => "nftmint".to_string(),
-            ContractType::TokenMinter => "tokmint".to_string(),
-            ContractType::DrasilAPILiquidity => "drasilliquidity".to_string(),
-            ContractType::Other => "not implemented".to_string(),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumVariantNames, Display, EnumString,
+)]
 pub enum MarketplaceActions {
     List,
     Buy,
@@ -67,27 +34,9 @@ pub enum MarketplaceActions {
     Update,
 }
 
-impl MarketplaceActions {
-    pub const MRKTACTIONS: [Self; 4] = [Self::List, Self::Buy, Self::Cancel, Self::Update];
-}
-
-impl FromStr for MarketplaceActions {
-    type Err = Error;
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        match src {
-            "list" => Ok(MarketplaceActions::List),
-            "buy" => Ok(MarketplaceActions::Buy),
-            "cancel" => Ok(MarketplaceActions::Cancel),
-            "update" => Ok(MarketplaceActions::Update),
-            _ => Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Marketplace Action {src} does not exist"),
-            )),
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumVariantNames, Display, EnumString,
+)]
 pub enum MultiSigType {
     SpoRewardClaim,
     NftVendor,
@@ -100,49 +49,6 @@ pub enum MultiSigType {
     UTxOpti,
     Other,
     CustomerPayout,
-}
-
-impl MultiSigType {
-    // ToDo: Check
-    pub const MULTISIGTYPES: [Self; 2] = [Self::SpoRewardClaim, Self::NftVendor];
-}
-
-impl FromStr for MultiSigType {
-    type Err = Error;
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        match src {
-            "sporwc" => Ok(MultiSigType::SpoRewardClaim),
-            "nvendor" => Ok(MultiSigType::NftVendor),
-            "mint" => Ok(MultiSigType::Mint),
-            "nftcollectionminter" => Ok(MultiSigType::NftCollectionMinter),
-            "clapioneshotmint" => Ok(MultiSigType::ClAPIOneShotMint),
-            "testrewards" => Ok(MultiSigType::TestRewards),
-            "cpo" => Ok(MultiSigType::CustomerPayout),
-            "utxopti" => Ok(MultiSigType::UTxOpti),
-            _ => Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Transaction Type {src} does not exist"),
-            )),
-        }
-    }
-}
-
-impl ToString for MultiSigType {
-    fn to_string(&self) -> String {
-        match &self {
-            MultiSigType::SpoRewardClaim => "sporwc".to_string(),
-            MultiSigType::NftVendor => "nvendor".to_string(),
-            MultiSigType::DAOVoting => "dvotng".to_string(),
-            MultiSigType::VestingWallet => "vesting".to_string(),
-            MultiSigType::Mint => "mint".to_string(),
-            MultiSigType::NftCollectionMinter => "nftcollectionminter".to_string(),
-            MultiSigType::ClAPIOneShotMint => "clapioneshotmint".to_string(),
-            MultiSigType::TestRewards => "testrewards".to_string(),
-            MultiSigType::CustomerPayout => "cpo".to_string(),
-            MultiSigType::UTxOpti => "utxopti".to_string(),
-            MultiSigType::Other => "not implemented".to_string(),
-        }
-    }
 }
 
 pub struct Utxopti {}
@@ -159,33 +65,10 @@ impl FromStr for Utxopti {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Display, EnumString, EnumVariantNames)]
 pub enum StdTxType {
     DelegateStake,
     StandardTx,
-}
-
-impl FromStr for StdTxType {
-    type Err = Error;
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        match src {
-            "stakedelegation" => Ok(StdTxType::DelegateStake),
-            "StandardTx" => Ok(StdTxType::StandardTx),
-            _ => Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Transaction Type {src} does not exist"),
-            )),
-        }
-    }
-}
-
-impl ToString for StdTxType {
-    fn to_string(&self) -> String {
-        match &self {
-            Self::DelegateStake => "stakedelegation".to_string(),
-            Self::StandardTx => "Standard".to_string(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -210,12 +93,12 @@ impl FromStr for ContractAction {
     type Err = Error;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
-            "list" => Ok(ContractAction::MarketplaceActions(MarketplaceActions::List)),
-            "buy" => Ok(ContractAction::MarketplaceActions(MarketplaceActions::Buy)),
-            "cancel" => Ok(ContractAction::MarketplaceActions(
+            "List" => Ok(ContractAction::MarketplaceActions(MarketplaceActions::List)),
+            "Buy" => Ok(ContractAction::MarketplaceActions(MarketplaceActions::Buy)),
+            "Cancel" => Ok(ContractAction::MarketplaceActions(
                 MarketplaceActions::Cancel,
             )),
-            "update" => Ok(ContractAction::MarketplaceActions(
+            "Update" => Ok(ContractAction::MarketplaceActions(
                 MarketplaceActions::Update,
             )),
             _ => Err(Error::new(
@@ -302,7 +185,7 @@ pub struct Utxo {
 
 pub type Utxos = Vec<Utxo>;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Display, EnumString, EnumVariantNames)]
 pub enum Network {
     Testnet,
     Mainnet,
@@ -841,7 +724,9 @@ impl Operation {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Display, EnumString, EnumVariantNames,
+)]
 pub enum WalletType {
     #[serde(alias = "Nami", rename(deserialize = "nami"))]
     Nami,
@@ -855,37 +740,6 @@ pub enum WalletType {
     Yoroi,
     #[serde(alias = "Typhon", rename(deserialize = "typhon"))]
     Typhon,
-}
-
-impl FromStr for WalletType {
-    type Err = Error;
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        match src {
-            "nami" => Ok(WalletType::Nami),
-            "gero" => Ok(WalletType::Gero),
-            "eternl" => Ok(WalletType::Eternl),
-            "flint" => Ok(WalletType::Flint),
-            "yoroi" => Ok(WalletType::Yoroi),
-            "typhon" => Ok(WalletType::Typhon),
-            _ => Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("Wallet '{src}' not supportet or wrong typed input"),
-            )),
-        }
-    }
-}
-
-impl ToString for WalletType {
-    fn to_string(&self) -> String {
-        match &self {
-            WalletType::Nami => "nami".to_string(),
-            WalletType::Eternl => "gero".to_string(),
-            WalletType::Gero => "eternl".to_string(),
-            WalletType::Flint => "flint".to_string(),
-            WalletType::Yoroi => "yoroi".to_string(),
-            WalletType::Typhon => "typhon".to_string(),
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
