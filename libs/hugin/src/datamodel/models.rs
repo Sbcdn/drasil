@@ -531,6 +531,7 @@ impl Operation {
                 for t in transfers {
                     let receiver = b_decode_addr_na(&t.receiving_address).unwrap();
                     let mut assets = Vec::<StdAssetHandle>::new();
+                    let metadata = t.message.clone();
                     for n in &t.asset_handles {
                         let policy = if let Some(p) = &n.policy {
                             Some(PolicyID::from_hex(p)?)
@@ -551,7 +552,11 @@ impl Operation {
                             metadata: n.metadata.as_ref().cloned(),
                         })
                     }
-                    trans.push(AssetTransfer { receiver, assets })
+                    trans.push(AssetTransfer {
+                        receiver,
+                        assets,
+                        metadata,
+                    })
                 }
                 let wal_addr = if let Some(addr) = wallet_addresses {
                     let r = addr.iter().fold(Vec::<Address>::new(), |mut acc, a| {
@@ -1032,4 +1037,5 @@ impl AssetHandle {
 pub struct TransferHandle {
     pub receiving_address: String,
     pub asset_handles: Vec<AssetHandle>,
+    pub message: Option<String>,
 }
