@@ -1,9 +1,10 @@
 use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::BuildStdTx;
-use crate::CmdError;
+//use crate::CmdError;
 
 use murin::clib::address::Address;
+use murin::MurinError;
 use murin::TransactionUnspentOutputs;
 
 use murin::modules::transfer::models::{TransWallet, TransWallets};
@@ -12,23 +13,25 @@ use murin::stdtx::build_wallet_asset_transfer::{AtSATBuilder, AtSATParams};
 use murin::{b_decode_addr, PerformTxb};
 
 // Handler for ordinary token transfers
-pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
+pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
     match bss
         .transaction_pattern()
         .operation()
-        .ok_or("ERROR: No specific contract data supplied")?
-    {
+        .ok_or("ERROR: No specific contract data supplied")
+        .map_err(|e| {
+            MurinError::new(&format!(
+                "Could not get 'Operation' from transaction patttern, error: {:?}",
+                e.to_string()
+            ))
+        })? {
         Operation::StdTx {
             wallet_addresses,
             transfers,
         } => {
-            let err = Err(CmdError::Custom {
-                str: format!(
-                    "ERROR wrong data provided for script specific parameters: '{:?}'",
-                    bss.transaction_pattern().operation()
-                ),
-            }
-            .into());
+            let err = Err(MurinError::new(&format!(
+                "ERROR wrong data provided for script specific parameters: '{:?}'",
+                bss.transaction_pattern().operation()
+            )));
             if transfers.is_empty() {
                 return err;
             }
@@ -40,10 +43,10 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
             }
         }
         _ => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR wrong data provided for '{:?}'", bss.tx_type()),
-            }
-            .into());
+            return Err(MurinError::new(&format!(
+                "ERROR wrong data provided for '{:?}'",
+                bss.tx_type()
+            )))
         }
     }
     log::debug!("Checks okay...");
@@ -91,22 +94,19 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
     let mut dbsync = match mimir::establish_connection() {
         Ok(conn) => conn,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()),
-            }
-            .into());
+            return Err(MurinError::new(&format!(
+                "ERROR could not connect to dbsync: '{:?}'",
+                e.to_string()
+            )));
         }
     };
     let slot = match mimir::get_slot(&mut dbsync) {
         Ok(s) => s,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!(
-                    "ERROR could not determine current slot: '{:?}'",
-                    e.to_string()
-                ),
-            }
-            .into());
+            return Err(MurinError::new(&format!(
+                "ERROR could not determine current slot: '{:?}'",
+                e.to_string()
+            )))
         }
     };
     gtxd.set_current_slot(slot as u64);
@@ -114,7 +114,13 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
     let mut wallets = TransWallets::new();
 
     let first_address_str =
-        mimir::select_addr_of_first_transaction(&gtxd.get_stake_address().to_bech32(None)?)?;
+        mimir::select_addr_of_first_transaction(&gtxd.get_stake_address().to_bech32(None)?)
+            .map_err(|e| {
+                MurinError::new(&format!(
+                    "Could not get address of first transaction: {:?}",
+                    e.to_string()
+                ))
+            })?;
     let first_addr = Address::from_bech32(&first_address_str)?;
 
     // ToDo:
@@ -134,10 +140,7 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> crate::Result<String> {
     let bld_tx = builder.build(&asset_transfer).await;
 
     if let Err(err) = &bld_tx {
-        return Err(CmdError::Custom {
-            str: err.to_string(),
-        }
-        .into());
+        return Err(MurinError::new(&err.to_string()));
     }
     let bld_tx = bld_tx?;
 
