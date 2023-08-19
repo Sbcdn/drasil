@@ -84,6 +84,7 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         /////////////////////////////////////////////////////////////////////////////////////////////////////
 
         let mut aux_data = clib::metadata::AuxiliaryData::new();
+        let mut option_aux_data = None;
         let mut gtm = GeneralTransactionMetadata::new();
 
         let mut map = MetadataMap::new();
@@ -111,11 +112,16 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
             }
         }
 
-
-        let data = TransactionMetadatum::new_map(&map);
-        gtm.insert(&clib::utils::BigNum::from_str("0").unwrap(), &data);
-        aux_data.set_metadata(&gtm);
-        let aux_data_hash = hash_auxiliary_data(&aux_data);
+        let aux_data_hash = if map.len() > 0 {
+            let data = TransactionMetadatum::new_map(&map);
+            gtm.insert(&clib::utils::BigNum::from_str("0").unwrap(), &data);
+            aux_data.set_metadata(&gtm);
+            let auxhash = hash_auxiliary_data(&aux_data);
+            option_aux_data = Some(aux_data);
+            Some(auxhash)
+        } else {
+            None
+        };
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         //Add Inputs and Outputs
@@ -191,7 +197,9 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         );
         txbody.set_ttl(&slot);
 
-        txbody.set_auxiliary_data_hash(&aux_data_hash);
+        if let Some(aux_data_hash) = aux_data_hash {
+            txbody.set_auxiliary_data_hash(&aux_data_hash);
+        }
 
         let txwitness = clib::TransactionWitnessSet::new();
 
@@ -199,7 +207,13 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
         debug!("--------------------Iteration Ended------------------------------");
         debug!("Vkey Counter at End: {:?}", vkey_counter);
-        Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+        Ok((
+            txbody,
+            txwitness,
+            option_aux_data,
+            saved_input_txuos,
+            vkey_counter,
+        ))
     }
 }
 
@@ -336,7 +350,6 @@ mod tests {
         //     "\nOriginal CBOR transaction:\n{:?}",
         //     hex::encode(tx_org.to_bytes())
         // );
-
 
         let tx_restored: crate::Transaction =
             crate::clib::Transaction::from_bytes(hex::decode("84a5008182582061be7aa47507fc4d28472b80e7b40560e18a7d12dce1fe9a3d1ebb12e72e192701018282581d60a3527f67e636f3200fef95378e2ef12e86f1a6366cc87734945d46d2821a004c4b40a1581cdfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9a1447441726b18c882583900167d64052f9408816b9684b964befffb0b2c49132fb6e30097c12e8158c8e2bf54937b76730263f0d6ebd8181861b0ddd84bf7fdce251934821a229074c2a4581c3f1d9bd2f8c3d7d8144b789433261370eaf25cdc83fe8a745ef880c1a146744452415341190af0581cc693a41d2b4f241c992b88c7238131d92202206ffc92f5eae090d0eea1457454657374192b39581cd25b21f3694dfe8b614bad38b149281735a59a04c76353bc72fbbfbfa14474464c5a190122581cdfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9a1447441726b183d021a0002ba91031a0001dbc8075820013e5545b36d84b420f479874abc385de130814b5c5a75614bc27a1a74c1aca4a0f5a100a100781f48656c6c6f204d7920667269656e64207468697320697320666f7220796f75")?)?;
@@ -722,7 +735,4 @@ mod tests {
         std::fs::remove_file(std::env::var("CARDANO_PROTOCOL_PARAMETER_PATH").unwrap()).unwrap();
         Ok(())
     }
-
-
-
 }
