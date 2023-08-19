@@ -183,7 +183,6 @@ impl TransBuilder {
     */
     pub fn build(&mut self, fee: BigNum) -> Result<(), TransferError> {
         // Apply fees
-
         log::debug!("Transfers:\n{:?}", self.transfers);
         if let Some(mut fee_transfer) = self.find_transfer(&self.fee_addr) {
             log::debug!("\n\n\nBefore FeeSet: \n{:?}\n", self.transfers);
@@ -213,7 +212,6 @@ impl TransBuilder {
                 "no transfer for specified fee_addr exists".to_string(),
             ));
         }
-
         // Balance all transfers
         //let mut handles = Vec::<_>::new();
         //self.transfers.iter_mut().for_each(|n| {
@@ -250,7 +248,6 @@ impl TransBuilder {
                     });
                     acc
                 });
-
         let txiuos = self
             .transfers
             .iter()
@@ -258,7 +255,6 @@ impl TransBuilder {
                 acc.merge(n.source.get_tx_unspent_inputs().unwrap_or_default());
                 acc
             });
-
         let txins_val: Value = self.transfers.iter().fold(Value::zero(), |mut acc, n| {
             n.source.txiuo.iter().for_each(|m| {
                 acc = acc.checked_add(&m.calc_total_value().unwrap()).unwrap();
@@ -315,6 +311,8 @@ impl TransBuilder {
             .collect();
         match t.len() {
             1 => Some((t[0].1.clone(), t[0].0)),
+            2 => Some((t[1].1.clone(), t[1].0)),
+            u if (0 < u && u < 1000) => Some((t[u-1].1.clone(), t[u-1].0)),
             _ => None,
         }
     }
@@ -567,14 +565,12 @@ impl Transfer {
         if self.source.pay_value.is_none() {
             return Err(TransferError::SourceNoPaymentValueSet);
         }
-
         let mut change = self.select_inputs_and_determine_change(&wallet, None)?;
         let mut inc = to_bignum(0);
         while change.coin().compare(&to_bignum(1000000)) < 1 {
             inc = inc.checked_add(&to_bignum(1000000))?;
             change = self.select_inputs_and_determine_change(&wallet, Some(inc))?;
         }
-
         let mut txos = self
             .sinks
             .iter()

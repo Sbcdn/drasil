@@ -77,17 +77,13 @@ impl TxBuilder {
         };
         let a = cutils::to_bignum(44u64);
         let b = cutils::to_bignum(155381u64);
-
         //Create first Tx
         let mut tx_ =
             app_type.perform_txb(&cutils::to_bignum(2000000), &self.gtxd, &self.pvks, true)?;
-
         let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(tx_.4);
         tx_.1.set_vkeys(&dummy_vkeywitnesses);
-
         // Build and encode dummy transaction
         let transaction_ = clib::Transaction::new(&tx_.0, &tx_.1, Some(tx_.2));
-
         let calculated_fee = hfn::calc_txfee(
             &transaction_,
             &a,
@@ -1402,9 +1398,8 @@ pub fn calc_min_ada_for_utxo(
 
 pub fn min_ada_for_utxo(output_: &TransactionOutput) -> Result<TransactionOutput, MurinError> {
     let mut output: TransactionOutput = output_.clone();
-    let coins_per_byte = crate::pparams::ProtocolParameters::read_protocol_parameter(
-        &"protocol_parameters_babbage.json".to_owned(),
-    )?;
+    let pppath = std::env::var("CARDANO_PROTOCOL_PARAMETER_PATH")?;
+    let coins_per_byte = crate::pparams::ProtocolParameters::read_protocol_parameter(&pppath)?;
     for _ in 0..3 {
         let required_coin = to_bignum(output.to_bytes().len() as u64)
             .checked_add(&to_bignum(160))?
