@@ -8,7 +8,7 @@ use crate::clib::{
 };
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
 use crate::TransactionUnspentOutputs;
-use clib::utils::BigNum;
+use clib::utils::{to_bignum, BigNum};
 use std::fmt::Debug;
 
 #[derive(Clone)]
@@ -191,6 +191,23 @@ impl TransBuilder {
             log::debug!("\n\n\nAfter FeeSet: \n{:?}\n", self.transfers);
         } else {
             //ToDo: Do not error out, add fee to sending wallet
+            log::debug!(
+                "\n\n\nno transfer for specified fee_addr exists\n{:?}\n",
+                self.transfers
+            );
+            /*
+            if self.transfers.len() == 1 {
+                self.transfers[0].source.add_fee(&fee)?;
+            } else {
+                log::debug!(
+                    "\n\n\nno transfer for specified fee_addr exists and more than one transfer in transaction, cannot automatically determine fee payer\n{:?}\n",
+                    self.transfers
+                );
+                return Err(TransferError::Custom(
+                    "no transfer for specified fee_addr exists".to_string(),
+                ));
+            }
+            */
             return Err(TransferError::Custom(
                 "no transfer for specified fee_addr exists".to_string(),
             ));
@@ -387,7 +404,11 @@ impl Source {
         self.txiuo.clone()
     }
 
-    pub fn select_txis(&mut self, wallet: &TransWallet) -> Result<(), TransferError> {
+    pub fn select_txis(
+        &mut self,
+        wallet: &TransWallet,
+        increased_change: Option<BigNum>,
+    ) -> Result<(), TransferError> {
         if self.pay_addr != wallet.pay_addr {
             return Err(TransferError::WrongWalletForAddress);
         }
@@ -406,6 +427,16 @@ impl Source {
                 }
             }
         }
+
+        if let Some(inc) = increased_change {
+            pval = pval.checked_add(&Value::new(&inc))?;
+        }
+
+        log::debug!(
+            "Try to find inputs for {:?} with value {:?}",
+            self.pay_addr,
+            pval
+        );
         let inputs = input_selection(None, &mut pval, &wallet.utxos, None, Some(&self.pay_addr))?;
         self.set_txinputs(inputs.0);
         self.set_tx_unspent_inputs(inputs.1);
@@ -492,13 +523,13 @@ impl Transfer {
         self.source.clone()
     }
 
-    pub fn balance(&mut self, wallet: TransWallet) -> Result<(), TransferError> {
-        if self.source.pay_value.is_none() {
-            return Err(TransferError::SourceNoPaymentValueSet);
-        }
-
+    pub fn select_inputs_and_determine_change(
+        &mut self,
+        wallet: &TransWallet,
+        increase_change: Option<BigNum>,
+    ) -> Result<Value, TransferError> {
         // self.source.set_pay_value(pv);
-        self.source.select_txis(&wallet)?;
+        self.source.select_txis(wallet, increase_change)?;
         log::debug!("Selected inputs...\nSource: {:?}", self.source);
         self.sinks
             .iter_mut()
@@ -513,6 +544,7 @@ impl Transfer {
         log::debug!("Out Value: {:?}", out_value);
 
         let mut change = in_value;
+
         for modificator in &self.source.modificator {
             match modificator {
                 TransModificator::Add(v) => {
@@ -523,9 +555,22 @@ impl Transfer {
                 }
             }
         }
-        let change = change.checked_sub(&out_value);
-        log::trace!("Change in balance: {:?}", change);
-        let change = change?;
+        log::debug!("Change before sub: {:?}", change);
+        let change = change.checked_sub(&out_value)?;
+        log::debug!("Change in balance: {:?}", change);
+        Ok(change)
+    }
+
+    pub fn balance(&mut self, wallet: TransWallet) -> Result<(), TransferError> {
+        if self.source.pay_value.is_none() {
+            return Err(TransferError::SourceNoPaymentValueSet);
+        }
+        let mut change = self.select_inputs_and_determine_change(&wallet, None)?;
+        let mut inc = to_bignum(0);
+        while change.coin().compare(&to_bignum(1000000)) < 1 {
+            inc = inc.checked_add(&to_bignum(1000000))?;
+            change = self.select_inputs_and_determine_change(&wallet, Some(inc))?;
+        }
         let mut txos = self
             .sinks
             .iter()
@@ -537,7 +582,7 @@ impl Transfer {
                 acc
             });
         let change_txo = TransactionOutput::new(&self.source.pay_addr, &change);
-        log::trace!("Change in Transfer: {:?}", change_txo);
+        log::debug!("Change in Transfer: {:?}", change_txo);
         txos.add(&change_txo);
         log::trace!("/nTransactionOutputs in t.balance: {:?}", txos);
         self.txos = Some(txos);
