@@ -80,7 +80,7 @@ async fn submit_tx(
     let bld_tx = murin::hfn::tx_output_data(
         transaction.body(),
         transaction.witness_set(),
-        murin::clib::metadata::AuxiliaryData::new(),
+        None,
         used_utxos.to_hex()?,
         0u64,
         false,
