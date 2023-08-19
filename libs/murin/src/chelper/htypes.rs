@@ -34,12 +34,29 @@ impl BuildOutput {
     pub fn get_tx_body(&self) -> String {
         self.tx_body.clone()
     }
+
+    pub fn get_tx_body_typed(&self) -> clib::TransactionBody {
+        clib::TransactionBody::from_bytes(hex::decode(self.tx_body.clone()).unwrap()).unwrap()
+    }
+
     pub fn get_metadata(&self) -> String {
         self.metadata.clone()
     }
+
+    pub fn get_metadata_typed(&self) -> clib::metadata::AuxiliaryData {
+        clib::metadata::AuxiliaryData::from_bytes(hex::decode(self.metadata.clone()).unwrap())
+            .unwrap()
+    }
+
     pub fn get_txwitness(&self) -> String {
         self.tx_witness.clone()
     }
+
+    pub fn get_txwitness_typed(&self) -> clib::TransactionWitnessSet {
+        clib::TransactionWitnessSet::from_bytes(hex::decode(self.tx_witness.clone()).unwrap())
+            .unwrap()
+    }
+
     pub fn get_payed_royalties(&self) -> u64 {
         self.royalties
     }

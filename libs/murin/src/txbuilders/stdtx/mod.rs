@@ -20,6 +20,7 @@ pub struct StdAssetHandle {
 pub struct AssetTransfer {
     pub receiver: Address,
     pub assets: Vec<StdAssetHandle>,
+    pub metadata: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
