@@ -1110,8 +1110,8 @@ pub fn find_suitable_coins(
     //);
     'outer: for tx in inputs.clone() {
         debug!(
-            "\n-------TXIn : {:?}{:?}",
-            tx.input().transaction_id(),
+            "\n-------TXIn : {:?}#{:?}",
+            tx.input().transaction_id().to_hex(),
             tx.input().index()
         );
 
