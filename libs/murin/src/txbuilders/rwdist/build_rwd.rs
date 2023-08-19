@@ -276,7 +276,13 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         }
         info!("Vkey Counter at End: {:?}", vkey_counter);
 
-        Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+        Ok((
+            txbody,
+            txwitness,
+            Some(aux_data),
+            saved_input_txuos,
+            vkey_counter,
+        ))
     }
 }
 

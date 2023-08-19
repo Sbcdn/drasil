@@ -22,12 +22,13 @@ pub async fn finalize(signature: &String, raw_tx: RawTx) -> Result<String, Murin
     let tx_aux = clib::metadata::AuxiliaryData::from_bytes(hex::decode(raw_tx.get_txaux())?)?;
 
     //Check if aux Data is empty, if yes set it None in the final tx
-    let mut aux_data = Some(tx_aux.clone());
-    if tx_aux.native_scripts().is_none()
+    let aux_data = if tx_aux.native_scripts().is_none()
         && tx_aux.plutus_scripts().is_none()
         && tx_aux.metadata().is_none()
     {
-        aux_data = None
+        None
+    } else {
+        Some(tx_aux.clone())
     };
 
     let tx_body = clib::TransactionBody::from_bytes(hex::decode(raw_tx.get_txbody())?)?;

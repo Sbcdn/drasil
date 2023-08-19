@@ -282,7 +282,7 @@ pub async fn build_mp_listing(
         Ok(hfn::tx_output_data(
             txbody,
             txwitness,
-            aux_data,
+            Some(aux_data),
             used_utxos.to_hex()?,
             0u64,
             false,
@@ -292,7 +292,7 @@ pub async fn build_mp_listing(
         Ok(hfn::tx_output_data(
             txbody,
             txwitness,
-            aux_data,
+            Some(aux_data),
             used_utxos.to_hex()?,
             0u64,
             false,

@@ -33,7 +33,7 @@ use crate::{TransactionUnspentOutput, TransactionUnspentOutputs};
 type TxBO = (
     clib::TransactionBody,
     clib::TransactionWitnessSet,
-    clib::metadata::AuxiliaryData,
+    Option<clib::metadata::AuxiliaryData>,
     TransactionUnspentOutputs,
     usize,
 );
@@ -83,7 +83,7 @@ impl TxBuilder {
         let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(tx_.4);
         tx_.1.set_vkeys(&dummy_vkeywitnesses);
         // Build and encode dummy transaction
-        let transaction_ = clib::Transaction::new(&tx_.0, &tx_.1, Some(tx_.2));
+        let transaction_ = clib::Transaction::new(&tx_.0, &tx_.1, tx_.2);
         let calculated_fee = hfn::calc_txfee(
             &transaction_,
             &a,
@@ -96,7 +96,7 @@ impl TxBuilder {
         // (txbody, txwitness, aux_data, used_utxos, vkey_counter_2)
         let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
 
-        let transaction2 = clib::Transaction::new(&tx.0, &tx_.1, Some(tx.2.clone()));
+        let transaction2 = clib::Transaction::new(&tx.0, &tx_.1, tx.2.clone());
 
         if tx.4 != tx_.4 || transaction2.to_bytes().len() != transaction_.to_bytes().len() {
             let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(tx.4);
