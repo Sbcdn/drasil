@@ -217,20 +217,45 @@ pub fn read_raw_tx(key: &String) -> Result<RawTx, MurinError> {
         }
     };
 
-    let err = MurinError::new(&format!(
-        "Error in decoding Redis Data for 'RawTx' : {response:?}"
-    ));
-
     Ok(RawTx::new(
-        response.get("txbody").ok_or(&err)?,
-        response.get("txwitness").ok_or(&err)?,
-        response.get("txunsigned").ok_or(&err)?,
-        response.get("txaux").ok_or(&err)?,
-        response.get("txrawdata").ok_or(&err)?,
-        response.get("txspecific").ok_or(&err)?,
-        response.get("usedutxos").ok_or(&err)?,
-        response.get("stakeaddr").ok_or(&err)?,
-        &response.get("userid").ok_or(&err)?.parse::<i64>()?,
-        &serde_json::from_str::<Vec<i64>>(response.get("contractid").ok_or(&err)?)?,
+        response
+            .get("txbody")
+            .ok_or(&decoder_error("txbody", &response))?,
+        response
+            .get("txwitness")
+            .ok_or(&decoder_error("txwitness", &response))?,
+        response
+            .get("txunsigned")
+            .ok_or(&decoder_error("txunsigned", &response))?,
+        response
+            .get("txaux")
+            .ok_or(&decoder_error("txaux", &response))?,
+        response
+            .get("txrawdata")
+            .ok_or(&decoder_error("txrawdata", &response))?,
+        response
+            .get("txspecific")
+            .ok_or(&decoder_error("txspecific", &response))?,
+        response
+            .get("usedutxos")
+            .ok_or(&decoder_error("usedutxos", &response))?,
+        response
+            .get("stakeaddr")
+            .ok_or(&decoder_error("stakeaddr", &response))?,
+        &response
+            .get("userid")
+            .ok_or(&decoder_error("userid", &response))?
+            .parse::<i64>()?,
+        &serde_json::from_str::<Vec<i64>>(
+            response
+                .get("contractid")
+                .ok_or(&decoder_error("contractid", &response))?,
+        )?,
+    ))
+}
+
+fn decoder_error(msg: &str, response: &HashMap<String, String>) -> MurinError {
+    MurinError::new(&format!(
+        "Error in decoding Redis Data for response: {response:?} 'RawTx' in field : {msg:?}"
     ))
 }

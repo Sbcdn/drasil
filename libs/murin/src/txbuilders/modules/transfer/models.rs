@@ -1,6 +1,5 @@
 use super::super::txtools::utxo_handling::input_selection;
 use super::error::TransferError;
-use crate::clib;
 use crate::clib::{
     address::{Address, RewardAddress},
     utils::Value,
@@ -8,6 +7,7 @@ use crate::clib::{
 };
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
 use crate::TransactionUnspentOutputs;
+use crate::{clib, min_ada_for_utxo};
 use clib::utils::{to_bignum, BigNum};
 use std::fmt::Debug;
 
@@ -312,7 +312,7 @@ impl TransBuilder {
         match t.len() {
             1 => Some((t[0].1.clone(), t[0].0)),
             2 => Some((t[1].1.clone(), t[1].0)),
-            u if (0 < u && u < 1000) => Some((t[u-1].1.clone(), t[u-1].0)),
+            u if (0 < u && u < 1000) => Some((t[u - 1].1.clone(), t[u - 1].0)),
             _ => None,
         }
     }
@@ -557,7 +557,6 @@ impl Transfer {
         }
         log::debug!("Change before sub: {:?}", change);
         let change = change.checked_sub(&out_value)?;
-        log::debug!("Change in balance: {:?}", change);
         Ok(change)
     }
 
@@ -567,9 +566,18 @@ impl Transfer {
         }
         let mut change = self.select_inputs_and_determine_change(&wallet, None)?;
         let mut inc = to_bignum(0);
-        while change.coin().compare(&to_bignum(1000000)) < 1 {
-            inc = inc.checked_add(&to_bignum(1000000))?;
+        let min_ada_val = min_ada_for_utxo(&TransactionOutput::new(&wallet.pay_addr, &change))?
+            .amount()
+            .coin();
+        log::debug!("Min Ada Value for change UTxO: {:?}", min_ada_val);
+        while change.coin().compare(&min_ada_val) < 0 {
+            inc = inc.checked_add(
+                &min_ada_val
+                    .clamped_sub(&change.coin())
+                    .checked_add(&to_bignum(100000))?,
+            )?;
             change = self.select_inputs_and_determine_change(&wallet, Some(inc))?;
+            log::debug!("Change in balance function: {:?}", change);
         }
         let mut txos = self
             .sinks
