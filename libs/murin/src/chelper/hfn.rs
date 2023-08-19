@@ -561,13 +561,13 @@ fn verify_wallet(signed_data : String, address : String, message : String) -> bo
 pub fn tx_output_data(
     txbody: clib::TransactionBody,
     txwitness: clib::TransactionWitnessSet,
-    aux_data: clib::metadata::AuxiliaryData,
+    aux_data: Option<clib::metadata::AuxiliaryData>,
     used_utxos: String,
     royalties: u64,
     internal: bool,
 ) -> Result<BuildOutput, MurinError> {
     // Build and encode transaction
-    let transaction = clib::Transaction::new(&txbody, &txwitness, None);
+    let transaction = clib::Transaction::new(&txbody, &txwitness, aux_data.clone());
     let out = transaction.to_bytes();
     let tx = hex::encode(out);
 
@@ -575,17 +575,14 @@ pub fn tx_output_data(
     let hex_txwitness = hex::encode(txwitness.to_bytes());
 
     // Conserve aux data
-    let aux_out = aux_data.to_bytes();
-    let hex_aux = hex::encode(aux_out);
+    let hex_aux = if let Some(aux_out) = &aux_data {
+        hex::encode(aux_out.to_bytes())
+    } else {
+        hex::encode(clib::metadata::AuxiliaryData::new().to_bytes())
+    };
 
     // Conserve txBody in json file
-    let txbody_out = txbody.to_bytes();
-    let hex_body = hex::encode(txbody_out);
-
-    let mut it = "";
-    if internal {
-        it = "it";
-    }
+    let hex_body = hex::encode(txbody.to_bytes());
 
     let jout = BuildOutput {
         tx_witness: hex_txwitness,
@@ -594,14 +591,9 @@ pub fn tx_output_data(
         tx_unsigned: tx,
         used_utxos,
         royalties,
-        internal_transfer: it.to_string(),
+        internal_transfer: internal.to_string(),
     };
 
-    //trasaction to json file
-    //serde_json::to_writer(&File::create("stored.artifct")?,&jout)?;
-    //serde_json::to_writer(&io::stdout(),&jout)?;
-
-    //Ok(serde_json::to_string(&jout)?)
     Ok(jout)
 }
 

@@ -73,7 +73,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         let deleg_cert = clib::Certificate::new_stake_delegation(&stake_delegation);
         certs.add(&deleg_cert);
 
-        let aux_data = clib::metadata::AuxiliaryData::new();
+        let aux_data = None;
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         //Add Inputs and Outputs
         //
