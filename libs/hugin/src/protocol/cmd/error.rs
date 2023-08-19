@@ -19,8 +19,21 @@ impl From<&str> for CmdError {
         src.to_string().into()
     }
 }
+
 impl From<murin::clib::error::DeserializeError> for CmdError {
     fn from(src: murin::clib::error::DeserializeError) -> CmdError {
+        src.to_string().into()
+    }
+}
+
+impl From<murin::error::MurinError> for CmdError {
+    fn from(src: murin::error::MurinError) -> CmdError {
+        src.to_string().into()
+    }
+}
+
+impl From<mimir::MimirError> for CmdError {
+    fn from(src: mimir::MimirError) -> CmdError {
         src.to_string().into()
     }
 }
