@@ -15,15 +15,15 @@ pub enum Error {
     #[error("JsonError")]
     JsonError(#[from] serde_json::Error),
     #[error("SCLError: {0}")]
-    CSLError(#[from] murin::clib::error::JsError),
+    CSLError(#[from] drasil_murin::clib::error::JsError),
     #[error("MurinError: {0}")]
-    MurinError(#[from] murin::MurinError),
+    MurinError(#[from] drasil_murin::MurinError),
     #[error("MimirError: {0}")]
-    MimirError(#[from] mimir::MimirError),
+    MimirError(#[from] drasil_mimir::MimirError),
     #[error("HuginError: {0}")]
-    HuginError(#[from] hugin::error::SystemDBError),
+    HuginError(#[from] drasil_hugin::error::SystemDBError),
     #[error("SleipnirError: {0}")]
-    SleipnirError(#[from] sleipnir::SleipnirError),
+    SleipnirError(#[from] drasil_sleipnir::SleipnirError),
 }
 
 #[derive(Serialize, Debug)]

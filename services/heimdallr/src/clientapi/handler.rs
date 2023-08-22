@@ -1,8 +1,8 @@
-use hugin::client::{connect, Client};
-use hugin::datamodel::models::{
+use drasil_hugin::client::{connect, Client};
+use drasil_hugin::datamodel::models::{
     MultiSigType, OneShotReturn, ReturnError, TXPWrapper, TransactionPattern,
 };
-use hugin::BuildMultiSig;
+use drasil_hugin::BuildMultiSig;
 use std::convert::Infallible;
 use std::env;
 
