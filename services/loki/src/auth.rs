@@ -1,6 +1,6 @@
 use crate::error::{self, Error};
-use hugin::client::connect;
-use hugin::VerifyUser;
+use drasil_hugin::client::connect;
+use drasil_hugin::VerifyUser;
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation}; //encode , EncodingKey, Header
 use serde::{Deserialize, Serialize};
 

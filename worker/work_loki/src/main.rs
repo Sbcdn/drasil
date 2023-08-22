@@ -5,10 +5,10 @@ mod handlers;
 mod models;
 
 use deadpool_lapin::Pool;
-use gungnir::models::MintReward;
+use drasil_gungnir::models::MintReward;
+use drasil_murin::{clib::Assets, utils::to_bignum, AssetName, MultiAsset, PolicyID};
 use lapin::ConnectionProperties;
 use lazy_static::lazy_static;
-use murin::{clib::Assets, utils::to_bignum, AssetName, MultiAsset, PolicyID};
 use std::env;
 
 lazy_static! {
@@ -91,7 +91,9 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             log::debug!("Data {:?}", data);
             // Acknowledge message if successfull
             log::debug!("try to get mint project ...");
-            let mp = match gungnir::minting::models::MintProject::get_mintproject_by_id(data.mpid) {
+            let mp = match drasil_gungnir::minting::models::MintProject::get_mintproject_by_id(
+                data.mpid,
+            ) {
                 Ok(o) => o,
                 Err(e) => {
                     log::error!("could not find mint project: {}", e.to_string());
@@ -121,7 +123,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             }
 
             log::debug!("check data ...");
-            let address = murin::address::Address::from_bech32(&data.claim_addr)?;
+            let address = drasil_murin::address::Address::from_bech32(&data.claim_addr)?;
             // header has 4 bits addr type discrim then 4 bits network discrim.
             // Copied from shelley.cddl:
             //
@@ -141,7 +143,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             // bits 7-4: 1000
             let stake_address: String = match address.to_bytes()[0] {
                 //base
-                0b0000 | 0b0001 => murin::get_reward_address(&address)?.to_bech32(None)?,
+                0b0000 | 0b0001 => drasil_murin::get_reward_address(&address)?.to_bech32(None)?,
                 //script address
                 0b0010 | 0b0011 => {
                     log::error!("script address cannot claim");
@@ -175,29 +177,38 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             };
 
             // get first payment address
-            let mut payment_addr = mimir::api::select_addr_of_first_transaction(&stake_address)?;
+            let mut payment_addr =
+                drasil_mimir::api::select_addr_of_first_transaction(&stake_address)?;
 
             // check whitelists
             let valid_addresses = if let Some(wl) = mp.whitelists.clone() {
-                let mut va = Vec::<(gungnir::WlEntry, i64)>::new();
+                let mut va = Vec::<(drasil_gungnir::WlEntry, i64)>::new();
 
                 for w in wl {
-                    let claim_wl =
-                        gungnir::WlAlloc::check_pay_address_in_whitelist(&w, &data.claim_addr)?;
+                    let claim_wl = drasil_gungnir::WlAlloc::check_pay_address_in_whitelist(
+                        &w,
+                        &data.claim_addr,
+                    )?;
                     if !claim_wl.is_empty() {
                         va.extend(claim_wl.into_iter().map(|n| (n, w)));
                         payment_addr = data.claim_addr.clone();
                         break;
                     } else {
                         va.extend(
-                            gungnir::WlAlloc::check_stake_address_in_whitelist(&w, &stake_address)?
-                                .into_iter()
-                                .map(|n| (n, w)),
+                            drasil_gungnir::WlAlloc::check_stake_address_in_whitelist(
+                                &w,
+                                &stake_address,
+                            )?
+                            .into_iter()
+                            .map(|n| (n, w)),
                         );
                         va.extend(
-                            gungnir::WlAlloc::check_pay_address_in_whitelist(&w, &payment_addr)?
-                                .into_iter()
-                                .map(|n| (n, w)),
+                            drasil_gungnir::WlAlloc::check_pay_address_in_whitelist(
+                                &w,
+                                &payment_addr,
+                            )?
+                            .into_iter()
+                            .map(|n| (n, w)),
                         );
                     }
                 }
@@ -213,7 +224,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             }
 
             if let Some(i) = mp.max_mint_p_addr {
-                let nfts = gungnir::minting::models::Nft::get_nft_by_claim_addr(
+                let nfts = drasil_gungnir::minting::models::Nft::get_nft_by_claim_addr(
                     mp.id,
                     &payment_addr,
                     &mp.nft_table_name,
@@ -234,7 +245,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             }
 
             log::debug!("try to claim nft ...");
-            let nft = match gungnir::minting::models::Nft::claim_random_unminted_nft(
+            let nft = match drasil_gungnir::minting::models::Nft::claim_random_unminted_nft(
                 mp.id,
                 &mp.nft_table_name,
                 &payment_addr,
@@ -254,7 +265,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
                 }
             };
 
-            let mint_contract = hugin::database::TBContracts::get_contract_uid_cid(
+            let mint_contract = drasil_hugin::database::TBContracts::get_contract_uid_cid(
                 mp.user_id,
                 mp.mint_contract_id,
             )?;
@@ -262,7 +273,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             match nft {
                 Some(n) => {
                     log::debug!("nft: {:?}", n);
-                    let mut mint_value = murin::clib::utils::Value::zero();
+                    let mut mint_value = drasil_murin::clib::utils::Value::zero();
                     let mut assets = Assets::new();
                     assets.insert(&AssetName::new(n.asset_name_b.clone())?, &to_bignum(1));
                     let mut ma = MultiAsset::new();

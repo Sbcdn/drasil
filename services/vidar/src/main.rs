@@ -74,8 +74,8 @@ mod auth {
         reject, Rejection,
     };
 
-    use hugin::client::connect;
-    use hugin::VerifyUser;
+    use drasil_hugin::client::connect;
+    use drasil_hugin::VerifyUser;
 
     const BEARER: &str = "Bearer ";
 
@@ -326,12 +326,12 @@ mod filters {
 ///Handlers
 mod handlers {
     use cardano_serialization_lib::{address::Address, utils::from_bignum};
-    use gungnir::models::{MintProject, MintReward};
-    use hugin::{
+    use drasil_gungnir::models::{MintProject, MintReward};
+    use drasil_hugin::{
         datamodel::{ClaimedHandle, RewardHandle},
         MintProjectHandle, MintRewardHandle,
     };
-    use murin::make_fingerprint;
+    use drasil_murin::make_fingerprint;
     use std::{convert::Infallible, str::from_utf8};
 
     use crate::models::{QAddresses, QStakeAddress};
@@ -359,15 +359,18 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let rewards = gungnir::Rewards::get_rewards_stake_addr(&mut gconn, bech32addr);
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let rewards = drasil_gungnir::Rewards::get_rewards_stake_addr(&mut gconn, bech32addr);
         log::debug!("Rewards: {rewards:?}");
         let response = match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<RewardHandle>::new();
                 for rwd in rwds {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &rwd.fingerprint,
+                    ) {
                         Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
                         Err(_) => {
                             log::info!(
@@ -403,9 +406,9 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let rewards = gungnir::Rewards::get_rewards(
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let rewards = drasil_gungnir::Rewards::get_rewards(
             &mut gconn,
             bech32addr,
             contract_id as i64,
@@ -416,7 +419,10 @@ mod handlers {
             Ok(rwds) => {
                 let mut ret = Vec::<RewardHandle>::new();
                 for rwd in rwds {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &rwd.fingerprint,
+                    ) {
                         Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
                         Err(_) => {
                             log::info!(
@@ -451,16 +457,19 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
         let rewards =
-            gungnir::Rewards::get_client_rewards(&mut gconn, bech32addr, customer_id as i64);
+            drasil_gungnir::Rewards::get_client_rewards(&mut gconn, bech32addr, customer_id as i64);
 
         let response = match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<RewardHandle>::new();
                 for rwd in rwds {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &rwd.fingerprint,
+                    ) {
                         Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
                         Err(_) => {
                             log::info!(
@@ -496,9 +505,9 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let claims = gungnir::Claimed::get_claims(
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let claims = drasil_gungnir::Claimed::get_claims(
             &mut gconn,
             &bech32addr,
             contract_id as i64,
@@ -508,7 +517,10 @@ mod handlers {
             Ok(clms) => {
                 let mut ret = Vec::<ClaimedHandle>::new();
                 for clm in clms {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &clm.fingerprint,
+                    ) {
                         Ok(cl) => ret.push(ClaimedHandle::new(
                             clm.stake_addr,
                             clm.payment_addr,
@@ -562,15 +574,18 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let claims = gungnir::Claimed::get_all_claims(&mut gconn, &bech32addr);
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let claims = drasil_gungnir::Claimed::get_all_claims(&mut gconn, &bech32addr);
 
         let response = match claims {
             Ok(clms) => {
                 let mut ret = Vec::<ClaimedHandle>::new();
                 for clm in clms {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &clm.fingerprint,
+                    ) {
                         Ok(cl) => ret.push(ClaimedHandle::new(
                             clm.stake_addr,
                             clm.payment_addr,
@@ -617,7 +632,7 @@ mod handlers {
         _: u64,
         fingerprint: String,
     ) -> Result<impl warp::Reply, Infallible> {
-        let response = match mimir::get_mint_metadata(&fingerprint) {
+        let response = match drasil_mimir::get_mint_metadata(&fingerprint) {
             Ok(t) => t,
             Err(e) => {
                 log::info!(
@@ -639,7 +654,7 @@ mod handlers {
     }
 
     pub async fn handle_tokens(user_id: u64) -> Result<impl warp::Reply, Infallible> {
-        let response = match gungnir::TokenWhitelist::get_user_tokens(&user_id) {
+        let response = match drasil_gungnir::TokenWhitelist::get_user_tokens(&user_id) {
             Ok(t) => t,
             Err(e) => {
                 log::info!("Error: could not find any tokens");
@@ -657,7 +672,7 @@ mod handlers {
     }
 
     pub async fn handle_total_rewards(user_id: u64) -> Result<impl warp::Reply, Infallible> {
-        match gungnir::Rewards::get_total_rewards_token(user_id as i64) {
+        match drasil_gungnir::Rewards::get_total_rewards_token(user_id as i64) {
             Ok(t) => Ok(warp::reply::with_status(
                 warp::reply::json(&serde_json::json!(t)),
                 warp::http::StatusCode::OK,
@@ -704,7 +719,7 @@ mod handlers {
             }
         };
 
-        let payaddr = match mimir::select_addr_of_first_transaction(&bech32addr) {
+        let payaddr = match drasil_mimir::select_addr_of_first_transaction(&bech32addr) {
             Ok(a) => a,
             Err(e) => {
                 return Ok(warp::reply::with_status(
@@ -768,7 +783,7 @@ mod handlers {
             }
         };
 
-        let payaddr = match mimir::select_addr_of_first_transaction(&bech32addr) {
+        let payaddr = match drasil_mimir::select_addr_of_first_transaction(&bech32addr) {
             Ok(a) => a,
             Err(e) => {
                 return Ok(warp::reply::with_status(
@@ -825,18 +840,18 @@ mod handlers {
         _: u64,
         addresses: Vec<String>,
     ) -> Result<impl warp::Reply, Infallible> {
-        let mut utxos = murin::TransactionUnspentOutputs::new();
+        let mut utxos = drasil_murin::TransactionUnspentOutputs::new();
 
         for a in &addresses {
-            let us = mimir::get_address_utxos(a).unwrap();
+            let us = drasil_mimir::get_address_utxos(a).unwrap();
             utxos.merge(us);
         }
 
-        let mut handles = Vec::<hugin::AssetHandle>::new();
+        let mut handles = Vec::<drasil_hugin::AssetHandle>::new();
         for u in utxos {
             let v = u.output().amount();
             let ada = v.coin();
-            handles.push(hugin::AssetHandle {
+            handles.push(drasil_hugin::AssetHandle {
                 fingerprint: None,
                 policy: None,
                 tokenname: None,
@@ -855,8 +870,8 @@ mod handlers {
                             let fingerprint =
                                 make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
                                     .unwrap();
-                            let metadata = mimir::get_mint_metadata(&fingerprint).unwrap();
-                            handles.push(hugin::AssetHandle {
+                            let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
+                            handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
                                 tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
@@ -869,36 +884,37 @@ mod handlers {
             }
         }
         log::debug!("Handles: {:?}", handles);
-        let mut handles_summed = Vec::<hugin::AssetHandle>::new();
+        let mut handles_summed = Vec::<drasil_hugin::AssetHandle>::new();
 
         for h in &handles {
             if handles_summed
                 .iter()
                 .filter(|n| h.same_asset(n))
-                .collect::<Vec<&hugin::AssetHandle>>()
+                .collect::<Vec<&drasil_hugin::AssetHandle>>()
                 .is_empty()
             {
-                let sum = handles
-                    .iter()
-                    .fold(hugin::AssetHandle::new_empty(), |mut acc, f| {
-                        if h.same_asset(f) {
-                            acc.amount = acc.amount.checked_add(f.amount).unwrap();
+                let sum =
+                    handles
+                        .iter()
+                        .fold(drasil_hugin::AssetHandle::new_empty(), |mut acc, f| {
+                            if h.same_asset(f) {
+                                acc.amount = acc.amount.checked_add(f.amount).unwrap();
 
-                            if acc.metadata.is_none() && f.metadata.is_some() {
-                                acc.metadata = h.metadata.clone()
+                                if acc.metadata.is_none() && f.metadata.is_some() {
+                                    acc.metadata = h.metadata.clone()
+                                }
+                                if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                    acc.fingerprint = h.fingerprint.clone()
+                                }
+                                if acc.policy.is_none() && f.policy.is_some() {
+                                    acc.policy = h.policy.clone()
+                                }
+                                if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                    acc.tokenname = h.tokenname.clone()
+                                }
                             }
-                            if acc.fingerprint.is_none() && f.fingerprint.is_some() {
-                                acc.fingerprint = h.fingerprint.clone()
-                            }
-                            if acc.policy.is_none() && f.policy.is_some() {
-                                acc.policy = h.policy.clone()
-                            }
-                            if acc.tokenname.is_none() && f.tokenname.is_some() {
-                                acc.tokenname = h.tokenname.clone()
-                            }
-                        }
-                        acc
-                    });
+                            acc
+                        });
                 handles_summed.push(sum)
             }
         }
@@ -920,18 +936,18 @@ mod handlers {
             }
         };
 
-        let mut utxos = murin::TransactionUnspentOutputs::new();
+        let mut utxos = drasil_murin::TransactionUnspentOutputs::new();
 
         for a in &addresses {
-            let us = mimir::get_address_utxos(a).unwrap();
+            let us = drasil_mimir::get_address_utxos(a).unwrap();
             utxos.merge(us);
         }
 
-        let mut handles = Vec::<hugin::AssetHandle>::new();
+        let mut handles = Vec::<drasil_hugin::AssetHandle>::new();
         for u in utxos {
             let v = u.output().amount();
             let ada = v.coin();
-            handles.push(hugin::AssetHandle {
+            handles.push(drasil_hugin::AssetHandle {
                 fingerprint: None,
                 policy: None,
                 tokenname: None,
@@ -950,8 +966,8 @@ mod handlers {
                             let fingerprint =
                                 make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
                                     .unwrap();
-                            let metadata = mimir::get_mint_metadata(&fingerprint).unwrap();
-                            handles.push(hugin::AssetHandle {
+                            let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
+                            handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
                                 tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
@@ -964,36 +980,37 @@ mod handlers {
             }
         }
         log::debug!("Handles: {:?}", handles);
-        let mut handles_summed = Vec::<hugin::AssetHandle>::new();
+        let mut handles_summed = Vec::<drasil_hugin::AssetHandle>::new();
 
         for h in &handles {
             if handles_summed
                 .iter()
                 .filter(|n| h.same_asset(n))
-                .collect::<Vec<&hugin::AssetHandle>>()
+                .collect::<Vec<&drasil_hugin::AssetHandle>>()
                 .is_empty()
             {
-                let sum = handles
-                    .iter()
-                    .fold(hugin::AssetHandle::new_empty(), |mut acc, f| {
-                        if h.same_asset(f) {
-                            acc.amount = acc.amount.checked_add(f.amount).unwrap();
+                let sum =
+                    handles
+                        .iter()
+                        .fold(drasil_hugin::AssetHandle::new_empty(), |mut acc, f| {
+                            if h.same_asset(f) {
+                                acc.amount = acc.amount.checked_add(f.amount).unwrap();
 
-                            if acc.metadata.is_none() && f.metadata.is_some() {
-                                acc.metadata = h.metadata.clone()
+                                if acc.metadata.is_none() && f.metadata.is_some() {
+                                    acc.metadata = h.metadata.clone()
+                                }
+                                if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                    acc.fingerprint = h.fingerprint.clone()
+                                }
+                                if acc.policy.is_none() && f.policy.is_some() {
+                                    acc.policy = h.policy.clone()
+                                }
+                                if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                    acc.tokenname = h.tokenname.clone()
+                                }
                             }
-                            if acc.fingerprint.is_none() && f.fingerprint.is_some() {
-                                acc.fingerprint = h.fingerprint.clone()
-                            }
-                            if acc.policy.is_none() && f.policy.is_some() {
-                                acc.policy = h.policy.clone()
-                            }
-                            if acc.tokenname.is_none() && f.tokenname.is_some() {
-                                acc.tokenname = h.tokenname.clone()
-                            }
-                        }
-                        acc
-                    });
+                            acc
+                        });
                 handles_summed.push(sum)
             }
         }
@@ -1009,21 +1026,21 @@ mod handlers {
         stake_address: QStakeAddress,
     ) -> Result<impl warp::Reply, Infallible> {
         let stake_address = stake_address.stake_address;
-        let bstake_addr = match murin::b_decode_addr(&stake_address).await {
+        let bstake_addr = match drasil_murin::b_decode_addr(&stake_address).await {
             Ok(s) => s,
             Err(e) => {
                 return make_error(e.to_string());
             }
         };
-        let reward_address = match murin::get_reward_address(&bstake_addr) {
+        let reward_address = match drasil_murin::get_reward_address(&bstake_addr) {
             Ok(r) => r,
             Err(e) => {
                 return make_error(e.to_string());
             }
         };
 
-        let utxos = match mimir::get_stake_address_utxos(
-            &mut mimir::establish_connection().unwrap(),
+        let utxos = match drasil_mimir::get_stake_address_utxos(
+            &mut drasil_mimir::establish_connection().unwrap(),
             &reward_address.to_bech32(None).unwrap(),
         ) {
             Ok(u) => u,
@@ -1032,11 +1049,11 @@ mod handlers {
             }
         };
 
-        let mut handles = Vec::<hugin::AssetHandle>::new();
+        let mut handles = Vec::<drasil_hugin::AssetHandle>::new();
         for u in utxos {
             let v = u.output().amount();
             let ada = v.coin();
-            handles.push(hugin::AssetHandle {
+            handles.push(drasil_hugin::AssetHandle {
                 fingerprint: None,
                 policy: None,
                 tokenname: None,
@@ -1055,8 +1072,8 @@ mod handlers {
                             let fingerprint =
                                 make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
                                     .unwrap();
-                            let metadata = mimir::get_mint_metadata(&fingerprint).unwrap();
-                            handles.push(hugin::AssetHandle {
+                            let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
+                            handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
                                 tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
@@ -1069,36 +1086,37 @@ mod handlers {
             }
         }
         log::debug!("Handles: {:?}", handles);
-        let mut handles_summed = Vec::<hugin::AssetHandle>::new();
+        let mut handles_summed = Vec::<drasil_hugin::AssetHandle>::new();
 
         for h in &handles {
             if handles_summed
                 .iter()
                 .filter(|n| h.same_asset(n))
-                .collect::<Vec<&hugin::AssetHandle>>()
+                .collect::<Vec<&drasil_hugin::AssetHandle>>()
                 .is_empty()
             {
-                let sum = handles
-                    .iter()
-                    .fold(hugin::AssetHandle::new_empty(), |mut acc, f| {
-                        if h.same_asset(f) {
-                            acc.amount = acc.amount.checked_add(f.amount).unwrap();
+                let sum =
+                    handles
+                        .iter()
+                        .fold(drasil_hugin::AssetHandle::new_empty(), |mut acc, f| {
+                            if h.same_asset(f) {
+                                acc.amount = acc.amount.checked_add(f.amount).unwrap();
 
-                            if acc.metadata.is_none() && f.metadata.is_some() {
-                                acc.metadata = h.metadata.clone()
+                                if acc.metadata.is_none() && f.metadata.is_some() {
+                                    acc.metadata = h.metadata.clone()
+                                }
+                                if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                    acc.fingerprint = h.fingerprint.clone()
+                                }
+                                if acc.policy.is_none() && f.policy.is_some() {
+                                    acc.policy = h.policy.clone()
+                                }
+                                if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                    acc.tokenname = h.tokenname.clone()
+                                }
                             }
-                            if acc.fingerprint.is_none() && f.fingerprint.is_some() {
-                                acc.fingerprint = h.fingerprint.clone()
-                            }
-                            if acc.policy.is_none() && f.policy.is_some() {
-                                acc.policy = h.policy.clone()
-                            }
-                            if acc.tokenname.is_none() && f.tokenname.is_some() {
-                                acc.tokenname = h.tokenname.clone()
-                            }
-                        }
-                        acc
-                    });
+                            acc
+                        });
                 handles_summed.push(sum)
             }
         }

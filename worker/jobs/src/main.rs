@@ -10,7 +10,7 @@ use lazy_static::lazy_static;
 use rand::prelude::*;
 use std::env;
 
-use sleipnir::jobs::JobTypes;
+use drasil_sleipnir::jobs::JobTypes;
 
 lazy_static! {
     static ref AMQP_ADDR: String =

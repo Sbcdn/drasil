@@ -29,4 +29,4 @@ strum_macros = "0.24"
 
 
 chrono = { version = "0.4", features = ["serde"] }
-hugin = { path = "../../libs/hugin", version = "0.1.0" }
+drasil-hugin = { path = "../../drasil-hugin", version = "0.1.0" }

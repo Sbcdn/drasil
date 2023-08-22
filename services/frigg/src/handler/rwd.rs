@@ -12,14 +12,15 @@ pub struct CreateContract {
 }
 
 pub async fn entrp_create_sporwc(uid: String, cparam: CreateContract) -> WebResult<impl Reply> {
-    let mut net = murin::clib::NetworkIdKind::Mainnet;
+    let mut net = drasil_murin::clib::NetworkIdKind::Mainnet;
     if cparam.network == 0 {
-        net = murin::clib::NetworkIdKind::Testnet;
+        net = drasil_murin::clib::NetworkIdKind::Testnet;
     }
 
     let user = get_user_from_string(&uid).await?;
 
-    let contract_id = sleipnir::rewards::create_contract(net, user, cparam.contract_fee).await?;
+    let contract_id =
+        drasil_sleipnir::rewards::create_contract(net, user, cparam.contract_fee).await?;
     Ok(warp::reply::with_status(
         warp::reply::json(&json!({ "contract_id": contract_id })),
         warp::http::StatusCode::CREATED,
@@ -29,7 +30,7 @@ pub async fn entrp_create_sporwc(uid: String, cparam: CreateContract) -> WebResu
 pub async fn enterprise_get_rwd_contracts_handler(uid: String) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let contracts = sleipnir::rewards::get_rwd_contracts_for_user(user).await?;
+    let contracts = drasil_sleipnir::rewards::get_rwd_contracts_for_user(user).await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&contracts),
@@ -45,7 +46,8 @@ pub struct Contract {
 pub async fn entrp_depricate_sporwc(uid: String, cparam: Contract) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let contract_id = sleipnir::rewards::depricate_contract(user, cparam.contract_id).await?;
+    let contract_id =
+        drasil_sleipnir::rewards::depricate_contract(user, cparam.contract_id).await?;
     Ok(warp::reply::with_status(
         warp::reply::json(&contract_id),
         warp::http::StatusCode::OK,
@@ -55,7 +57,8 @@ pub async fn entrp_depricate_sporwc(uid: String, cparam: Contract) -> WebResult<
 pub async fn entrp_reactivate_sporwc(uid: String, cparam: Contract) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let contract_id = sleipnir::rewards::reactivate_contract(user, cparam.contract_id).await?;
+    let contract_id =
+        drasil_sleipnir::rewards::reactivate_contract(user, cparam.contract_id).await?;
     Ok(warp::reply::with_status(
         warp::reply::json(&contract_id),
         warp::http::StatusCode::OK,
@@ -64,7 +67,8 @@ pub async fn entrp_reactivate_sporwc(uid: String, cparam: Contract) -> WebResult
 
 pub async fn get_contract_tokens(uid: String, cparam: Contract) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    let tokens = sleipnir::rewards::get_tokens_from_contract(user, cparam.contract_id).await?;
+    let tokens =
+        drasil_sleipnir::rewards::get_tokens_from_contract(user, cparam.contract_id).await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&tokens),
@@ -90,7 +94,7 @@ pub async fn entrp_add_token_sporwc(
     cparam: AddTokenWhitelisitng,
 ) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    match hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
+    match drasil_hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
         Ok(c) => {
             if c.contract_type != *"sporwc" {
                 return Err(reject::custom(Error::Custom(
@@ -104,7 +108,7 @@ pub async fn entrp_add_token_sporwc(
             )))
         }
     }
-    let arg = sleipnir::rewards::models::NewTWL {
+    let arg = drasil_sleipnir::rewards::models::NewTWL {
         user_id: user,
         contract_id: cparam.contract_id,
         fingerprint: cparam.fingerprint,
@@ -117,7 +121,7 @@ pub async fn entrp_add_token_sporwc(
         modificator_equ: cparam.modificator_equ,
     };
     log::debug!("Try to create TokenWhitelisting...");
-    let token_listing = sleipnir::rewards::create_token_whitelisting(arg)?;
+    let token_listing = drasil_sleipnir::rewards::create_token_whitelisting(arg)?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&token_listing), //
@@ -133,7 +137,7 @@ pub struct GetTWL {
 
 pub async fn entrp_rm_token_sporwc(uid: String, cparam: GetTWL) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    match hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
+    match drasil_hugin::database::TBContracts::get_contract_uid_cid(user, cparam.contract_id) {
         Ok(c) => {
             if c.contract_type != *"sporwc" {
                 return Err(reject::custom(Error::Custom(
@@ -148,9 +152,12 @@ pub async fn entrp_rm_token_sporwc(uid: String, cparam: GetTWL) -> WebResult<imp
         }
     }
 
-    let token_listing =
-        sleipnir::rewards::remove_token_whitelisting(user, cparam.contract_id, cparam.fingerprint)
-            .await?;
+    let token_listing = drasil_sleipnir::rewards::remove_token_whitelisting(
+        user,
+        cparam.contract_id,
+        cparam.fingerprint,
+    )
+    .await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&token_listing),
@@ -161,7 +168,8 @@ pub async fn entrp_rm_token_sporwc(uid: String, cparam: GetTWL) -> WebResult<imp
 pub async fn get_pools(uid: String, cparam: GetTWL) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let resp = sleipnir::rewards::get_pools(user, cparam.contract_id, cparam.fingerprint).await?;
+    let resp =
+        drasil_sleipnir::rewards::get_pools(user, cparam.contract_id, cparam.fingerprint).await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&resp),
@@ -178,7 +186,8 @@ pub struct TxCountStat {
 pub async fn get_user_txs_timed(uid: String, cparam: TxCountStat) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
     log::debug!("TxCountStat: {:?}", cparam);
-    let resp = sleipnir::rewards::get_user_txs(user, Some(cparam.from), Some(cparam.to)).await?;
+    let resp =
+        drasil_sleipnir::rewards::get_user_txs(user, Some(cparam.from), Some(cparam.to)).await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&json!({ "tx_count": resp })),
@@ -189,7 +198,7 @@ pub async fn get_user_txs_timed(uid: String, cparam: TxCountStat) -> WebResult<i
 pub async fn get_user_txs_all(uid: String) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let resp = sleipnir::rewards::get_user_txs(user, None, None).await?;
+    let resp = drasil_sleipnir::rewards::get_user_txs(user, None, None).await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&json!({ "tx_count": resp })),
@@ -207,9 +216,13 @@ pub struct AddPools {
 pub async fn add_pools(uid: String, cparam: AddPools) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let resp =
-        sleipnir::rewards::add_pools(user, cparam.contract_id, cparam.fingerprint, cparam.pools)
-            .await?;
+    let resp = drasil_sleipnir::rewards::add_pools(
+        user,
+        cparam.contract_id,
+        cparam.fingerprint,
+        cparam.pools,
+    )
+    .await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&resp),
@@ -227,9 +240,13 @@ pub struct RmPools {
 pub async fn remove_pools(uid: String, cparam: RmPools) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
 
-    let resp =
-        sleipnir::rewards::rm_pools(user, cparam.contract_id, cparam.fingerprint, cparam.pools)
-            .await?;
+    let resp = drasil_sleipnir::rewards::rm_pools(
+        user,
+        cparam.contract_id,
+        cparam.fingerprint,
+        cparam.pools,
+    )
+    .await?;
 
     Ok(warp::reply::with_status(
         warp::reply::json(&resp),
