@@ -1,4 +1,7 @@
+deploy/
 target/
 *.cargo
+.docker
+.github/workflows/build.yml
 .idea
 .vscode
