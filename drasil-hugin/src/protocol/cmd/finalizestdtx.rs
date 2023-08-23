@@ -97,7 +97,15 @@ impl FinalizeStdTx {
                 ) {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a delegation transaction, {:?}",e.to_string())}.into());
                 };
-                self.finalize_delegation(raw_tx.clone()).await?
+                self.finalize_std_tx(raw_tx.clone()).await?
+            }
+            StdTxType::DeregisterStake => {
+                if let Err(e) =
+                    drasil_murin::deregistration::DeregTxData::from_str(raw_tx.get_tx_specific_rawdata())
+                {
+                    return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a deregistration transaction, {:?}",e.to_string())}.into());
+                };
+                self.finalize_std_tx(raw_tx.clone()).await?
             }
             StdTxType::StandardTx => {
                 if let Err(e) =
@@ -105,7 +113,7 @@ impl FinalizeStdTx {
                 {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a standard transaction, {:?}",e.to_string())}.into());
                 };
-                self.finalize_delegation(raw_tx.clone()).await?
+                self.finalize_std_tx(raw_tx.clone()).await?
             }
         };
 
@@ -129,7 +137,7 @@ impl FinalizeStdTx {
         Ok(())
     }
 
-    async fn finalize_delegation(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<String> {
+    async fn finalize_std_tx(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<String> {
         use drasil_murin::txbuilders::finalize::finalize;
         let response = finalize(&self.get_signature(), raw_tx).await?;
         info!("Response: {}", response);

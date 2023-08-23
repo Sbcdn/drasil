@@ -71,6 +71,7 @@ impl FromStr for Utxopti {
 pub enum StdTxType {
     DelegateStake,
     StandardTx,
+    DeregisterStake,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -445,6 +446,10 @@ pub enum Operation {
         poolhash: String,
         addresses: Option<Vec<String>>,
     },
+    StakeDeregistration {
+        poolhash: String,
+        addresses: Option<Vec<String>>,
+    },
     StdTx {
         transfers: Vec<TransferHandle>,
         wallet_addresses: Option<Vec<String>>,
@@ -725,6 +730,22 @@ impl Operation {
                 poolhash,
                 addresses: _,
             } => Ok(DelegTxData::new(poolhash)?),
+            _ => Err(MurinError::new(
+                "provided wrong specfic paramter for this transaction",
+            )),
+        }
+    }
+
+    pub async fn into_stake_deregistration(
+        &self,
+    ) -> Result<drasil_murin::txbuilders::deregistration::DeregTxData, drasil_murin::error::MurinError> {
+        use drasil_murin::error::MurinError;
+        use drasil_murin::txbuilders::deregistration::DeregTxData;
+        match self {
+            Operation::StakeDeregistration {
+                poolhash,
+                addresses: _,
+            } => Ok(DeregTxData::new(poolhash)?),
             _ => Err(MurinError::new(
                 "provided wrong specfic paramter for this transaction",
             )),

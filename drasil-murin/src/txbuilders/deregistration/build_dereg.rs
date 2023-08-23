@@ -1,43 +1,25 @@
 use crate::error::MurinError;
 use crate::hfn::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
 use crate::htypes::*;
-use crate::{
-    txbuilders::{input_selection, TxBO},
-    PerformTxb, TxData,
-};
+use crate::txbuilders::{deregistration::DeregTxData, input_selection, TxBO};
+use crate::PerformTxb;
+use crate::TxData;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
-use clib::address::{EnterpriseAddress, StakeCredential};
-use clib::TransactionOutput;
 
-// One Shot Minter Builder Type
-#[derive(Debug, Clone)]
-pub struct AtCPOBuilder<'a> {
-    pub txo_values: Vec<(
-        &'a caddr::Address,
-        &'a cutils::Value,
-        Option<&'a TransactionUnspentOutputs>,
-    )>,
-    pub script: clib::NativeScript,
+// Deregistration Builder Type
+#[derive(Debug, Clone)] 
+pub struct AtDeregBuilder {
+    pub stxd: DeregTxData,
 }
-
-pub type AtCPOParams<'a> = (
-    Vec<(
-        &'a caddr::Address,
-        &'a cutils::Value,
-        Option<&'a TransactionUnspentOutputs>,
-    )>,
-    clib::NativeScript,
-);
-
-impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
-    fn new(t: AtCPOParams<'a>) -> Self {
-        AtCPOBuilder::<'a> {
-            txo_values: t.0,
-            script: t.1.clone(),
-        }
+  
+pub type AtDeregParams<'a> = &'a DeregTxData;
+  
+impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
+    fn new(t: AtDeregParams) -> Self {
+        AtDeregBuilder { stxd: t.clone() }
     }
-
+  
     fn perform_txb(
         &self,
         fee: &clib::utils::BigNum,
@@ -55,7 +37,9 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             info!("--------------------------------------------------------------------------------------------------------\n");
         }
 
-        let cwallet_address = match gtxd.get_senders_address(None) {
+        let registered = self.stxd.get_registered();
+        log::info!("\nThis user is registered: {}\n", registered);
+        let owner_address = match gtxd.get_senders_address(None) {
             Some(a) => a,
             None => {
                 return Err(MurinError::new(
@@ -63,34 +47,41 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
                 ))
             }
         };
+        let delegators_address: caddr::Address = gtxd.get_stake_address(); 
+  
+        let delegators_address_bech32 = delegators_address.to_bech32(None)?;
+        log::info!("Delegator Stake Address: {:?}", delegators_address_bech32);
 
-        let script_hash = self.script.hash();
-        let script_address = EnterpriseAddress::new(
-            cwallet_address.network_id()?,
-            &StakeCredential::from_scripthash(&script_hash),
-        )
-        .to_address();
-        /////////////////////////////////////////////////////////////////////////////////////////////////////
-        //
-        //Auxiliary Data
-        //  Plutus Script and Metadata
-        /////////////////////////////////////////////////////////////////////////////////////////////////////
+        let owner_base_addr = caddr::BaseAddress::from_address(&owner_address).unwrap();
+        let owner_stakecred = owner_base_addr.stake_cred();
+        let dereg_rwd_addr = caddr::RewardAddress::from_address(&delegators_address).unwrap();
+        let dereg_stake_creds = dereg_rwd_addr.payment_cred();
+        if owner_stakecred.to_bytes() != dereg_stake_creds.to_bytes() {
+            return Err(MurinError::new("Inconsitent Stake Key Data, forbidden!"));
+        }
+  
+        let mut certs = clib::Certificates::new();
+  
+        if registered {
+            let stake_dereg = clib::StakeDeregistration::new(&dereg_stake_creds);
+            let dereg_cert = clib::Certificate::new_stake_deregistration(&stake_dereg);
+            certs.add(&dereg_cert);
+        }
+  
         let aux_data = None;
-
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         //Add Inputs and Outputs
         //
         //
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
+  
         let mut txouts = clib::TransactionOutputs::new();
-        for txo in &self.txo_values {
-            txouts.add(&TransactionOutput::new(txo.0, txo.1))
-        }
-
+        // ATTENTION DIFFERENT VALUES FOR PREVIEW / PREPROD / MAINNET
+        let deposit_val = cutils::Value::new(&cutils::to_bignum(2000000));
+  
         // Inputs
         let mut input_txuos = gtxd.clone().get_inputs();
-
+  
         // Check if some utxos in inputs are in use and remove them
         if let Some(used_utxos) = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)? {
             info!("\n\n");
@@ -98,28 +89,39 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             info!("\n\n");
             input_txuos.remove_used_utxos(used_utxos);
         }
-
+  
+        let k = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)?;
+        info!("K: {:?}", k);
+  
+        // Balance TX
         let mut fee_paid = false;
         let mut first_run = true;
         let mut txos_paid = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
+        if registered {
+            tbb_values = deposit_val.clone();
+        }
         let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
-
+        let change_address = owner_address.clone();
+  
         let mut needed_value = sum_output_values(&txouts);
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
+  
+        if registered {
+            needed_value = needed_value.checked_add(&deposit_val)?;
+        }
+  
         let security =
             cutils::to_bignum(cutils::from_bignum(&needed_value.coin()) / 100 * 10 + MIN_ADA); // 10% Security for min utxo etc.
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
-
-        debug!("Needed Value: {:?}", needed_value);
-
+        let mut needed_value = cutils::Value::new(&needed_value.coin());
+  
         let (txins, mut input_txuos) =
             input_selection(None, &mut needed_value, &input_txuos, None, None)?;
-
+  
         let saved_input_txuos = input_txuos.clone();
-
-        let mut vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
-
+        let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
+  
         let txouts_fin = balance_tx(
             &mut input_txuos,
             &Tokens::new(),
@@ -130,30 +132,30 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             &mut first_run,
             &mut txos_paid,
             &mut tbb_values,
-            &script_address,
-            &script_address,
+            &owner_address,
+            &change_address,
             &mut acc,
             None,
             &fcrun,
         )?;
-
+  
         let slot = gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network());
         let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
         txbody.set_ttl(&cutils::to_bignum(slot));
-
-        let mut txwitness = clib::TransactionWitnessSet::new();
-        let mut native_scripts = clib::NativeScripts::new();
-        native_scripts.add(&self.script);
-        txwitness.set_native_scripts(&native_scripts);
-
+        txbody.set_certs(&certs);
+  
+        // Set network Id
+        //if gtxd.get_network() == clib::NetworkIdKind::Testnet {
+        //    txbody.set_network_id(&clib::NetworkId::testnet());
+        //} else {
+        //    txbody.set_network_id(&clib::NetworkId::mainnet());
+        //}
+  
+        let txwitness = clib::TransactionWitnessSet::new();
+  
         debug!("TxWitness: {:?}", hex::encode(txwitness.to_bytes()));
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
         debug!("--------------------Iteration Ended------------------------------");
-        if vkey_counter < 2 {
-            info!("Vkey Counter was smaller than 2 why?: {:?}", vkey_counter);
-            info!("Inputs: {:?}", input_txuos);
-            vkey_counter = 2;
-        }
         debug!("Vkey Counter at End: {:?}", vkey_counter);
         Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
     }
