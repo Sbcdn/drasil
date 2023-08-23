@@ -100,9 +100,9 @@ pub fn perform_cancel(
     debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
     debug!("Before Balance: Transaction Outputs: {:?}", txouts);
 
-    let mut fee_paied = false;
+    let mut fee_paid = false;
     let mut first_run = true;
-    let mut txos_paied = false;
+    let mut txos_paid = false;
     let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
     let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
     let change_address = &gtxd.clone().get_senders_addresses()[0];
@@ -204,9 +204,9 @@ pub fn perform_cancel(
         &mut txouts,
         None,
         fee,
-        &mut fee_paied,
+        &mut fee_paid,
         &mut first_run,
-        &mut txos_paied,
+        &mut txos_paid,
         &mut tbb_values,
         &trade_owner,
         change_address,

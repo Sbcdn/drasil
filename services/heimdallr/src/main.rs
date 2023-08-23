@@ -453,6 +453,7 @@ mod handlers {
 
         match tx_type {
             StdTxType::DelegateStake => {}
+            StdTxType::DeregisterStake => {}
             StdTxType::StandardTx => {}
         }
         let payload = match payload {

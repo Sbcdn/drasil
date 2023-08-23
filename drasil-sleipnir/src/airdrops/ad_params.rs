@@ -9,7 +9,7 @@ use crate::error::SleipnirError;
 //                            NFT,
 //                          }
 // - Distribution Type(FT): {   share depending on stake,
-//                          fixed amount for each deligator of a pool,
+//                          fixed amount for each delegator of a pool,
 //                          custom amounts (csv import),
 //                          for each token holder a certain amount,
 //                          fixed amount devided by all receivers
@@ -18,7 +18,7 @@ use crate::error::SleipnirError;
 //                          .....},
 
 //                           StakeDendentOnPools,
-//                          FixedAmoutPerDeligatorOnPools,
+//                          FixedAmoutPerDelegatorOnPools,
 //                          Custom,
 //                          FixedAmoutPerTokenHolder,
 //                          FixedAmountDevidedByHolders,
@@ -30,13 +30,13 @@ use crate::error::SleipnirError;
 //                              Wallet Whitelisting with message verification,
 //                              Minting - > Mint a Token to whitelist and burn it on claim,
 //                              custom (csv import),
-//                              deligators of a stake pool at a certain epoch,
+//                              delegators of a stake pool at a certain epoch,
 //                              testnet distro for one address
 //                              ....
 //                            },
 // - ARGS1:                   { Array of Text, Depending on Distribution Type
 //                              StakeDendentOnPools : [Fixed Amount Of Fungible Tokens to be distributed, Amount Distributed Already, ],
-//                              FixedAmoutPerDeligatorOnPools : [A Fixed Amount Everybody staking with the pool gets, Total Amount, Total Distributed Already],
+//                              FixedAmoutPerDelegatorOnPools : [A Fixed Amount Everybody staking with the pool gets, Total Amount, Total Distributed Already],
 //                              Custom: [{JSON Object showing Addresses and amount per Address}],
 //                              FixedAmoutPerTokenHolder: [(The fixed AMount per token),(PolicyID of the Token), (Optional: TokenName of the token), (Min Amount to Hold)],
 //                              FixedAmountDevidedByHolders: [(The fixed amount),(PolicyID od Token),(Optional: TokenName od the TOken), (Min amount to Hold)],
@@ -45,12 +45,12 @@ use crate::error::SleipnirError;
 //                            },
 
 pub struct ParamFTStakeDependentDiv {
-    // Amount to be distributed to all deligators, largest deligator gets most tokens
+    // Amount to be distributed to all delegators, largest delegator gets most tokens
     distribution_amount: i64,
     token_policy: drasil_murin::clib::PolicyID,
     token_name: drasil_murin::clib::AssetName,
     token_fingerprint: String,
-    // Just consider deligators over min_stake
+    // Just consider delegators over min_stake
     min_stake: Option<i64>,
 }
 
@@ -70,7 +70,7 @@ pub struct ParamFTStakeDependentFix {
     token_policy: drasil_murin::clib::PolicyID,
     token_name: drasil_murin::clib::AssetName,
     token_fingerprint: String,
-    // Amount to be distributed for each deligator above min_stake
+    // Amount to be distributed for each delegator above min_stake
     distribution_amount: i64,
 }
 
@@ -134,7 +134,7 @@ impl AirdropDistributionParameter {
 //                              WalletWhitelisting: [WhitelistingContractId, Max Amount of Whitelistentries],
 //                              MintingWhitelist: [(PolicyId),(Tokenname),(MintingContractId),],
 //                              Custom: (CSV Import as JSON Object see also ADDistType),
-//                              DeligatorsOfStakePoolInEpochX: [PoolId, Epoch],
+//                              DelegatorsOfStakePoolInEpochX: [PoolId, Epoch],
 //                              Testnet: [(ProvidedStakeAddr)],
 //                              Combination(Vec<ADSelType>): Comes Later,
 //                            },
@@ -166,7 +166,7 @@ pub struct ParamImportWalletList {
 
 // Make sure that stake_addresses are not considered twice over epochs / pools
 // Think about how a pool can approve an Airdrop
-pub struct ParamDeligatorsInEpoch {
+pub struct ParamDelegatorsInEpoch {
     pool_ids: Vec<String>,
     epochs: Vec<i64>,
 }
@@ -176,7 +176,7 @@ pub enum AirdropSelectionParameter {
     ScanForHolders { param: ParamScanForHolders },
     ExistingWhitelist { param: ParamExistingWhitelist },
     ImportWalletList { param: ParamImportWalletList },
-    DeligatorsInEpoch { param: ParamDeligatorsInEpoch },
+    DelegatorsInEpoch { param: ParamDelegatorsInEpoch },
     TokenPool,
     None,
 }

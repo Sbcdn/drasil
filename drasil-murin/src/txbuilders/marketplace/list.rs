@@ -37,8 +37,8 @@ pub fn perform_listing(
         roy_rate = (royrate * 1000.0) as u64;
     }
 
-    let unpaied_royalties: u64 = mptxd.clone().get_price() / 1000 * roy_rate;
-    info!("Royalties: {:?}", unpaied_royalties);
+    let unpaid_royalties: u64 = mptxd.clone().get_price() / 1000 * roy_rate;
+    info!("Royalties: {:?}", unpaid_royalties);
     if roy_rate > 500 {
         //panic!("Royalty Rate is formated wrong (0.015 = 1.5%); or Royalty Rate is larger 50%, artifct does not accept that");
 
@@ -137,9 +137,9 @@ pub fn perform_listing(
     debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
     debug!("Before Balance: Transaction Outputs: {:?}", txouts);
 
-    let mut fee_paied = false;
+    let mut fee_paid = false;
     let mut first_run = true;
-    let mut txos_paied = false;
+    let mut txos_paid = false;
     let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
     let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
     let change_address = &gtxd.clone().get_senders_addresses()[0];
@@ -184,9 +184,9 @@ pub fn perform_listing(
         &mut txouts,
         None,
         fee,
-        &mut fee_paied,
+        &mut fee_paid,
         &mut first_run,
-        &mut txos_paied,
+        &mut txos_paid,
         &mut tbb_values,
         trade_owner,
         change_address,
