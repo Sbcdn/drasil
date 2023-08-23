@@ -1,6 +1,8 @@
 use deadpool_lapin::Pool;
+use drasil_sleipnir::whitelist::{
+    AllocateSpecificAssetsToMintProject, ImportWhitelistFromCSV, WlNew,
+};
 use serde::{Deserialize, Serialize};
-use sleipnir::whitelist::{AllocateSpecificAssetsToMintProject, ImportWhitelistFromCSV, WlNew};
 use warp::Reply;
 
 use crate::{
@@ -16,7 +18,7 @@ pub async fn create_whitelist(uid: String, params: WlNew) -> WebResult<impl Repl
     log::debug!("create_whitelist");
     let user = get_user_from_string(&uid).await?;
     log::debug!("Data: {:?}", params);
-    let result = sleipnir::whitelist::create_whitelist(&user, &vec![params])?;
+    let result = drasil_sleipnir::whitelist::create_whitelist(&user, &vec![params])?;
 
     Ok(serde_json::json!(result).to_string())
 }
@@ -25,7 +27,7 @@ pub async fn delete_whitelist(uid: String, params: WlId) -> WebResult<impl Reply
     log::debug!("delete_whitelist");
     let user = get_user_from_string(&uid).await?;
     log::debug!("Data: {:?}", params);
-    let result = sleipnir::whitelist::delete_whitelists(&user, &params.whitelist_id)?;
+    let result = drasil_sleipnir::whitelist::delete_whitelists(&user, &params.whitelist_id)?;
     Ok(serde_json::json!(result).to_string())
 }
 
@@ -35,13 +37,13 @@ pub async fn import_whitelist_from_csv(
     params: ImportWhitelistFromCSV,
 ) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    let job = sleipnir::jobs::Job {
+    let job = drasil_sleipnir::jobs::Job {
         drasil_user_id: user,
         session_id: None,
         data: serde_json::json!(params),
     };
 
-    let job = sleipnir::jobs::JobTypes::ImportWhitelist(job);
+    let job = drasil_sleipnir::jobs::JobTypes::ImportWhitelist(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
         log::error!("can't connect to rmq, {}", e);
@@ -95,13 +97,13 @@ pub async fn allocate_whitelist_to_mp(
     params: AllocateSpecificAssetsToMintProject,
 ) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    let job = sleipnir::jobs::Job {
+    let job = drasil_sleipnir::jobs::Job {
         drasil_user_id: user,
         session_id: None,
         data: serde_json::json!(params),
     };
 
-    let job = sleipnir::jobs::JobTypes::AllocateSpecificAssetsToMintProject(job);
+    let job = drasil_sleipnir::jobs::JobTypes::AllocateSpecificAssetsToMintProject(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
         log::error!("can't connect to rmq, {}", e);
@@ -155,13 +157,13 @@ pub async fn random_allocate_whitelist_to_mp(
     params: AllocateSpecificAssetsToMintProject,
 ) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    let job = sleipnir::jobs::Job {
+    let job = drasil_sleipnir::jobs::Job {
         drasil_user_id: user,
         session_id: None,
         data: serde_json::json!(params),
     };
 
-    let job = sleipnir::jobs::JobTypes::RandomAllocateWhitelistToMintProject(job);
+    let job = drasil_sleipnir::jobs::JobTypes::RandomAllocateWhitelistToMintProject(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
         log::error!("can't connect to rmq, {}", e);

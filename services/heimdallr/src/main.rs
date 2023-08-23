@@ -66,7 +66,7 @@ async fn main() {
 mod filters {
     use super::handlers;
     use crate::clientapi::filter::api_endpoints;
-    use hugin::datamodel::models::{ContractType, MultiSigType, StdTxType, TXPWrapper};
+    use drasil_hugin::datamodel::models::{ContractType, MultiSigType, StdTxType, TXPWrapper};
     use warp::Filter;
 
     pub fn endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -199,7 +199,7 @@ mod auth {
         reject, Rejection,
     };
 
-    use hugin::{
+    use drasil_hugin::{
         // Warning appears due to commented user login check on database
         client::connect,
         OneShotMintPayload,
@@ -207,7 +207,7 @@ mod auth {
         TransactionPattern,
         WalletTransactionPattern,
     };
-    use hugin::{Signature, VerifyUser};
+    use drasil_hugin::{Signature, VerifyUser};
 
     const BEARER: &str = "Bearer ";
 
@@ -294,12 +294,12 @@ mod auth {
 
 ///Handlers
 mod handlers {
-    use hugin::client::{connect, Client};
-    use hugin::datamodel::models::{
+    use drasil_hugin::client::{connect, Client};
+    use drasil_hugin::datamodel::models::{
         ContractAction, ContractType, MarketplaceActions, MultiSigType, ReturnError, StdTxType,
         TxHash, UnsignedTransaction,
     };
-    use hugin::{
+    use drasil_hugin::{
         BuildContract, BuildMultiSig, BuildStdTx, FinalizeContract, FinalizeMultiSig,
         FinalizeStdTx, TXPWrapper,
     };

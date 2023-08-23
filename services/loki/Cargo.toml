@@ -27,11 +27,11 @@ jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 thiserror = "1.0"
 bytes = "1"
 futures = { version = "0.3", default-features = true }
-hugin = { path = "../../libs/hugin", version = "0.1.0" }
-
 lapin = { version = "2.1.1", features = ["rustls"] }
 tokio-amqp = "2.0.0"
 deadpool = "0.9.5"
 deadpool-lapin = { version = "0.10.0", features = ["serde"] }
 ratelimit_meter = "5.0.0"
 nonzero_ext = "0.3.0"
+
+drasil-hugin = { path = "../../drasil-hugin", version = "0.1.0" }

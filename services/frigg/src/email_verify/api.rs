@@ -1,6 +1,6 @@
 pub use crate::email_verify::*;
 pub use crate::error::Error;
-pub use hugin::database::{TBEmailVerificationToken, TBEmailVerificationTokenMessage};
+pub use drasil_hugin::database::{TBEmailVerificationToken, TBEmailVerificationTokenMessage};
 
 #[derive(Debug, serde::Serialize)]
 pub struct Msg {
@@ -69,7 +69,7 @@ pub async fn verify(body: RegistrationMessage) -> crate::WebResult<impl warp::Re
         )));
     }
 
-    let _ = match hugin::drasildb::TBDrasilUser::verify_email(&token.email) {
+    let _ = match drasil_hugin::drasildb::TBDrasilUser::verify_email(&token.email) {
         Ok(u) => u,
         Err(_) => {
             return Err(warp::reject::custom(Error::Custom(

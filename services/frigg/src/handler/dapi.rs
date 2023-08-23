@@ -10,7 +10,7 @@ pub async fn enterprise_create_apikey_post_handler(uid: String) -> WebResult<imp
         Err(_) => return Err(reject::custom(Error::Custom("invalid user".to_string()))),
     };
 
-    let token = sleipnir::apiauth::create_jwt(&user, None)?;
+    let token = drasil_sleipnir::apiauth::create_jwt(&user, None)?;
     log::debug!("Api Token: {:?}", token);
 
     Ok(warp::reply::with_status(

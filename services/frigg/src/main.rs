@@ -21,7 +21,7 @@ use std::{collections::HashMap, convert::Infallible, sync::Arc};
 use tokio::sync::Mutex;
 use warp::{reject, reply, Filter, Rejection, Reply};
 
-use hugin::drasildb::TBDrasilUser;
+use drasil_hugin::drasildb::TBDrasilUser;
 
 mod auth;
 mod email_verify;
@@ -510,7 +510,7 @@ pub async fn register_handler(payload: RegisterRequest) -> WebResult<impl Reply>
     .map_err(|e| error::Error::Custom(format!("Could not create new user: {:?}", e.to_string())))?;
 
     // Send verification Email to [new_user.email]
-    let email_body = hugin::database::TBEmailVerificationTokenMessage::new(
+    let email_body = drasil_hugin::database::TBEmailVerificationTokenMessage::new(
         Some(new_user.uname.clone()),
         &new_user.email,
     );

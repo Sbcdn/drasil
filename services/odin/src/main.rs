@@ -1,6 +1,6 @@
 extern crate pretty_env_logger;
-use hugin::protocol::{connection::Connection, Shutdown};
-use hugin::Command;
+use drasil_hugin::protocol::{connection::Connection, Shutdown};
+use drasil_hugin::Command;
 
 use std::future::Future;
 use std::sync::Arc;

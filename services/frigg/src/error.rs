@@ -1,6 +1,6 @@
-use murin::MurinError;
+use drasil_murin::MurinError;
+use drasil_sleipnir::SleipnirError;
 use serde::Serialize;
-use sleipnir::SleipnirError;
 use std::convert::Infallible;
 use thiserror::Error;
 use warp::{http::StatusCode, Rejection, Reply};
