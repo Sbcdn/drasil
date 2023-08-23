@@ -1,7 +1,7 @@
 use super::get_user_from_string;
 use crate::WebResult;
+use drasil_sleipnir::discounts::{create_discount, remove_discount, DiscountParams};
 use serde::{Deserialize, Serialize};
-use sleipnir::discounts::{create_discount, remove_discount, DiscountParams};
 use warp::Reply;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

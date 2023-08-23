@@ -1,0 +1,38 @@
+[package]
+name = "drasil-mimir"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - DBsync library"
+repository = "https://github.com/Sbcdn/mimir.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+[dependencies]
+tokio = { workspace = true }
+diesel-derive-enum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+bigdecimal = { workspace = true }
+dotenv = "0.15.0"
+pretty_env_logger = { workspace = true }
+log = { workspace = true }
+hex = { workspace = true }
+thiserror = { workspace = true }
+
+drasil-murin = { path = "../drasil-murin", version = "0.1.0" }
+
+[dependencies.diesel]
+workspace = true
+features = [
+    "numeric",
+    "64-column-tables",
+    "r2d2",
+    "serde_json",
+]
+
+[dev-dependencies]
+tokio-test = "*"

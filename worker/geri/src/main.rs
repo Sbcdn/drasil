@@ -1,8 +1,8 @@
 mod model;
 extern crate pretty_env_logger;
-//use redis_cluster_async::{Client as CClient, redis::cmd as ccmd};
+
+use drasil_murin::utxomngr::*;
 use model::*;
-use murin::utxomngr::*;
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
