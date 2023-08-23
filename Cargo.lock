@@ -1111,36 +1111,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
 
 [[package]]
-name = "drasil_jobs"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "csv",
- "deadpool",
- "deadpool-lapin",
- "futures",
- "gungnir",
- "hex",
- "hugin",
- "lapin",
- "lazy_static",
- "log",
- "mimir",
- "murin",
- "pretty_env_logger",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "sleipnir",
- "thiserror",
- "tokio",
- "tokio-amqp",
- "tokio-stream",
- "uuid",
-]
-
-[[package]]
-name = "dvltath"
+name = "drasil-dvltath"
 version = "0.1.0"
 dependencies = [
  "futures",
@@ -1158,6 +1129,178 @@ dependencies = [
  "tokio-stream",
  "vaultrs",
  "warp",
+]
+
+[[package]]
+name = "drasil-gungnir"
+version = "0.1.0"
+dependencies = [
+ "async-recursion",
+ "bigdecimal",
+ "chrono",
+ "diesel",
+ "diesel-derive-enum",
+ "diesel-dynamic-schema",
+ "drasil-mimir",
+ "hex",
+ "itertools",
+ "log",
+ "pretty_env_logger",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "structopt",
+ "strum",
+ "strum_macros",
+ "tokio",
+ "tokio-postgres",
+]
+
+[[package]]
+name = "drasil-hugin"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "async-recursion",
+ "atoi",
+ "bigdecimal",
+ "bincode",
+ "bytes",
+ "chacha20poly1305",
+ "chrono",
+ "diesel",
+ "drasil-dvltath",
+ "drasil-gungnir",
+ "drasil-mimir",
+ "drasil-murin",
+ "hex",
+ "log",
+ "pretty_env_logger",
+ "rand 0.8.5",
+ "rpassword",
+ "rust-argon2",
+ "serde",
+ "serde_bytes",
+ "serde_json",
+ "sha2 0.10.7",
+ "structopt",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "tokio",
+ "vaultrs",
+ "zeroize",
+]
+
+[[package]]
+name = "drasil-mimir"
+version = "0.1.0"
+dependencies = [
+ "bigdecimal",
+ "chrono",
+ "diesel",
+ "diesel-derive-enum",
+ "dotenv",
+ "drasil-murin",
+ "hex",
+ "log",
+ "pretty_env_logger",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-test",
+]
+
+[[package]]
+name = "drasil-murin"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "bech32 0.4.1",
+ "bigdecimal",
+ "bip39",
+ "bytes",
+ "cardano-serialization-lib",
+ "cbor_event",
+ "chrono",
+ "cryptoxide 0.4.4 (git+https://github.com/typed-io/cryptoxide.git?branch=master)",
+ "ed25519-bip32",
+ "encoding_rs",
+ "futures",
+ "hex",
+ "http",
+ "itertools",
+ "log",
+ "num",
+ "octavo-digest",
+ "pretty_env_logger",
+ "redis",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.7",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "tokio",
+ "unwrap_or",
+]
+
+[[package]]
+name = "drasil-sleipnir"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "csv",
+ "dotenv",
+ "drasil-dvltath",
+ "drasil-gungnir",
+ "drasil-hugin",
+ "drasil-mimir",
+ "drasil-murin",
+ "hex",
+ "jsonwebtoken",
+ "log",
+ "pretty_env_logger",
+ "serde",
+ "serde_json",
+ "structopt",
+ "strum",
+ "strum_macros",
+ "textnonce",
+ "tokio",
+ "warp",
+ "zeroize",
+]
+
+[[package]]
+name = "drasil_jobs"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "csv",
+ "deadpool",
+ "deadpool-lapin",
+ "drasil-gungnir",
+ "drasil-hugin",
+ "drasil-mimir",
+ "drasil-murin",
+ "drasil-sleipnir",
+ "futures",
+ "hex",
+ "lapin",
+ "lazy_static",
+ "log",
+ "pretty_env_logger",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-amqp",
+ "tokio-stream",
+ "uuid",
 ]
 
 [[package]]
@@ -1320,16 +1463,16 @@ dependencies = [
  "bigdecimal",
  "chrono",
  "csv",
- "gungnir",
- "hugin",
+ "drasil-gungnir",
+ "drasil-hugin",
+ "drasil-mimir",
+ "drasil-murin",
+ "drasil-sleipnir",
  "log",
- "mimir",
- "murin",
  "pretty_env_logger",
  "rust-s3",
  "serde",
  "serde_json",
- "sleipnir",
  "structopt",
  "strum",
  "strum_macros",
@@ -1345,15 +1488,16 @@ dependencies = [
  "chrono",
  "deadpool",
  "deadpool-lapin",
+ "drasil-hugin",
+ "drasil-murin",
+ "drasil-sleipnir",
  "futures",
  "hex",
- "hugin",
  "jsonwebtoken",
  "lapin",
  "lazy_static",
  "lettre",
  "log",
- "murin",
  "nonzero_ext 0.3.0",
  "pretty_env_logger",
  "ratelimit_meter",
@@ -1362,7 +1506,6 @@ dependencies = [
  "rusoto_ses",
  "serde",
  "serde_json",
- "sleipnir",
  "structopt",
  "thiserror",
  "tokio",
@@ -1503,9 +1646,9 @@ dependencies = [
 name = "geri"
 version = "0.1.0"
 dependencies = [
+ "drasil-murin",
  "log",
  "merge",
- "murin",
  "pretty_env_logger",
  "redis",
  "serde",
@@ -1542,31 +1685,6 @@ name = "gimli"
 version = "0.27.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
-
-[[package]]
-name = "gungnir"
-version = "0.1.0"
-dependencies = [
- "async-recursion",
- "bigdecimal",
- "chrono",
- "diesel",
- "diesel-derive-enum",
- "diesel-dynamic-schema",
- "hex",
- "itertools",
- "log",
- "mimir",
- "pretty_env_logger",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "structopt",
- "strum",
- "strum_macros",
- "tokio",
- "tokio-postgres",
-]
 
 [[package]]
 name = "h2"
@@ -1655,7 +1773,7 @@ dependencies = [
  "bincode",
  "bytes",
  "chrono",
- "hugin",
+ "drasil-hugin",
  "jsonwebtoken",
  "log",
  "pretty_env_logger",
@@ -1743,42 +1861,6 @@ name = "httpdate"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
-
-[[package]]
-name = "hugin"
-version = "0.1.0"
-dependencies = [
- "argon2",
- "async-recursion",
- "atoi",
- "bigdecimal",
- "bincode",
- "bytes",
- "chacha20poly1305",
- "chrono",
- "diesel",
- "dvltath",
- "gungnir",
- "hex",
- "log",
- "mimir",
- "murin",
- "pretty_env_logger",
- "rand 0.8.5",
- "rpassword",
- "rust-argon2",
- "serde",
- "serde_bytes",
- "serde_json",
- "sha2 0.10.7",
- "structopt",
- "strum",
- "strum_macros",
- "thiserror",
- "tokio",
- "vaultrs",
- "zeroize",
-]
 
 [[package]]
 name = "humantime"
@@ -2084,8 +2166,8 @@ dependencies = [
  "chrono",
  "deadpool",
  "deadpool-lapin",
+ "drasil-hugin",
  "futures",
- "hugin",
  "jsonwebtoken",
  "lapin",
  "log",
@@ -2198,26 +2280,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mimir"
-version = "0.1.0"
-dependencies = [
- "bigdecimal",
- "chrono",
- "diesel",
- "diesel-derive-enum",
- "dotenv",
- "hex",
- "log",
- "murin",
- "pretty_env_logger",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-test",
-]
-
-[[package]]
 name = "minidom"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2268,41 +2330,6 @@ dependencies = [
  "mime",
  "spin 0.9.8",
  "version_check",
-]
-
-[[package]]
-name = "murin"
-version = "0.1.0"
-dependencies = [
- "argon2",
- "bech32 0.4.1",
- "bigdecimal",
- "bip39",
- "bytes",
- "cardano-serialization-lib",
- "cbor_event",
- "chrono",
- "cryptoxide 0.4.4 (git+https://github.com/typed-io/cryptoxide.git?branch=master)",
- "ed25519-bip32",
- "encoding_rs",
- "futures",
- "hex",
- "http",
- "itertools",
- "log",
- "num",
- "octavo-digest",
- "pretty_env_logger",
- "redis",
- "reqwest",
- "serde",
- "serde_json",
- "sha2 0.10.7",
- "strum",
- "strum_macros",
- "thiserror",
- "tokio",
- "unwrap_or",
 ]
 
 [[package]]
@@ -2447,8 +2474,8 @@ dependencies = [
  "atoi",
  "bytes",
  "dotenv",
+ "drasil-hugin",
  "hex",
- "hugin",
  "log",
  "pretty_env_logger",
  "serde_json",
@@ -3675,33 +3702,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sleipnir"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "csv",
- "dotenv",
- "dvltath",
- "gungnir",
- "hex",
- "hugin",
- "jsonwebtoken",
- "log",
- "mimir",
- "murin",
- "pretty_env_logger",
- "serde",
- "serde_json",
- "structopt",
- "strum",
- "strum_macros",
- "textnonce",
- "tokio",
- "warp",
- "zeroize",
-]
-
-[[package]]
 name = "smallvec"
 version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4293,12 +4293,12 @@ dependencies = [
  "bigdecimal",
  "chrono",
  "csv",
- "gungnir",
+ "drasil-gungnir",
+ "drasil-hugin",
+ "drasil-mimir",
+ "drasil-murin",
  "hex",
- "hugin",
  "log",
- "mimir",
- "murin",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -4361,13 +4361,13 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "cardano-serialization-lib",
- "gungnir",
+ "drasil-gungnir",
+ "drasil-hugin",
+ "drasil-mimir",
+ "drasil-murin",
  "hex",
- "hugin",
  "jsonwebtoken",
  "log",
- "mimir",
- "murin",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -4687,14 +4687,14 @@ dependencies = [
  "chrono",
  "deadpool",
  "deadpool-lapin",
+ "drasil-gungnir",
+ "drasil-hugin",
+ "drasil-mimir",
+ "drasil-murin",
  "futures",
- "gungnir",
- "hugin",
  "lapin",
  "lazy_static",
  "log",
- "mimir",
- "murin",
  "pretty_env_logger",
  "serde",
  "serde_json",
@@ -4711,8 +4711,8 @@ version = "0.1.0"
 dependencies = [
  "bytes",
  "chrono",
+ "drasil-hugin",
  "futures",
- "hugin",
  "jsonwebtoken",
  "log",
  "pretty_env_logger",

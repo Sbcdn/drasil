@@ -5,8 +5,8 @@ use crate::{
     WebResult,
 };
 use deadpool_lapin::Pool;
+use drasil_sleipnir::models::{CreateMintProj, ImportNFTsfromCSV};
 use serde_json::json;
-use sleipnir::models::{CreateMintProj, ImportNFTsfromCSV};
 use warp::Reply;
 
 pub async fn entrp_create_mint_proj(uid: String, param: CreateMintProj) -> WebResult<impl Reply> {
@@ -14,7 +14,7 @@ pub async fn entrp_create_mint_proj(uid: String, param: CreateMintProj) -> WebRe
     let mut param = param.clone();
     param.user_id = Some(user);
 
-    let contract_id = sleipnir::minting::api::create_mintproject(&param).await?;
+    let contract_id = drasil_sleipnir::minting::api::create_mintproject(&param).await?;
     Ok(warp::reply::with_status(
         warp::reply::json(&json!({ "contract_id": contract_id })),
         warp::http::StatusCode::CREATED,
@@ -43,13 +43,13 @@ pub async fn entrp_create_nfts_from_csv(
     ////////////////////
     // let payload = serde_json::json!(payload).to_string();
 
-    let job = sleipnir::jobs::Job {
+    let job = drasil_sleipnir::jobs::Job {
         drasil_user_id: user,
         session_id: None,
         data: serde_json::json!(params),
     };
 
-    let job = sleipnir::jobs::JobTypes::ImportNFTsFromCsv(job);
+    let job = drasil_sleipnir::jobs::JobTypes::ImportNFTsFromCsv(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
         log::error!("can't connect to rmq, {}", e);
@@ -136,7 +136,8 @@ pub async fn entrp_create_nfts_from_csv_s(
     //file.read_to_end(&mut buffer).expect("buffer overflow");
 
     log::debug!("Request buffer: {:?}", &body);
-    let i = sleipnir::minting::api::import_nfts_from_csv_metadata(body.as_ref(), user, mid).await?;
+    let i = drasil_sleipnir::minting::api::import_nfts_from_csv_metadata(body.as_ref(), user, mid)
+        .await?;
     log::debug!("Debug: {:?}", &i);
 
     Ok(warp::reply::with_status(

@@ -1,11 +1,11 @@
 use crate::models::*;
 use crate::rwd_handling::handle_rewards;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
-use sleipnir::rewards::models::*;
+use drasil_sleipnir::rewards::models::*;
 use std::str::*;
 
 pub(crate) async fn handle_stake(
-    stake: mimir::EpochStakeView,
+    stake: drasil_mimir::EpochStakeView,
     twd: &TwlData,
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
@@ -14,7 +14,7 @@ pub(crate) async fn handle_stake(
         return Ok(());
     }
     match twd.mode {
-        gungnir::Calculationmode::RelationalToADAStake => {
+        drasil_gungnir::Calculationmode::RelationalToADAStake => {
             log::debug!("Calcualte with: RelationalToAdaStake");
             let mut token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
 
@@ -27,7 +27,7 @@ pub(crate) async fn handle_stake(
             handle_rewards(&stake.stake_addr, twd, &token_earned, table, false)?;
         }
 
-        gungnir::Calculationmode::FixedEndEpoch => {
+        drasil_gungnir::Calculationmode::FixedEndEpoch => {
             log::debug!("Calcualte with: FixedEndEpoch");
             let x = if let Some(s) = twd.modificator_equ.clone() {
                 BigDecimal::from_str(&s)?
@@ -41,7 +41,7 @@ pub(crate) async fn handle_stake(
             handle_rewards(&stake.stake_addr, twd, &token_earned, table, false)?;
         }
 
-        gungnir::Calculationmode::Custom => {
+        drasil_gungnir::Calculationmode::Custom => {
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::Freeloaderz => {
                     log::debug!("Calculating Freeloaderz");
@@ -189,14 +189,14 @@ pub(crate) async fn handle_stake(
 }
 
 pub(crate) async fn handle_pool(
-    pool: gungnir::GPools,
+    pool: drasil_gungnir::GPools,
     epoch: i64,
     twd: &mut TwlData,
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
     log::debug!("Handle pool: {:?}", pool);
-    let mut conn = mimir::establish_connection()?;
-    let pool_stake = mimir::get_tot_stake_per_pool(&mut conn, &pool.pool_id, epoch as i32)?;
+    let mut conn = drasil_mimir::establish_connection()?;
+    let pool_stake = drasil_mimir::get_tot_stake_per_pool(&mut conn, &pool.pool_id, epoch as i32)?;
     for stake in pool_stake {
         handle_stake(stake, twd, table).await?;
     }

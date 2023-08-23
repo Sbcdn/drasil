@@ -33,12 +33,12 @@ pub async fn main() -> Result<()> {
     let opt = Opt::from_args();
     pretty_env_logger::init();
 
-    let current_epoch = mimir::get_epoch(&mut mimir::establish_connection()?)? as i64;
+    let current_epoch = drasil_mimir::get_epoch(&mut drasil_mimir::establish_connection()?)? as i64;
     let calc_epoch = current_epoch - 2;
     log::debug!("Current Epoch: {}", current_epoch);
     log::debug!("Calculation Epoch: {}", calc_epoch);
     if opt.epoch.is_some() && opt.epoch.unwrap() > calc_epoch {
-        return Err(gungnir::RWDError::new(
+        return Err(drasil_gungnir::RWDError::new(
             "It is not possible to calculate rewards for the current or future epochs",
         )
         .into());

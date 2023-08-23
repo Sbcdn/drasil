@@ -1,0 +1,42 @@
+[package]
+name = "drasil-sleipnir"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - Client Portal Library"
+repository = "https://github.com/Sbcdn/sleipnir.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+[dependencies]
+tokio = { workspace = true }
+pretty_env_logger = { workspace = true }
+log = { workspace = true }
+chrono = { workspace = true }
+dotenv = { workspace = true }
+hex = { workspace = true }
+serde = { workspace =  true }
+serde_json = { workspace = true }
+jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
+textnonce = "1.0.0"
+zeroize = { workspace = true }
+warp = { workspace = true }
+structopt = { workspace = true, optional = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+csv = "1.1"
+
+drasil-murin = { path = "../drasil-murin", version = "0.1.0" }
+drasil-mimir = { path = "../drasil-mimir", version = "0.1.0" }
+drasil-gungnir = { path = "../drasil-gungnir", version = "0.1.0" }
+drasil-hugin = { path = "../drasil-hugin", version = "0.1.0" }
+drasil-dvltath = { path = "../drasil-dvltath", version = "0.1.0" }
+
+[features]
+clib = ["structopt"]
+
+[[bin]]
+name = "create_mintpolicy"
+required-features = ["clib"]
