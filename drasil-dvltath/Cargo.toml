@@ -1,0 +1,28 @@
+[package]
+name = "drasil-dvltath"
+version = "0.1.0"
+edition = "2021"
+description = "Hashicorp Vault Authorizer Sidecar for Drasil"
+repository = "https://github.com/Sbcdn/dvltath.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+[dependencies]
+tokio = { workspace = true }
+tokio-stream = { version = "0.1.6", features = ["net"] }
+warp = { workspace = true, features = ["tls"] }
+pretty_env_logger = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+hex = { workspace = true }
+vaultrs = { workspace = true }
+lazy_static = "1.4.0"
+http = "0.2.6"
+futures = "0.3.21"
+hyperlocal = "0.8"
+hyper = "0.14.20"

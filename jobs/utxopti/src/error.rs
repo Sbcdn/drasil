@@ -17,24 +17,24 @@ pub enum UOError {
     #[error(transparent)]
     ParseIntError(#[from] core::num::ParseIntError),
     #[error(transparent)]
-    RWDError(#[from] gungnir::error::RWDError),
+    RWDError(#[from] drasil_gungnir::error::RWDError),
     #[error(transparent)]
-    MurinError(#[from] murin::error::MurinError),
+    MurinError(#[from] drasil_murin::error::MurinError),
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
     #[error(transparent)]
-    DBSyncError(#[from] mimir::MimirError),
+    DBSyncError(#[from] drasil_mimir::MimirError),
     #[error(transparent)]
-    HuginError(#[from] hugin::error::SystemDBError),
+    HuginError(#[from] drasil_hugin::error::SystemDBError),
 }
 
-impl From<murin::clib::error::JsError> for UOError {
-    fn from(err: murin::clib::error::JsError) -> Self {
+impl From<drasil_murin::clib::error::JsError> for UOError {
+    fn from(err: drasil_murin::clib::error::JsError) -> Self {
         UOError::Custom(err.to_string())
     }
 }
-impl From<murin::clib::error::DeserializeError> for UOError {
-    fn from(err: murin::clib::error::DeserializeError) -> Self {
+impl From<drasil_murin::clib::error::DeserializeError> for UOError {
+    fn from(err: drasil_murin::clib::error::DeserializeError) -> Self {
         UOError::Custom(err.to_string())
     }
 }

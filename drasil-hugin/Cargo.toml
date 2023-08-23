@@ -1,0 +1,44 @@
+[package]
+name = "drasil-hugin"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - Drasil System Library"
+repository = "https://github.com/Sbcdn/hugin.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+[dependencies]
+tokio = { workspace = true }
+async-recursion = { workspace = true }
+bytes = { workspace = true }
+atoi = "1.0.0"
+pretty_env_logger = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+bincode = "1.3.3"
+serde_bytes = "0.11.5"
+thiserror = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+diesel = { workspace = true }
+chrono = { workspace = true }
+structopt = { workspace = true }
+argon2 = { workspace = true }
+chacha20poly1305 = { version = "0.9.0", features = ["stream"] }
+zeroize = { workspace = true }
+rargon2 = { package = "rust-argon2", version = "1.0" }
+rpassword = "5.0.1"
+vaultrs = { workspace = true }
+sha2 = { workspace = true }
+bigdecimal = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+
+drasil-murin = { path = "../drasil-murin", version = "0.1.0" }
+drasil-mimir = { path = "../drasil-mimir", version = "0.1.0" }
+drasil-gungnir = { path = "../drasil-gungnir", version = "0.1.0" }
+drasil-dvltath = { path = "../drasil-dvltath", version = "0.1.0" }
