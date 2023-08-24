@@ -52,12 +52,19 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
         let delegators_address_bech32 = delegators_address.to_bech32(None)?;
         log::info!("Delegator Stake Address: {:?}", delegators_address_bech32);
 
-        let owner_base_addr = caddr::BaseAddress::from_address(&owner_address).unwrap();
+        let owner_base_addr = if let Some(address) = caddr::BaseAddress::from_address(&owner_address) {
+            address
+        } else {
+            return Err(MurinError::new(
+                "The given stake owner address isn't a base address. See https://docs.cardano.org/learn/cardano-addresses/"
+            ))
+        };
+
         let owner_stakecred = owner_base_addr.stake_cred();
         let dereg_rwd_addr = caddr::RewardAddress::from_address(&delegators_address).unwrap();
         let dereg_stake_creds = dereg_rwd_addr.payment_cred();
         if owner_stakecred.to_bytes() != dereg_stake_creds.to_bytes() {
-            return Err(MurinError::new("Inconsitent Stake Key Data, forbidden!"));
+            return Err(MurinError::new("Inconsistent Stake Key Data, forbidden!"));
         }
   
         let mut certs = clib::Certificates::new();
@@ -158,5 +165,61 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
         debug!("--------------------Iteration Ended------------------------------");
         debug!("Vkey Counter at End: {:?}", vkey_counter);
         Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cardano_serialization_lib::crypto::Ed25519KeyHash;
+    use clib::TransactionBody;
+    use clib::TransactionInputs;
+    use clib::TransactionOutputs;
+    use clib::TransactionWitnessSet;
+
+    use crate::MurinError;
+    use crate::PerformTxb;
+    use crate::TxData;
+    use cardano_serialization_lib as clib;
+
+    #[test]
+    fn at_dereg_builder() -> Result<(), MurinError>{
+        // initialize
+        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t";
+        // let stake_address = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
+        let base_address = "addr_test1qp6crwxyfwah6hy7v9yu5w6z2w4zcu53qxakk8ynld8fgcpxjae5d7xztgf0vyq7pgrrsk466xxk25cdggpq82zkpdcsdkpc68";
+        let at_dereg_params = super::DeregTxData::new(poolhash)?;
+        let at_dereg_builder = super::AtDeregBuilder::new(&at_dereg_params);
+
+        assert_eq!(at_dereg_builder.stxd.poolhash, poolhash);
+        assert_eq!(at_dereg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash)?);
+        assert_eq!(at_dereg_builder.stxd.registered, None);
+
+        // perform_txb
+        let fee = clib::utils::BigNum::from_str("1")?;
+        let contract_id = None;
+        let saddress = super::caddr::Address::from_bech32(base_address)?;
+        let saddresses = vec![saddress];
+        let sstake = None;
+        let inputs = crate::TransactionUnspentOutputs::new();
+        let network = clib::NetworkIdKind::Testnet;
+        let current_slot = 10;
+        let gtxd = TxData::new(contract_id, saddresses, sstake, inputs, network, current_slot)?;
+        let pvks = &["".to_string()];
+        let fcrun = true;
+        let perform_txb = at_dereg_builder.perform_txb(&fee, &gtxd, pvks, fcrun)?;
+
+        let inputs = TransactionInputs::new();
+        let outputs = TransactionOutputs::new();
+        let txbody = TransactionBody::new_tx_body(&inputs, &outputs, &fee);
+        let txwitness = TransactionWitnessSet::new();
+        let aux_data = None;
+        let vkey_counter = 10;
+        assert_eq!(perform_txb.0, txbody);
+        assert_eq!(perform_txb.1, txwitness);
+        assert_eq!(perform_txb.2, aux_data);
+        // assert_eq!(perform_txb.3, "PartialEq impl Missing");
+        assert_eq!(perform_txb.4, vkey_counter);
+
+        Ok(())
     }
 }
