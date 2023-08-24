@@ -29,7 +29,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
     ) -> std::result::Result<TxBO, MurinError> {
         if fcrun {
             info!("--------------------------------------------------------------------------------------------------------");
-            info!("-----------------------------------------Fee calcualtion------------------------------------------------");
+            info!("-----------------------------------------Fee Calculation------------------------------------------------");
             info!("---------------------------------------------------------------------------------------------------------\n");
         } else {
             info!("--------------------------------------------------------------------------------------------------------");
@@ -57,7 +57,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         let deleg_rwd_addr = caddr::RewardAddress::from_address(&delegators_address).unwrap();
         let deleg_stake_creds = deleg_rwd_addr.payment_cred();
         if owner_stakecred.to_bytes() != deleg_stake_creds.to_bytes() {
-            return Err(MurinError::new("Inconsitent Stake Key Data, forbidden!"));
+            return Err(MurinError::new("Inconsistent Stake Key Data, forbidden!"));
         }
 
         let mut certs = clib::Certificates::new();
