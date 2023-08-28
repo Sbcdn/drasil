@@ -71,7 +71,7 @@ impl BuildStdTx {
             StdTxType::DeregisterStake => match stdtx::handle_stake_deregistration(&self).await { // new
                 Ok(s) => s, // new
                 Err(e) => e.to_string(), // new
-            }, // new
+            },
             StdTxType::StandardTx => match stdtx::handle_stx(&self).await {
                 Ok(s) => s,
                 Err(e) => e.to_string(),
