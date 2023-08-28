@@ -505,7 +505,7 @@ impl Operation {
                 Ok(mptx)
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -529,7 +529,7 @@ impl Operation {
                 Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -593,7 +593,7 @@ impl Operation {
                 })
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramters for the transaction type",
+                "provided wrong specfic parameters for the transaction type",
             )),
         }
     }
@@ -629,7 +629,7 @@ impl Operation {
                 Ok(ColMinterTxData::new(out))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -713,7 +713,7 @@ impl Operation {
                 ))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -731,7 +731,7 @@ impl Operation {
                 addresses: _,
             } => Ok(DelegTxData::new(poolhash)?),
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this transaction",
+                "provided wrong specfic parameter for this transaction",
             )),
         }
     }
@@ -747,7 +747,7 @@ impl Operation {
                 addresses: _,
             } => Ok(DeregTxData::new(poolhash)?),
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this transaction",
+                "provided wrong specfic parameter for this transaction",
             )),
         }
     }
@@ -762,7 +762,7 @@ impl Operation {
             Operation::CPO { po_id, pw } => Ok(CPO::new(*po_id, pw.to_owned())),
 
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this transaction",
+                "provided wrong specfic parameter for this transaction",
             )),
         }
     }
@@ -1082,4 +1082,46 @@ pub struct TransferHandle {
     pub receiving_address: String,
     pub asset_handles: Vec<AssetHandle>,
     pub message: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio;
+    use drasil_murin::MurinError;
+    use drasil_murin::clib::crypto::Ed25519KeyHash;
+    #[tokio::test]
+    async fn stake_deregistration() -> Result<(), MurinError>{
+        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
+        let addr1 = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708".to_string();
+        let addresses = Some(vec![addr1]);
+        let op = super::Operation::StakeDeregistration { poolhash: poolhash.clone(), addresses };
+
+        let deregistration = op.into_stake_deregistration().await?;
+
+        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash)?;
+        let real_registered = false;
+        assert_eq!(deregistration.get_poolhash(), poolhash);
+        assert_eq!(deregistration.get_poolkeyhash(), real_poolkeyhash);
+        assert_eq!(deregistration.get_registered(), real_registered);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn stake_delegation() -> Result<(), MurinError>{
+        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
+        let addr1 = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708".to_string();
+        let addresses = Some(vec![addr1]);
+        let op = super::Operation::StakeDelegation { poolhash: poolhash.clone(), addresses };
+
+        let delegation = op.into_stake_delegation().await?;
+
+        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash)?;
+        let real_registered = false;
+        assert_eq!(delegation.get_poolhash(), poolhash);
+        assert_eq!(delegation.get_poolkeyhash(), real_poolkeyhash);
+        assert_eq!(delegation.get_registered(), real_registered);
+
+        Ok(())
+    }
 }

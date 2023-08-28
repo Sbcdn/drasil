@@ -69,11 +69,9 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
   
         let mut certs = clib::Certificates::new();
   
-        if registered {
-            let stake_dereg = clib::StakeDeregistration::new(&dereg_stake_creds);
-            let dereg_cert = clib::Certificate::new_stake_deregistration(&stake_dereg);
-            certs.add(&dereg_cert);
-        }
+        let stake_dereg = clib::StakeDeregistration::new(&dereg_stake_creds);
+        let dereg_cert = clib::Certificate::new_stake_deregistration(&stake_dereg);
+        certs.add(&dereg_cert);
   
         let aux_data = None;
         //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +83,10 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
         let mut txouts = clib::TransactionOutputs::new();
         // ATTENTION DIFFERENT VALUES FOR PREVIEW / PREPROD / MAINNET
         let deposit_val = cutils::Value::new(&cutils::to_bignum(2000000));
+
+        txouts.add(
+            &clib::TransactionOutput::new(&owner_address, &deposit_val)
+        );
   
         // Inputs
         let mut input_txuos = gtxd.clone().get_inputs();
@@ -104,24 +106,17 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
         let mut fee_paid = false;
         let mut first_run = true;
         let mut txos_paid = false;
-        let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
-        if registered {
-            tbb_values = deposit_val.clone();
-        }
-        let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
+        let mut tbb_values = deposit_val.clone();
+
+        let mut acc = cutils::Value::zero();
         let change_address = owner_address.clone();
   
         let mut needed_value = sum_output_values(&txouts);
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
   
-        if registered {
-            needed_value = needed_value.checked_add(&deposit_val)?;
-        }
-  
         let security =
             cutils::to_bignum(cutils::from_bignum(&needed_value.coin()) / 100 * 10 + MIN_ADA); // 10% Security for min utxo etc.
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
-        let mut needed_value = cutils::Value::new(&needed_value.coin());
   
         let (txins, mut input_txuos) =
             input_selection(None, &mut needed_value, &input_txuos, None, None)?;
@@ -133,12 +128,12 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
             &mut input_txuos,
             &Tokens::new(),
             &mut txouts,
-            None,
+            Some(&tbb_values),
             fee,
             &mut fee_paid,
             &mut first_run,
             &mut txos_paid,
-            &mut tbb_values,
+            &mut clib::utils::Value::zero(),
             &owner_address,
             &change_address,
             &mut acc,
@@ -146,17 +141,10 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
             &fcrun,
         )?;
   
-        let slot = gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network());
+        let slot = gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.get_network());
         let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
         txbody.set_ttl(&cutils::to_bignum(slot));
         txbody.set_certs(&certs);
-  
-        // Set network Id
-        //if gtxd.get_network() == clib::NetworkIdKind::Testnet {
-        //    txbody.set_network_id(&clib::NetworkId::testnet());
-        //} else {
-        //    txbody.set_network_id(&clib::NetworkId::mainnet());
-        //}
   
         let txwitness = clib::TransactionWitnessSet::new();
   
@@ -171,10 +159,18 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
 #[cfg(test)]
 mod tests {
     use cardano_serialization_lib::crypto::Ed25519KeyHash;
+    use clib::Certificate;
+    use clib::Certificates;
+    use clib::StakeDeregistration;
+    use clib::Transaction;
     use clib::TransactionBody;
     use clib::TransactionInputs;
     use clib::TransactionOutputs;
     use clib::TransactionWitnessSet;
+    use clib::address::BaseAddress;
+    use clib::address::StakeCredential;
+    use clib::utils::BigNum;
+    use std::env::set_var;
 
     use crate::MurinError;
     use crate::PerformTxb;
@@ -184,41 +180,57 @@ mod tests {
     #[test]
     fn at_dereg_builder() -> Result<(), MurinError>{
         // initialize
+        set_var("REDIS_DB", "redis://127.0.0.1:6379/0");
+        set_var("REDIS_DB_URL_UTXOMIND", "redis://127.0.0.1:6379/0");
+        set_var("REDIS_CLUSTER", "false");
         let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t";
-        // let stake_address = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
         let base_address = "addr_test1qp6crwxyfwah6hy7v9yu5w6z2w4zcu53qxakk8ynld8fgcpxjae5d7xztgf0vyq7pgrrsk466xxk25cdggpq82zkpdcsdkpc68";
-        let at_dereg_params = super::DeregTxData::new(poolhash)?;
+        let at_dereg_params = super::DeregTxData::new(poolhash).unwrap();
         let at_dereg_builder = super::AtDeregBuilder::new(&at_dereg_params);
 
         assert_eq!(at_dereg_builder.stxd.poolhash, poolhash);
-        assert_eq!(at_dereg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash)?);
+        assert_eq!(at_dereg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash).unwrap());
         assert_eq!(at_dereg_builder.stxd.registered, None);
 
         // perform_txb
-        let fee = clib::utils::BigNum::from_str("1")?;
-        let contract_id = None;
-        let saddress = super::caddr::Address::from_bech32(base_address)?;
-        let saddresses = vec![saddress];
-        let sstake = None;
-        let inputs = crate::TransactionUnspentOutputs::new();
-        let network = clib::NetworkIdKind::Testnet;
-        let current_slot = 10;
-        let gtxd = TxData::new(contract_id, saddresses, sstake, inputs, network, current_slot)?;
-        let pvks = &["".to_string()];
+        let fee = clib::utils::to_bignum(2_000_000);
+        let inputs = crate::TransactionUnspentOutputs::from_hex(
+            "9258668282582016ea4f7dc5f890cf9e701471680a7ee7cb5196124d59fa8122e57c92a6f8ac9600825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a3b64306c58668282582016ea4f7dc5f890cf9e701471680a7ee7cb5196124d59fa8122e57c92a6f8ac9601825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a1db37a7b586682825820d36cf84a8e743ec612d71fb6460c8b95e6946cf1bf81cf3e3464c557de76cb9d01825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a192f334e586682825820d36cf84a8e743ec612d71fb6460c8b95e6946cf1bf81cf3e3464c557de76cb9d03825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a004c4b4058668282582071eebb6da21245f18739ed643263ba044535cc0f2bdff03e0e5850a307f2f96a01825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a492c4ab75866828258206b1d5bc9ee3ddf63474471d0f736ee8cb93e82a0babaabfe6b7b410bcded2b5901825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a44b808c5589482825820ca0d2aefaac46ec34bf590bbff7e411fe6d00f06189b9c4065d0c94313dbb15301825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b71821a0011d28aa1581cf0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9aa14b000de14074657374696e6701586682825820ca0d2aefaac46ec34bf590bbff7e411fe6d00f06189b9c4065d0c94313dbb15302825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a1a1b00f958668282582067d08be2e5a9d85c0dfe1b539439470a16e34c6e922c00236e5d76f51abc18d401825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a323d4b6a586682825820e8034ffa76067902bb4154f393319892d85ac7bdcf42fc78a97e9a4e3097d93a01825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a00490e44589b82825820745b443c1eb1eb64a7adcf9f966706622d33a408f26cef45eafe1c7ca5e1fea601825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b71821a00124864a1581c99b071ce8580d6a3a11b4902145adb8bfd0d2a03935af8cf66403e15a15053616c7361536f6c61726973436f696e19c350586682825820745b443c1eb1eb64a7adcf9f966706622d33a408f26cef45eafe1c7ca5e1fea602825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a1d9df38e58668282582043cb7614d1b20f4cd373f969e0879a4c26b1c9234fec46c67c962e6df1a9416801825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a637b15f15866828258207695f2942511d17e4bec7647fae0ce62d4e697951230a2338ffc696246e76ff601825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a16eb9e775897828258201f936ee7007b2a69189126ae2051c05fa8503ae27cc64a6d043940b34062286b02825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b71821a001e8480a1581c99b071ce8580d6a3a11b4902145adb8bfd0d2a03935af8cf66403e15a1465342455252591b0000000137d66d1658bc82825820ca2d0e7ad1ecc39d82c4812dde63b273c33b09e524452bac30a238a3bd19deb401825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b71821a001473faa2581c4086577ed57c514f8e29b78f42ef4f379363355a3b65b9a032ee30c9a1446c7020021a000f4240581c99b071ce8580d6a3a11b4902145adb8bfd0d2a03935af8cf66403e15a1465242455252591a004c4b40586682825820ca2d0e7ad1ecc39d82c4812dde63b273c33b09e524452bac30a238a3bd19deb402825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a0e6df48e586682825820e66c1e834139ae741e5968e23db9a733e43a23af856a8a506acabaedbe9ba41401825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a004929f0"
+        ).unwrap();
+        let gtxd = TxData::new(
+            None, 
+            vec![
+                super::caddr::Address::from_bech32(base_address).unwrap()
+            ],
+            None, 
+            inputs, 
+            clib::NetworkIdKind::Testnet, 
+            0,
+        ).unwrap();
+        let pvks = &[]; // add real data
         let fcrun = true;
-        let perform_txb = at_dereg_builder.perform_txb(&fee, &gtxd, pvks, fcrun)?;
+        let perform_txb = at_dereg_builder.perform_txb(&fee, &gtxd, pvks, fcrun).unwrap();
 
-        let inputs = TransactionInputs::new();
-        let outputs = TransactionOutputs::new();
-        let txbody = TransactionBody::new_tx_body(&inputs, &outputs, &fee);
-        let txwitness = TransactionWitnessSet::new();
-        let aux_data = None;
-        let vkey_counter = 10;
-        assert_eq!(perform_txb.0, txbody);
-        assert_eq!(perform_txb.1, txwitness);
-        assert_eq!(perform_txb.2, aux_data);
-        // assert_eq!(perform_txb.3, "PartialEq impl Missing");
-        assert_eq!(perform_txb.4, vkey_counter);
+        let tx: Transaction = Transaction::new(
+            &perform_txb.0, 
+            &perform_txb.1, 
+            perform_txb.2
+        );
+
+        let addr = clib::address::Address::from_bech32(base_address).unwrap();
+        let base_addr = BaseAddress::from_address(&addr).unwrap();
+        let stake_key_hash = base_addr.stake_cred().to_keyhash().unwrap();
+        
+        println!("stake_key_hash: {}", hex::encode(stake_key_hash.to_bytes()));
+
+        let restored_key_hash = Ed25519KeyHash::from_bytes(hex::decode("26977346F8C25A12F6101E0A06385ABAD18D65530D420203A8560B71").unwrap()).unwrap();
+        
+        assert_eq!(stake_key_hash, restored_key_hash);
+
+        let tx2 = Transaction::from_hex("84a50081825820ca2d0e7ad1ecc39d82c4812dde63b273c33b09e524452bac30a238a3bd19deb4020182825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a001e8480825839007581b8c44bbb7d5c9e6149ca3b4253aa2c729101bb6b1c93fb4e946026977346f8c25a12f6101e0a06385abad18d65530d420203a8560b711a0e4f700e021a001e848003190708048182018200581c26977346f8c25a12f6101e0a06385abad18d65530d420203a8560b71a0f5f6")?;
+        
+        println!("tx: {}", hex::encode(tx.to_bytes()));
+        assert_eq!(tx, tx2);
 
         Ok(())
     }

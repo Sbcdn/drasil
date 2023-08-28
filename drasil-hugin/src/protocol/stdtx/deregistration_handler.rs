@@ -21,7 +21,11 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
             .into());
         }
     }
-    let op = &bst.transaction_pattern().operation().unwrap();
+    let op = &bst
+        .transaction_pattern()
+        .operation()
+        .unwrap();
+
     let (mut deregtxd, addresses) = match op {
         Operation::StakeDeregistration {
             poolhash: _,
@@ -65,7 +69,11 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
         let wallet_utxos = wal_addr
             .iter()
             .fold(TransactionUnspentOutputs::new(), |mut acc, n| {
-                acc.merge(drasil_mimir::get_address_utxos(&n.to_bech32(None).unwrap()).unwrap());
+                acc.merge(
+                    drasil_mimir::get_address_utxos(
+                        &n.to_bech32(None).unwrap()
+                    ).unwrap()
+                );
                 acc
             });
         gtxd.set_inputs(wallet_utxos);
@@ -100,6 +108,12 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
     };
 
     let registered = drasil_mimir::check_stakeaddr_registered(&bech32_stake_addr)?;
+    if !registered {
+        return Err(CmdError::Custom {
+            str: format!("Stake address isn't registered."),
+        }
+        .into());
+    }
     deregtxd.set_registered(Some(registered));
     
     log::debug!("Try to build transaction...");
@@ -134,3 +148,34 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
     Ok(ret.to_string())
 }
     
+#[cfg(test)]
+mod test {
+    use crate::{BuildStdTx, StdTxType, TransactionPattern, Operation};
+    use tokio;
+    use std::env::set_var;
+
+    #[tokio::test]
+    async fn handle_stake_deregistration() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        set_var("REDIS_DB", "redis://127.0.0.1:6379/0");
+        set_var("REDIS_DB_URL_UTXOMIND", "redis://127.0.0.1:6379/0");
+        set_var("REDIS_CLUSTER", "false");
+        let customer_id = 0;
+        let txtype = StdTxType::DeregisterStake;
+        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
+        let addr1 = "addr_test1qp8cprhse9pnnv7f4l3n6pj0afq2hjm6f7r2205dz0583egaeu9dhacmtx94652q4ym0v9v2mcra0n28d5lrtjqzsgxqgk5t8s".to_string();
+        let addresses = Some(vec![addr1]);
+        let script_spec = Operation::StakeDeregistration { poolhash, addresses };
+        let network = 0;
+        let txpattern = TransactionPattern::new_empty(customer_id, &script_spec, network);
+        let bst = BuildStdTx::new(customer_id, txtype, txpattern);
+        let func_value = super::handle_stake_deregistration(&bst).await?; // might change with time
+
+        let real_value = "a81e9e502e3bf09a66005f1e82e10ff46680ec4d62dcd663cb3061e3|84a50081825820395eab6c60ec00faeff30391c683551119669b0aeb8c778948afbe83299b29b1010181825839004f808ef0c94339b3c9afe33d064fea40abcb7a4f86a53e8d13e878e51dcf0adbf71b598b5d5140a936f6158ade07d7cd476d3e35c802820c1b000000e8d483eda3021a00029ddd031a019060b1048182018200581c1dcf0adbf71b598b5d5140a936f6158ade07d7cd476d3e35c802820ca0f5f6".to_string();
+        println!("handle_stake_deregistration real value example: {} \n", "a81e9e502e3bf09a66005f1e82e10ff46680ec4d62dcd663cb3061e3|84a50081825820395eab6c60ec00faeff30391c683551119669b0aeb8c778948afbe83299b29b1010181825839004f808ef0c94339b3c9afe33d064fea40abcb7a4f86a53e8d13e878e51dcf0adbf71b598b5d5140a936f6158ade07d7cd476d3e35c802820c1b000000e8d483eda3021a00029ddd031a019060b1048182018200581c1dcf0adbf71b598b5d5140a936f6158ade07d7cd476d3e35c802820ca0f5f6");
+        println!("handle_stake_deregistration func value (changes with time): {}\n", func_value);
+
+        assert_eq!(func_value.len(), real_value.len());
+
+        Ok(())
+    }
+}

@@ -137,7 +137,7 @@ pub fn get_tot_stake_per_pool(
     Ok(pool_stake)
 }
 
-pub fn get_deligations_per_pool_for_epochs(
+pub fn get_delegations_per_pool_for_epochs(
     conn: &mut PgConnection,
     pool: &String,
     start_epoch: i64,
@@ -232,12 +232,12 @@ pub fn get_token_info(
 #[allow(clippy::type_complexity)]
 pub fn stake_registration(
     conn: &mut PgConnection,
-    stake_addr_in: &String,
+    stake_addr_in: &str,
 ) -> Result<Vec<(String, Vec<u8>, i32, i32)>, MimirError> {
     let registration = stake_registration::table
         .inner_join(stake_address::table.on(stake_registration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_registration::tx_id.eq(tx::id)))
-        .filter(stake_address::view.eq(stake_addr_in))
+        .filter(stake_address::view.eq(stake_addr_in.to_string()))
         .select((
             stake_address::view,
             tx::hash,
@@ -253,12 +253,12 @@ pub fn stake_registration(
 #[allow(clippy::type_complexity)]
 pub fn stake_deregistration(
     conn: &mut PgConnection,
-    stake_addr_in: &String,
+    stake_addr_in: &str,
 ) -> Result<Vec<(String, Vec<u8>, i32, i32, Option<i64>)>, MimirError> {
     let deregistration = stake_deregistration::table
         .inner_join(stake_address::table.on(stake_deregistration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_deregistration::tx_id.eq(tx::id)))
-        .filter(stake_address::view.eq(stake_addr_in))
+        .filter(stake_address::view.eq(stake_addr_in.to_string()))
         .select((
             stake_address::view,
             tx::hash,
@@ -272,13 +272,13 @@ pub fn stake_deregistration(
     Ok(deregistration)
 }
 
-pub fn check_stakeaddr_registered(stake_addr_in: &String) -> Result<bool, MimirError> {
+pub fn check_stakeaddr_registered(stake_addr_in: &str) -> Result<bool, MimirError> {
     let mut conn = crate::establish_connection()?;
 
     let registration = stake_registration::table
         .inner_join(stake_address::table.on(stake_registration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_registration::tx_id.eq(tx::id)))
-        .filter(stake_address::view.eq(stake_addr_in))
+        .filter(stake_address::view.eq(stake_addr_in.to_string()))
         .select((
             stake_address::view,
             tx::hash,
@@ -291,7 +291,7 @@ pub fn check_stakeaddr_registered(stake_addr_in: &String) -> Result<bool, MimirE
     let deregistration = stake_deregistration::table
         .inner_join(stake_address::table.on(stake_deregistration::addr_id.eq(stake_address::id)))
         .inner_join(tx::table.on(stake_deregistration::tx_id.eq(tx::id)))
-        .filter(stake_address::view.eq(stake_addr_in))
+        .filter(stake_address::view.eq(stake_addr_in.to_string()))
         .select((
             stake_address::view,
             tx::hash,
@@ -495,5 +495,50 @@ pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MimirError> {
         Ok(true)
     } else {
         Ok(false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::MimirError;
+
+    #[test]
+    fn stake_registration() -> Result<(), MimirError> {
+        let mut conn = crate::establish_connection()?;
+        let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
+        let func_value = super::stake_registration(&mut conn, stake_addr_in)?;
+        let real_value = (
+            stake_addr_in.to_string(), 
+            vec![198, 165, 251, 57, 17, 72, 99, 218, 115, 122, 130, 79, 53, 92, 9, 247, 32, 71, 154, 148, 191, 249, 27, 54, 19, 99, 158, 115, 19, 18, 141, 199], 
+            0, 
+            38
+        );
+
+        assert_eq!(func_value.len(), 1);
+        assert_eq!(func_value[0], real_value);
+
+        Ok(())
+    }
+
+    #[test]
+    fn stake_deregistration() -> Result<(), MimirError> {
+        let mut conn = crate::establish_connection()?;
+        let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
+        let func_value = super::stake_deregistration(&mut conn, stake_addr_in)?;
+
+        assert_eq!(func_value.len(), 0);
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_stakeaddr_registered() -> Result<(), MimirError> {
+        let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
+        let func_value = super::check_stakeaddr_registered(stake_addr_in)?;
+        let real_value = true;
+
+        assert_eq!(func_value, real_value);
+
+        Ok(())
     }
 }
