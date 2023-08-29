@@ -18,7 +18,7 @@ pub use finalizestdtx::FinalizeStdTx;
 
 mod verifyuser;
 use drasil_murin::address::BaseAddress;
-use drasil_murin::get_reward_address;
+use drasil_murin::reward_address_from_address;
 pub use verifyuser::VerifyUser;
 
 mod hydra;
@@ -159,12 +159,13 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     }
 
     if txp.stake_addr().is_some() {
-        let addresses = drasil_murin::cip30::decode_addresses(&txp.used_addresses()).await?;
-        let stake_addr = drasil_murin::cip30::decode_addr(&txp.stake_addr().unwrap()).await?;
-        let mut rewardaddr = get_reward_address(&stake_addr)?;
+        let addresses = drasil_murin::cip30::addresses_from_string(&txp.used_addresses()).await?;
+        let stake_addr =
+            drasil_murin::cip30::decode_address_from_bytes(&txp.stake_addr().unwrap()).await?;
+        let mut rewardaddr = reward_address_from_address(&stake_addr)?;
         for address in addresses {
             if BaseAddress::from_address(&address).is_some() {
-                let raddr = get_reward_address(&address)?;
+                let raddr = reward_address_from_address(&address)?;
                 if raddr != rewardaddr {
                     return Err(CmdError::Custom{str:"ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string()}.into());
                 }
@@ -177,7 +178,7 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
 }
 
 pub fn create_response(
-    bld_tx: &drasil_murin::htypes::BuildOutput,
+    bld_tx: &drasil_murin::models::BuildOutput,
     raw_tx: &drasil_murin::utxomngr::RawTx,
     wallet_type: Option<&crate::datamodel::models::WalletType>,
 ) -> Result<crate::datamodel::models::UnsignedTransaction, drasil_murin::MurinError> {
@@ -224,8 +225,8 @@ pub fn convert_nfts_to_minter_token_asset(
     let mut out = Vec::<drasil_murin::MintTokenAsset>::new();
     for nft in nfts {
         out.push((
-            Some(drasil_murin::chelper::string_to_policy(policy_id)?),
-            drasil_murin::chelper::string_to_assetname(&nft.asset_name)?,
+            Some(drasil_murin::cardano::string_to_policy(policy_id)?),
+            drasil_murin::cardano::string_to_assetname(&nft.asset_name)?,
             drasil_murin::u64_to_bignum(1),
         ))
     }

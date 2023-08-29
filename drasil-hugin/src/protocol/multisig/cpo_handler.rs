@@ -44,7 +44,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     log::debug!("Generating TxData...");
     let mut gtxd = TxData::new(
         Some(vec![po.contract_id]),
-        vec![drasil_murin::wallet::b_decode_addr(&get_vaddr(&po.user_id).await?).await?],
+        vec![drasil_murin::wallet::address_from_string(&get_vaddr(&po.user_id).await?).await?],
         None,
         TransactionUnspentOutputs::new(),
         get_network_from_address(&contract.address)?,
@@ -102,14 +102,14 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
 
     log::debug!("Try to build transaction...");
 
-    let txb_param: drasil_murin::txbuilders::stdtx::build_cpo::AtCPOParams = (
+    let txb_param: drasil_murin::txbuilder::stdtx::build_cpo::AtCPOParams = (
         txo_values,
         drasil_murin::clib::NativeScript::from_bytes(hex::decode(&contract.plutus)?)
             .map_err::<crate::CmdError, _>(|_| crate::CmdError::Custom {
             str: "could not convert string to native script".to_string(),
         })?,
     );
-    let cpo = drasil_murin::txbuilders::stdtx::build_cpo::AtCPOBuilder::new(txb_param);
+    let cpo = drasil_murin::txbuilder::stdtx::build_cpo::AtCPOBuilder::new(txb_param);
     let builder = drasil_murin::TxBuilder::new(&gtxd, &pkvs);
     let bld_tx = builder.build(&cpo).await?;
 
