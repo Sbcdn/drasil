@@ -1,7 +1,7 @@
 use crate::error::MurinError;
 use crate::models::*;
 use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
-use crate::txbuilder::{delegation::DelegTxData, input_selection, TxBO};
+use crate::txbuilder::{input_selection, stdtx::DelegTxData, TxBO};
 use crate::PerformTxb;
 use crate::TxData;
 use cardano_serialization_lib as clib;
