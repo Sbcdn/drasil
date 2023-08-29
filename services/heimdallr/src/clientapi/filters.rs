@@ -1,3 +1,4 @@
+#![allow(opaque_hidden_inferred_bound)]
 use super::handlers;
 
 use drasil_hugin::datamodel::models::{ContractType, MultiSigType, StdTxType, TXPWrapper};
