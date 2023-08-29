@@ -92,9 +92,9 @@ impl FinalizeStdTx {
         let used_utxos = raw_tx.get_usedutxos().clone();
         let ret = match self.txtype {
             StdTxType::DelegateStake => {
-                if let Err(e) = drasil_murin::delegation::DelegTxData::from_str(
-                    raw_tx.get_tx_specific_rawdata(),
-                ) {
+                if let Err(e) =
+                    drasil_murin::stdtx::DelegTxData::from_str(raw_tx.get_tx_specific_rawdata())
+                {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a delegation transaction, {:?}",e.to_string())}.into());
                 };
                 self.finalize_delegation(raw_tx.clone()).await?
@@ -130,7 +130,7 @@ impl FinalizeStdTx {
     }
 
     async fn finalize_delegation(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<String> {
-        use drasil_murin::txbuilders::finalize::finalize;
+        use drasil_murin::txbuilder::finalize::finalize;
         let response = finalize(&self.get_signature(), raw_tx).await?;
         info!("Response: {}", response);
         Ok(response)

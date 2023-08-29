@@ -4,14 +4,18 @@ use thiserror::Error;
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("jwt token not valid")]
-    JWTTokenError,
     #[error("no auth header")]
     NoAuthHeaderError,
     #[error("invalid auth header")]
     InvalidAuthHeaderError,
     #[error("internal error: {:?}", self)]
     Custom(String),
+    #[error("{0}")]
+    ImproperlyConfigError(String),
+    #[error(transparent)]
+    ParseIntError(#[from] std::num::ParseIntError),
+    #[error(transparent)]
+    JWTTokenError(#[from] jsonwebtoken::errors::Error),
 }
 
 #[derive(Serialize, Debug)]
@@ -25,16 +29,5 @@ impl warp::reject::Reject for Error {}
 impl From<std::string::String> for Error {
     fn from(err: std::string::String) -> Self {
         Error::Custom(err)
-    }
-}
-
-impl From<jsonwebtoken::errors::Error> for Error {
-    fn from(err: jsonwebtoken::errors::Error) -> Self {
-        Error::Custom(err.to_string())
-    }
-}
-impl From<core::num::ParseIntError> for Error {
-    fn from(err: core::num::ParseIntError) -> Self {
-        Error::Custom(err.to_string())
     }
 }

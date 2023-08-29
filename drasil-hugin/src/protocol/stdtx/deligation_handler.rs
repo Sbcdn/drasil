@@ -2,7 +2,7 @@ use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::BuildStdTx;
 use crate::CmdError;
-use drasil_murin::b_decode_addr_na;
+use drasil_murin::address_from_string_non_async;
 use drasil_murin::clib;
 use drasil_murin::PerformTxb;
 use drasil_murin::TransactionUnspentOutputs;
@@ -40,7 +40,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
         let r = addr
             .iter()
             .fold(Vec::<clib::address::Address>::new(), |mut acc, a| {
-                acc.push(b_decode_addr_na(a).unwrap());
+                acc.push(address_from_string_non_async(a).unwrap());
                 acc
             });
         r
@@ -71,7 +71,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
         gtxd.set_inputs(wallet_utxos);
 
         // ToDo: go through all addresses and check all stake keys are equal
-        let sa = drasil_murin::get_reward_address(&wal_addr[0])?;
+        let sa = drasil_murin::reward_address_from_address(&wal_addr[0])?;
         gtxd.set_stake_address(sa);
         gtxd.set_senders_addresses(wal_addr.clone());
     }
@@ -104,8 +104,8 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
 
     log::debug!("Try to build transaction...");
 
-    let txb_param: drasil_murin::txbuilders::delegation::AtDelegParams = &delegtxd;
-    let deleg = drasil_murin::txbuilders::delegation::AtDelegBuilder::new(txb_param);
+    let txb_param: drasil_murin::txbuilder::stdtx::AtDelegParams = &delegtxd;
+    let deleg = drasil_murin::txbuilder::stdtx::AtDelegBuilder::new(txb_param);
     let builder = drasil_murin::TxBuilder::new(&gtxd, &Vec::<String>::new());
     let bld_tx = builder.build(&deleg).await?;
 

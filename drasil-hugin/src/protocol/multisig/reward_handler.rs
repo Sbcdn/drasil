@@ -26,18 +26,18 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             }
             .into());
             if rewards.is_empty()
-                || drasil_murin::b_decode_addr(&recipient_stake_addr)
+                || drasil_murin::address_from_string(&recipient_stake_addr)
                     .await
                     .is_err()
-                || drasil_murin::b_decode_addr(&recipient_payment_addr)
+                || drasil_murin::address_from_string(&recipient_payment_addr)
                     .await
                     .is_err()
-                || drasil_murin::wallet::get_stake_address(
-                    &drasil_murin::b_decode_addr(&recipient_stake_addr).await?,
-                )? != drasil_murin::wallet::get_stake_address(
-                    &drasil_murin::b_decode_addr(
+                || drasil_murin::wallet::stake_keyhash_from_address(
+                    &drasil_murin::address_from_string(&recipient_stake_addr).await?,
+                )? != drasil_murin::wallet::stake_keyhash_from_address(
+                    &drasil_murin::address_from_string(
                         &drasil_mimir::api::select_addr_of_first_transaction(
-                            &drasil_murin::decode_addr(&recipient_stake_addr)
+                            &drasil_murin::decode_address_from_bytes(&recipient_stake_addr)
                                 .await?
                                 .to_bech32(None)
                                 .unwrap(),
@@ -65,7 +65,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         .into_rwd()
         .await?;
     rwdtxd.set_payment_addr(
-        &drasil_murin::b_decode_addr(&drasil_mimir::api::select_addr_of_first_transaction(
+        &drasil_murin::address_from_string(&drasil_mimir::api::select_addr_of_first_transaction(
             &rwdtxd
                 .get_stake_addr()
                 .to_bech32(None)
@@ -144,9 +144,9 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     // for the remaining whitelisting filter the tokens out of reward tokens.
     let mut rewards = rwdtxd.get_rewards();
     for vt in vesting_whitelist {
-        let policy = drasil_murin::chelper::string_to_policy(&vt.policy_id)?;
+        let policy = drasil_murin::cardano::string_to_policy(&vt.policy_id)?;
         let assetname = match vt.tokenname {
-            Some(tn) => drasil_murin::chelper::string_to_assetname(&tn)?,
+            Some(tn) => drasil_murin::cardano::string_to_assetname(&tn)?,
             None => drasil_murin::clib::AssetName::new(b"".to_vec())
                 .expect("Could not create emtpy tokenname"),
         };
@@ -294,7 +294,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
 
         let ident = crate::encryption::mident(&c.user_id, &c.contract_id, &c.version, &c.address);
         let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks.clone(), &ident).await?;
-        let tw_addr = drasil_murin::b_decode_addr(&c.address).await?;
+        let tw_addr = drasil_murin::address_from_string(&c.address).await?;
         let tw_script = drasil_murin::clib::NativeScript::from_bytes(hex::decode(c.plutus)?)
             .map_err::<CmdError, _>(|_| CmdError::Custom {
             str: "could not convert string to native script".to_string(),
@@ -327,8 +327,8 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     let pkvs = crate::encryption::decrypt_pkvs(keylocs[0].pvks.clone(), &ident).await?;
     */
     info!("build transaction...");
-    let txb_param: drasil_murin::txbuilders::rwdist::AtRWDParams = (&rwdtxd, Some(wallets));
-    let rwd = drasil_murin::txbuilders::rwdist::AtRWDBuilder::new(txb_param);
+    let txb_param: drasil_murin::txbuilder::rwdist::AtRWDParams = (&rwdtxd, Some(wallets));
+    let rwd = drasil_murin::txbuilder::rwdist::AtRWDBuilder::new(txb_param);
     let builder = drasil_murin::TxBuilder::new(&gtxd, &vec![]);
     let bld_tx = builder.build(&rwd).await?;
 

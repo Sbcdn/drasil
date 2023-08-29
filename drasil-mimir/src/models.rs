@@ -62,7 +62,7 @@ impl UnspentUtxo {
             &drasil_murin::crypto::TransactionHash::from_bytes(self.hash.clone())?,
             self.index as u32,
         );
-        let address = drasil_murin::b_decode_addr_na(&self.address)?;
+        let address = drasil_murin::address_from_string_non_async(&self.address)?;
         let coin = match self.value.to_u64() {
             Some(c) => c,
             None => {
