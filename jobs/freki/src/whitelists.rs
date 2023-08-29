@@ -10,9 +10,10 @@ pub(crate) async fn handle_whitelist_address(
     twd: &TwlData,
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
-    let stake_addr = drasil_murin::get_reward_address(&drasil_murin::b_decode_addr(addr).await?)?
-        .to_bech32(None)
-        .unwrap_or_else(|_| addr.clone());
+    let stake_addr =
+        drasil_murin::reward_address_from_address(&drasil_murin::address_from_string(addr).await?)?
+            .to_bech32(None)
+            .unwrap_or_else(|_| addr.clone());
     let script_reward = *addr == stake_addr;
     if script_reward {
         return Err(Box::new(drasil_murin::MurinError::new(

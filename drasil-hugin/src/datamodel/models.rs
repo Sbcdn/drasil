@@ -1,9 +1,9 @@
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use drasil_gungnir::{Rewards, TokenInfo};
-use drasil_murin::chelper;
+use drasil_murin::cardano;
 use drasil_murin::{
-    b_decode_addr_na,
+    address_from_string_non_async,
     clib::address::Address,
     stdtx::{AssetTransfer, StdAssetHandle},
     utils::to_bignum,
@@ -131,16 +131,16 @@ pub struct MinterToken {
 impl MinterToken {
     pub fn into_mintasset(
         &self,
-    ) -> Result<drasil_murin::txbuilders::MintTokenAsset, drasil_murin::MurinError> {
-        let tn = chelper::string_to_assetname(&self.tokenname)?;
-        let amt = chelper::u64_to_bignum(self.amount);
+    ) -> Result<drasil_murin::txbuilder::MintTokenAsset, drasil_murin::MurinError> {
+        let tn = cardano::string_to_assetname(&self.tokenname)?;
+        let amt = cardano::u64_to_bignum(self.amount);
         Ok((None, tn, amt))
     }
 
     pub fn for_all_into_mintasset(
         ut: &Vec<MinterToken>,
-    ) -> Result<Vec<drasil_murin::txbuilders::MintTokenAsset>, drasil_murin::MurinError> {
-        let mut out = Vec::<drasil_murin::txbuilders::MintTokenAsset>::new();
+    ) -> Result<Vec<drasil_murin::txbuilder::MintTokenAsset>, drasil_murin::MurinError> {
+        let mut out = Vec::<drasil_murin::txbuilder::MintTokenAsset>::new();
         for t in ut {
             out.push(t.into_mintasset()?)
         }
@@ -159,17 +159,17 @@ pub struct Token {
 impl Token {
     pub fn into_asset(
         &self,
-    ) -> Result<drasil_murin::txbuilders::TokenAsset, drasil_murin::MurinError> {
-        let cs = drasil_murin::chelper::string_to_policy(&self.currencysymbol)?;
-        let tn = drasil_murin::chelper::string_to_assetname(&self.tokenname)?;
-        let amt = drasil_murin::chelper::u64_to_bignum(self.amount);
+    ) -> Result<drasil_murin::txbuilder::TokenAsset, drasil_murin::MurinError> {
+        let cs = drasil_murin::cardano::string_to_policy(&self.currencysymbol)?;
+        let tn = drasil_murin::cardano::string_to_assetname(&self.tokenname)?;
+        let amt = drasil_murin::cardano::u64_to_bignum(self.amount);
         Ok((cs, tn, amt))
     }
 
     pub fn for_all_into_asset(
         ut: &Vec<Token>,
-    ) -> Result<Vec<drasil_murin::txbuilders::TokenAsset>, drasil_murin::MurinError> {
-        let mut out = Vec::<drasil_murin::txbuilders::TokenAsset>::new();
+    ) -> Result<Vec<drasil_murin::txbuilder::TokenAsset>, drasil_murin::MurinError> {
+        let mut out = Vec::<drasil_murin::txbuilder::TokenAsset>::new();
         for t in ut {
             out.push(t.into_asset()?)
         }
@@ -346,7 +346,7 @@ impl TransactionPattern {
 
     pub async fn into_txdata(
         &self,
-    ) -> Result<drasil_murin::txbuilders::TxData, drasil_murin::error::MurinError> {
+    ) -> Result<drasil_murin::txbuilder::TxData, drasil_murin::error::MurinError> {
         let inputs = match self.utxos() {
             None => {
                 return Err(drasil_murin::error::MurinError::new(
@@ -357,7 +357,7 @@ impl TransactionPattern {
         };
 
         let saddr = match self.stake_addr() {
-            Some(sa) => match drasil_murin::wallet::decode_addr(&sa).await {
+            Some(sa) => match drasil_murin::wallet::decode_address_from_bytes(&sa).await {
                 Ok(addr) => Some(addr),
                 Err(_) => None,
             },
@@ -368,31 +368,30 @@ impl TransactionPattern {
             Some(n) => n as i64,
             None => -1,
         };
-
         let mut txd = TxData::new(
             Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
-            drasil_murin::wallet::decode_addresses(&self.used_addresses()).await?,
+            drasil_murin::wallet::addresses_from_string(&self.used_addresses()).await?,
             saddr,
-            drasil_murin::wallet::get_transaction_unspent_outputs(
+            drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
                 inputs.as_ref(),
-                self.collateral().as_ref(),
+                self.collateral().as_ref().map(|x| vec![x.clone()]).as_ref(),
                 self.excludes().as_ref(),
-            )
-            .await?,
+            )?,
             drasil_murin::wallet::get_network_kind(self.network).await?,
             0u64,
         )?;
 
         if let Some(collateral) = self.collateral() {
             txd.set_collateral(
-                drasil_murin::wallet::get_transaction_unspent_output(&collateral).await?,
+                drasil_murin::wallet::transaction_unspent_outputs_from_string(&collateral)?,
             )
         }
 
         if let Some(excludes) = self.excludes() {
             txd.set_excludes(
-                drasil_murin::wallet::get_transaction_unspent_outputs(&excludes, None, None)
-                    .await?,
+                drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
+                    &excludes, None, None,
+                )?,
             )
         }
 
@@ -465,10 +464,10 @@ impl Operation {
     pub async fn into_mp(
         &self,
         avail_inputs: drasil_murin::TransactionUnspentOutputs,
-    ) -> Result<drasil_murin::txbuilders::marketplace::MpTxData, drasil_murin::error::MurinError>
+    ) -> Result<drasil_murin::txbuilder::marketplace::MpTxData, drasil_murin::error::MurinError>
     {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilders::marketplace::MpTxData;
+        use drasil_murin::txbuilder::marketplace::MpTxData;
 
         match self {
             Operation::Marketplace {
@@ -480,13 +479,14 @@ impl Operation {
             } => {
                 let assets = Token::for_all_into_asset(tokens)?;
                 let token_utxos =
-                    drasil_murin::txbuilders::find_token_utxos(avail_inputs, assets.clone())
-                        .await?;
+                    drasil_murin::txbuilder::find_token_utxos(avail_inputs, assets.clone()).await?;
 
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
                 if let Some(royaddr) = royalties_addr {
-                    mptx.set_royalties_address(drasil_murin::decode_addr(royaddr).await?);
+                    mptx.set_royalties_address(
+                        drasil_murin::decode_address_from_bytes(royaddr).await?,
+                    );
                 }
 
                 if let Some(royrate) = royalties_rate {
@@ -507,9 +507,9 @@ impl Operation {
 
     pub async fn into_rwd(
         &self,
-    ) -> Result<drasil_murin::txbuilders::rwdist::RWDTxData, drasil_murin::error::MurinError> {
+    ) -> Result<drasil_murin::txbuilder::rwdist::RWDTxData, drasil_murin::error::MurinError> {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilders::rwdist::RWDTxData;
+        use drasil_murin::txbuilder::rwdist::RWDTxData;
 
         match self {
             Operation::SpoRewardClaim {
@@ -518,8 +518,10 @@ impl Operation {
                 recipient_payment_addr,
             } => {
                 // let assets = Token::for_all_into_asset(reward_tokens)?;
-                let stake_addr = drasil_murin::decode_addr(recipient_stake_addr).await?;
-                let payment_addr = drasil_murin::decode_addr(recipient_payment_addr).await?;
+                let stake_addr =
+                    drasil_murin::decode_address_from_bytes(recipient_stake_addr).await?;
+                let payment_addr =
+                    drasil_murin::decode_address_from_bytes(recipient_payment_addr).await?;
 
                 Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
@@ -531,10 +533,10 @@ impl Operation {
 
     pub async fn into_stdassettx(
         &self,
-    ) -> Result<drasil_murin::txbuilders::stdtx::StandardTxData, drasil_murin::error::MurinError>
+    ) -> Result<drasil_murin::txbuilder::stdtx::StandardTxData, drasil_murin::error::MurinError>
     {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilders::stdtx::StandardTxData;
+        use drasil_murin::txbuilder::stdtx::StandardTxData;
 
         match self {
             Operation::StdTx {
@@ -543,7 +545,7 @@ impl Operation {
             } => {
                 let mut trans = Vec::<AssetTransfer>::new();
                 for t in transfers {
-                    let receiver = b_decode_addr_na(&t.receiving_address).unwrap();
+                    let receiver = address_from_string_non_async(&t.receiving_address).unwrap();
                     let mut assets = Vec::<StdAssetHandle>::new();
                     let metadata = t.message.clone();
                     for n in &t.asset_handles {
@@ -574,7 +576,7 @@ impl Operation {
                 }
                 let wal_addr = if let Some(addr) = wallet_addresses {
                     let r = addr.iter().fold(Vec::<Address>::new(), |mut acc, a| {
-                        acc.push(b_decode_addr_na(a).unwrap());
+                        acc.push(address_from_string_non_async(a).unwrap());
                         acc
                     });
                     r
@@ -596,11 +598,11 @@ impl Operation {
     pub async fn into_colmintdata(
         &self,
     ) -> Result<
-        drasil_murin::txbuilders::minter::models::ColMinterTxData,
+        drasil_murin::txbuilder::minter::models::ColMinterTxData,
         drasil_murin::error::MurinError,
     > {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilders::minter::models::*;
+        use drasil_murin::txbuilder::minter::models::*;
 
         match self {
             Operation::NftCollectionMinter { mint_handles } => {
@@ -631,10 +633,10 @@ impl Operation {
 
     pub async fn into_mintdata(
         &self,
-    ) -> Result<drasil_murin::txbuilders::minter::MinterTxData, drasil_murin::error::MurinError>
+    ) -> Result<drasil_murin::txbuilder::minter::MinterTxData, drasil_murin::error::MurinError>
     {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilders::minter::MinterTxData;
+        use drasil_murin::txbuilder::minter::MinterTxData;
 
         match self {
             Operation::Minter {
@@ -650,10 +652,11 @@ impl Operation {
                     None => Vec::<drasil_murin::MintTokenAsset>::new(),
                 };
                 let stake_addr = match receiver_stake_addr {
-                    Some(addr) => Some(drasil_murin::decode_addr(addr).await?),
+                    Some(addr) => Some(drasil_murin::decode_address_from_bytes(addr).await?),
                     None => None,
                 };
-                let payment_addr = drasil_murin::decode_addr(receiver_payment_addr).await?;
+                let payment_addr =
+                    drasil_murin::decode_address_from_bytes(receiver_payment_addr).await?;
                 let metadata = match mint_metadata {
                     Some(data) => {
                         if !data.is_empty() {
@@ -688,14 +691,14 @@ impl Operation {
                 receiver,
             } => {
                 log::debug!("Try to parse OneShotType");
-                let mut assets = Vec::<drasil_murin::txbuilders::MintTokenAsset>::new();
+                let mut assets = Vec::<drasil_murin::txbuilder::MintTokenAsset>::new();
                 for (i, t) in tokennames.iter().enumerate() {
                     let tn =
-                        drasil_murin::chelper::string_to_assetname(&hex::encode(t.as_bytes()))?;
-                    let amt = drasil_murin::chelper::u64_to_bignum(amounts[i]);
+                        drasil_murin::cardano::string_to_assetname(&hex::encode(t.as_bytes()))?;
+                    let amt = drasil_murin::cardano::u64_to_bignum(amounts[i]);
                     assets.push((None, tn, amt))
                 }
-                let payment_addr = drasil_murin::b_decode_addr(receiver).await?;
+                let payment_addr = drasil_murin::address_from_string(receiver).await?;
                 Ok(MinterTxData::new(
                     assets,
                     None,
@@ -715,10 +718,10 @@ impl Operation {
 
     pub async fn into_stake_delegation(
         &self,
-    ) -> Result<drasil_murin::txbuilders::delegation::DelegTxData, drasil_murin::error::MurinError>
+    ) -> Result<drasil_murin::txbuilder::delegation::DelegTxData, drasil_murin::error::MurinError>
     {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilders::delegation::DelegTxData;
+        use drasil_murin::txbuilder::delegation::DelegTxData;
 
         match self {
             Operation::StakeDelegation {
@@ -733,9 +736,9 @@ impl Operation {
 
     pub async fn into_cpo(
         &self,
-    ) -> Result<drasil_murin::txbuilders::CPO, drasil_murin::error::MurinError> {
+    ) -> Result<drasil_murin::txbuilder::CPO, drasil_murin::error::MurinError> {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilders::CPO;
+        use drasil_murin::txbuilder::CPO;
 
         match self {
             Operation::CPO { po_id, pw } => Ok(CPO::new(*po_id, pw.to_owned())),

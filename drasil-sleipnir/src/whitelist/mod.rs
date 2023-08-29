@@ -5,8 +5,7 @@ use drasil_gungnir::{
 };
 use drasil_hugin::TBContracts;
 use drasil_murin::{
-    clib::Assets, get_bech32_stake_address_from_str, utils::to_bignum, AssetName, MultiAsset,
-    PolicyID,
+    bech32_stake_address_from_str, clib::Assets, utils::to_bignum, AssetName, MultiAsset, PolicyID,
 };
 use serde::{Deserialize, Serialize};
 
@@ -140,7 +139,7 @@ pub async fn random_allocation_whitelist_to_mintproject(
 
     'a: for entry in wl_entry {
         let payaddr = match drasil_mimir::select_addr_of_first_transaction(
-            match &get_bech32_stake_address_from_str(&entry.payment_address) {
+            match &bech32_stake_address_from_str(&entry.payment_address) {
                 Ok(o) => o,
                 Err(_) => {
                     log::debug!("Could not determine a first address for stake addr, original listed address was: {:?}", &entry.payment_address);
@@ -225,7 +224,7 @@ pub async fn allocate_specific_assets_to_mintproject(
 
             if anb.project_id == mp.id {
                 let payaddr = match drasil_mimir::select_addr_of_first_transaction(
-                    match &get_bech32_stake_address_from_str(&entry.payment_address) {
+                    match &bech32_stake_address_from_str(&entry.payment_address) {
                         Ok(o) => o,
                         Err(_) => {
                             log::debug!("Could not determine a first address for stake addr, original listed address was: {:?}", &entry.payment_address);
@@ -352,9 +351,7 @@ pub fn import_whitelist_from_csv(
                 Ok(csvwe) => {
                     log::debug!("Record deserialized: {:?}", csvwe);
                     let stake = if csvwe.stake_address.is_none() {
-                        Some(drasil_murin::get_bech32_stake_address_from_str(
-                            &csvwe.addr,
-                        )?)
+                        Some(drasil_murin::bech32_stake_address_from_str(&csvwe.addr)?)
                     } else {
                         csvwe.stake_address
                     };
