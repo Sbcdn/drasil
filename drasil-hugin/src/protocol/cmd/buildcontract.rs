@@ -173,7 +173,7 @@ impl BuildContract {
                 match mpa {
                     MarketplaceActions::List => {
                         use crate::database::drasildb::*;
-                        use drasil_murin::txbuilders::marketplace::list::*;
+                        use drasil_murin::txbuilder::marketplace::list::*;
                         //build a listing and send the repsonse to the sender
                         let contract = TBContracts::get_active_contract_for_user(
                             self.customer_id as i64,

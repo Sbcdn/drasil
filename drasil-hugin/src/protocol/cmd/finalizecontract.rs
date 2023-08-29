@@ -137,7 +137,7 @@ impl FinalizeContract {
     }
 
     async fn finalize_marketplace(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<Frame> {
-        use drasil_murin::txbuilders::finalize::finalize;
+        use drasil_murin::txbuilder::finalize::finalize;
         let response = finalize(&self.get_signature(), raw_tx).await?;
         info!("Response: {}", response);
         Ok(Frame::Bulk(Bytes::from(

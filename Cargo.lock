@@ -1231,6 +1231,7 @@ dependencies = [
  "hex",
  "http",
  "itertools",
+ "lazy_static",
  "log",
  "num",
  "octavo-digest",

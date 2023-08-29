@@ -1026,13 +1026,13 @@ mod handlers {
         stake_address: QStakeAddress,
     ) -> Result<impl warp::Reply, Infallible> {
         let stake_address = stake_address.stake_address;
-        let bstake_addr = match drasil_murin::b_decode_addr(&stake_address).await {
+        let bstake_addr = match drasil_murin::address_from_string(&stake_address).await {
             Ok(s) => s,
             Err(e) => {
                 return make_error(e.to_string());
             }
         };
-        let reward_address = match drasil_murin::get_reward_address(&bstake_addr) {
+        let reward_address = match drasil_murin::reward_address_from_address(&bstake_addr) {
             Ok(r) => r,
             Err(e) => {
                 return make_error(e.to_string());

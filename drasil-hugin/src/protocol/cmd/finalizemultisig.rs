@@ -112,7 +112,7 @@ impl FinalizeMultiSig {
                 let mut gcon = drasil_gungnir::establish_connection()?;
 
                 for handle in rwd_data.get_rewards() {
-                    let fingerprint = drasil_murin::chelper::make_fingerprint(
+                    let fingerprint = drasil_murin::cardano::make_fingerprint(
                         &hex::encode(handle.get_policy_id()?.to_bytes()),
                         &hex::encode(handle.get_assetname()?.name()),
                     )?;
@@ -250,7 +250,7 @@ impl FinalizeMultiSig {
 
     async fn finalize_rwd(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<String> {
         use crate::database::drasildb::*;
-        use drasil_murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
+        use drasil_murin::txbuilder::rwdist::finalize_rwd::finalize_rwd;
         let tx_data = drasil_murin::TxData::from_str(raw_tx.get_txrawdata())?;
         let mut pvks = Vec::<String>::new();
         log::debug!("TxData in Finalize: {:?}", tx_data);
@@ -282,7 +282,7 @@ impl FinalizeMultiSig {
 
     async fn finalize_mint(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<String> {
         use crate::database::drasildb::*;
-        use drasil_murin::txbuilders::rwdist::finalize_rwd::finalize_rwd;
+        use drasil_murin::txbuilder::rwdist::finalize_rwd::finalize_rwd;
 
         let tx_data = drasil_murin::TxData::from_str(raw_tx.get_txrawdata())?;
         let mut pvks = Vec::<String>::new();
@@ -313,7 +313,7 @@ impl FinalizeMultiSig {
 
     async fn finalize_utxopti(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<String> {
         use crate::database::drasildb::*;
-        use drasil_murin::txbuilders::rwdist::finalize_utxopti::finalize_utxopti;
+        use drasil_murin::txbuilder::rwdist::finalize_utxopti::finalize_utxopti;
 
         let contract_ids = raw_tx.get_contract_id()?;
         let mut pvks = Vec::<String>::new();
