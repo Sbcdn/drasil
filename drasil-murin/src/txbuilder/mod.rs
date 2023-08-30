@@ -16,8 +16,6 @@ use serde::{Deserialize, Serialize};
 use std::ops::{Div, Rem, Sub};
 
 use crate::error::MurinError;
-pub mod delegation;
-pub mod deregistration;
 pub mod finalize;
 pub mod marketplace;
 pub mod minter;
@@ -25,7 +23,6 @@ pub mod modules;
 pub mod rwdist;
 pub mod stdtx;
 
-pub use delegation::DelegTxData;
 pub use marketplace::*;
 pub use rwdist::*;
 

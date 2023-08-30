@@ -105,8 +105,8 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
     
     log::debug!("Try to build transaction...");
     
-    let txb_param: drasil_murin::txbuilder::deregistration::AtDeregParams = &deregtxd;
-    let dereg = drasil_murin::txbuilder::deregistration::AtDeregBuilder::new(txb_param);
+    let txb_param: drasil_murin::txbuilder::stdtx::AtDeregParams = &deregtxd;
+    let dereg = drasil_murin::txbuilder::stdtx::AtDeregBuilder::new(txb_param);
     let builder = drasil_murin::TxBuilder::new(&gtxd, &Vec::<String>::new());
     let bld_tx = builder.build(&dereg).await?;
     

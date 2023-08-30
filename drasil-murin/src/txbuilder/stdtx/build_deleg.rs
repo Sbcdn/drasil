@@ -174,16 +174,11 @@ mod tests {
     use clib::StakeDelegation;
     use clib::StakeRegistration;
     use clib::Transaction;
-    use clib::TransactionInput;
     use clib::TransactionInputs;
-    use clib::TransactionOutput;
     use clib::TransactionOutputs;
     use clib::TransactionWitnessSet;
-    use clib::address::BaseAddress;
     use clib::address::StakeCredential;
-    use clib::crypto::TransactionHash;
     use clib::utils::BigNum;
-    use clib::utils::Value;
     use std::env::set_var;
 
     use crate::PerformTxb;
