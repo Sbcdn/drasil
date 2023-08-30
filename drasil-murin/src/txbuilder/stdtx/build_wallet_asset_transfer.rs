@@ -3,7 +3,7 @@ use crate::error::MurinError;
 use crate::hfn::{self};
 use crate::min_ada_for_utxo;
 use crate::modules::transfer::models::{Sink, Source, TransBuilder, TransWallets, Transfer};
-use crate::txbuilders::TxBO;
+use crate::txbuilder::TxBO;
 use crate::PerformTxb;
 use crate::TxData;
 
@@ -222,7 +222,7 @@ mod tests {
     use crate::modules::transfer::models::TransWallet;
     use crate::{
         clib::address::Address,
-        txbuilders::{
+        txbuilder::{
             modules::transfer::models::TransWallets,
             stdtx::{build_wallet_asset_transfer::AtSATBuilder, StandardTxData},
             PerformTxb,
