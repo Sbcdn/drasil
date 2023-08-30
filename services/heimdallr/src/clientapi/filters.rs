@@ -3,12 +3,12 @@ use super::handlers;
 use drasil_hugin::datamodel::models::{ContractType, MultiSigType, StdTxType, TXPWrapper};
 use warp::Filter;
 
-pub fn api_endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn api_endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     resp_option().or(oneshot_minter_api())
 }
 
-pub fn oneshot_minter_api(
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn oneshot_minter_api() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+{
     warp::path("api")
         .and(warp::path("mint"))
         .and(warp::path("oneshot"))
@@ -30,7 +30,7 @@ pub fn endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Reje
         .or(warp::get().and(warp::any().map(warp::reply)))
 }
 
-pub fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::options()
         .and(warp::header("origin"))
         .map(|origin: String| {
@@ -47,16 +47,15 @@ pub fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Re
 }
 
 /// GET contracts
-pub fn list_contracts() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
-{
+fn list_contracts() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("lcn")
         .and(warp::get())
         .and_then(handlers::contracts_list)
 }
 
 /// Build a Smart Contract transaction
-pub fn exec_build_contract(
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn exec_build_contract() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+{
     warp::path("cn")
         .and(warp::post())
         .and(warp::path::param::<ContractType>())
@@ -66,7 +65,7 @@ pub fn exec_build_contract(
 }
 
 /// Finalize a Contract transaction
-pub fn exec_finalize_contract(
+fn exec_finalize_contract(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("cn")
         .and(warp::path("fn"))
@@ -78,8 +77,8 @@ pub fn exec_finalize_contract(
 }
 
 /// Build a MultiSig transaction
-pub fn exec_build_multisig(
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn exec_build_multisig() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+{
     warp::path("ms")
         .and(warp::post())
         .and(warp::path::param::<MultiSigType>())
@@ -88,7 +87,7 @@ pub fn exec_build_multisig(
 }
 
 /// Finalize a MultiSig transaction
-pub fn exec_finalize_multisig(
+fn exec_finalize_multisig(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path("ms"))
@@ -100,8 +99,7 @@ pub fn exec_finalize_multisig(
 }
 
 /// Build a standard transaction
-pub fn exec_build_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
-{
+fn exec_build_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("tx")
         .and(warp::post())
         .and(warp::path::param::<StdTxType>())
@@ -110,8 +108,8 @@ pub fn exec_build_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = war
 }
 
 /// Build a MultiSig transaction
-pub fn exec_finalize_stdtx(
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn exec_finalize_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+{
     warp::path("tx")
         .and(warp::path("fn"))
         .and(warp::post())
@@ -121,8 +119,7 @@ pub fn exec_finalize_stdtx(
         .and_then(handlers::stdtx_exec_finalize)
 }
 
-pub(crate) fn auth() -> impl Filter<Extract = ((u64, TXPWrapper),), Error = warp::Rejection> + Clone
-{
+fn auth() -> impl Filter<Extract = ((u64, TXPWrapper),), Error = warp::Rejection> + Clone {
     use super::auth::authorize;
     use warp::{
         filters::body::bytes,
