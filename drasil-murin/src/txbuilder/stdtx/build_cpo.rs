@@ -1,6 +1,6 @@
 use crate::error::MurinError;
-use crate::hfn::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
-use crate::htypes::*;
+use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
+use crate::models::*;
 use crate::{
     txbuilder::{input_selection, TxBO},
     PerformTxb, TxData,

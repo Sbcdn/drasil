@@ -1,6 +1,6 @@
 use crate::error::MurinError;
-use crate::hfn;
-use crate::htypes;
+use crate::supporting_functions;
+use crate::models;
 use crate::marketplace::*;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
@@ -47,17 +47,17 @@ pub fn perform_listing(
     }
 
     let sc_address = caddr::Address::from_bech32(sc_addr).unwrap();
-    let mut roy_pkey = hfn::get_payment_address(&sc_address);
+    let mut roy_pkey = supporting_functions::get_payment_address(&sc_address);
     let roy_addr: caddr::Address;
     if let Some(royaddr) = mptxd.clone().get_royalties_address() {
         if roy_rate > 0u64 {
             roy_addr = royaddr;
-            roy_pkey = hfn::get_payment_address(&roy_addr);
+            roy_pkey = supporting_functions::get_payment_address(&roy_addr);
         }
     }
 
     // ToDo:
-    let datumpair = hfn::make_datum_mp(
+    let datumpair = supporting_functions::make_datum_mp(
         &mptxd.selling_price.to_string(),
         &gtxd.clone().get_senders_addresses()[0]
             .clone()
@@ -144,10 +144,10 @@ pub fn perform_listing(
     let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
     let change_address = &gtxd.clone().get_senders_addresses()[0];
 
-    let mut needed_value = hfn::sum_output_values(&txouts);
+    let mut needed_value = supporting_functions::sum_output_values(&txouts);
     needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
     let security = cutils::to_bignum(
-        cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * htypes::MIN_ADA),
+        cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * models::MIN_ADA),
     ); // 10% Security for min utxo etc.
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
@@ -161,10 +161,10 @@ pub fn perform_listing(
     //token_utxos.add(&script_utxo);
     //let listing_tokens  = artifn::get_nfts_for_sale(&token_utxos);
 
-    let token_input_utxo = hfn::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
+    let token_input_utxo = supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
     debug!("Token Input Utxos: {:?}", token_input_utxo);
 
-    let (txins, mut input_txuos) = hfn::input_selection(
+    let (txins, mut input_txuos) = supporting_functions::input_selection(
         None,
         &mut needed_value,
         &input_txuos,
@@ -172,13 +172,13 @@ pub fn perform_listing(
     );
     let saved_input_txuos = input_txuos.clone();
 
-    let vkey_counter = hfn::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
+    let vkey_counter = supporting_functions::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
     debug!(
         "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
         input_txuos
     );
 
-    let txouts_fin = hfn::balance_tx(
+    let txouts_fin = supporting_functions::balance_tx(
         &mut input_txuos,
         mptxd.get_tokens(),
         &mut txouts,
@@ -195,7 +195,7 @@ pub fn perform_listing(
         &dummy,
     )?;
 
-    let slot = gtxd.clone().get_current_slot() + hfn::get_ttl_tx(&gtxd.clone().get_network());
+    let slot = gtxd.clone().get_current_slot() + supporting_functions::get_ttl_tx(&gtxd.clone().get_network());
     let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&cutils::to_bignum(slot));
     info!("\nTxOutputs: {:?}\n", txbody.outputs());
@@ -222,11 +222,11 @@ pub async fn build_mp_listing(
     mptxd: &super::MpTxData,
     sc_addr: &str,
     sc_version: &String,
-) -> Result<htypes::BuildOutput, MurinError> {
+) -> Result<models::BuildOutput, MurinError> {
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
     let steps = cutils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: htypes::ExUnitPrice = crate::ExUnitPrice {
+    let ex_unit_price: models::ExUnitPrice = crate::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };
@@ -246,13 +246,13 @@ pub async fn build_mp_listing(
         true,
     )?;
 
-    let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(vkey_counter);
+    let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(vkey_counter);
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
     let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
-    let calculated_fee = hfn::calc_txfee(
+    let calculated_fee = supporting_functions::calc_txfee(
         &transaction_,
         &a,
         &b,
@@ -269,17 +269,17 @@ pub async fn build_mp_listing(
     if vkey_counter_2 != vkey_counter
         || transaction2.to_bytes().len() != transaction_.to_bytes().len()
     {
-        let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(vkey_counter_2);
+        let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(vkey_counter_2);
         txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
         let calculated_fee =
-            hfn::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
+            supporting_functions::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
         let (txbody, txwitness, aux_data, used_utxos, _) =
             perform_listing(&calculated_fee, sc_addr, sc_version, gtxd, mptxd, false)?;
         info!("Fee: {:?}", calculated_fee);
         debug!("\n\n\nDummy vkey_counter: {:?} \n\n", vkey_counter);
         debug!("\n\n\nDummy vkey_counter_2: {:?} \n\n", vkey_counter_2);
-        Ok(hfn::tx_output_data(
+        Ok(supporting_functions::tx_output_data(
             txbody,
             txwitness,
             Some(aux_data),
@@ -289,7 +289,7 @@ pub async fn build_mp_listing(
         )?)
     } else {
         info!("Fee: {:?}", calculated_fee);
-        Ok(hfn::tx_output_data(
+        Ok(supporting_functions::tx_output_data(
             txbody,
             txwitness,
             Some(aux_data),

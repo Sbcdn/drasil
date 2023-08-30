@@ -1032,7 +1032,7 @@ mod handlers {
                 return make_error(e.to_string());
             }
         };
-        let reward_address = match drasil_murin::get_reward_address(&bstake_addr) {
+        let reward_address = match drasil_murin::reward_address_from_address(&bstake_addr) {
             Ok(r) => r,
             Err(e) => {
                 return make_error(e.to_string());

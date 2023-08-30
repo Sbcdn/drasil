@@ -6,7 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::{hfn, htypes};
+use crate::{supporting_functions, models};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use clib::address::Address;
@@ -72,7 +72,7 @@ impl TxBuilder {
         // Temp until Protocol Parameters fixed
         let mem = cutils::to_bignum(7000000u64);
         let steps = cutils::to_bignum(2500000000u64);
-        let ex_unit_price: htypes::ExUnitPrice = crate::ExUnitPrice {
+        let ex_unit_price: models::ExUnitPrice = crate::ExUnitPrice {
             priceSteps: 7.21e-5,
             priceMemory: 5.77e-2,
         };
@@ -81,11 +81,11 @@ impl TxBuilder {
         //Create first Tx
         let mut tx_ =
             app_type.perform_txb(&cutils::to_bignum(2000000), &self.gtxd, &self.pvks, true)?;
-        let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(tx_.4);
+        let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(tx_.4);
         tx_.1.set_vkeys(&dummy_vkeywitnesses);
         // Build and encode dummy transaction
         let transaction_ = clib::Transaction::new(&tx_.0, &tx_.1, tx_.2);
-        let calculated_fee = hfn::calc_txfee(
+        let calculated_fee = supporting_functions::calc_txfee(
             &transaction_,
             &a,
             &b,
@@ -100,14 +100,14 @@ impl TxBuilder {
         let transaction2 = clib::Transaction::new(&tx.0, &tx_.1, tx.2.clone());
 
         if tx.4 != tx_.4 || transaction2.to_bytes().len() != transaction_.to_bytes().len() {
-            let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(tx.4);
+            let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(tx.4);
             tx_.1.set_vkeys(&dummy_vkeywitnesses);
 
             let calculated_fee =
-                hfn::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
+                supporting_functions::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
             let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
             info!("Fee: {:?}", calculated_fee);
-            Ok(hfn::tx_output_data(
+            Ok(supporting_functions::tx_output_data(
                 tx.0,
                 tx.1,
                 tx.2,
@@ -117,7 +117,7 @@ impl TxBuilder {
             )?)
         } else {
             info!("Fee: {:?}", calculated_fee);
-            Ok(hfn::tx_output_data(
+            Ok(supporting_functions::tx_output_data(
                 tx.0,
                 tx.1,
                 tx.2,
@@ -160,7 +160,7 @@ impl TxData {
     ) -> Result<TxData, MurinError> {
         let sa = match sstake {
             Some(stake) => stake,
-            None => crate::cip30::get_reward_address(&saddresses[0])?,
+            None => crate::cip30::reward_address_from_address(&saddresses[0])?,
         };
         Ok(TxData {
             user_id: None,
@@ -595,7 +595,7 @@ pub fn input_selection(
 ) -> Result<(clib::TransactionInputs, TransactionUnspentOutputs), MurinError> {
     debug!("\n\nMULTIASSETS: {:?}\n\n", txins);
 
-    let (mut purecoinassets, mut multiassets) = crate::cardano::hfn::splitt_coin_multi(txins);
+    let (mut purecoinassets, mut multiassets) = crate::cardano::supporting_functions::splitt_coin_multi(txins);
 
     let mut nv = needed_value.clone();
     let mut selection = TransactionUnspentOutputs::new();
@@ -627,7 +627,7 @@ pub fn input_selection(
 
     if let Some(cutxo) = collateral {
         debug!("Col: {:?}", cutxo);
-        let c_index = crate::cardano::hfn::find_collateral_by_txhash_txix(&cutxo, &purecoinassets);
+        let c_index = crate::cardano::supporting_functions::find_collateral_by_txhash_txix(&cutxo, &purecoinassets);
         debug!(
             "Some collateral to check for deletion found, Index: {:?}",
             c_index
@@ -636,7 +636,7 @@ pub fn input_selection(
             let col = purecoinassets.swap_remove(index);
             debug!("Deleted collateral from inputs: {:?}\n", col);
             // Double check
-            if crate::cardano::hfn::find_collateral_by_txhash_txix(&cutxo, &purecoinassets)
+            if crate::cardano::supporting_functions::find_collateral_by_txhash_txix(&cutxo, &purecoinassets)
                 .is_some()
             {
                 return Err(MurinError::new(
@@ -647,7 +647,7 @@ pub fn input_selection(
     }
 
     // lookup tokens from needed value
-    let mut tokens_to_find = crate::cardano::htypes::Tokens::new();
+    let mut tokens_to_find = crate::cardano::models::Tokens::new();
     if needed_value.multiasset().is_some() {
         if needed_value.multiasset().unwrap().len() > 0 {
             let pids = needed_value.multiasset().unwrap().keys();
@@ -706,7 +706,7 @@ pub fn input_selection(
         if purecoinassets.is_empty() {
             // Find the tokens we want in the multis
             debug!("\nWe look for multiassets!\n");
-            let ret = crate::cardano::hfn::find_suitable_coins(&mut nv, &mut multiassets, overhead);
+            let ret = crate::cardano::supporting_functions::find_suitable_coins(&mut nv, &mut multiassets, overhead);
             match ret.0 {
                 Some(utxos) => {
                     for u in utxos {
@@ -723,7 +723,7 @@ pub fn input_selection(
         } else {
             // Fine enough Ada to pay the transaction
             let ret =
-                crate::cardano::hfn::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
+                crate::cardano::supporting_functions::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
             debug!("Return coinassets: {:?}", ret);
             match ret.0 {
                 Some(utxos) => {
@@ -1365,7 +1365,7 @@ pub fn calc_min_ada_for_utxo(
 
     let size = bundle_size(
         value,
-        &htypes::OutputSizeConstants {
+        &models::OutputSizeConstants {
             k0: 2,
             k1: 6,
             k2: 12,
@@ -1437,7 +1437,7 @@ pub fn min_ada_for_utxo(output_: &TransactionOutput) -> Result<TransactionOutput
     min_ada_for_utxo(&output)
 }
 
-pub fn bundle_size(value: &cutils::Value, osc: &htypes::OutputSizeConstants) -> usize {
+pub fn bundle_size(value: &cutils::Value, osc: &models::OutputSizeConstants) -> usize {
     match &value.multiasset() {
         Some(assets) => {
             //Anzahl Tokenss
@@ -1623,10 +1623,10 @@ pub fn split_value(
 ) -> Result<(Vec<cutils::Value>, Option<cutils::BigNum>), MurinError> {
     let coins = value.coin();
     let mut val_coins = cutils::to_bignum(0);
-    let val_tok = htypes::value_to_tokens(&value)?;
+    let val_tok = models::value_to_tokens(&value)?;
     let mut values = Vec::<cutils::Value>::new();
     for tok in val_tok {
-        let mut value = htypes::tokens_to_value(&[tok].to_vec());
+        let mut value = models::tokens_to_value(&[tok].to_vec());
         let min_utxo_val = super::calc_min_ada_for_utxo(&value, None);
         val_coins = val_coins.checked_add(&min_utxo_val)?;
         value.set_coin(&min_utxo_val);

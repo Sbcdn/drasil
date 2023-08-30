@@ -1,5 +1,5 @@
 use crate::error::MurinError;
-use crate::htypes::*;
+use crate::models::*;
 use argon2::password_hash::rand_core::{OsRng, RngCore};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto};
@@ -152,7 +152,7 @@ pub fn get_stake_address(addr: &caddr::Address) -> Result<ccrypto::Ed25519KeyHas
     }
 }
 
-pub fn get_reward_address(addr: &caddr::Address) -> Result<caddr::Address, MurinError> {
+pub fn reward_address_from_address(addr: &caddr::Address) -> Result<caddr::Address, MurinError> {
     match caddr::RewardAddress::from_address(addr) {
         Some(rwa) => Ok(rwa.to_address()),
         None => {

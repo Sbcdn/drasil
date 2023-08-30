@@ -57,7 +57,7 @@ impl MinterTxData {
     pub fn get_stake_addr(&self) -> caddr::Address {
         match self.receiver_stake_addr.clone() {
             Some(addr) => addr,
-            None => crate::get_reward_address(&self.get_payment_addr()).unwrap(),
+            None => crate::reward_address_from_address(&self.get_payment_addr()).unwrap(),
         }
     }
 

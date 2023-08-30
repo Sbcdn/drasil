@@ -79,7 +79,7 @@ async fn submit_tx(
     cid: i64,
     //version: f32,
 ) -> Result<String> {
-    let bld_tx = drasil_murin::hfn::tx_output_data(
+    let bld_tx = drasil_murin::supporting_functions::tx_output_data(
         transaction.body(),
         transaction.witness_set(),
         None,
@@ -303,7 +303,7 @@ fn add_utxos(
     );
     let security = drasil_murin::clib::utils::to_bignum(
         drasil_murin::clib::utils::from_bignum(&needed_value.coin())
-            + (utxo_amt / 2 * drasil_murin::htypes::MIN_ADA),
+            + (utxo_amt / 2 * drasil_murin::models::MIN_ADA),
     );
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
@@ -319,7 +319,7 @@ fn add_utxos(
     utxos.delete_set(used_input_utxos);
     outputs.add(&drasil_murin::clib::TransactionOutput::new(addr, std_value));
 
-    let mut out_value = drasil_murin::hfn::sum_output_values(&outputs);
+    let mut out_value = drasil_murin::supporting_functions::sum_output_values(&outputs);
     let in_value = used_input_utxos.calc_total_value()?;
     let mut change = in_value.checked_sub(&out_value)?;
 
@@ -335,7 +335,7 @@ fn add_utxos(
             >= 0
     {
         outputs.add(&drasil_murin::clib::TransactionOutput::new(addr, std_value));
-        out_value = drasil_murin::hfn::sum_output_values(&outputs);
+        out_value = drasil_murin::supporting_functions::sum_output_values(&outputs);
         change = in_value.checked_sub(&out_value)?;
         let (stmptx, _) = finalize_tx(
             &inputs,
@@ -404,7 +404,7 @@ fn finalize_tx(
 )> {
     let mem = drasil_murin::clib::utils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
     let steps = drasil_murin::clib::utils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: drasil_murin::htypes::ExUnitPrice = drasil_murin::ExUnitPrice {
+    let ex_unit_price: drasil_murin::models::ExUnitPrice = drasil_murin::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };
