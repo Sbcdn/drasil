@@ -723,10 +723,10 @@ impl Operation {
 
     pub async fn into_stake_delegation(
         &self,
-    ) -> Result<drasil_murin::txbuilder::delegation::DelegTxData, drasil_murin::error::MurinError>
+    ) -> Result<drasil_murin::txbuilder::stdtx::DelegTxData, drasil_murin::error::MurinError>
     {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilder::delegation::DelegTxData;
+        use drasil_murin::txbuilder::stdtx::DelegTxData;
 
         match self {
             Operation::StakeDelegation {
@@ -741,9 +741,9 @@ impl Operation {
 
     pub async fn into_stake_deregistration(
         &self,
-    ) -> Result<drasil_murin::txbuilder::deregistration::DeregTxData, drasil_murin::error::MurinError> {
+    ) -> Result<drasil_murin::txbuilder::stdtx::DeregTxData, drasil_murin::error::MurinError> {
         use drasil_murin::error::MurinError;
-        use drasil_murin::txbuilder::deregistration::DeregTxData;
+        use drasil_murin::txbuilder::stdtx::DeregTxData;
         match self {
             Operation::StakeDeregistration {
                 poolhash,

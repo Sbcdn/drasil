@@ -92,7 +92,7 @@ impl FinalizeStdTx {
         let used_utxos = raw_tx.get_usedutxos().clone();
         let ret = match self.txtype {
             StdTxType::DelegateStake => {
-                if let Err(e) = drasil_murin::delegation::DelegTxData::from_str(
+                if let Err(e) = drasil_murin::stdtx::DelegTxData::from_str(
                     raw_tx.get_tx_specific_rawdata(),
                 ) {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a delegation transaction, {:?}",e.to_string())}.into());
@@ -101,7 +101,7 @@ impl FinalizeStdTx {
             }
             StdTxType::DeregisterStake => {
                 if let Err(e) =
-                    drasil_murin::deregistration::DeregTxData::from_str(raw_tx.get_tx_specific_rawdata())
+                    drasil_murin::stdtx::DeregTxData::from_str(raw_tx.get_tx_specific_rawdata())
                 {
                     return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a deregistration transaction, {:?}",e.to_string())}.into());
                 };
