@@ -2,7 +2,7 @@ use crate::error::MurinError;
 use crate::hfn::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
 use crate::htypes::*;
 use crate::{
-    txbuilders::{input_selection, TxBO},
+    txbuilder::{input_selection, TxBO},
     PerformTxb, TxData,
 };
 use cardano_serialization_lib as clib;

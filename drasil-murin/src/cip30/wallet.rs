@@ -38,7 +38,7 @@ pub async fn b_decode_addr(str: &String) -> Result<caddr::Address, MurinError> {
     //Ok(caddr::RewardAddress::new(netbyte,&stake_cred).to_address())
 }
 
-pub fn b_decode_addr_na(str: &String) -> Result<caddr::Address, MurinError> {
+pub fn address_from_string_non_async(str: &String) -> Result<caddr::Address, MurinError> {
     //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
     //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
     //let mut netbyte : u8 = 0b1111;
@@ -57,7 +57,7 @@ pub fn b_decode_addr_na(str: &String) -> Result<caddr::Address, MurinError> {
 }
 
 /// decode a vector of hex encoded addresses and return a vector of deserialized addresses
-pub async fn decode_addresses(addresses: &Vec<String>) -> Result<Vec<caddr::Address>, MurinError> {
+pub async fn addresses_from_string(addresses: &Vec<String>) -> Result<Vec<caddr::Address>, MurinError> {
     let mut ret = Vec::<caddr::Address>::new();
     //Ok(caddr::Address::from_bytes(hex::decode(bytes)?)?)
     for addr in addresses {
@@ -71,7 +71,7 @@ pub async fn decode_addresses(addresses: &Vec<String>) -> Result<Vec<caddr::Addr
 }
 
 /// convert hex encoded utxos into TransactionUnspentOutputs, filter collateral and excluded utxos if provided
-pub async fn get_transaction_unspent_outputs(
+pub async fn transaction_unspent_outputs_from_string_vec(
     enc_txuos: &[String],
     col_utxo: Option<&String>,
     enc_excl: Option<&Vec<String>>,
@@ -243,9 +243,9 @@ pub fn create_wallet() -> (
     let root_key1: clib::crypto::Bip32PrivateKey =
         clib::crypto::Bip32PrivateKey::generate_ed25519_bip32().unwrap();
     let account_key1 = root_key1
-        .derive(crate::txbuilders::harden(1852u32))
-        .derive(crate::txbuilders::harden(1815u32))
-        .derive(crate::txbuilders::harden(0u32));
+        .derive(crate::txbuilder::harden(1852u32))
+        .derive(crate::txbuilder::harden(1815u32))
+        .derive(crate::txbuilder::harden(0u32));
     let ac1_chaincode = account_key1.chaincode();
     let ac1_private_key = account_key1.to_raw_key(); // for signatures
     let ac1_public_key = account_key1.to_raw_key().to_public();
@@ -270,9 +270,9 @@ pub fn create_drslkeypair() -> (String, String, String) {
     let root_key1: clib::crypto::Bip32PrivateKey =
         clib::crypto::Bip32PrivateKey::generate_ed25519_bip32().unwrap();
     let account_key1 = root_key1
-        .derive(crate::txbuilders::harden(2733u32))
-        .derive(crate::txbuilders::harden(2778u32))
-        .derive(crate::txbuilders::harden(0u32));
+        .derive(crate::txbuilder::harden(2733u32))
+        .derive(crate::txbuilder::harden(2778u32))
+        .derive(crate::txbuilder::harden(0u32));
     let ac1_private_key = account_key1.to_raw_key(); // for signatures
     let ac1_public_key = account_key1.to_raw_key().to_public();
     let ac1_public_key_hash = account_key1.to_raw_key().to_public().hash(); // for Native Script Input / Verification
@@ -410,18 +410,18 @@ mod tests {
 
         let stake_key = restored
             .1
-            .derive(crate::txbuilders::harden(1852u32))
-            .derive(crate::txbuilders::harden(1815u32))
-            .derive(crate::txbuilders::harden(0u32))
+            .derive(crate::txbuilder::harden(1852u32))
+            .derive(crate::txbuilder::harden(1815u32))
+            .derive(crate::txbuilder::harden(0u32))
             .derive(2)
             .derive(0);
         let stake_key_hash = stake_key.to_raw_key().to_public().hash();
 
         let account_key1 = restored
             .1
-            .derive(crate::txbuilders::harden(1852))
-            .derive(crate::txbuilders::harden(1815))
-            .derive(crate::txbuilders::harden(0))
+            .derive(crate::txbuilder::harden(1852))
+            .derive(crate::txbuilder::harden(1815))
+            .derive(crate::txbuilder::harden(0))
             .derive(0)
             .derive(1);
         let ac1_chaincode = account_key1.chaincode();

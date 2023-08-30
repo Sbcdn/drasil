@@ -9,7 +9,7 @@ use clib::address::EnterpriseAddress;
 use clib::address::StakeCredKind;
 use std::io::{self, BufRead};
 
-use crate::txbuilders;
+use crate::txbuilder;
 use cryptoxide::blake2b::Blake2b;
 use std::env;
 use std::str;
@@ -301,7 +301,7 @@ pub fn get_network(nws: &String) -> (clib::NetworkIdKind, &str) {
 }
 
 pub fn get_network_from_address(address: &String) -> Result<clib::NetworkIdKind, MurinError> {
-    let addr: caddr::Address = crate::cip30::wallet::b_decode_addr_na(address)?;
+    let addr: caddr::Address = crate::cip30::wallet::address_from_string_non_async(address)?;
     match addr.network_id()? {
         1 => Ok(clib::NetworkIdKind::Mainnet),
         _ => Ok(clib::NetworkIdKind::Testnet),
@@ -636,7 +636,7 @@ pub fn make_script_outputs(
             }
             value.set_coin(&cutils::to_bignum(lovelaces));
             value.set_multiasset(&multiasset);
-            let min_ada_utxo = txbuilders::calc_min_ada_for_utxo(&value, Some(datum.clone()));
+            let min_ada_utxo = txbuilder::calc_min_ada_for_utxo(&value, Some(datum.clone()));
             value.set_coin(&min_ada_utxo);
             //info!("For Output: {:?} added {:?} lovelaces and {:?} tokens",o.address,lovelaces,multiasset);
 
@@ -746,7 +746,7 @@ pub fn make_script_outputs_txb(
             }
             value.set_coin(&cutils::to_bignum(lovelaces));
             value.set_multiasset(&multiasset);
-            let min_ada_utxo = txbuilders::calc_min_ada_for_utxo(&value, Some(datum.clone()));
+            let min_ada_utxo = txbuilder::calc_min_ada_for_utxo(&value, Some(datum.clone()));
             value.set_coin(&min_ada_utxo);
             //info!("For Output: {:?} added {:?} lovelaces and {:?} tokens",o.address,lovelaces,multiasset);
             let mut txout = clib::TransactionOutput::new(r_address, &value);
@@ -784,7 +784,7 @@ pub fn splitt_ada_off(
     addr: caddr::Address,
     split_txos: &mut clib::TransactionOutputs,
 ) {
-    let min_utxo_ada = txbuilders::calc_min_ada_for_utxo(&value, None);
+    let min_utxo_ada = txbuilder::calc_min_ada_for_utxo(&value, None);
     let coins = value.coin();
     match coins.compare(
         &min_utxo_ada
@@ -883,7 +883,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                             new_multi.insert(cs, &new_asset);
                                             new_value.set_multiasset(&new_multi);
                                             let min_utxo_new_val =
-                                                txbuilders::calc_min_ada_for_utxo(&new_value, None);
+                                                txbuilder::calc_min_ada_for_utxo(&new_value, None);
                                             new_value.set_coin(&min_utxo_new_val);
 
                                             // Value for Recursive call
@@ -897,7 +897,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                                 rest_multi.insert(cs, &rest_asset);
                                                 rest_value.set_multiasset(&rest_multi);
                                             }
-                                            let min_utxo = txbuilders::calc_min_ada_for_utxo(
+                                            let min_utxo = txbuilder::calc_min_ada_for_utxo(
                                                 &rest_value,
                                                 None,
                                             );
@@ -962,7 +962,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                                     j += 1;
                                                 }
                                                 worker_val.set_coin(
-                                                    &txbuilders::calc_min_ada_for_utxo(
+                                                    &txbuilder::calc_min_ada_for_utxo(
                                                         &worker_val,
                                                         None,
                                                     ),
@@ -1553,7 +1553,7 @@ pub fn balance_tx(
                 debug!("Acc after clamped sub: \n{:?}", acc_change);
                 debug!("------------------------------------------------------------------\n\n");
             }
-            let min_utxo = txbuilders::calc_min_ada_for_utxo(acc_change, None);
+            let min_utxo = txbuilder::calc_min_ada_for_utxo(acc_change, None);
 
             let min_ada_value = cutils::Value::new(&min_utxo);
             if *txos_paid && *fee_paid && acc_change.coin().compare(&min_ada_value.coin()) >= 0 {

@@ -25,7 +25,7 @@ pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
     log::debug!("Decode native script...");
     let ns = &drasil_murin::clib::NativeScript::from_bytes(hex::decode(contract.plutus.clone())?)?;
     log::debug!("Decode address...");
-    let addr = drasil_murin::b_decode_addr_na(&contract.address)?;
+    let addr = drasil_murin::address_from_string_non_async(&contract.address)?;
     log::debug!("Get tokens on contract...");
     for t in tokens {
         let tmp = twl.iter().find(|n| {
@@ -308,7 +308,7 @@ fn add_utxos(
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
     let (txins, input_txuos) =
-        drasil_murin::txbuilders::input_selection(None, &mut needed_value, utxos, None, None)?;
+        drasil_murin::txbuilder::input_selection(None, &mut needed_value, utxos, None, None)?;
     let txb = transaction.body();
     let mut inputs = txb.inputs();
     let mut outputs = txb.outputs();

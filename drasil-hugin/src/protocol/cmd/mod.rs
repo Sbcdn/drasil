@@ -159,7 +159,7 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     }
 
     if txp.stake_addr().is_some() {
-        let addresses = drasil_murin::cip30::decode_addresses(&txp.used_addresses()).await?;
+        let addresses = drasil_murin::cip30::addresses_from_string(&txp.used_addresses()).await?;
         let stake_addr = drasil_murin::cip30::decode_addr(&txp.stake_addr().unwrap()).await?;
         let mut rewardaddr = get_reward_address(&stake_addr)?;
         for address in addresses {
@@ -224,8 +224,8 @@ pub fn convert_nfts_to_minter_token_asset(
     let mut out = Vec::<drasil_murin::MintTokenAsset>::new();
     for nft in nfts {
         out.push((
-            Some(drasil_murin::chelper::string_to_policy(policy_id)?),
-            drasil_murin::chelper::string_to_assetname(&nft.asset_name)?,
+            Some(drasil_murin::cardano::string_to_policy(policy_id)?),
+            drasil_murin::cardano::string_to_assetname(&nft.asset_name)?,
             drasil_murin::u64_to_bignum(1),
         ))
     }

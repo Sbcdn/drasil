@@ -1,14 +1,14 @@
-pub mod chelper;
+pub mod cardano;
 pub mod cip30;
 pub mod error;
 pub mod pparams;
-pub mod txbuilders;
+pub mod txbuilder;
 pub mod utxomngr;
 
-pub use chelper::*;
+pub use cardano::*;
 pub use cip30::*;
 pub use error::MurinError;
-pub use txbuilders::*;
+pub use txbuilder::*;
 
 pub use cardano_serialization_lib as clib;
 pub use clib::*;

@@ -144,9 +144,9 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     // for the remaining whitelisting filter the tokens out of reward tokens.
     let mut rewards = rwdtxd.get_rewards();
     for vt in vesting_whitelist {
-        let policy = drasil_murin::chelper::string_to_policy(&vt.policy_id)?;
+        let policy = drasil_murin::cardano::string_to_policy(&vt.policy_id)?;
         let assetname = match vt.tokenname {
-            Some(tn) => drasil_murin::chelper::string_to_assetname(&tn)?,
+            Some(tn) => drasil_murin::cardano::string_to_assetname(&tn)?,
             None => drasil_murin::clib::AssetName::new(b"".to_vec())
                 .expect("Could not create emtpy tokenname"),
         };
@@ -327,8 +327,8 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     let pkvs = crate::encryption::decrypt_pkvs(keylocs[0].pvks.clone(), &ident).await?;
     */
     info!("build transaction...");
-    let txb_param: drasil_murin::txbuilders::rwdist::AtRWDParams = (&rwdtxd, Some(wallets));
-    let rwd = drasil_murin::txbuilders::rwdist::AtRWDBuilder::new(txb_param);
+    let txb_param: drasil_murin::txbuilder::rwdist::AtRWDParams = (&rwdtxd, Some(wallets));
+    let rwd = drasil_murin::txbuilder::rwdist::AtRWDBuilder::new(txb_param);
     let builder = drasil_murin::TxBuilder::new(&gtxd, &vec![]);
     let bld_tx = builder.build(&rwd).await?;
 

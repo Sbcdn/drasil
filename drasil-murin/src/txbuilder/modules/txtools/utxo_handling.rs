@@ -201,7 +201,7 @@ pub fn input_selection(
 ) -> Result<(clib::TransactionInputs, TransactionUnspentOutputs), TxToolsError> {
     //debug!("\n\nMULTIASSETS: {:?}\n\n", txins);
 
-    let (mut purecoinassets, mut multiassets) = crate::chelper::hfn::splitt_coin_multi(txins);
+    let (mut purecoinassets, mut multiassets) = crate::cardano::hfn::splitt_coin_multi(txins);
 
     let mut nv = needed_value.clone();
     let mut selection = TransactionUnspentOutputs::new();
@@ -234,7 +234,7 @@ pub fn input_selection(
     if let Some(exclude_utxo) = exclude {
         //debug!("Exclude: {:?}", exclude_utxo);
         let c_index =
-            crate::chelper::hfn::find_collateral_by_txhash_txix(&exclude_utxo, &purecoinassets);
+            crate::cardano::hfn::find_collateral_by_txhash_txix(&exclude_utxo, &purecoinassets);
         //debug!(
         //    "Some excludes to check for deletion found, Index: {:?}",
         //    c_index
@@ -243,7 +243,7 @@ pub fn input_selection(
             purecoinassets.swap_remove(index);
             //debug!("deleted exclude from inputs: {:?}\n", col);
             // Double check
-            if crate::chelper::hfn::find_collateral_by_txhash_txix(&exclude_utxo, &purecoinassets)
+            if crate::cardano::hfn::find_collateral_by_txhash_txix(&exclude_utxo, &purecoinassets)
                 .is_some()
             {
                 return Err(TxToolsError::Custom(
@@ -254,7 +254,7 @@ pub fn input_selection(
     }
 
     // lookup tokens from needed value
-    let mut tokens_to_find = crate::chelper::htypes::Tokens::new();
+    let mut tokens_to_find = crate::cardano::htypes::Tokens::new();
     if needed_value.multiasset().is_some() {
         if needed_value.multiasset().unwrap().len() > 0 {
             let pids = needed_value.multiasset().unwrap().keys();
@@ -313,7 +313,7 @@ pub fn input_selection(
         if purecoinassets.is_empty() {
             // Find the tokens we want in the multis
             trace!("\nWe look for multiassets!\n");
-            let ret = crate::chelper::hfn::find_suitable_coins(&mut nv, &mut multiassets, overhead);
+            let ret = crate::cardano::hfn::find_suitable_coins(&mut nv, &mut multiassets, overhead);
             match ret.0 {
                 Some(utxos) => {
                     for u in utxos {
@@ -330,7 +330,7 @@ pub fn input_selection(
         } else {
             // Find enough Ada to pay the transaction
             let ret =
-                crate::chelper::hfn::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
+                crate::cardano::hfn::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
             trace!("Return coinassets: {:?}", ret);
             match ret.0 {
                 Some(utxos) => {

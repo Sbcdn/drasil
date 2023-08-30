@@ -32,7 +32,7 @@ impl From<String> for CMintHandle {
 
 impl CMintHandle {
     pub fn reward_addr(&self) -> Result<clib::address::Address, MurinError> {
-        let addr = crate::b_decode_addr_na(&self.pay_addr)?;
+        let addr = crate::address_from_string_non_async(&self.pay_addr)?;
         get_reward_address(&addr)
     }
 

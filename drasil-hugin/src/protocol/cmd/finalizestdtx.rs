@@ -138,7 +138,7 @@ impl FinalizeStdTx {
     }
 
     async fn finalize_std_tx(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<String> {
-        use drasil_murin::txbuilders::finalize::finalize;
+        use drasil_murin::txbuilder::finalize::finalize;
         let response = finalize(&self.get_signature(), raw_tx).await?;
         info!("Response: {}", response);
         Ok(response)
