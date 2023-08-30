@@ -115,7 +115,7 @@ impl IntoFrame for BuildStdTx {
 
 #[cfg(test)]
 mod tests {
-    use crate::{TransactionPattern, Operation, WalletType, protocol::parse::Parse, Frame};
+    use crate::{TransactionPattern, Operation};
 
     #[test]
     fn new_build_std_tx_delegate_stake() {

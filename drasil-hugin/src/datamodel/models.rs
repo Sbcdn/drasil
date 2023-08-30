@@ -1090,9 +1090,7 @@ pub struct TransferHandle {
 #[cfg(test)]
 mod tests {
     use tokio;
-    use drasil_murin::MurinError;
     use drasil_murin::clib::crypto::Ed25519KeyHash;
-    use drasil_murin::clib;
     #[tokio::test]
     async fn stake_deregistration() {
         let poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();

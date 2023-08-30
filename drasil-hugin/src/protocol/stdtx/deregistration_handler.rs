@@ -139,7 +139,6 @@ mod test {
     use crate::{BuildStdTx, StdTxType, TransactionPattern, Operation};
     use tokio;
     use std::env::set_var;
-    use drasil_murin::clib;
 
     #[tokio::test]
     async fn handle_stake_deregistration() {
