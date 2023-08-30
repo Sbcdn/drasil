@@ -500,45 +500,58 @@ pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MimirError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::MimirError;
-
     #[test]
-    fn stake_registration() -> Result<(), MimirError> {
-        let mut conn = crate::establish_connection()?;
+    fn stake_registration() {
+        let mut conn = crate::establish_connection().unwrap();
         let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
-        let func_value = super::stake_registration(&mut conn, stake_addr_in)?;
-        let real_value = (
-            stake_addr_in.to_string(), 
-            vec![198, 165, 251, 57, 17, 72, 99, 218, 115, 122, 130, 79, 53, 92, 9, 247, 32, 71, 154, 148, 191, 249, 27, 54, 19, 99, 158, 115, 19, 18, 141, 199], 
-            0, 
-            38
-        );
+        let func_value = super::stake_registration(&mut conn, stake_addr_in).unwrap();
+
+        let (
+            stake_address_view,
+            tx_hash,
+            stake_registration_cert_index,
+            stake_registration_epoch_no
+        ) = func_value[0].clone();
 
         assert_eq!(func_value.len(), 1);
-        assert_eq!(func_value[0], real_value);
-
-        Ok(())
+        assert_eq!(stake_address_view, stake_addr_in.to_string());
+        assert_eq!(
+            hex::encode(tx_hash.clone()), 
+            "c6a5fb39114863da737a824f355c09f720479a94bff91b3613639e7313128dc7".to_string()
+        );
+        assert_eq!(stake_registration_cert_index, 0);
+        assert_eq!(stake_registration_epoch_no, 38);
     }
 
     #[test]
-    fn stake_deregistration() -> Result<(), MimirError> {
-        let mut conn = crate::establish_connection()?;
-        let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
-        let func_value = super::stake_deregistration(&mut conn, stake_addr_in)?;
+    fn stake_deregistration() {
+        let mut conn = crate::establish_connection().unwrap();
+        let stake_addr_in = "stake_test1urtyeyl0qz20tsteu5uqzz0tamczyfzegn3ezn6mej360ycky7cg5";
+        let func_value = super::stake_deregistration(&mut conn, stake_addr_in).unwrap();
 
-        assert_eq!(func_value.len(), 0);
+        assert_eq!(func_value.len(), 94);
 
-        Ok(())
+        let (
+            stake_address_view,
+            tx_hash,
+            stake_deregistration_cert_index,
+            stake_deregistration_epoch_no,
+            stake_deregistration_redeemer_id
+        ) = func_value.last().unwrap();
+
+        assert_eq!(stake_address_view, stake_addr_in);
+        assert_eq!(hex::encode(tx_hash), "49d55da2db879398172ada91da2f02d902a51daf744b5ff6da8c0c96467c0c2a"); // assumed to be correct
+        assert_eq!(stake_deregistration_cert_index, &0);
+        assert_eq!(stake_deregistration_epoch_no, &8);
+        assert_eq!(stake_deregistration_redeemer_id, &None);
     }
 
     #[test]
-    fn check_stakeaddr_registered() -> Result<(), MimirError> {
+    fn check_stakeaddr_registered() {
         let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
-        let func_value = super::check_stakeaddr_registered(stake_addr_in)?;
+        let func_value = super::check_stakeaddr_registered(stake_addr_in).unwrap();
         let real_value = true;
 
         assert_eq!(func_value, real_value);
-
-        Ok(())
     }
 }

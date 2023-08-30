@@ -37,15 +37,14 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
     // intotxdata only works with the transaction pattern, we also need to make the address pattern acceptable
 
     let wal_addr = if let Some(addr) = addresses {
-        let r = addr
+        addr
             .iter()
             .fold(Vec::<clib::address::Address>::new(), |mut acc, a| {
                 acc.push(
                     b_decode_addr_na(a).unwrap()
                 );
                 acc
-            });
-        r
+            })
     } else {
         vec![]
     };

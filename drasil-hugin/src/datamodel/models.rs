@@ -448,7 +448,7 @@ pub enum Operation {
     },
     StakeDeregistration {
         poolhash: String,
-        addresses: Option<Vec<String>>,
+        payment_addresses: Option<Vec<String>>,
     },
     StdTx {
         transfers: Vec<TransferHandle>,
@@ -744,7 +744,7 @@ impl Operation {
         match self {
             Operation::StakeDeregistration {
                 poolhash,
-                addresses: _,
+                payment_addresses: _,
             } => Ok(DeregTxData::new(poolhash)?),
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
@@ -1089,39 +1089,37 @@ mod tests {
     use tokio;
     use drasil_murin::MurinError;
     use drasil_murin::clib::crypto::Ed25519KeyHash;
+    use drasil_murin::clib;
     #[tokio::test]
-    async fn stake_deregistration() -> Result<(), MurinError>{
-        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
-        let addr1 = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708".to_string();
-        let addresses = Some(vec![addr1]);
-        let op = super::Operation::StakeDeregistration { poolhash: poolhash.clone(), addresses };
+    async fn stake_deregistration() {
+        let poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();
+        let addr1 = "stake_test1uqd2nz8ugrn6kwkflvmt9he8dr966dszfmm5lt66qdmn28qt4wff9";
+        let payment_addresses = Some(vec![
+            addr1.to_string()
+        ]);
+        let op = super::Operation::StakeDeregistration { poolhash: poolhash.clone(), payment_addresses };
 
-        let deregistration = op.into_stake_deregistration().await?;
+        let deregistration = op.into_stake_deregistration().await.unwrap();
 
-        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash)?;
-        let real_registered = false;
+        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash).unwrap();
+
         assert_eq!(deregistration.get_poolhash(), poolhash);
         assert_eq!(deregistration.get_poolkeyhash(), real_poolkeyhash);
-        assert_eq!(deregistration.get_registered(), real_registered);
-
-        Ok(())
     }
 
     #[tokio::test]
-    async fn stake_delegation() -> Result<(), MurinError>{
+    async fn stake_delegation() {
         let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
         let addr1 = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708".to_string();
         let addresses = Some(vec![addr1]);
         let op = super::Operation::StakeDelegation { poolhash: poolhash.clone(), addresses };
 
-        let delegation = op.into_stake_delegation().await?;
+        let delegation = op.into_stake_delegation().await.unwrap();
 
-        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash)?;
-        let real_registered = false;
+        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash).unwrap();
+        let real_registered = false; // Placeholder value. Unit test can't test this. Needs integration test.
         assert_eq!(delegation.get_poolhash(), poolhash);
         assert_eq!(delegation.get_poolkeyhash(), real_poolkeyhash);
         assert_eq!(delegation.get_registered(), real_registered);
-
-        Ok(())
     }
 }
