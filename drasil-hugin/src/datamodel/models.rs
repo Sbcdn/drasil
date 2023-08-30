@@ -723,8 +723,7 @@ impl Operation {
 
     pub async fn into_stake_delegation(
         &self,
-    ) -> Result<drasil_murin::txbuilder::stdtx::DelegTxData, drasil_murin::error::MurinError>
-    {
+    ) -> Result<drasil_murin::txbuilder::stdtx::DelegTxData, drasil_murin::error::MurinError> {
         use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::DelegTxData;
 
