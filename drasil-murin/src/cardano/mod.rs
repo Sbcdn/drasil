@@ -1,11 +1,9 @@
 #![allow(non_snake_case)]
-pub mod cproparams;
 pub mod supporting_functions;
 pub mod models;
 
 pub use super::MurinError;
 use bech32::{self, ToBase32};
-pub use cproparams::*;
 use cryptoxide::{blake2b::Blake2b, digest::Digest};
 pub use supporting_functions::*;
 pub use models::*;
