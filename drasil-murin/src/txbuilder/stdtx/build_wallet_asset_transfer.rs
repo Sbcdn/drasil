@@ -1,8 +1,8 @@
 use super::StandardTxData;
 use crate::error::MurinError;
-use crate::supporting_functions::{self};
 use crate::min_ada_for_utxo;
 use crate::modules::transfer::models::{Sink, Source, TransBuilder, TransWallets, Transfer};
+use crate::supporting_functions::{self};
 use crate::txbuilder::TxBO;
 use crate::PerformTxb;
 use crate::TxData;
@@ -186,9 +186,11 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         builder.build(*fee)?;
 
         let saved_input_txuos = builder.tx.clone().unwrap().0;
-        let vkey_counter = supporting_functions::get_vkey_count(&builder.tx.as_ref().unwrap().0, None);
+        let vkey_counter =
+            supporting_functions::get_vkey_count(&builder.tx.as_ref().unwrap().0, None);
         let slot = to_bignum(
-            gtxd.clone().get_current_slot() + supporting_functions::get_ttl_tx(&gtxd.clone().get_network()),
+            gtxd.clone().get_current_slot()
+                + supporting_functions::get_ttl_tx(&gtxd.clone().get_network()),
         );
         let mut txbody = clib::TransactionBody::new_tx_body(
             &builder.tx.as_ref().unwrap().1,

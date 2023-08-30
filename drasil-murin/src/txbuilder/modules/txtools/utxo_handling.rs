@@ -1,6 +1,6 @@
 use super::error::TxToolsError;
 use super::models::TokenAsset;
-use crate::cip30::get_stake_address;
+use crate::cip30::stake_keyhash_from_address;
 use crate::clib;
 use crate::clib::{
     address::Address,
@@ -127,9 +127,9 @@ pub fn find_token_utxos_na(
                 let unspent_output = ins.get(i);
                 if let Some(addr) = on_addr {
                     if unspent_output.output().address().to_bytes() != addr.to_bytes()
-                        && if let Ok(stake_addr) = get_stake_address(addr) {
+                        && if let Ok(stake_addr) = stake_keyhash_from_address(addr) {
                             if let Ok(stake_addr_2) =
-                                get_stake_address(&unspent_output.output().address())
+                                stake_keyhash_from_address(&unspent_output.output().address())
                             {
                                 stake_addr != stake_addr_2
                             } else {
@@ -201,7 +201,8 @@ pub fn input_selection(
 ) -> Result<(clib::TransactionInputs, TransactionUnspentOutputs), TxToolsError> {
     //debug!("\n\nMULTIASSETS: {:?}\n\n", txins);
 
-    let (mut purecoinassets, mut multiassets) = crate::cardano::supporting_functions::splitt_coin_multi(txins);
+    let (mut purecoinassets, mut multiassets) =
+        crate::cardano::supporting_functions::splitt_coin_multi(txins);
 
     let mut nv = needed_value.clone();
     let mut selection = TransactionUnspentOutputs::new();
@@ -233,8 +234,10 @@ pub fn input_selection(
 
     if let Some(exclude_utxo) = exclude {
         //debug!("Exclude: {:?}", exclude_utxo);
-        let c_index =
-            crate::cardano::supporting_functions::find_collateral_by_txhash_txix(&exclude_utxo, &purecoinassets);
+        let c_index = crate::cardano::supporting_functions::find_collateral_by_txhash_txix(
+            &exclude_utxo,
+            &purecoinassets,
+        );
         //debug!(
         //    "Some excludes to check for deletion found, Index: {:?}",
         //    c_index
@@ -243,8 +246,11 @@ pub fn input_selection(
             purecoinassets.swap_remove(index);
             //debug!("deleted exclude from inputs: {:?}\n", col);
             // Double check
-            if crate::cardano::supporting_functions::find_collateral_by_txhash_txix(&exclude_utxo, &purecoinassets)
-                .is_some()
+            if crate::cardano::supporting_functions::find_collateral_by_txhash_txix(
+                &exclude_utxo,
+                &purecoinassets,
+            )
+            .is_some()
             {
                 return Err(TxToolsError::Custom(
                     "Error: exclude of utxos was not possible".to_string(),
@@ -313,7 +319,11 @@ pub fn input_selection(
         if purecoinassets.is_empty() {
             // Find the tokens we want in the multis
             trace!("\nWe look for multiassets!\n");
-            let ret = crate::cardano::supporting_functions::find_suitable_coins(&mut nv, &mut multiassets, overhead);
+            let ret = crate::cardano::supporting_functions::find_suitable_coins(
+                &mut nv,
+                &mut multiassets,
+                overhead,
+            );
             match ret.0 {
                 Some(utxos) => {
                     for u in utxos {
@@ -329,8 +339,11 @@ pub fn input_selection(
             let _ = multiassets.pop();
         } else {
             // Find enough Ada to pay the transaction
-            let ret =
-                crate::cardano::supporting_functions::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
+            let ret = crate::cardano::supporting_functions::find_suitable_coins(
+                &mut nv,
+                &mut purecoinassets,
+                overhead,
+            );
             trace!("Return coinassets: {:?}", ret);
             match ret.0 {
                 Some(utxos) => {

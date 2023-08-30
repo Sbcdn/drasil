@@ -32,9 +32,9 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
                 || drasil_murin::address_from_string(&recipient_payment_addr)
                     .await
                     .is_err()
-                || drasil_murin::wallet::get_stake_address(
+                || drasil_murin::wallet::stake_keyhash_from_address(
                     &drasil_murin::address_from_string(&recipient_stake_addr).await?,
-                )? != drasil_murin::wallet::get_stake_address(
+                )? != drasil_murin::wallet::stake_keyhash_from_address(
                     &drasil_murin::address_from_string(
                         &drasil_mimir::api::select_addr_of_first_transaction(
                             &drasil_murin::decode_address_from_bytes(&recipient_stake_addr)

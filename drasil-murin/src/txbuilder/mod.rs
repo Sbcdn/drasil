@@ -6,7 +6,7 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::{supporting_functions, models};
+use crate::{models, supporting_functions};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use clib::address::Address;
@@ -103,8 +103,15 @@ impl TxBuilder {
             let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(tx.4);
             tx_.1.set_vkeys(&dummy_vkeywitnesses);
 
-            let calculated_fee =
-                supporting_functions::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
+            let calculated_fee = supporting_functions::calc_txfee(
+                &transaction2,
+                &a,
+                &b,
+                ex_unit_price,
+                &steps,
+                &mem,
+                true,
+            );
             let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
             info!("Fee: {:?}", calculated_fee);
             Ok(supporting_functions::tx_output_data(
@@ -595,7 +602,8 @@ pub fn input_selection(
 ) -> Result<(clib::TransactionInputs, TransactionUnspentOutputs), MurinError> {
     debug!("\n\nMULTIASSETS: {:?}\n\n", txins);
 
-    let (mut purecoinassets, mut multiassets) = crate::cardano::supporting_functions::splitt_coin_multi(txins);
+    let (mut purecoinassets, mut multiassets) =
+        crate::cardano::supporting_functions::splitt_coin_multi(txins);
 
     let mut nv = needed_value.clone();
     let mut selection = TransactionUnspentOutputs::new();
@@ -627,7 +635,10 @@ pub fn input_selection(
 
     if let Some(cutxo) = collateral {
         debug!("Col: {:?}", cutxo);
-        let c_index = crate::cardano::supporting_functions::find_collateral_by_txhash_txix(&cutxo, &purecoinassets);
+        let c_index = crate::cardano::supporting_functions::find_collateral_by_txhash_txix(
+            &cutxo,
+            &purecoinassets,
+        );
         debug!(
             "Some collateral to check for deletion found, Index: {:?}",
             c_index
@@ -636,8 +647,11 @@ pub fn input_selection(
             let col = purecoinassets.swap_remove(index);
             debug!("Deleted collateral from inputs: {:?}\n", col);
             // Double check
-            if crate::cardano::supporting_functions::find_collateral_by_txhash_txix(&cutxo, &purecoinassets)
-                .is_some()
+            if crate::cardano::supporting_functions::find_collateral_by_txhash_txix(
+                &cutxo,
+                &purecoinassets,
+            )
+            .is_some()
             {
                 return Err(MurinError::new(
                     "PANIC COLLATERAL COULDN'T BE EXCLUDED FROM SELECTION SET",
@@ -706,7 +720,11 @@ pub fn input_selection(
         if purecoinassets.is_empty() {
             // Find the tokens we want in the multis
             debug!("\nWe look for multiassets!\n");
-            let ret = crate::cardano::supporting_functions::find_suitable_coins(&mut nv, &mut multiassets, overhead);
+            let ret = crate::cardano::supporting_functions::find_suitable_coins(
+                &mut nv,
+                &mut multiassets,
+                overhead,
+            );
             match ret.0 {
                 Some(utxos) => {
                     for u in utxos {
@@ -722,8 +740,11 @@ pub fn input_selection(
             let _ = multiassets.pop();
         } else {
             // Fine enough Ada to pay the transaction
-            let ret =
-                crate::cardano::supporting_functions::find_suitable_coins(&mut nv, &mut purecoinassets, overhead);
+            let ret = crate::cardano::supporting_functions::find_suitable_coins(
+                &mut nv,
+                &mut purecoinassets,
+                overhead,
+            );
             debug!("Return coinassets: {:?}", ret);
             match ret.0 {
                 Some(utxos) => {

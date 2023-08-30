@@ -1,7 +1,7 @@
 use crate::error::MurinError;
-use crate::supporting_functions;
-use crate::models;
 use crate::marketplace::*;
+use crate::models;
+use crate::supporting_functions;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
 
@@ -161,7 +161,8 @@ pub fn perform_listing(
     //token_utxos.add(&script_utxo);
     //let listing_tokens  = artifn::get_nfts_for_sale(&token_utxos);
 
-    let token_input_utxo = supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
+    let token_input_utxo =
+        supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
     debug!("Token Input Utxos: {:?}", token_input_utxo);
 
     let (txins, mut input_txuos) = supporting_functions::input_selection(
@@ -172,7 +173,8 @@ pub fn perform_listing(
     );
     let saved_input_txuos = input_txuos.clone();
 
-    let vkey_counter = supporting_functions::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
+    let vkey_counter =
+        supporting_functions::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
     debug!(
         "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
         input_txuos
@@ -195,7 +197,8 @@ pub fn perform_listing(
         &dummy,
     )?;
 
-    let slot = gtxd.clone().get_current_slot() + supporting_functions::get_ttl_tx(&gtxd.clone().get_network());
+    let slot = gtxd.clone().get_current_slot()
+        + supporting_functions::get_ttl_tx(&gtxd.clone().get_network());
     let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
     txbody.set_ttl(&cutils::to_bignum(slot));
     info!("\nTxOutputs: {:?}\n", txbody.outputs());
@@ -272,8 +275,15 @@ pub async fn build_mp_listing(
         let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(vkey_counter_2);
         txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
-        let calculated_fee =
-            supporting_functions::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
+        let calculated_fee = supporting_functions::calc_txfee(
+            &transaction2,
+            &a,
+            &b,
+            ex_unit_price,
+            &steps,
+            &mem,
+            true,
+        );
         let (txbody, txwitness, aux_data, used_utxos, _) =
             perform_listing(&calculated_fee, sc_addr, sc_version, gtxd, mptxd, false)?;
         info!("Fee: {:?}", calculated_fee);

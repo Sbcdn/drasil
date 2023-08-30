@@ -4,7 +4,8 @@ use argon2::password_hash::rand_core::{OsRng, RngCore};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto};
 use clib::address::{BaseAddress, EnterpriseAddress};
-use clib::crypto::{Ed25519KeyHash, PrivateKey, PublicKey};
+use clib::crypto::{Ed25519KeyHash, PrivateKey, PublicKey, ScriptHash};
+use clib::MultiAsset;
 
 /// decode an hex encoded address into an address
 pub async fn decode_address_from_bytes(bytes: &String) -> Result<caddr::Address, MurinError> {
@@ -57,7 +58,9 @@ pub fn address_from_string_non_async(str: &String) -> Result<caddr::Address, Mur
 }
 
 /// decode a vector of hex encoded addresses and return a vector of deserialized addresses
-pub async fn addresses_from_string(addresses: &Vec<String>) -> Result<Vec<caddr::Address>, MurinError> {
+pub async fn addresses_from_string(
+    addresses: &Vec<String>,
+) -> Result<Vec<caddr::Address>, MurinError> {
     let mut ret = Vec::<caddr::Address>::new();
     //Ok(caddr::Address::from_bytes(hex::decode(bytes)?)?)
     for addr in addresses {
@@ -71,23 +74,25 @@ pub async fn addresses_from_string(addresses: &Vec<String>) -> Result<Vec<caddr:
 }
 
 /// convert hex encoded utxos into TransactionUnspentOutputs, filter collateral and excluded utxos if provided
-pub async fn transaction_unspent_outputs_from_string_vec(
+pub fn transaction_unspent_outputs_from_string_vec(
     enc_txuos: &[String],
-    col_utxo: Option<&String>,
+    col_utxo: Option<&Vec<String>>,
     enc_excl: Option<&Vec<String>>,
 ) -> Result<TransactionUnspentOutputs, MurinError> {
     let mut txuos = TransactionUnspentOutputs::new();
     let mut utxos = enc_txuos.to_vec();
 
     // Filter exculdes if there are some
-    if enc_excl.is_some() {
-        for excl in enc_excl.unwrap() {
+    if let Some(enc_excl) = enc_excl {
+        for excl in enc_excl {
             utxos.retain(|utxo| *utxo != *excl);
         }
     }
     // filter collateral if there is some
-    if col_utxo.is_some() {
-        utxos.retain(|utxo| *utxo != *col_utxo.unwrap());
+    if let Some(col_utxos) = col_utxo {
+        for col_utxo in col_utxos {
+            utxos.retain(|utxo| *utxo != *col_utxo);
+        }
     }
     // convert to TransactionunspentOutputs
     for utxo in utxos {
@@ -96,7 +101,7 @@ pub async fn transaction_unspent_outputs_from_string_vec(
     Ok(txuos)
 }
 
-pub async fn get_transaction_unspent_output(
+pub fn transaction_unspent_outputs_from_string(
     encoded_utxo: &String,
 ) -> Result<TransactionUnspentOutput, MurinError> {
     Ok(TransactionUnspentOutput::from_bytes(hex::decode(
@@ -113,7 +118,9 @@ pub async fn get_network_kind(net_id: u64) -> Result<clib::NetworkIdKind, MurinE
     }
 }
 
-pub fn get_stake_address(addr: &caddr::Address) -> Result<ccrypto::Ed25519KeyHash, MurinError> {
+pub fn stake_keyhash_from_address(
+    addr: &caddr::Address,
+) -> Result<ccrypto::Ed25519KeyHash, MurinError> {
     debug!("Address in get_stake_address: {:?}", addr.to_bech32(None));
 
     match caddr::BaseAddress::from_address(addr) {
@@ -175,7 +182,7 @@ pub fn reward_address_from_address(addr: &caddr::Address) -> Result<caddr::Addre
     }
 }
 
-pub fn get_bech32_stake_address_from_str(str: &str) -> Result<String, MurinError> {
+pub fn bech32_stake_address_from_str(str: &str) -> Result<String, MurinError> {
     let address = match caddr::Address::from_bech32(str) {
         Ok(addr) => Ok(addr),
         Err(_e) => Err(MurinError::new(
@@ -195,7 +202,9 @@ pub fn get_bech32_stake_address_from_str(str: &str) -> Result<String, MurinError
     }
 }
 
-pub fn get_pubkey(addr: &caddr::Address) -> Result<ccrypto::Ed25519KeyHash, MurinError> {
+pub fn payment_keyhash_from_address(
+    addr: &caddr::Address,
+) -> Result<ccrypto::Ed25519KeyHash, MurinError> {
     //info!("\nAddress in get_payment_address: {:?}",addr);
     let address = caddr::BaseAddress::from_address(addr);
     let err = MurinError::new("ERROR wallet::get_pubkey gut not deserialize pub key from address");
@@ -230,6 +239,22 @@ pub fn get_pubkey(addr: &caddr::Address) -> Result<ccrypto::Ed25519KeyHash, Muri
             }
         }
     }
+}
+
+pub fn extract_assets(
+    utxo: &TransactionUnspentOutput,
+    policy: &String,
+) -> Result<MultiAsset, MurinError> {
+    let mut out = MultiAsset::new();
+
+    if let Some(multiassets) = utxo.output().amount().multiasset() {
+        let sh = ScriptHash::from_bytes(hex::decode(policy)?)?;
+        if let Some(assets) = multiassets.get(&sh) {
+            out.insert(&sh, &assets);
+        }
+    }
+
+    Ok(out)
 }
 
 pub fn create_wallet() -> (
