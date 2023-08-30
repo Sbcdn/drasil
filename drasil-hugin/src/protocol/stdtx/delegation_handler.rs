@@ -78,7 +78,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
         gtxd.set_inputs(wallet_utxos);
 
         // ToDo: go through all addresses and check all stake keys are equal
-        let sa = drasil_murin::get_reward_address(&wal_addr[0])?;
+        let sa = drasil_murin::reward_address_from_address(&wal_addr[0])?;
         gtxd.set_stake_address(sa);
         gtxd.set_senders_addresses(wal_addr.clone());
     }

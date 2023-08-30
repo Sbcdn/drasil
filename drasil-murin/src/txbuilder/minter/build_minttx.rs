@@ -1,8 +1,8 @@
 use crate::error::MurinError;
-use crate::hfn::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
+use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
 use crate::minter::*;
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
-use crate::{htypes::*, ServiceFees};
+use crate::{models::*, ServiceFees};
 
 use crate::minter::models::CMintHandle;
 use crate::txbuilder::{calc_min_ada_for_utxo, harden, input_selection, TxBO};

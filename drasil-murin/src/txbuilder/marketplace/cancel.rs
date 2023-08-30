@@ -1,6 +1,6 @@
 use crate::error::MurinError;
-use crate::hfn;
-use crate::htypes;
+use crate::supporting_functions;
+use crate::models;
 use crate::marketplace::*;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, plutus, utils as cutils};
@@ -35,7 +35,7 @@ pub fn perform_cancel(
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
     let steps = cutils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: htypes::ExUnitPrice = crate::ExUnitPrice {
+    let ex_unit_price: models::ExUnitPrice = crate::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };
@@ -68,7 +68,7 @@ pub fn perform_cancel(
         metadata = meta;
     };
 
-    let decoded_datum = hfn::decode_datum_mp(metadata, &gtxd.get_network())?;
+    let decoded_datum = supporting_functions::decode_datum_mp(metadata, &gtxd.get_network())?;
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////
     //Add Inputs and Outputs
@@ -107,10 +107,10 @@ pub fn perform_cancel(
     let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
     let change_address = &gtxd.clone().get_senders_addresses()[0];
 
-    let mut needed_value = hfn::sum_output_values(&txouts);
+    let mut needed_value = supporting_functions::sum_output_values(&txouts);
     needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
     let security = cutils::to_bignum(
-        cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * htypes::MIN_ADA),
+        cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * models::MIN_ADA),
     ); // 10% Security for min utxo etc.
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
@@ -120,13 +120,13 @@ pub fn perform_cancel(
         input_txuos
     );
 
-    let (signers_address_utxos, _) = hfn::find_utxos_by_address(trade_owner.clone(), &input_txuos);
+    let (signers_address_utxos, _) = supporting_functions::find_utxos_by_address(trade_owner.clone(), &input_txuos);
     info!("\n\nTradeOwner Utxos:{:?}\n\n", signers_address_utxos);
 
     //
     // TODO: Ensure the Smart Contract UTXO is Part of the Input UTXOS
     //
-    let token_input_utxo = hfn::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
+    let token_input_utxo = supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
     debug!("Token Input Utxos: {:?}", token_input_utxo);
 
     let (mut txins, mut input_txuos) = super::input_selection(
@@ -147,7 +147,7 @@ pub fn perform_cancel(
     } else {
         info!("The utxo set does not contain any utxos from the listing adress, transaction would fail!");
         info!("Creating transaction for internal transfer instead!");
-        let mut internal_transfer = hfn::create_ada_tx(
+        let mut internal_transfer = supporting_functions::create_ada_tx(
             &cutils::to_bignum(2000000u64), // fee: &cutils::BigNum,
             true,
             &gtxd.get_network(),
@@ -158,7 +158,7 @@ pub fn perform_cancel(
             gtxd.get_current_slot(),
         )?;
 
-        let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(internal_transfer.3);
+        let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(internal_transfer.3);
         internal_transfer.1.set_vkeys(&dummy_vkeywitnesses);
 
         // Build and encode dummy transaction
@@ -168,9 +168,9 @@ pub fn perform_cancel(
             Some(internal_transfer.2.clone()),
         );
         let calculated_fee =
-            hfn::calc_txfee(&transaction_, &a, &b, ex_unit_price, &steps, &mem, true);
+            supporting_functions::calc_txfee(&transaction_, &a, &b, ex_unit_price, &steps, &mem, true);
 
-        let (txbody, txwitness, aux_data, _, used_utxos) = hfn::create_ada_tx(
+        let (txbody, txwitness, aux_data, _, used_utxos) = supporting_functions::create_ada_tx(
             &calculated_fee, // fee: &cutils::BigNum,
             true,
             &gtxd.get_network(),
@@ -181,7 +181,7 @@ pub fn perform_cancel(
             gtxd.get_current_slot(),
         )?;
 
-        hfn::tx_output_data(
+        supporting_functions::tx_output_data(
             txbody,
             txwitness,
             Some(aux_data),
@@ -192,13 +192,13 @@ pub fn perform_cancel(
         std::process::exit(0);
     }
 
-    let vkey_counter = hfn::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
+    let vkey_counter = supporting_functions::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
     debug!(
         "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
         input_txuos
     );
 
-    let txouts_fin = hfn::balance_tx(
+    let txouts_fin = supporting_functions::balance_tx(
         &mut input_txuos,
         mptxd.get_tokens(),
         &mut txouts,
@@ -292,7 +292,7 @@ pub fn perform_cancel(
     buf.extend(decoded_datum.5.to_bytes());
     buf.extend(lang_sb);
 
-    let scriptdatahash = ccrypto::ScriptDataHash::from(hfn::blake2b256(&buf));
+    let scriptdatahash = ccrypto::ScriptDataHash::from(supporting_functions::blake2b256(&buf));
     debug!(
         "Script Hash Data Concat: {:?}",
         hex::encode(scriptdatahash.to_bytes())
@@ -326,11 +326,11 @@ pub async fn build_mp_cancel(
     mptxd: &super::MpTxData,
     sc_script: &String,
     sc_addr: &str,
-) -> Result<htypes::BuildOutput, MurinError> {
+) -> Result<models::BuildOutput, MurinError> {
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
     let steps = cutils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: htypes::ExUnitPrice = crate::ExUnitPrice {
+    let ex_unit_price: models::ExUnitPrice = crate::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };
@@ -350,13 +350,13 @@ pub async fn build_mp_cancel(
         true,
     )?;
 
-    let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(vkey_counter);
+    let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(vkey_counter);
     txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
     // Build and encode dummy transaction
     let transaction_ = clib::Transaction::new(&txbody_, &txwitness_, Some(aux_data_));
 
-    let calculated_fee = hfn::calc_txfee(
+    let calculated_fee = supporting_functions::calc_txfee(
         &transaction_,
         &a,
         &b,
@@ -373,17 +373,17 @@ pub async fn build_mp_cancel(
     if vkey_counter_2 != vkey_counter
         || transaction2.to_bytes().len() != transaction_.to_bytes().len()
     {
-        let dummy_vkeywitnesses = hfn::make_dummy_vkeywitnesses(vkey_counter_2);
+        let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(vkey_counter_2);
         txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
         let calculated_fee =
-            hfn::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
+            supporting_functions::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
         let (txbody, txwitness, aux_data, used_utxos, _) =
             perform_cancel(&calculated_fee, sc_script, sc_addr, gtxd, mptxd, false)?;
         info!("Fee: {:?}", calculated_fee);
         debug!("\n\n\nDummy vkey_counter: {:?} \n\n", vkey_counter);
         debug!("\n\n\nDummy vkey_counter_2: {:?} \n\n", vkey_counter_2);
-        Ok(hfn::tx_output_data(
+        Ok(supporting_functions::tx_output_data(
             txbody,
             txwitness,
             Some(aux_data),
@@ -393,7 +393,7 @@ pub async fn build_mp_cancel(
         )?)
     } else {
         info!("Fee: {:?}", calculated_fee);
-        Ok(hfn::tx_output_data(
+        Ok(supporting_functions::tx_output_data(
             txbody,
             txwitness,
             Some(aux_data),

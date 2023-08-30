@@ -1,9 +1,10 @@
 use super::*;
 use crate::error::MurinError;
-use crate::hfn;
+use crate::supporting_functions;
 use crate::modules::transfer::models::Sink;
 use crate::modules::transfer::models::Source;
 use crate::modules::transfer::models::TransBuilder;
+use crate::modules::transfer::models::TransModificator;
 use crate::modules::transfer::models::TransWallets;
 use crate::modules::transfer::models::Transfer;
 use cardano_serialization_lib as clib;
@@ -15,16 +16,16 @@ use modules::transfer::*;
 #[derive(Debug, Clone)]
 pub struct AtRWDBuilder {
     pub stxd: RWDTxData,
-    pub wallets: Option<models::TransWallets>,
+    pub wallets: Option<TransWallets>,
 }
 
-pub type AtRWDParams<'a> = (&'a RWDTxData, Option<models::TransWallets>);
+pub type AtRWDParams<'a> = (&'a RWDTxData, Option<TransWallets>);
 
 impl AtRWDBuilder {
-    pub fn set_wallets(&mut self, wallets: models::TransWallets) {
+    pub fn set_wallets(&mut self, wallets: TransWallets) {
         self.wallets = Some(wallets);
     }
-    pub fn get_wallets(&self) -> Option<models::TransWallets> {
+    pub fn get_wallets(&self) -> Option<TransWallets> {
         self.wallets.clone()
     }
 }
@@ -207,10 +208,10 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
             let v = t.get_source().get_modificator();
             for m in v {
                 match m {
-                    models::TransModificator::Add(d) => {
+                    TransModificator::Add(d) => {
                         fee_paying_source.add_subtraction(&d);
                     }
-                    models::TransModificator::Sub(d) => {
+                    TransModificator::Sub(d) => {
                         fee_paying_source.add_addition(&d);
                     }
                 }
@@ -226,9 +227,9 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
 
         let saved_input_txuos = builder.tx.clone().unwrap().0;
         let mut vkey_counter =
-            hfn::get_vkey_count(&builder.tx.as_ref().unwrap().0, None) + rwd_contract_ids.len(); // +1 dues to signature in finalize
+            supporting_functions::get_vkey_count(&builder.tx.as_ref().unwrap().0, None) + rwd_contract_ids.len(); // +1 dues to signature in finalize
         let slot = cutils::to_bignum(
-            gtxd.clone().get_current_slot() + hfn::get_ttl_tx(&gtxd.clone().get_network()),
+            gtxd.clone().get_current_slot() + supporting_functions::get_ttl_tx(&gtxd.clone().get_network()),
         );
         let mut txbody = clib::TransactionBody::new_tx_body(
             &builder.tx.as_ref().unwrap().1,

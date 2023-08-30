@@ -1,6 +1,6 @@
 use super::StandardTxData;
 use crate::error::MurinError;
-use crate::hfn::{self};
+use crate::supporting_functions::{self};
 use crate::min_ada_for_utxo;
 use crate::modules::transfer::models::{Sink, Source, TransBuilder, TransWallets, Transfer};
 use crate::txbuilder::TxBO;
@@ -186,9 +186,9 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
         builder.build(*fee)?;
 
         let saved_input_txuos = builder.tx.clone().unwrap().0;
-        let vkey_counter = hfn::get_vkey_count(&builder.tx.as_ref().unwrap().0, None);
+        let vkey_counter = supporting_functions::get_vkey_count(&builder.tx.as_ref().unwrap().0, None);
         let slot = to_bignum(
-            gtxd.clone().get_current_slot() + hfn::get_ttl_tx(&gtxd.clone().get_network()),
+            gtxd.clone().get_current_slot() + supporting_functions::get_ttl_tx(&gtxd.clone().get_network()),
         );
         let mut txbody = clib::TransactionBody::new_tx_body(
             &builder.tx.as_ref().unwrap().1,
@@ -229,7 +229,7 @@ mod tests {
         },
         MurinError,
     };
-    use crate::{get_reward_address, TransactionUnspentOutputs};
+    use crate::{reward_address_from_address, TransactionUnspentOutputs};
     use std::env::set_var;
 
     #[tokio::test]
@@ -326,7 +326,7 @@ mod tests {
         let gtxd: crate::TxData = crate::TxData::new(
             None,
             vec![addr.clone()],
-            Some(get_reward_address(&addr).unwrap()),
+            Some(reward_address_from_address(&addr).unwrap()),
             inputs,
             network,
             120000,
@@ -476,7 +476,7 @@ mod tests {
         let gtxd: crate::TxData = crate::TxData::new(
             None,
             vec![addr.clone()],
-            Some(get_reward_address(&addr).unwrap()),
+            Some(reward_address_from_address(&addr).unwrap()),
             inputs,
             network,
             120000,
@@ -698,7 +698,7 @@ mod tests {
         let gtxd: crate::TxData = crate::TxData::new(
             None,
             vec![addr.clone()],
-            Some(get_reward_address(&addr).unwrap()),
+            Some(reward_address_from_address(&addr).unwrap()),
             inputs,
             network,
             120000,

@@ -84,7 +84,7 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
         gtxd.set_inputs(wallet_utxos);
 
         // ToDo: go through all addresses and check all stake keys are equal
-        let sa = drasil_murin::get_reward_address(&std_asset_txd.wallet_addresses[0])?;
+        let sa = drasil_murin::reward_address_from_address(&std_asset_txd.wallet_addresses[0])?;
         gtxd.set_stake_address(sa);
         gtxd.set_senders_addresses(std_asset_txd.wallet_addresses.clone());
     }

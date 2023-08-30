@@ -143,7 +143,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             // bits 7-4: 1000
             let stake_address: String = match address.to_bytes()[0] {
                 //base
-                0b0000 | 0b0001 => drasil_murin::get_reward_address(&address)?.to_bech32(None)?,
+                0b0000 | 0b0001 => drasil_murin::reward_address_from_address(&address)?.to_bech32(None)?,
                 //script address
                 0b0010 | 0b0011 => {
                     log::error!("script address cannot claim");
