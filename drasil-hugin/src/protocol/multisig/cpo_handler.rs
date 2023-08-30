@@ -44,7 +44,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     log::debug!("Generating TxData...");
     let mut gtxd = TxData::new(
         Some(vec![po.contract_id]),
-        vec![drasil_murin::wallet::b_decode_addr(&get_vaddr(&po.user_id).await?).await?],
+        vec![drasil_murin::wallet::address_from_string(&get_vaddr(&po.user_id).await?).await?],
         None,
         TransactionUnspentOutputs::new(),
         get_network_from_address(&contract.address)?,

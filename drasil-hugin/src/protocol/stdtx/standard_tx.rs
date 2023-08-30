@@ -9,7 +9,7 @@ use drasil_murin::TransactionUnspentOutputs;
 use drasil_murin::modules::transfer::models::{TransWallet, TransWallets};
 use drasil_murin::stdtx::build_wallet_asset_transfer::{AtSATBuilder, AtSATParams};
 
-use drasil_murin::{b_decode_addr, PerformTxb};
+use drasil_murin::{address_from_string, PerformTxb};
 
 // Handler for ordinary token transfers
 pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
@@ -37,7 +37,7 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
 
             if let Some(addresses) = wallet_addresses {
                 for addr in addresses.iter() {
-                    b_decode_addr(addr).await?;
+                    address_from_string(addr).await?;
                 }
             }
         }

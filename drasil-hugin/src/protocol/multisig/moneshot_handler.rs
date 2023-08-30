@@ -78,7 +78,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
 
     log::debug!("Try to build transactions...");
     let txb_param: drasil_murin::txbuilder::minter::build_oneshot_mint::AtOSMParams = (
-        drasil_murin::cip30::b_decode_addr(&contract.address).await?,
+        drasil_murin::cip30::address_from_string(&contract.address).await?,
         ns_script.clone(),
         &minttxd,
     );

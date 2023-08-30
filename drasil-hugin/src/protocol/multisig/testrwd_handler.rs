@@ -93,7 +93,7 @@ pub(crate) async fn handle_testrewards(bms: &BuildMultiSig) -> crate::Result<Str
     log::info!("keyloc: {:?}", keyloc);
 
     if let Some(saddr) = keyloc.fee_wallet_addr {
-        match murin::b_decode_addr(&saddr).await {
+        match murin::address_from_string(&saddr).await {
             Ok(a) => minttxd.set_fee_addr(a),
             Err(e) => {
                 return Err(CmdError::Custom {
@@ -109,7 +109,7 @@ pub(crate) async fn handle_testrewards(bms: &BuildMultiSig) -> crate::Result<Str
 
     let minttxd = rnd_mintdata;
     let ns_addr: Option<murin::address::Address> =
-        Some(murin::b_decode_addr(&sporwc_flz.address).await?);
+        Some(murin::address_from_string(&sporwc_flz.address).await?);
     // ToDo:
     //if minttxd.get_to_vendor_script() == true {
     //    ns_addr = Some(contract.address);

@@ -358,7 +358,7 @@ impl TransactionPattern {
         };
 
         let saddr = match self.stake_addr() {
-            Some(sa) => match drasil_murin::wallet::decode_addr(&sa).await {
+            Some(sa) => match drasil_murin::wallet::decode_address_from_bytes(&sa).await {
                 Ok(addr) => Some(addr),
                 Err(_) => None,
             },
@@ -491,7 +491,7 @@ impl Operation {
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
                 if let Some(royaddr) = royalties_addr {
-                    mptx.set_royalties_address(drasil_murin::decode_addr(royaddr).await?);
+                    mptx.set_royalties_address(drasil_murin::decode_address_from_bytes(royaddr).await?);
                 }
 
                 if let Some(royrate) = royalties_rate {
@@ -523,8 +523,8 @@ impl Operation {
                 recipient_payment_addr,
             } => {
                 // let assets = Token::for_all_into_asset(reward_tokens)?;
-                let stake_addr = drasil_murin::decode_addr(recipient_stake_addr).await?;
-                let payment_addr = drasil_murin::decode_addr(recipient_payment_addr).await?;
+                let stake_addr = drasil_murin::decode_address_from_bytes(recipient_stake_addr).await?;
+                let payment_addr = drasil_murin::decode_address_from_bytes(recipient_payment_addr).await?;
 
                 Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
@@ -655,10 +655,10 @@ impl Operation {
                     None => Vec::<drasil_murin::MintTokenAsset>::new(),
                 };
                 let stake_addr = match receiver_stake_addr {
-                    Some(addr) => Some(drasil_murin::decode_addr(addr).await?),
+                    Some(addr) => Some(drasil_murin::decode_address_from_bytes(addr).await?),
                     None => None,
                 };
-                let payment_addr = drasil_murin::decode_addr(receiver_payment_addr).await?;
+                let payment_addr = drasil_murin::decode_address_from_bytes(receiver_payment_addr).await?;
                 let metadata = match mint_metadata {
                     Some(data) => {
                         if !data.is_empty() {
@@ -700,7 +700,7 @@ impl Operation {
                     let amt = drasil_murin::cardano::u64_to_bignum(amounts[i]);
                     assets.push((None, tn, amt))
                 }
-                let payment_addr = drasil_murin::b_decode_addr(receiver).await?;
+                let payment_addr = drasil_murin::address_from_string(receiver).await?;
                 Ok(MinterTxData::new(
                     assets,
                     None,
