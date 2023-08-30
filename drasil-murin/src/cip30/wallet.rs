@@ -7,7 +7,7 @@ use clib::address::{BaseAddress, EnterpriseAddress};
 use clib::crypto::{Ed25519KeyHash, PrivateKey, PublicKey};
 
 /// decode an hex encoded address into an address
-pub async fn decode_addr(bytes: &String) -> Result<caddr::Address, MurinError> {
+pub async fn decode_address_from_bytes(bytes: &String) -> Result<caddr::Address, MurinError> {
     //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
     //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
     //let mut netbyte : u8 = 0b1111;
@@ -19,7 +19,7 @@ pub async fn decode_addr(bytes: &String) -> Result<caddr::Address, MurinError> {
 }
 
 /// decode an hex encoded address into an address
-pub async fn b_decode_addr(str: &String) -> Result<caddr::Address, MurinError> {
+pub async fn address_from_string(str: &String) -> Result<caddr::Address, MurinError> {
     //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
     //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
     //let mut netbyte : u8 = 0b1111;
@@ -61,7 +61,7 @@ pub async fn addresses_from_string(addresses: &Vec<String>) -> Result<Vec<caddr:
     let mut ret = Vec::<caddr::Address>::new();
     //Ok(caddr::Address::from_bytes(hex::decode(bytes)?)?)
     for addr in addresses {
-        ret.push(b_decode_addr(addr).await?)
+        ret.push(address_from_string(addr).await?)
     }
     if !ret.is_empty() || addresses.is_empty() {
         Ok(ret)

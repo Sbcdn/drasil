@@ -26,18 +26,18 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             }
             .into());
             if rewards.is_empty()
-                || drasil_murin::b_decode_addr(&recipient_stake_addr)
+                || drasil_murin::address_from_string(&recipient_stake_addr)
                     .await
                     .is_err()
-                || drasil_murin::b_decode_addr(&recipient_payment_addr)
+                || drasil_murin::address_from_string(&recipient_payment_addr)
                     .await
                     .is_err()
                 || drasil_murin::wallet::get_stake_address(
-                    &drasil_murin::b_decode_addr(&recipient_stake_addr).await?,
+                    &drasil_murin::address_from_string(&recipient_stake_addr).await?,
                 )? != drasil_murin::wallet::get_stake_address(
-                    &drasil_murin::b_decode_addr(
+                    &drasil_murin::address_from_string(
                         &drasil_mimir::api::select_addr_of_first_transaction(
-                            &drasil_murin::decode_addr(&recipient_stake_addr)
+                            &drasil_murin::decode_address_from_bytes(&recipient_stake_addr)
                                 .await?
                                 .to_bech32(None)
                                 .unwrap(),
@@ -65,7 +65,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         .into_rwd()
         .await?;
     rwdtxd.set_payment_addr(
-        &drasil_murin::b_decode_addr(&drasil_mimir::api::select_addr_of_first_transaction(
+        &drasil_murin::address_from_string(&drasil_mimir::api::select_addr_of_first_transaction(
             &rwdtxd
                 .get_stake_addr()
                 .to_bech32(None)
@@ -294,7 +294,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
 
         let ident = crate::encryption::mident(&c.user_id, &c.contract_id, &c.version, &c.address);
         let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks.clone(), &ident).await?;
-        let tw_addr = drasil_murin::b_decode_addr(&c.address).await?;
+        let tw_addr = drasil_murin::address_from_string(&c.address).await?;
         let tw_script = drasil_murin::clib::NativeScript::from_bytes(hex::decode(c.plutus)?)
             .map_err::<CmdError, _>(|_| CmdError::Custom {
             str: "could not convert string to native script".to_string(),

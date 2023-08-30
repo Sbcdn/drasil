@@ -27,15 +27,15 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             if mint_handles.is_empty() {
                 return err;
             }
-            if drasil_murin::b_decode_addr(&mint_handles[0].addr)
+            if drasil_murin::address_from_string(&mint_handles[0].addr)
                 .await
                 .is_err()
             {
                 return err;
             } else {
-                let payer0 = drasil_murin::b_decode_addr(&mint_handles[0].addr).await?;
+                let payer0 = drasil_murin::address_from_string(&mint_handles[0].addr).await?;
                 for mint in &mint_handles {
-                    if payer0 != drasil_murin::b_decode_addr(&mint.addr).await? {
+                    if payer0 != drasil_murin::address_from_string(&mint.addr).await? {
                         return err;
                     }
                 }
@@ -59,7 +59,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         .await?;
     let stake_address = minttxd.mint_handles[0].reward_addr()?.to_bech32(None)?;
 
-    let first_address = drasil_murin::b_decode_addr(
+    let first_address = drasil_murin::address_from_string(
         &drasil_mimir::api::select_addr_of_first_transaction(&stake_address)?,
     )
     .await?;
@@ -101,7 +101,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         if let Some(addr) = kl.fee_wallet_addr {
             fees.push(ServiceFees {
                 fee: to_bignum(kl.fee.unwrap() as u64),
-                fee_addr: drasil_murin::b_decode_addr(&addr).await?,
+                fee_addr: drasil_murin::address_from_string(&addr).await?,
             });
         }
         ns_scripts.push(NativeScript::from_bytes(hex::decode(&c.2.plutus)?)?);
