@@ -61,12 +61,10 @@ mod tests {
     use cardano_serialization_lib::crypto::Ed25519KeyHash;
     use core::str::FromStr;
 
-    use crate::MurinError;
-
     #[test]
-    fn dereg_tx_data() -> Result<(), MurinError>{
+    fn dereg_tx_data() {
         let pool_hash = "pool162ezmfwy0r5px0mll0lkxyshqfh58em6jutl3wasvrnx7w74gcd";
-        let mut dereg_tx_data = super::DeregTxData::new(pool_hash)?;
+        let mut dereg_tx_data = super::DeregTxData::new(pool_hash).unwrap();
 
         // initial values
         let get_poolhash = dereg_tx_data.get_poolhash();
@@ -74,7 +72,7 @@ mod tests {
         let get_registered = dereg_tx_data.get_registered();
 
         assert_eq!(get_poolhash, pool_hash);
-        assert_eq!(get_poolkeyhash, Ed25519KeyHash::from_bech32(pool_hash)?);
+        assert_eq!(get_poolkeyhash, Ed25519KeyHash::from_bech32(pool_hash).unwrap());
         assert_eq!(get_registered, false);
 
         // set values
@@ -94,11 +92,9 @@ mod tests {
         let to_string = dereg_tx_data.to_string();
         assert_eq!(to_string, pool_hash.to_string());
 
-        let from_str = super::DeregTxData::from_str(pool_hash)?;
+        let from_str = super::DeregTxData::from_str(pool_hash).unwrap();
         assert_eq!(from_str.poolhash, dereg_tx_data.poolhash);
         assert_eq!(from_str.poolkeyhash, dereg_tx_data.poolkeyhash);
         assert_eq!(from_str.registered, dereg_tx_data.registered);
-
-        Ok(())
     }
 }

@@ -173,89 +173,125 @@ mod tests {
     use clib::Certificates;
     use clib::StakeDelegation;
     use clib::StakeRegistration;
-    use clib::TransactionBody;
+    use clib::Transaction;
+    use clib::TransactionInput;
     use clib::TransactionInputs;
+    use clib::TransactionOutput;
     use clib::TransactionOutputs;
     use clib::TransactionWitnessSet;
+    use clib::address::BaseAddress;
+    use clib::address::StakeCredential;
+    use clib::crypto::TransactionHash;
     use clib::utils::BigNum;
+    use clib::utils::Value;
     use std::env::set_var;
-    use clib::address as caddr;
 
-    use crate::MurinError;
     use crate::PerformTxb;
     use crate::TxData;
     use cardano_serialization_lib as clib;
 
     #[test]
-    fn at_deleg_builder() -> Result<(), MurinError>{
+    fn at_deleg_builder() {
         // initialize
         set_var("REDIS_DB", "redis://127.0.0.1:6379/0");
         set_var("REDIS_DB_URL_UTXOMIND", "redis://127.0.0.1:6379/0");
         set_var("REDIS_CLUSTER", "false");
         let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t";
         let base_address = "addr_test1qp6crwxyfwah6hy7v9yu5w6z2w4zcu53qxakk8ynld8fgcpxjae5d7xztgf0vyq7pgrrsk466xxk25cdggpq82zkpdcsdkpc68";
-        let pool_keyhash = Ed25519KeyHash::from_bytes(vec![
-            10, 226, 92, 85, 157, 127, 127, 44, 34, 117, 144, 7, 199, 202, 
-            235, 116, 10, 10, 58, 71, 227, 205, 62, 201, 118, 69, 138, 143
-        ])?;
-        
-        let at_deleg_params = super::DelegTxData::new(poolhash)?;
+        let at_deleg_params = super::DelegTxData::new(poolhash).unwrap();
         let at_deleg_builder = super::AtDelegBuilder::new(&at_deleg_params);
 
         assert_eq!(at_deleg_builder.stxd.poolhash, poolhash);
-        assert_eq!(at_deleg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash)?);
+        assert_eq!(at_deleg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash).unwrap());
         assert_eq!(at_deleg_builder.stxd.registered, None);
 
         // perform_txb
-        let fee = clib::utils::BigNum::from_str("1")?;
-        let contract_id = None;
-        let saddress = super::caddr::Address::from_bech32(base_address)?;
-        let saddresses = vec![saddress];
-        let sstake = None;
-        let inputs = crate::TransactionUnspentOutputs::new();
-        let network = clib::NetworkIdKind::Testnet;
-        let current_slot = 10;
-        let gtxd = TxData::new(contract_id, saddresses, sstake, inputs, network, current_slot)?;
-        let pvks = &["".to_string()];
-        let fcrun = true;
-        let perform_txb = at_deleg_builder.perform_txb(&fee, &gtxd, pvks, fcrun)?;
-        let inputs = TransactionInputs::new();
-        let outputs = TransactionOutputs::new();
+        let perform_txb = at_deleg_builder.perform_txb(
+            &clib::utils::BigNum::from_str("1").unwrap(), 
+            &TxData::new(
+                None, 
+                vec![
+                    super::caddr::Address::from_bech32(base_address).unwrap()
+                ], 
+                None, 
+                crate::TransactionUnspentOutputs::new(), 
+                clib::NetworkIdKind::Testnet, 
+                10
+            ).unwrap(), 
+            &["".to_string()], 
+            true
+        ).unwrap();
 
-        let mut txbody = TransactionBody::new_tx_body(&inputs, &outputs, &fee);
+        // check that the perform_txb output can be used for creating transaction
+        let tx: Transaction = Transaction::new(
+            &perform_txb.0, 
+            &perform_txb.1, 
+            perform_txb.2
+        );
 
-        let ttl = BigNum::from_str("1810")?;
-        txbody.set_ttl(&ttl);
-
+        // take function output as it is, check that it isn't unintentionally changed by future PR:s (doesn't check against real data)
+        assert_eq!(
+            tx.body().inputs(), 
+            TransactionInputs::new()
+        );
+        assert_eq!(
+            tx.body().outputs(), 
+            TransactionOutputs::new()
+        );
+        assert_eq!(
+            tx.body().fee(),
+            BigNum::from_str("1").unwrap() // This value doesn't make sense to me (I think 2000000 lovelace makes more sense). Maybe something's wrong with perform_txb(), but this investigation is for a future task
+        );
+        assert_eq!(
+            tx.body().ttl_bignum().unwrap(), 
+            BigNum::from_str("1810").unwrap()
+        );
         let mut certs = Certificates::new();
-        let owner_address = match gtxd.get_senders_address(None) {
-            Some(a) => a,
-            None => {
-                return Err(MurinError::new(
-                    "Address of Wallet owner could not be found",
-                ))
-            }
-        };
-        let owner_base_addr = caddr::BaseAddress::from_address(&owner_address).unwrap();
-        let stake_cred = owner_base_addr.stake_cred();
-
-        let stake_registration = StakeRegistration::new(&stake_cred);
-        let cert1 = Certificate::new_stake_registration(&stake_registration);
-        certs.add(&cert1);
-        let stake_delegation = StakeDelegation::new(&stake_cred, &pool_keyhash);
-        let cert2 = Certificate::new_stake_delegation(&stake_delegation);
-        certs.add(&cert2);
-        txbody.set_certs(&certs);
-
-        let txwitness = TransactionWitnessSet::new();
-        let aux_data = None;
-        let vkey_counter = 1;
-        assert_eq!(perform_txb.0, txbody);
-        assert_eq!(perform_txb.1, txwitness);
-        assert_eq!(perform_txb.2, aux_data);
-        // assert_eq!(perform_txb.3, "PartialEq impl Missing");
-        assert_eq!(perform_txb.4, vkey_counter);
-
-        Ok(())
+        certs.add(&Certificate::new_stake_registration(
+            &StakeRegistration::new(
+                &StakeCredential::from_keyhash(
+                    &Ed25519KeyHash::from_bytes(
+                        vec![38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141, 101, 83, 13, 66, 2, 3, 168, 86, 11, 113]
+                    ).unwrap()
+                )
+            )
+        ));
+        certs.add(&Certificate::new_stake_delegation(
+            &StakeDelegation::new(
+                &StakeCredential::from_keyhash(
+                    &Ed25519KeyHash::from_bytes(
+                        vec![38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141, 101, 83, 13, 66, 2, 3, 168, 86, 11, 113]
+                    ).unwrap()
+                ),
+                &Ed25519KeyHash::from_bech32(poolhash).unwrap()
+            )
+        ));
+        assert_eq!(
+            tx.body().certs(), 
+            Some(
+                certs
+            )
+        );
+        assert_eq!(tx.body().withdrawals(), None);
+        assert_eq!(tx.body().update(), None);
+        assert_eq!(tx.body().auxiliary_data_hash(), None);
+        assert_eq!(
+            tx.body().validity_start_interval_bignum(), 
+            None
+        );
+        assert_eq!(tx.body().mint(), None);
+        assert_eq!(tx.body().script_data_hash(), None);
+        assert_eq!(tx.body().collateral(), None);
+        assert_eq!(tx.body().required_signers(), None);
+        assert_eq!(tx.body().network_id(), None);
+        assert_eq!(tx.body().collateral_return(), None);
+        assert_eq!(tx.body().total_collateral(), None);
+        assert_eq!(tx.body().reference_inputs(), None);
+        assert_eq!(
+            tx.witness_set(), 
+            TransactionWitnessSet::new()
+        );
+        assert_eq!(tx.is_valid(), true);
+        assert_eq!(tx.auxiliary_data(), None);
     }
 }

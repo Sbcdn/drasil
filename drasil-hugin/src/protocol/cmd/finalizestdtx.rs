@@ -147,28 +147,6 @@ impl FinalizeStdTx {
 
 #[cfg(test)]
 mod tests {
-    use tokio::net::TcpStream;
-    use dotenv;
-    use tokio;
-
-    use crate::Connection;
-
-    #[tokio::test]
-    async fn finalize_std_tx_delegate_stake() -> crate::Result<()> {
-        let customer_id = 0;
-        let txtype = crate::StdTxType::DelegateStake;
-        let tx_id = "".to_string();
-        let signature = "".to_string();
-        let finalize_std_tx = super::FinalizeStdTx::new(customer_id, txtype, tx_id, signature);
-
-        let conn_addr = dotenv::var("DBSYNC_DB_URL")?;
-        println!("conn_addr: {}", conn_addr.clone());
-        let stream = TcpStream::connect(conn_addr).await?;
-        let mut dst = Connection::new(stream);
-        let apply = finalize_std_tx.apply(&mut dst).await?;
-
-        assert_eq!(apply, ());
-
-        Ok(())
-    }
+    // unit tests aren't meaningful for this file. You need to build StdTx before you
+    // can finalize it. Building occurs in a different file. Integration test is needed.
 }
