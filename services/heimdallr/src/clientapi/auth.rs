@@ -21,11 +21,10 @@ pub(crate) async fn authorize(
     headers: HeaderMap<HeaderValue>,
     body: bytes::Bytes,
 ) -> Result<(u64, TXPWrapper), Rejection> {
-    let publ = std::env::var("JWT_PUB_KEY")
-        .map_err(|_| Error::Custom("env jwt pub not existing".to_string()))?;
-    let publ = publ.into_bytes();
+    let publ =
+        std::env::var("JWT_PUB_KEY").map_err(|e| Error::ImproperlyConfigError(e.to_string()))?;
     log::info!("checking login data ...");
-    let b = Vec::<u8>::from(body);
+    let b = body.to_vec();
 
     let str_slice = str::from_utf8(&b).unwrap();
     let txp_out = if let Ok(txp) = serde_json::from_str::<TransactionPattern>(str_slice) {
@@ -37,7 +36,9 @@ pub(crate) async fn authorize(
     } else {
         TXPWrapper::OneShotMinter(serde_json::from_str::<OneShotMintPayload>(str_slice).unwrap())
     };
+
     log::debug!("\n\nBody: {b:?}\n\n");
+    let publ = publ.into_bytes();
     match jwt_from_header(&headers) {
         Ok(jwt) => {
             let decoded = decode::<ApiClaims>(
@@ -47,7 +48,7 @@ pub(crate) async fn authorize(
             )
             .map_err(|_| reject::custom(Error::JWTTokenError))?;
             log::info!("lookup user data ...");
-            let user_id = decoded.claims.sub.parse::<u64>().map_err(|_| {
+            let user_id: u64 = decoded.claims.sub.parse().map_err(|_| {
                 reject::custom(Error::Custom("Could not parse customer id".to_string()))
             })?;
             // Deactivates User Identification, only API token validity checked
@@ -72,16 +73,10 @@ pub(crate) async fn authorize(
 }
 
 fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String, Error> {
-    let header = match headers.get(AUTHORIZATION) {
-        Some(v) => v,
-        None => return Err(Error::NoAuthHeaderError),
-    };
-    let auth_header = match str::from_utf8(header.as_bytes()) {
-        Ok(v) => v,
-        Err(_) => return Err(Error::NoAuthHeaderError),
-    };
-    if !auth_header.starts_with(BEARER) {
+    let header = headers.get(AUTHORIZATION).ok_or(Error::NoAuthHeaderError)?;
+    let header = str::from_utf8(header.as_bytes()).map_err(|_| Error::NoAuthHeaderError)?;
+    if !header.starts_with(BEARER) {
         return Err(Error::InvalidAuthHeaderError);
     }
-    Ok(auth_header.trim_start_matches(BEARER).to_owned())
+    Ok(header.trim_start_matches(BEARER).to_owned())
 }
