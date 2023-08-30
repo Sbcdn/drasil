@@ -4,8 +4,6 @@ use thiserror::Error;
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("jwt token not valid")]
-    JWTTokenError,
     #[error("no auth header")]
     NoAuthHeaderError,
     #[error("invalid auth header")]
@@ -17,7 +15,7 @@ pub enum Error {
     #[error(transparent)]
     ParseIntError(#[from] std::num::ParseIntError),
     #[error(transparent)]
-    TokenError(#[from] jsonwebtoken::errors::Error),
+    JWTTokenError(#[from] jsonwebtoken::errors::Error),
 }
 
 #[derive(Serialize, Debug)]

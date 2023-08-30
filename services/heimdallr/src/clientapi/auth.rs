@@ -46,11 +46,9 @@ pub(crate) async fn authorize(
                 &DecodingKey::from_ec_pem(&publ).unwrap(),
                 &Validation::new(Algorithm::ES256),
             )
-            .map_err(|_| reject::custom(Error::JWTTokenError))?;
+            .map_err(Error::JWTTokenError)?;
             log::info!("lookup user data ...");
-            let user_id: u64 = decoded.claims.sub.parse().map_err(|_| {
-                reject::custom(Error::Custom("Could not parse customer id".to_string()))
-            })?;
+            let user_id: u64 = decoded.claims.sub.parse().map_err(Error::ParseIntError)?;
             // Deactivates User Identification, only API token validity checked
             //let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
             //let cmd = VerifyUser::new(user_id, jwt);
