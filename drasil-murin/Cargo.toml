@@ -17,7 +17,7 @@ chrono = { workspace = true }
 cardano-serialization-lib = "11.2.0"
 pretty_env_logger = { workspace = true }
 log = { workspace = true }
-serde_json = { workspace = true , features = ["preserve_order"] }
+serde_json = { workspace = true, features = ["preserve_order"] }
 serde = { workspace = true }
 hex = { workspace = true }
 ed25519-bip32 = "0.4.1"
@@ -35,16 +35,17 @@ itertools = { workspace = true }
 thiserror = { workspace = true }
 bigdecimal = { workspace = true }
 strum = { workspace = true }
-strum_macros = { workspace = true} 
+strum_macros = { workspace = true }
 bip39 = "1.0.1"
 unwrap_or = "1.0.0"
+lazy_static = "1.4.0"
 
 [dependencies.reqwest]
 version = "0.11"
 default-features = false
-features = [ "json","rustls-tls" ]
+features = ["json", "rustls-tls"]
 
 [dependencies.cryptoxide]
 git = "https://github.com/typed-io/cryptoxide.git"
 branch = "master"
-features = [ "blake2" ]
+features = ["blake2"]

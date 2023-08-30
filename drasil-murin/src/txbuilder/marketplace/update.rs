@@ -1,7 +1,7 @@
 use crate::error::MurinError;
-use crate::supporting_functions;
-use crate::models;
 use crate::marketplace::*;
+use crate::models;
+use crate::supporting_functions;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, plutus, utils as cutils};
 
@@ -146,13 +146,15 @@ pub fn perform_update(
         input_txuos
     );
 
-    let (signers_address_utxos, _) = supporting_functions::find_utxos_by_address(trade_owner.clone(), &input_txuos);
+    let (signers_address_utxos, _) =
+        supporting_functions::find_utxos_by_address(trade_owner.clone(), &input_txuos);
     info!("\n\nTradeOwner Utxos:{:?}\n\n", signers_address_utxos);
 
     //
     // TODO: Ensure the Smart Contract UTXO is Part of the Input UTXOS
     //
-    let token_input_utxo = supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
+    let token_input_utxo =
+        supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
     debug!("Token Input Utxos: {:?}", token_input_utxo);
 
     let (mut txins, mut input_txuos) = super::input_selection(
@@ -184,7 +186,8 @@ pub fn perform_update(
             gtxd.get_current_slot(),
         )?;
 
-        let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(internal_transfer.3);
+        let dummy_vkeywitnesses =
+            supporting_functions::make_dummy_vkeywitnesses(internal_transfer.3);
         internal_transfer.1.set_vkeys(&dummy_vkeywitnesses);
 
         // Build and encode dummy transaction
@@ -193,8 +196,15 @@ pub fn perform_update(
             &internal_transfer.1,
             Some(internal_transfer.2.clone()),
         );
-        let calculated_fee =
-            supporting_functions::calc_txfee(&transaction_, &a, &b, ex_unit_price, &steps, &mem, true);
+        let calculated_fee = supporting_functions::calc_txfee(
+            &transaction_,
+            &a,
+            &b,
+            ex_unit_price,
+            &steps,
+            &mem,
+            true,
+        );
 
         let (txbody, txwitness, aux_data, _, used_utxos) = supporting_functions::create_ada_tx(
             &calculated_fee, // fee: &cutils::BigNum,
@@ -218,7 +228,8 @@ pub fn perform_update(
         std::process::exit(0);
     }
 
-    let vkey_counter = supporting_functions::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
+    let vkey_counter =
+        supporting_functions::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
     debug!(
         "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
         input_txuos
@@ -402,8 +413,15 @@ pub async fn build_mp_update(
         let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(vkey_counter_2);
         txwitness_.set_vkeys(&dummy_vkeywitnesses);
 
-        let calculated_fee =
-            supporting_functions::calc_txfee(&transaction2, &a, &b, ex_unit_price, &steps, &mem, true);
+        let calculated_fee = supporting_functions::calc_txfee(
+            &transaction2,
+            &a,
+            &b,
+            ex_unit_price,
+            &steps,
+            &mem,
+            true,
+        );
         let (txbody, txwitness, aux_data, used_utxos, _) =
             perform_update(&calculated_fee, sc_script, sc_addr, gtxd, mptxd, false)?;
         info!("Fee: {:?}", calculated_fee);

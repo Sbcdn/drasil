@@ -897,10 +897,8 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                                 rest_multi.insert(cs, &rest_asset);
                                                 rest_value.set_multiasset(&rest_multi);
                                             }
-                                            let min_utxo = txbuilder::calc_min_ada_for_utxo(
-                                                &rest_value,
-                                                None,
-                                            );
+                                            let min_utxo =
+                                                txbuilder::calc_min_ada_for_utxo(&rest_value, None);
                                             let rest_txo =
                                                 clib::TransactionOutput::new(&addr, &rest_value);
 

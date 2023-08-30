@@ -40,9 +40,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
         addr
             .iter()
             .fold(Vec::<clib::address::Address>::new(), |mut acc, a| {
-                acc.push(
-                    address_from_string_non_async(a).unwrap()
-                );
+                acc.push(address_from_string_non_async(a).unwrap());
                 acc
             })
     } else {

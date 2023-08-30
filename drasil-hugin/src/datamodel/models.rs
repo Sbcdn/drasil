@@ -369,31 +369,30 @@ impl TransactionPattern {
             Some(n) => n as i64,
             None => -1,
         };
-
         let mut txd = TxData::new(
             Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
             drasil_murin::wallet::addresses_from_string(&self.used_addresses()).await?,
             saddr,
             drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
                 inputs.as_ref(),
-                self.collateral().as_ref(),
+                self.collateral().as_ref().map(|x| vec![x.clone()]).as_ref(),
                 self.excludes().as_ref(),
-            )
-            .await?,
+            )?,
             drasil_murin::wallet::get_network_kind(self.network).await?,
             0u64,
         )?;
 
         if let Some(collateral) = self.collateral() {
             txd.set_collateral(
-                drasil_murin::wallet::get_transaction_unspent_output(&collateral).await?,
+                drasil_murin::wallet::transaction_unspent_outputs_from_string(&collateral)?,
             )
         }
 
         if let Some(excludes) = self.excludes() {
             txd.set_excludes(
-                drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(&excludes, None, None)
-                    .await?,
+                drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
+                    &excludes, None, None,
+                )?,
             )
         }
 
@@ -485,13 +484,14 @@ impl Operation {
             } => {
                 let assets = Token::for_all_into_asset(tokens)?;
                 let token_utxos =
-                    drasil_murin::txbuilder::find_token_utxos(avail_inputs, assets.clone())
-                        .await?;
+                    drasil_murin::txbuilder::find_token_utxos(avail_inputs, assets.clone()).await?;
 
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
                 if let Some(royaddr) = royalties_addr {
-                    mptx.set_royalties_address(drasil_murin::decode_address_from_bytes(royaddr).await?);
+                    mptx.set_royalties_address(
+                        drasil_murin::decode_address_from_bytes(royaddr).await?,
+                    );
                 }
 
                 if let Some(royrate) = royalties_rate {
@@ -523,8 +523,10 @@ impl Operation {
                 recipient_payment_addr,
             } => {
                 // let assets = Token::for_all_into_asset(reward_tokens)?;
-                let stake_addr = drasil_murin::decode_address_from_bytes(recipient_stake_addr).await?;
-                let payment_addr = drasil_murin::decode_address_from_bytes(recipient_payment_addr).await?;
+                let stake_addr =
+                    drasil_murin::decode_address_from_bytes(recipient_stake_addr).await?;
+                let payment_addr =
+                    drasil_murin::decode_address_from_bytes(recipient_payment_addr).await?;
 
                 Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
@@ -658,7 +660,8 @@ impl Operation {
                     Some(addr) => Some(drasil_murin::decode_address_from_bytes(addr).await?),
                     None => None,
                 };
-                let payment_addr = drasil_murin::decode_address_from_bytes(receiver_payment_addr).await?;
+                let payment_addr =
+                    drasil_murin::decode_address_from_bytes(receiver_payment_addr).await?;
                 let metadata = match mint_metadata {
                     Some(data) => {
                         if !data.is_empty() {

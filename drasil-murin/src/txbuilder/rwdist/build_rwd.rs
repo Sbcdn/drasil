@@ -1,6 +1,5 @@
 use super::*;
 use crate::error::MurinError;
-use crate::supporting_functions;
 use crate::modules::transfer::models::Sink;
 use crate::modules::transfer::models::Source;
 use crate::modules::transfer::models::TransBuilder;
@@ -9,8 +8,6 @@ use crate::modules::transfer::models::TransWallets;
 use crate::modules::transfer::models::Transfer;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{crypto as ccrypto, utils as cutils};
-
-use modules::transfer::*;
 
 // Reward Transaction Builder Type
 #[derive(Debug, Clone)]
@@ -227,9 +224,11 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
 
         let saved_input_txuos = builder.tx.clone().unwrap().0;
         let mut vkey_counter =
-            supporting_functions::get_vkey_count(&builder.tx.as_ref().unwrap().0, None) + rwd_contract_ids.len(); // +1 dues to signature in finalize
+            supporting_functions::get_vkey_count(&builder.tx.as_ref().unwrap().0, None)
+                + rwd_contract_ids.len(); // +1 dues to signature in finalize
         let slot = cutils::to_bignum(
-            gtxd.clone().get_current_slot() + supporting_functions::get_ttl_tx(&gtxd.clone().get_network()),
+            gtxd.clone().get_current_slot()
+                + supporting_functions::get_ttl_tx(&gtxd.clone().get_network()),
         );
         let mut txbody = clib::TransactionBody::new_tx_body(
             &builder.tx.as_ref().unwrap().1,

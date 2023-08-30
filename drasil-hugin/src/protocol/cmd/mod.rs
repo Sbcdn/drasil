@@ -160,7 +160,8 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
 
     if txp.stake_addr().is_some() {
         let addresses = drasil_murin::cip30::addresses_from_string(&txp.used_addresses()).await?;
-        let stake_addr = drasil_murin::cip30::decode_address_from_bytes(&txp.stake_addr().unwrap()).await?;
+        let stake_addr =
+            drasil_murin::cip30::decode_address_from_bytes(&txp.stake_addr().unwrap()).await?;
         let mut rewardaddr = reward_address_from_address(&stake_addr)?;
         for address in addresses {
             if BaseAddress::from_address(&address).is_some() {

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 macro_rules! pub_struct {
     ($name:ident {$($field:ident: $t:ty,)*}) => {
-        #[derive(Serialize,Deserialize,Debug, Clone, PartialEq)] // ewww
+        #[derive(Serialize,Deserialize,Debug, Clone, PartialEq)]
         pub struct $name {
             $(pub $field: $t),*
         }
@@ -16,15 +16,15 @@ macro_rules! pub_struct {
 pub const DUMMY_VKEYWITNESS     : &str = "8258203818ad60f55faef4576ff88e9e7e1148fcb11d602ffa19def6e9c44b420fdaa25840751a9f1c01cf068e8b0becf3122832d13f8fc1dff74a43059b815e949442ad6b60c6a67d4b39e4a3271064665418960731280d0ef7ae5a471a98021cae074001";
 pub const MIN_ADA: u64 = 1000000;
 
-pub_struct!(BuildOutput {
-    tx_witness: String,
-    metadata: String,
-    tx_body: String,
-    tx_unsigned: String,
-    used_utxos: String,
-    royalties: u64,
-    internal_transfer: String,
-});
+pub struct BuildOutput {
+    pub tx_witness: String,
+    pub metadata: String,
+    pub tx_body: String,
+    pub tx_unsigned: String,
+    pub used_utxos: String,
+    pub royalties: u64,
+    pub internal_transfer: String,
+}
 
 impl BuildOutput {
     pub fn get_tx_unsigned(&self) -> String {
@@ -279,6 +279,14 @@ impl TransactionUnspentOutputs {
         self.0.reverse()
     }
 
+    pub fn convert_to_csl(&self) -> cardano_serialization_lib::utils::TransactionUnspentOutputs {
+        let mut out = cardano_serialization_lib::utils::TransactionUnspentOutputs::new();
+        for elem in &self.0 {
+            out.add(&elem.clone());
+        }
+        out
+    }
+
     pub fn optimize_on_assets(&mut self, assets: Tokens) -> Result<(), MurinError> {
         let tot_val_utxos = self.calc_total_value()?;
         let needed_val = tokens_to_value(&assets);
@@ -413,11 +421,14 @@ impl TransactionUnspentOutputs {
                         Done(acc)
                     } else {
                         Continue({
-                            let x_stake = crate::cip30::get_stake_address(&x.output().address())
-                                .expect(
+                            let x_stake = crate::cip30::stake_keyhash_from_address(
+                                &x.output().address(),
+                            )
+                            .expect(
                                 "Could not determine stake address in coin_value_subset_minutxo 1",
                             );
-                            let payer_stake = crate::cip30::get_stake_address(payaddr).expect(
+                            let payer_stake = crate::cip30::stake_keyhash_from_address(payaddr)
+                                .expect(
                                 "Could not determine stake address in coin_value_subset_minutxo 2",
                             );
                             if x_stake == payer_stake {
