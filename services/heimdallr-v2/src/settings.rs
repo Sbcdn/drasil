@@ -1,20 +1,24 @@
 //! Application configuration data structure
 
 use config::Config;
-use serde::{Deserialize, Serialize};
+use secrecy::Secret;
+use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 
 use crate::error::Error;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 /// Settings is the application configuration type.
 pub struct Settings {
     /// The application settings.
     pub application: AppSettings,
+
+    /// JWT configurations
+    pub jwt: JwtSettings,
 }
 
-/// The application level configuration data.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+/// The application level configuration settings.
+#[derive(Clone, Debug, Deserialize)]
 pub struct AppSettings {
     /// Application port number.
     #[serde(deserialize_with = "deserialize_number_from_string")]
@@ -22,6 +26,13 @@ pub struct AppSettings {
 
     /// The application IP address or hostname.
     pub host: String,
+}
+
+/// The JWT configuration settings.
+#[derive(Clone, Debug, Deserialize)]
+pub struct JwtSettings {
+    /// This is the secret for encoding and decoding token.
+    pub(super) pub_key: Secret<String>,
 }
 
 impl Settings {
