@@ -1,0 +1,22 @@
+[package]
+name = "heimdallr-v2"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - Application Gateway"
+repository = "https://github.com/Sbcdn/heimdallr-v2.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = [
+    "Torben Poguntke <torben@drasil.io>",
+    "<Styvane Soukossi <4968379+styvane@users.noreply.github.com>",
+]
+
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+thiserror = "1.0"
+anyhow = "1.0"
+axum = { version = "0.6.20", features = ["headers"] }
+axum-server = "0.5.1"
