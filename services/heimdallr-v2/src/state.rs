@@ -32,7 +32,7 @@ mod tests {
     fn state() {
         let secret = concat!(
             "-----BEGIN PUBLIC KEY-----\n",
-            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+\n",
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+",
             "LwS66RkRJ3gYlrXCisZwWaNQo3nkNjRujIVVI9jEGCWYRdECga9lUjrg=\n",
             "-----END PUBLIC KEY-----",
         );
