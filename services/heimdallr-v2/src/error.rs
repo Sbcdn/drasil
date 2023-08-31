@@ -13,4 +13,8 @@ pub enum Error {
     /// I/O related errors
     #[error(transparent)]
     IoError(#[from] io::Error),
+
+    /// Improperly configuration errors
+    #[error(transparent)]
+    ConfigError(#[from] config::ConfigError),
 }
