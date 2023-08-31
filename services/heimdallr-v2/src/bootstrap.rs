@@ -3,7 +3,7 @@
 use axum::Router;
 use std::net::TcpListener;
 
-use crate::error::Result;
+use crate::{error::Result, settings::Settings};
 
 /// The application type for starting the server.
 #[derive(Debug)]
@@ -16,9 +16,11 @@ pub struct Application {
 
 impl Application {
     /// Creates new application.
-    pub async fn new() -> Result<Self> {
+    pub async fn new(settings: Settings) -> Result<Self> {
         let router = new_router()?;
-        let listener = TcpListener::bind("127.0.0.1:4000")?;
+        let app_settings = &settings.application;
+        let addr = format!("{}:{}", app_settings.host, app_settings.port);
+        let listener = TcpListener::bind(addr)?;
         Ok(Application { listener, router })
     }
 
