@@ -182,7 +182,7 @@ pub async fn create_airdrop(
     //create token whitelisting with type airdrop
     let mut vd = chrono::Utc::now();
     if let Some(date) = vesting_period {
-        vd = chrono::DateTime::<Utc>::from_utc(
+        vd = chrono::DateTime::from_naive_utc_and_offset(
             NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
         );
