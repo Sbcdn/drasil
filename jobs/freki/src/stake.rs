@@ -1,6 +1,6 @@
 use crate::models::*;
 use crate::rwd_handling::handle_rewards;
-use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
+use bigdecimal::{self, BigDecimal, FromPrimitive, ToPrimitive};
 use drasil_sleipnir::rewards::models::*;
 use std::str::*;
 

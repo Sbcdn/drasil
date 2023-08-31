@@ -2,7 +2,6 @@ use super::*;
 use crate::error::RWDError;
 use crate::schema::*;
 use bigdecimal::{FromPrimitive, ToPrimitive};
-use std::ops::Div;
 
 impl Rewards {
     pub fn get_rewards_stake_addr(
@@ -147,12 +146,11 @@ impl Rewards {
 
             let sum: BigDecimal = twl_rewards.iter().fold(
                 bigdecimal::FromPrimitive::from_u64(0).unwrap(),
-                |acc, n| {
-                    acc + (n
-                        .tot_earned
-                        .clone()
-                        .div(&bigdecimal::FromPrimitive::from_u64(1000000).unwrap()))
-                        - n.tot_claimed.clone()
+                |acc: BigDecimal, n| {
+                    acc + (std::ops::Div::<BigDecimal>::div(
+                        n.tot_earned.clone(),
+                        bigdecimal::FromPrimitive::from_u64(1000000).unwrap(),
+                    )) - n.tot_claimed.clone()
                 },
             );
             out.push((i.contract_id, i.fingerprint.clone().unwrap(), sum))
