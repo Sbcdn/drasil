@@ -735,10 +735,16 @@ mod handlers {
             Ok(rwds) => {
                 let mut ret = Vec::<MintRewardHandle>::new();
                 for rwd in rwds {
+                    let mut v = vec![];
+                    for n in rwd.nft_ids {
+                        v.push(from_utf8(&n).unwrap().to_string());
+                    }
+
                     match MintProject::get_mintproject_by_id_active(rwd.project_id) {
                         Ok(p) => ret.push(MintRewardHandle {
                             id: rwd.id,
                             addr: rwd.pay_addr,
+                            nfts: v,
                             project: MintProjectHandle {
                                 project_name: p.project_name,
                                 collection_name: p.collection_name,
@@ -799,10 +805,15 @@ mod handlers {
             Ok(rwds) => {
                 let mut ret = Vec::<MintRewardHandle>::new();
                 for rwd in rwds {
+                    let mut v = vec![];
+                    for n in rwd.nft_ids {
+                        v.push(from_utf8(&n).unwrap().to_string());
+                    }
                     match MintProject::get_mintproject_by_id_active(rwd.project_id) {
                         Ok(p) => ret.push(MintRewardHandle {
                             id: rwd.id,
                             addr: rwd.pay_addr,
+                            nfts: v,
                             project: MintProjectHandle {
                                 project_name: p.project_name,
                                 collection_name: p.collection_name,
