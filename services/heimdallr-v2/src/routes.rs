@@ -1,5 +1,6 @@
 //! # Routes
 
+mod contract;
 mod transaction;
 
 use axum::routing::{get, post};
@@ -21,10 +22,13 @@ pub async fn list_contracts() -> Json<Vec<&'static str>> {
 }
 
 /// Register handlers.
-
 pub fn register_handlers(state: AppState) -> Router {
     Router::new()
         .route("/lcn", get(list_contracts))
-        .route("/ms", post(transaction::build_multi_signature_tx))
+        .route(
+            "/ms/:multisig_type",
+            post(transaction::build_multi_signature_tx),
+        )
+        .route("/cn/:contract/:action", post(contract::build_contract))
         .with_state(state)
 }
