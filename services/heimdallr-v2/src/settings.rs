@@ -15,6 +15,9 @@ pub struct Settings {
 
     /// JWT configurations
     pub jwt: JwtSettings,
+
+    /// ODIN client settings
+    pub odin: OdinSettings,
 }
 
 /// The application level configuration settings.
@@ -28,11 +31,25 @@ pub struct AppSettings {
     pub host: String,
 }
 
+impl AppSettings {
+    /// Returns the connection for the application.
+    pub fn connection_string(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+}
+
 /// The JWT configuration settings.
 #[derive(Clone, Debug, Deserialize)]
 pub struct JwtSettings {
     /// This is the secret for encoding and decoding token.
     pub(super) pub_key: Secret<String>,
+}
+
+/// Odin service client configuration data.
+#[derive(Clone, Debug, Deserialize)]
+pub struct OdinSettings {
+    /// Connection url
+    pub url: String,
 }
 
 impl Settings {
