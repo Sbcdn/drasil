@@ -37,15 +37,22 @@ pub enum Error {
     /// General transaction errors.
     #[error(transparent)]
     TransactionError(#[from] TransactionError),
+
+    /// General  errors like parsing error or conversion
+    /// errors that do not fit in the other variants.
+    #[error("{0}")]
+    UnexpectedError(String),
 }
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         let error_message = self.to_string();
         let status = match self {
-            Self::IoError(_) | Self::ConfigError(_) | Self::JwtError(_) | Self::HugginError(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
+            Self::IoError(_)
+            | Self::ConfigError(_)
+            | Self::JwtError(_)
+            | Self::HugginError(_)
+            | Self::UnexpectedError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::AuthError(err) => return err.into_response(),
             Self::TransactionError(err) => return err.into_response(),
         };
