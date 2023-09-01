@@ -26,3 +26,6 @@ serde-aux = "4.2.0"
 serde_json = "1.0.79"
 jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 secrecy = { version = "0.8.0", features = ["serde"] }
+strum = "0.24"
+strum_macros = "0.24"
+drasil-hugin = { path = "../../drasil-hugin", version = "0.1.0" }
