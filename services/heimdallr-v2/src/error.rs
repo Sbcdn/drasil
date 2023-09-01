@@ -1,6 +1,5 @@
 //! This module defines the error types.
 
-use std::fmt;
 use std::io;
 
 use axum::http::StatusCode;
@@ -26,27 +25,29 @@ pub enum Error {
     /// This is JWT related errors.
     #[error(transparent)]
     JwtError(#[from] jsonwebtoken::errors::Error),
+
+    /// Huggin errors
+    #[error(transparent)]
+    HugginError(#[from] drasil_hugin::Error),
+
+    /// Authenticatication and authorization errors
+    #[error(transparent)]
+    AuthError(#[from] AuthError),
+
+    /// General transaction errors.
+    #[error(transparent)]
+    TransactionError(#[from] TransactionError),
 }
 
-/// Authentication errors type.
-#[derive(Debug, thiserror::Error)]
-pub enum AuthError {
-    /// This is the error when the credentials do not match.
-    WrongCredentials,
-
-    /// This is the error when the credential is missing.
-    MissingCredentials,
-
-    /// This is the error when the credential is invalid.
-    InvalidToken,
-}
-
-impl IntoResponse for AuthError {
+impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "wrong credentials"),
-            AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "missing credentials"),
-            AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "invalid token"),
+        let error_message = self.to_string();
+        let status = match self {
+            Self::IoError(_) | Self::ConfigError(_) | Self::JwtError(_) | Self::HugginError(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+            Self::AuthError(err) => return err.into_response(),
+            Self::TransactionError(err) => return err.into_response(),
         };
         let body = Json(json!({
             "error": error_message,
@@ -55,13 +56,60 @@ impl IntoResponse for AuthError {
     }
 }
 
-impl fmt::Display for AuthError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::InvalidToken => "invalid token",
-            Self::MissingCredentials => "missing token",
-            Self::WrongCredentials => "wrong credential",
+/// Authentication errors type.
+#[derive(Debug, thiserror::Error)]
+pub enum AuthError {
+    /// This is the error when the credentials do not match.
+    #[error("wrong credentials")]
+    WrongCredentials,
+
+    /// This is the error when the credential is missing.
+    #[error("missing credentials")]
+    MissingCredentials,
+
+    /// This is the error when the credential is invalid.
+    #[error("invalid token")]
+    InvalidToken,
+}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        let error_message = self.to_string();
+        let status = match self {
+            Self::WrongCredentials => StatusCode::UNAUTHORIZED,
+            Self::MissingCredentials | Self::InvalidToken => StatusCode::BAD_REQUEST,
         };
-        write!(f, "{s}")
+        let body = Json(json!({
+            "error": error_message,
+        }));
+        (status, body).into_response()
+    }
+}
+
+/// The transaction error type enumerate the various error encountered during
+/// transction processing.
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum TransactionError {
+    /// This is theerror when the transaction is invalid
+    #[error("unable to process an invalid transaction.")]
+    Invalid,
+
+    /// This is the error when a transaction does not reflect the current system state.
+    #[error("the system encountered a conflict while processing this transaction.")]
+    Conflict,
+}
+
+impl IntoResponse for TransactionError {
+    fn into_response(self) -> Response {
+        let error_message = self.to_string();
+        let status = match self {
+            Self::Invalid => StatusCode::BAD_REQUEST,
+            Self::Conflict => StatusCode::CONFLICT,
+        };
+        let body = Json(json!({
+            "error": error_message,
+        }));
+        (status, body).into_response()
     }
 }
