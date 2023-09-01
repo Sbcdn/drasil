@@ -12,14 +12,22 @@ use crate::error::{Error, Result};
 pub struct AppState {
     /// JWT decoding key.
     pub jwt_decoding_key: DecodingKey,
+    /// Odin connection URL
+    pub odin_url: String,
 }
 
 impl AppState {
     /// Create new application state.
-    pub fn new(jwt: Secret<String>) -> Result<Self> {
+    pub fn new(jwt: Secret<String>, odin_url: String) -> Result<Self> {
         let jwt_decoding_key =
             DecodingKey::from_ec_pem(jwt.expose_secret().as_bytes()).map_err(Error::JwtError)?;
-        Ok(Self { jwt_decoding_key })
+
+        let state = Self {
+            jwt_decoding_key,
+            odin_url,
+        };
+
+        Ok(state)
     }
 }
 
@@ -38,7 +46,7 @@ mod tests {
         );
 
         let secret = Secret::new(secret.into());
-        let state = AppState::new(secret);
+        let state = AppState::new(secret, "odin_url".into());
         assert!(state.is_ok())
     }
 }

@@ -16,3 +16,4 @@ pub mod error;
 mod extractor;
 pub mod settings;
 mod state;
+mod routes;

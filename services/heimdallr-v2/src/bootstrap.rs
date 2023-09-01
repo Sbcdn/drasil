@@ -1,33 +1,35 @@
 //! This module defines the application type and operations.
 
 use axum::Router;
-use secrecy::Secret;
 use std::net::TcpListener;
 
 use crate::error::Result;
+use crate::routes;
 use crate::settings::Settings;
 use crate::state::AppState;
 
 /// The application type for starting the server.
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct Application {
     /// The application port number.
     listener: TcpListener,
-    /// The application router for handling requests.
+    /// The application server router for handling requests.
     router: Router,
 }
 
 impl Application {
     /// Creates new application.
     pub async fn new(settings: Settings) -> Result<Self> {
-        let Settings {
-            application: app_settings,
-            jwt: jwt_settings,
-        } = settings;
-        let addr = format!("{}:{}", app_settings.host, app_settings.port);
+        let addr = settings.application.connection_string();
         let listener = TcpListener::bind(addr)?;
+        let Settings {
+            jwt: jwt_settings,
+            odin: odin_settings,
+            ..
+        } = settings;
 
-        let router = new_router(jwt_settings.pub_key)?;
+        let state = AppState::new(jwt_settings.pub_key, odin_settings.url)?;
+        let router = routes::register_handlers(state);
 
         Ok(Application { listener, router })
     }
@@ -40,11 +42,4 @@ impl Application {
             .await?;
         Ok(())
     }
-}
-
-/// Create and configure new router.
-pub fn new_router(jwt_pub_key: Secret<String>) -> Result<Router> {
-    let app_state = AppState::new(jwt_pub_key)?;
-    let router = Router::new().with_state(app_state);
-    Ok(router)
 }
