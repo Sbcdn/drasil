@@ -14,6 +14,7 @@
 pub mod bootstrap;
 pub mod error;
 mod extractor;
+mod routes;
 pub mod settings;
 mod state;
-mod routes;
+pub mod tracer;

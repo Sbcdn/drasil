@@ -28,4 +28,8 @@ jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 secrecy = { version = "0.8.0", features = ["serde"] }
 strum = "0.24"
 strum_macros = "0.24"
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.1"
 drasil-hugin = { path = "../../drasil-hugin", version = "0.1.0" }
