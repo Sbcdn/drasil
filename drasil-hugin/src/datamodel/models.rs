@@ -1030,6 +1030,7 @@ impl RewardHandle {
 pub struct MintRewardHandle {
     pub id: i64,
     pub addr: String,
+    pub nfts: Vec<String>,
     pub project: MintProjectHandle,
 }
 
