@@ -40,8 +40,8 @@ pub enum Error {
 
     /// General  errors like parsing error or conversion
     /// errors that do not fit in the other variants.
-    #[error("{0}")]
-    UnexpectedError(String),
+    #[error(transparent)]
+    UnexpectedError(#[from] anyhow::Error),
 }
 
 impl IntoResponse for Error {
