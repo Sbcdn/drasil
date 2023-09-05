@@ -60,7 +60,7 @@ impl Settings {
             .expect("failed to resolve current directory");
 
         let network: Network = std::env::var("HEIMDALLR_NETWORK")
-            .unwrap_or_else(|_| "preview_test_net".into())
+            .unwrap_or_else(|_| "local-dev-net".into())
             .try_into()
             .expect("failed to parse HEIMDALLR_NETWORK");
         // Initialize the configuration reader with the base configuration data.
@@ -132,6 +132,7 @@ macro_rules! define_network_environment {
 define_network_environment! [
     Network;
 
-    PreviewTestNet => "preview_test_net",
-    MainTestNet => "main_test_net",
+    PreviewTestNet => "preview-test-net",
+    MainTestNet => "main-test-net",
+    LocalDevNet => "local-dev-net",
 ];
