@@ -31,7 +31,7 @@ impl TestApp {
             .map(|addr| format!("http://{host}:{}", addr.port()))
             .expect("failed to get local address");
 
-        let _ = tokio::spawn(app.listen_and_serve());
+        tokio::spawn(app.listen_and_serve());
         Self { client, address }
     }
 }
