@@ -69,6 +69,7 @@ pub async fn build_contract(
 }
 
 /// Finalize contract execution.
+#[tracing::instrument(name = "Finalize contract execution", skip(state, claims))]
 pub async fn finalize_contract_exec(
     State(state): State<AppState>,
     Path(contract): Path<ContractType>,
@@ -86,7 +87,12 @@ pub async fn finalize_contract_exec(
     tracing::info!("connecting to odin service");
     let mut client = connect(state.odin_url).await?;
 
-    let cmd = FinalizeContract::new(customer_id, contract, transaction_id, payload.get_signature());
+    let cmd = FinalizeContract::new(
+        customer_id,
+        contract,
+        transaction_id,
+        payload.get_signature(),
+    );
 
     tracing::debug!("finalizing contract");
     let response = client.build_cmd(cmd).await.map_err(|err| {
