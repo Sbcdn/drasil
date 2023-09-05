@@ -46,5 +46,6 @@ pub fn register_handlers(state: AppState) -> Router {
             "/fn/:contract/:transaction_id",
             post(contract::finalize_contract_exec),
         )
+        .route("api/mint/onshot", post(transaction::hnd_oneshot_minter_api))
         .with_state(state)
 }

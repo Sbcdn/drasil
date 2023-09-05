@@ -3,8 +3,8 @@ use axum::extract::{Path, State};
 use axum::Json;
 use drasil_hugin::client::connect;
 use drasil_hugin::{
-    BuildMultiSig, BuildStdTx, FinalizeMultiSig, FinalizeStdTx, MultiSigType, StdTxType,
-    TXPWrapper, TxHash, UnsignedTransaction,
+    BuildMultiSig, BuildStdTx, FinalizeMultiSig, FinalizeStdTx, MultiSigType, OneShotReturn,
+    StdTxType, TXPWrapper, TransactionPattern, TxHash, UnsignedTransaction,
 };
 
 use crate::error::{Error, Result, TransactionError};
@@ -165,4 +165,47 @@ pub async fn finalize_standard_tx(
     })?;
 
     Ok(Json(TxHash::new(&response)))
+}
+
+/// Build oneshot minter transaction
+#[tracing::instrument(name = "Build one shot minter transaction", skip(claims, state))]
+pub async fn hnd_oneshot_minter_api(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<TXPWrapper>,
+) -> Result<Json<OneShotReturn>> {
+    let TXPWrapper::OneShotMinter(payload) = payload else {
+        return Err(Error::from(TransactionError::Invalid));
+    };
+
+    if payload.tokennames().len() != payload.amounts().len() {
+        return Err(Error::from(TransactionError::Invalid));
+    }
+
+    let multisig_type = MultiSigType::ClAPIOneShotMint;
+
+    let customer_id = claims.get_customer_id()?;
+    tracing::Span::current().record("customer_id", &tracing::field::display(customer_id));
+
+    let transaction_pattern =
+        TransactionPattern::new_empty(customer_id, &payload.into_script_spec(), payload.network());
+
+    tracing::info!("connecting to connect to odin");
+    let mut client = connect(state.odin_url).await?;
+
+    let cmd = BuildMultiSig::new(customer_id, multisig_type, transaction_pattern);
+    let multi_sig_build = client
+        .build_cmd::<BuildMultiSig>(cmd)
+        .await
+        .map_err(|err| {
+            tracing::error!("{err}");
+            TransactionError::Invalid
+        })?;
+
+    let response: OneShotReturn = serde_json::from_str(&multi_sig_build).map_err(|err| {
+        tracing::error!("{err}");
+        TransactionError::Invalid
+    })?;
+
+    Ok(Json(response))
 }
