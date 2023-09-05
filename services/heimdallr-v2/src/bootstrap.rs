@@ -11,8 +11,8 @@ use crate::state::AppState;
 /// The application type for starting the server.
 #[allow(missing_debug_implementations)]
 pub struct Application {
-    /// The application port number.
-    listener: TcpListener,
+    /// The application listener.
+    pub listener: TcpListener,
     /// The application server router for handling requests.
     router: Router,
 }

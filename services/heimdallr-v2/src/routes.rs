@@ -30,5 +30,6 @@ pub fn register_handlers(state: AppState) -> Router {
             post(transaction::build_multi_signature_tx),
         )
         .route("/cn/:contract/:action", post(contract::build_contract))
+        .route("/tx/:tx_type", post(transaction::build_std_tx))
         .with_state(state)
 }
