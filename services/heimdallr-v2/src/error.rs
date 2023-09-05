@@ -98,7 +98,7 @@ impl IntoResponse for AuthError {
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum TransactionError {
-    /// This is theerror when the transaction is invalid
+    /// This is the error when the transaction is invalid
     #[error("unable to process an invalid transaction.")]
     Invalid,
 
