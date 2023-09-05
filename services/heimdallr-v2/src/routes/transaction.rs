@@ -37,8 +37,10 @@ pub async fn build_multi_signature_tx(
     tracing::Span::current().record("customer_id", &tracing::field::display(customer_id));
     let cmd = BuildMultiSig::new(customer_id, multisig_type.clone(), *payload.clone());
 
-    tracing::info!("connecting to connect to odin...");
+    tracing::info!("connecting to connect to odin");
     let mut client = connect(state.odin_url).await?;
+
+    tracing::info!("building multi-signature transaction command");
     let multi_sig_build_cmd = client
         .build_cmd::<BuildMultiSig>(cmd)
         .await
@@ -64,7 +66,7 @@ pub async fn build_multi_signature_tx(
 #[tracing::instrument(name = "Build standard transaction", skip(state, claims))]
 pub async fn build_std_tx(
     State(state): State<AppState>,
-    Path(tx_type): Path<StdTxType>,
+    Path(transaction_type): Path<StdTxType>,
     claims: Claims,
     Json(payload): Json<TXPWrapper>,
 ) -> Result<Json<UnsignedTransaction>> {
@@ -75,11 +77,13 @@ pub async fn build_std_tx(
     let customer_id = claims.get_customer_id()?;
     tracing::Span::current().record("customer_id", &tracing::field::display(customer_id));
 
-    tracing::info!("creating command");
-    let cmd = BuildStdTx::new(customer_id, tx_type.clone(), *payload);
+    tracing::info!("building standard transaction command");
+    let cmd = BuildStdTx::new(customer_id, transaction_type, *payload);
 
     tracing::info!("connecting to connect to odin");
     let mut client = connect(state.odin_url).await?;
+
+    tracing::info!("building standard transaction");
     let tx_build_cmd = client.build_cmd::<BuildStdTx>(cmd).await.map_err(|err| {
         tracing::error!("failed to build standard transaction command: {err}");
         err

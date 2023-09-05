@@ -105,6 +105,10 @@ pub enum TransactionError {
     /// This is the error when a transaction does not reflect the current system state.
     #[error("the system encountered a conflict while processing this transaction.")]
     Conflict,
+
+    /// This is the error when pre-conditions are not met.
+    #[error("the pre-conditions are not met for this operation")]
+    Precondition,
 }
 
 impl IntoResponse for TransactionError {
@@ -113,6 +117,7 @@ impl IntoResponse for TransactionError {
         let status = match self {
             Self::Invalid => StatusCode::BAD_REQUEST,
             Self::Conflict => StatusCode::CONFLICT,
+            Self::Precondition => StatusCode::PRECONDITION_FAILED,
         };
         let body = Json(json!({
             "error": error_message,
