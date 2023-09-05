@@ -29,7 +29,11 @@ pub fn register_handlers(state: AppState) -> Router {
             "/ms/:multisig_type",
             post(transaction::build_multi_signature_tx),
         )
+        .route("/tx/:transaction_type", post(transaction::build_std_tx))
         .route("/cn/:contract/:action", post(contract::build_contract))
-        .route("/tx/:tx_type", post(transaction::build_std_tx))
+        .route(
+            "/fn/:contract/:transaction_id",
+            post(contract::finalize_contract_exec),
+        )
         .with_state(state)
 }
