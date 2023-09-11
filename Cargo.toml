@@ -32,7 +32,7 @@ hex = "0.4"
 rand = "0.8.5"
 structopt = "0.3.26"
 chrono = "0.4.19"
-bigdecimal = { version = "0.3.0", features = ["serde"] }
+bigdecimal = { version = "0.4.0", features = ["serde"] }
 strum = { version = "0.24", features = ["derive"] }
 strum_macros = "0.24"
 async-recursion = "1.0.0"

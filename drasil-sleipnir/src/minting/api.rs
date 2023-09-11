@@ -5,7 +5,7 @@ use drasil_gungnir::minting::models::*;
 
 pub async fn create_mintproject(data: &CreateMintProj) -> Result<MintProject, SleipnirError> {
     let time_constraint = if let Some(date) = &data.time_constraint {
-        Some(DateTime::<Utc>::from_utc(
+        Some(DateTime::from_naive_utc_and_offset(
             NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
         ))

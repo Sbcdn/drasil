@@ -193,7 +193,7 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
     log::debug!("Process vesting period...");
     let mut vd = chrono::Utc::now();
     if let Some(date) = twl.vesting_period {
-        vd = chrono::DateTime::<Utc>::from_utc(
+        vd = chrono::DateTime::from_naive_utc_and_offset(
             NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
         );
@@ -378,7 +378,7 @@ pub async fn get_user_txs(
 ) -> Result<i64, SleipnirError> {
     let mut from_t = chrono::Utc::now();
     if let Some(date) = from {
-        from_t = chrono::DateTime::<Utc>::from_utc(
+        from_t = chrono::DateTime::from_naive_utc_and_offset(
             NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
         );
@@ -387,7 +387,7 @@ pub async fn get_user_txs(
 
     let mut to_t = chrono::Utc::now();
     if let Some(date) = to.clone() {
-        to_t = chrono::DateTime::<Utc>::from_utc(
+        to_t = chrono::DateTime::from_naive_utc_and_offset(
             NaiveDateTime::parse_from_str(&date, "%Y-%m-%d %H:%M:%S")?,
             Utc,
         );
