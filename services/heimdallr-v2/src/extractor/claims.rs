@@ -5,7 +5,7 @@ use axum::extract::{FromRef, FromRequestParts};
 use axum::headers::authorization::{Authorization, Bearer};
 use axum::http::request::Parts;
 use axum::{async_trait, RequestPartsExt, TypedHeader};
-use jsonwebtoken::{decode, Validation};
+use jsonwebtoken::{decode, Algorithm, Validation};
 use serde::{Deserialize, Serialize};
 
 use crate::error::AuthError;
@@ -47,10 +47,37 @@ where
         let token_data = decode::<Claims>(
             bearer.token(),
             &app_state.jwt_decoding_key,
-            &Validation::default(),
+            &Validation::new(Algorithm::ES256),
         )
         .map_err(|_| AuthError::InvalidToken)?;
 
         Ok(token_data.claims)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::{extract::FromRequestParts, http::Request};
+    use secrecy::Secret;
+
+    use crate::state::AppState;
+
+    use super::Claims;
+
+    #[tokio::test]
+    async fn decode_valid_jwt_token_with_success() {
+        let (mut parts, _) = Request::builder().header("Authorization", "Bearer ***REMOVED***").body(()).expect("failed to create request").into_parts();
+
+        let secret = concat!(
+            "-----BEGIN PUBLIC KEY-----\n",
+            "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+",
+            "LwS66RkRJ3gYlrXCisZwWaNQo3nkNjRujIVVI9jEGCWYRdECga9lUjrg=\n",
+            "-----END PUBLIC KEY-----",
+        );
+
+        let secret = Secret::new(secret.into());
+        let state = AppState::new(secret, "odin_url".into()).expect("failed to create state");
+        let claims = Claims::from_request_parts(&mut parts, &state).await;
+        assert!(claims.is_ok())
     }
 }
