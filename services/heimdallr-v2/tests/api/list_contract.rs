@@ -11,6 +11,9 @@ async fn list_contract_with_success() {
         .expect("failed to request contact list");
 
     assert_eq!(resp.status(), 200);
-    let contracts = resp.json::<Vec<String>>().await.expect("unexpected response");
+    let contracts = resp
+        .json::<Vec<String>>()
+        .await
+        .expect("unexpected response");
     assert!(!contracts.is_empty());
 }
