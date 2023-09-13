@@ -1,8 +1,9 @@
 name: "Build and push"
+
 on:
   push:
-    tags:
-      - 'vidar-v*'
+    branches:
+      - "**"
 
 env:
   CARGO_TERM_COLOR: always
