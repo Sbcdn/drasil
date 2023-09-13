@@ -40,12 +40,25 @@ jobs:
           images: ghcr.io/${{github.repository}}
           flavor: latest=false
 
+#      - name: "Build and push mainnet image to GHCR"
+#        uses: docker/build-push-action@v4
+#        with:
+#          push: true
+#          context: ./
+#          file: .docker/Dockerfile-vidar
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#          build-args: |
+#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+#          tags: ${{ steps.meta.outputs.tags }}
+#        timeout-minutes: 120
+
       - name: "Build and push mainnet image to GHCR"
         uses: docker/build-push-action@v4
         with:
           push: true
           context: ./
-          file: .docker/Dockerfile-vidar
+          file: .docker/Dockerfile-heimdallr
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
