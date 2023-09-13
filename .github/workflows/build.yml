@@ -2,7 +2,7 @@ name: "Build and push"
 on:
   push:
     tags:
-      - 'v*'
+      - 'vidar-v*'
 
 env:
   CARGO_TERM_COLOR: always
@@ -44,7 +44,7 @@ jobs:
         with:
           push: true
           context: ./
-          file: Dockerfile
+          file: .docker/Dockerfile-vidar
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -53,15 +53,15 @@ jobs:
         timeout-minutes: 120
 
       ### Build earthNode testnet image
-      - name: "Build and push testnet image to GHCR"
-        uses: docker/build-push-action@v3
-        with:
-          push: true
-          context: ./
-          file: Dockerfile
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ghcr.io/${{github.repository}}-testnet:${{ github.ref_name }}
-        timeout-minutes: 120
+#      - name: "Build and push testnet image to GHCR"
+#        uses: docker/build-push-action@v3
+#        with:
+#          push: true
+#          context: ./.docker
+#          file: Dockerfile-vidar
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#          build-args: |
+#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+#          tags: ghcr.io/${{github.repository}}-testnet:${{ github.ref_name }}
+#        timeout-minutes: 120
