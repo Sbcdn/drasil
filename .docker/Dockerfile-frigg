@@ -44,7 +44,7 @@ RUN cargo build --release --manifest-path services/frigg/Cargo.toml
 FROM gcr.io/distroless/cc as frigg
 WORKDIR /frigg
 COPY --from=builder /build/target/release/frigg /usr/bin
-COPY --from=builder ./protocol_parameters.json /odin/protocol_parameters_babbage.json
+COPY --from=builder /protocol_parameters.json /odin/protocol_parameters_babbage.json
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group

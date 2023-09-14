@@ -44,7 +44,7 @@ RUN cargo build --release --manifest-path services/odin/Cargo.toml
 FROM gcr.io/distroless/cc as odin
 WORKDIR /odin
 COPY --from=builder /build/target/release/odin /usr/bin
-COPY --from=builder ./protocol_parameters.json /odin/protocol_parameters_babbage.json
+COPY --from=builder /protocol_parameters.json /odin/protocol_parameters_babbage.json
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
