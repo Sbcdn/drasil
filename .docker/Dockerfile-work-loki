@@ -39,7 +39,7 @@ WORKDIR /build
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --manifest-path services/work_loki/Cargo.toml
+RUN cargo build --release --manifest-path worker/work_loki/Cargo.toml
 
 FROM gcr.io/distroless/cc as work_loki
 WORKDIR /work_loki
