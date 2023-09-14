@@ -41,15 +41,6 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --manifest-path services/odin/Cargo.toml
 
-# Debugging: list files in the root directory
-RUN ls -la /
-RUN ls -la /build/
-RUN ls -la /build/target/
-RUN ls -la /build/target/release/
-RUN ls -la /home/
-RUN ls -la /var/
-RUN ls -la /opt/
-
 FROM gcr.io/distroless/cc as odin
 WORKDIR /odin
 COPY --from=builder /build/target/release/odin /usr/bin
