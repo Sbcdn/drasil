@@ -71,18 +71,18 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
         timeout-minutes: 120
 
-      - name: "Build and push odin testnet image to GHCR"
-        uses: docker/build-push-action@v3
-        with:
-          push: true
-          context: ./
-          file: .docker/Dockerfile-odin
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
-        timeout-minutes: 120
+#      - name: "Build and push odin testnet image to GHCR"
+#        uses: docker/build-push-action@v3
+#        with:
+#          push: true
+#          context: ./
+#          file: .docker/Dockerfile-odin
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#          build-args: |
+#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+#          tags: ${{ steps.meta.outputs.tags }}
+#        timeout-minutes: 120
 
       - name: "Build and push loki testnet image to GHCR"
         uses: docker/build-push-action@v3
@@ -97,18 +97,18 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
         timeout-minutes: 120
 
-      - name: "Build and push frigg testnet image to GHCR"
-        uses: docker/build-push-action@v3
-        with:
-          push: true
-          context: ./
-          file: .docker/Dockerfile-frigg
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
-        timeout-minutes: 120
+#      - name: "Build and push frigg testnet image to GHCR"
+#        uses: docker/build-push-action@v3
+#        with:
+#          push: true
+#          context: ./
+#          file: .docker/Dockerfile-frigg
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#          build-args: |
+#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+#          tags: ${{ steps.meta.outputs.tags }}
+#        timeout-minutes: 120
 
       - name: "Build and push geri testnet image to GHCR"
         uses: docker/build-push-action@v3
