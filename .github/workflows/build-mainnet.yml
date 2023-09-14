@@ -17,7 +17,7 @@ env:
 jobs:
   build-and-push-docker-image:
     name: "Build Docker image and push to repositories"
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest-8-cores
     env:
       GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN_EN }}
 
@@ -77,8 +77,8 @@ jobs:
           push: true
           context: ./
           file: .docker/Dockerfile-odin
-#          cache-from: type=gha
-#          cache-to: type=gha,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
           tags: ${{ steps.meta.outputs.tags }}
