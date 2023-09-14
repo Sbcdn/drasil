@@ -1,6 +1,7 @@
 name: "Build and push TESTNET"
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - "testnet-v*"

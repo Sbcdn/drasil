@@ -1,6 +1,7 @@
 name: "Build and push MAINNET"
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - "mainnet-v*"
