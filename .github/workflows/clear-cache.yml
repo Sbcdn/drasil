@@ -2,9 +2,6 @@ name: Clear cache
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - "**"
 
 permissions:
   actions: write
