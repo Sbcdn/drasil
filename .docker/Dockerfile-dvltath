@@ -39,7 +39,7 @@ WORKDIR /build
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --manifest-path services/dvltath/Cargo.toml
+RUN cargo build --release --manifest-path drasil-dvltath/Cargo.toml
 
 FROM gcr.io/distroless/cc as dvltath
 WORKDIR /dvltath
