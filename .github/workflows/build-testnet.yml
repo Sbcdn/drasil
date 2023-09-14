@@ -38,12 +38,14 @@ jobs:
           username: ${{ secrets.GH_DOCKERREGISTRY_USERNAME }}
           password: ${{ secrets.GH_DOCKERREGISTRY_TOKEN }}
 
-      - name: "Docker metadata"
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: ghcr.io/${{github.repository}}
-          flavor: latest=false
+      - name: "Get timestamp"
+        id: get_timestamp
+        run: echo "::set-output name=timestamp::$(date +'%Y%m%d%H%M%S')"
+
+      - name: "Get short SHA"
+        id: sha
+        run: |
+          echo "::set-output name=short::$(echo ${GITHUB_SHA::8})"
 
       - name: "Build and push vidar testnet image to GHCR"
         uses: docker/build-push-action@v4
@@ -55,7 +57,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:vidar-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push heimdallr testnet image to GHCR"
@@ -68,7 +70,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:heimdallr-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push odin testnet image to GHCR"
@@ -81,7 +83,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:odin-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push loki testnet image to GHCR"
@@ -94,7 +96,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:loki-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push frigg testnet image to GHCR"
@@ -107,7 +109,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:frigg-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push geri testnet image to GHCR"
@@ -120,7 +122,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:geri-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
 #      - name: "Build and push drasil-jobs testnet image to GHCR"
@@ -133,7 +135,7 @@ jobs:
 #          cache-to: type=gha,mode=max
 #          build-args: |
 #            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-#          tags: ${{ steps.meta.outputs.tags }}
+#          tags: ghcr.io/${{github.repository}}:drasil-jobs-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
 #        timeout-minutes: 120
 
       - name: "Build and push work-loki testnet image to GHCR"
@@ -146,7 +148,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:work-loki-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push freki testnet image to GHCR"
@@ -159,7 +161,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:freki-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push utxopti testnet image to GHCR"
@@ -172,7 +174,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:utxopti-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
       - name: "Build and push dvltath testnet image to GHCR"
@@ -185,5 +187,5 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/${{github.repository}}:dvltath-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
