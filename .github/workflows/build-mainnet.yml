@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "mainnet-v*"
+      - "**"
 
 env:
   CARGO_TERM_COLOR: always
