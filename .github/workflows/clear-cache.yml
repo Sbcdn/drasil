@@ -2,16 +2,13 @@ name: Clear cache
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - "**"
 
 permissions:
   actions: write
 
 jobs:
   clear-cache:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN_EN }}
 
