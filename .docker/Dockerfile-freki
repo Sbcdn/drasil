@@ -39,7 +39,7 @@ WORKDIR /build
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --manifest-path services/freki/Cargo.toml
+RUN cargo build --release --manifest-path jobs/freki/Cargo.toml
 
 FROM gcr.io/distroless/cc as freki
 WORKDIR /freki
