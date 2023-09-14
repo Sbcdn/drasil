@@ -1,9 +1,9 @@
-name: "Build and push"
+name: "Build and push MAINNET"
 
 on:
   push:
     branches:
-      - "**"
+      - "mainnet-v*"
 
 env:
   CARGO_TERM_COLOR: always
@@ -40,20 +40,20 @@ jobs:
           images: ghcr.io/${{github.repository}}
           flavor: latest=false
 
-#      - name: "Build and push mainnet image to GHCR"
-#        uses: docker/build-push-action@v4
-#        with:
-#          push: true
-#          context: ./
-#          file: .docker/Dockerfile-vidar
-#          cache-from: type=gha
-#          cache-to: type=gha,mode=max
-#          build-args: |
-#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-#          tags: ${{ steps.meta.outputs.tags }}
-#        timeout-minutes: 120
+      - name: "Build and push vidar mainnet image to GHCR"
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          context: ./
+          file: .docker/Dockerfile-vidar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+          tags: ${{ steps.meta.outputs.tags }}
+        timeout-minutes: 120
 
-      - name: "Build and push mainnet image to GHCR"
+      - name: "Build and push heimdallr mainnet image to GHCR"
         uses: docker/build-push-action@v4
         with:
           push: true
@@ -66,16 +66,15 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
         timeout-minutes: 120
 
-      ### Build earthNode testnet image
-#      - name: "Build and push testnet image to GHCR"
-#        uses: docker/build-push-action@v3
-#        with:
-#          push: true
-#          context: ./.docker
-#          file: Dockerfile-vidar
-#          cache-from: type=gha
-#          cache-to: type=gha,mode=max
-#          build-args: |
-#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-#          tags: ghcr.io/${{github.repository}}-testnet:${{ github.ref_name }}
-#        timeout-minutes: 120
+      - name: "Build and push odin mainnet image to GHCR"
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          context: ./
+          file: .docker/Dockerfile-odin
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+          tags: ${{ steps.meta.outputs.tags }}
+        timeout-minutes: 120

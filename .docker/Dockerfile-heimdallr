@@ -1,4 +1,6 @@
 FROM rust:1.71.0-slim-bullseye as base
+
+# Install required system packages and set up non-root user
 RUN apt update -y
 RUN apt install -y --no-install-recommends \
     ca-certificates \
