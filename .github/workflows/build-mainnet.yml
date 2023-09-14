@@ -71,15 +71,15 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
         timeout-minutes: 120
 
-#      - name: "Build and push odin mainnet image to GHCR"
-#        uses: docker/build-push-action@v4
-#        with:
-#          push: true
-#          context: ./
-#          file: .docker/Dockerfile-odin
-#          cache-from: type=gha
-#          cache-to: type=gha,mode=max
-#          build-args: |
-#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-#          tags: ${{ steps.meta.outputs.tags }}
-#        timeout-minutes: 120
+      - name: "Build and push odin mainnet image to GHCR"
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          context: ./
+          file: .docker/Dockerfile-odin
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+          tags: ${{ steps.meta.outputs.tags }}
+        timeout-minutes: 120
