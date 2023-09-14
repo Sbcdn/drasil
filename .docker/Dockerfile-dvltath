@@ -1,0 +1,59 @@
+FROM rust:1.71.0-slim-bullseye as base
+
+# Install required system packages and set up non-root user
+RUN apt update -y
+RUN apt install -y --no-install-recommends \
+    ca-certificates \
+    gcc \
+    libc6-dev \
+    libpq-dev \
+    libasn1-8-heimdal \
+    libtasn1-6 \
+    libhdb9-heimdal \
+    nettle-dev \
+    libhogweed6
+
+RUN apt clean -y
+
+ENV USER=drasil
+ENV UID=10001
+
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    "${USER}"
+
+RUN cargo install cargo-chef
+
+FROM base as planner
+WORKDIR /build
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM base as builder
+WORKDIR /build
+COPY --from=planner /build/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
+RUN cargo build --release --manifest-path services/dvltath/Cargo.toml
+
+FROM gcr.io/distroless/cc as dvltath
+WORKDIR /dvltath
+COPY --from=builder /build/target/release/dvltath /usr/bin
+
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+COPY --from=builder /target/x86_64-unknown-linux-gnu/release/dvltath /usr/bin
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+USER drasil:drasil
+ENV RUST_LOG=info
+
+USER drasil:drasil
+
+CMD ["dvltath"]
