@@ -43,11 +43,17 @@ RUN cargo build --release --manifest-path services/odin/Cargo.toml
 
 # Debugging: list files in the root directory
 RUN ls -la /
+RUN ls -la /build/
+RUN ls -la /build/target/
+RUN ls -la /build/target/release/
+RUN ls -la /home/
+RUN ls -la /var/
+RUN ls -la /opt/
 
 FROM gcr.io/distroless/cc as odin
 WORKDIR /odin
 COPY --from=builder /build/target/release/odin /usr/bin
-COPY --from=builder protocol_parameters.json /odin/protocol_parameters_babbage.json
+COPY --from=builder /build/protocol_parameters.json /odin/protocol_parameters_babbage.json
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
