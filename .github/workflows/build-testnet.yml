@@ -125,18 +125,18 @@ jobs:
           tags: ghcr.io/${{github.repository}}:geri-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
         timeout-minutes: 120
 
-#      - name: "Build and push drasil-jobs testnet image to GHCR"
-#        uses: docker/build-push-action@v3
-#        with:
-#          push: true
-#          context: ./
-#          file: .docker/Dockerfile-drasil-jobs
-#          cache-from: type=gha
-#          cache-to: type=gha,mode=max
-#          build-args: |
-#            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-#          tags: ghcr.io/${{github.repository}}:drasil-jobs-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
-#        timeout-minutes: 120
+      - name: "Build and push drasil-jobs testnet image to GHCR"
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          context: ./
+          file: .docker/Dockerfile-drasil-jobs
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+          tags: ghcr.io/${{github.repository}}:drasil-jobs-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
+        timeout-minutes: 120
 
       - name: "Build and push work-loki testnet image to GHCR"
         uses: docker/build-push-action@v3
