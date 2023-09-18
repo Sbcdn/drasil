@@ -6,6 +6,9 @@ on:
       - "services/heimdallr/**"
       - "manifests/heimdallr/**"
       - "!**.md"
+  push:
+    branches:
+      - "**"
 
 permissions:
   checks: write
