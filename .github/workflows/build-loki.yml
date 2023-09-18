@@ -1,10 +1,10 @@
-name: services | drasil | heimdallr | BUILD
+name: services | drasil | loki | BUILD
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - "services/heimdallr/**"
-      - "manifests/heimdallr/**"
+      - "services/loki/**"
+      - "manifests/loki/**"
       - "!**.md"
   push:
     branches:
@@ -23,7 +23,7 @@ env:
   CARGO_NET_GIT_FETCH_WITH_CLI: true
 
 jobs:
-  build-and-push-heimdallr:
+  build-and-push-loki:
     name: "Build Docker image and push to repositories"
     runs-on: ubuntu-latest
     env:
@@ -54,15 +54,15 @@ jobs:
         id: sha
         run: echo "short=$(echo ${GITHUB_SHA::8})" >> $GITHUB_ENV
 
-      - name: "Build and push heimdallr image to GHCR"
+      - name: "Build and push loki image to GHCR"
         uses: docker/build-push-action@v4
         with:
           push: true
           context: ./
-          file: .docker/Dockerfile-heimdallr
+          file: .docker/Dockerfile-loki
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ghcr.io/${{github.repository}}:heimdallr-${{ env.timestamp }}-${{ env.short }}
+          tags: ghcr.io/${{github.repository}}:loki-${{ env.timestamp }}-${{ env.short }}
         timeout-minutes: 120
