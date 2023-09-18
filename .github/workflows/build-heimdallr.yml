@@ -1,0 +1,66 @@
+name: apps | drasil | heimdallr | BUILD
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "services/heimdallr/**"
+      - "manifests/heimdallr/**"
+      - "!**.md"
+
+permissions:
+  checks: write
+  contents: read
+
+concurrency:
+  group: ${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+jobs:
+  build-and-push-heimdallr:
+    name: "Build Docker image and push to repositories"
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN_EN }}
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: "Set up Docker Buildx"
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: "Login to Github Packages"
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_DOCKERREGISTRY_USERNAME }}
+          password: ${{ secrets.GH_DOCKERREGISTRY_TOKEN }}
+
+      - name: "Get timestamp"
+        id: get_timestamp
+        run: echo "::set-output name=timestamp::$(date +'%Y%m%d%H%M%S')"
+
+      - name: "Get short SHA"
+        id: sha
+        run: |
+          echo "::set-output name=short::$(echo ${GITHUB_SHA::8})"
+
+      - name: "Build and push heimdallr mainnet image to GHCR"
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          context: ./
+          file: .docker/Dockerfile-heimdallr
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
+          tags: ghcr.io/${{github.repository}}:heimdallr-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
+        timeout-minutes: 120
