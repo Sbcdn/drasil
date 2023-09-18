@@ -48,12 +48,11 @@ jobs:
 
       - name: "Get timestamp"
         id: get_timestamp
-        run: echo "::set-output name=timestamp::$(date +'%Y%m%d%H%M%S')"
+        run: echo "timestamp=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
 
       - name: "Get short SHA"
         id: sha
-        run: |
-          echo "::set-output name=short::$(echo ${GITHUB_SHA::8})"
+        run: echo "short=$(echo ${GITHUB_SHA::8})" >> $GITHUB_ENV
 
       - name: "Build and push heimdallr mainnet image to GHCR"
         uses: docker/build-push-action@v4
@@ -65,5 +64,5 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             "GH_TOKEN=${{ secrets.ACCESS_TOKEN_EN }}"
-          tags: ghcr.io/${{github.repository}}:heimdallr-${{ steps.get_timestamp.outputs.timestamp }}-${{ steps.sha.outputs.short }}
+          tags: ghcr.io/${{github.repository}}:heimdallr-${{ env.timestamp }}-${{ env.short }}
         timeout-minutes: 120
