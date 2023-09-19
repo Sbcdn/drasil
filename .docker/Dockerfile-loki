@@ -39,11 +39,11 @@ WORKDIR /build
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --manifest-path services/heimdallr/Cargo.toml
+RUN cargo build --release --manifest-path services/loki/Cargo.toml
 
-FROM gcr.io/distroless/cc as heimdallr
-WORKDIR /heimdallr
-COPY --from=builder /build/target/release/heimdallr /usr/bin
+FROM gcr.io/distroless/cc as loki
+WORKDIR /loki
+COPY --from=builder /build/target/release/loki /usr/bin
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
@@ -84,4 +84,4 @@ EXPOSE 4000
 
 USER drasil:drasil
 
-CMD ["heimdallr"]
+CMD ["loki"]

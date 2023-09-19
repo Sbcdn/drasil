@@ -39,11 +39,12 @@ WORKDIR /build
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --manifest-path services/heimdallr/Cargo.toml
+RUN cargo build --release --manifest-path services/frigg/Cargo.toml
 
-FROM gcr.io/distroless/cc as heimdallr
-WORKDIR /heimdallr
-COPY --from=builder /build/target/release/heimdallr /usr/bin
+FROM gcr.io/distroless/cc as frigg
+WORKDIR /frigg
+COPY --from=builder /build/target/release/frigg /usr/bin
+COPY --from=builder /build/protocol_parameters.json /odin/protocol_parameters_babbage.json
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
@@ -84,4 +85,4 @@ EXPOSE 4000
 
 USER drasil:drasil
 
-CMD ["heimdallr"]
+CMD ["frigg"]

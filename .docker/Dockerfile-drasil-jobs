@@ -39,11 +39,11 @@ WORKDIR /build
 COPY --from=planner /build/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --manifest-path services/heimdallr/Cargo.toml
+RUN cargo build --release --manifest-path worker/jobs/Cargo.toml
 
-FROM gcr.io/distroless/cc as heimdallr
-WORKDIR /heimdallr
-COPY --from=builder /build/target/release/heimdallr /usr/bin
+FROM gcr.io/distroless/cc as drasil_jobs
+WORKDIR /drasil_jobs
+COPY --from=builder /build/target/release/drasil_jobs /usr/bin
 
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
@@ -80,8 +80,10 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr/lib/x86_64-li
 COPY --from=builder /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/libcrypt.so.1
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libffi.so.7 /usr/lib/x86_64-linux-gnu/libffi.so.7
 
-EXPOSE 4000
+ENV AMQP_ADDR="amqp://rmq:rmq@127.0.0.1:5672"
+ENV QUEUE_NAME="drasil_jobs"
+ENV CONSUMER_NAME="drasil_jobs_default"
 
 USER drasil:drasil
 
-CMD ["heimdallr"]
+CMD ["drasil_jobs"]
