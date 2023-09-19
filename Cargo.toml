@@ -12,6 +12,7 @@ members = [
     "services/odin",
     "services/vidar",
     "services/heimdallr",
+    "services/heimdallr-v2",
     "services/frigg",
     "services/loki",
     "worker/geri",
