@@ -64,18 +64,12 @@ impl BuildStdTx {
         }
         */
         let ret = match self.tx_type() {
-            StdTxType::DelegateStake => match stdtx::handle_stake_delegation(&self).await {
-                Ok(s) => s,
-                Err(e) => e.to_string(),
-            },
-            StdTxType::DeregisterStake => match stdtx::handle_stake_deregistration(&self).await { // new
-                Ok(s) => s, // new
-                Err(e) => e.to_string(), // new
-            },
-            StdTxType::StandardTx => match stdtx::handle_stx(&self).await {
-                Ok(s) => s,
-                Err(e) => e.to_string(),
-            },
+            StdTxType::DelegateStake => stdtx::handle_stake_delegation(&self).await
+                .unwrap_or_else(|err| err.to_string()),
+            StdTxType::DeregisterStake => stdtx::handle_stake_deregistration(&self).await
+                .unwrap_or_else(|err| err.to_string()),
+            StdTxType::StandardTx => stdtx::handle_stx(&self).await
+                .unwrap_or_else(|err| err.to_string()),
         };
         log::debug!("Return String before parsing into BC:\n{:?}", ret);
         let response = Frame::Bulk(Bytes::from(

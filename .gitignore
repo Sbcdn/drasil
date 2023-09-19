@@ -6,3 +6,6 @@ target/
 .github/workflows/build.yml
 .idea
 .vscode
+msg.digest.txt
+msg.signature.txt
+msg.txt
