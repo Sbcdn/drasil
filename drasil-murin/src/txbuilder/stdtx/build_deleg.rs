@@ -198,7 +198,7 @@ mod tests {
 
         assert_eq!(at_deleg_builder.stxd.poolhash, poolhash);
         assert_eq!(at_deleg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash).unwrap());
-        assert_eq!(at_deleg_builder.stxd.registered, None);
+        assert!(at_deleg_builder.stxd.registered.is_none());
 
         // perform_txb
         let perform_txb = at_deleg_builder.perform_txb(
@@ -267,26 +267,23 @@ mod tests {
                 certs
             )
         );
-        assert_eq!(tx.body().withdrawals(), None);
-        assert_eq!(tx.body().update(), None);
-        assert_eq!(tx.body().auxiliary_data_hash(), None);
-        assert_eq!(
-            tx.body().validity_start_interval_bignum(), 
-            None
-        );
-        assert_eq!(tx.body().mint(), None);
-        assert_eq!(tx.body().script_data_hash(), None);
-        assert_eq!(tx.body().collateral(), None);
-        assert_eq!(tx.body().required_signers(), None);
-        assert_eq!(tx.body().network_id(), None);
-        assert_eq!(tx.body().collateral_return(), None);
-        assert_eq!(tx.body().total_collateral(), None);
-        assert_eq!(tx.body().reference_inputs(), None);
+        assert!(tx.body().withdrawals().is_none());
+        assert!(tx.body().update().is_none());
+        assert!(tx.body().auxiliary_data_hash().is_none());
+        assert!(tx.body().validity_start_interval_bignum().is_none());
+        assert!(tx.body().mint().is_none());
+        assert!(tx.body().script_data_hash().is_none());
+        assert!(tx.body().collateral().is_none());
+        assert!(tx.body().required_signers().is_none());
+        assert!(tx.body().network_id().is_none());
+        assert!(tx.body().collateral_return().is_none());
+        assert!(tx.body().total_collateral().is_none());
+        assert!(tx.body().reference_inputs().is_none());
         assert_eq!(
             tx.witness_set(), 
             TransactionWitnessSet::new()
         );
-        assert_eq!(tx.is_valid(), true);
-        assert_eq!(tx.auxiliary_data(), None);
+        assert!(tx.is_valid());
+        assert!(tx.auxiliary_data().is_none());
     }
 }

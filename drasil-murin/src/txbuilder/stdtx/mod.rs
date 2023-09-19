@@ -92,7 +92,7 @@ impl ToString for DelegTxData {
     }
 }
 
-impl core::str::FromStr for DelegTxData {
+impl std::str::FromStr for DelegTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         DelegTxData::new(src)
@@ -143,7 +143,7 @@ impl ToString for DeregTxData {
     }
 }
 
-impl core::str::FromStr for DeregTxData {
+impl std::str::FromStr for DeregTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         DeregTxData::new(src)
@@ -153,7 +153,7 @@ impl core::str::FromStr for DeregTxData {
 #[cfg(test)]
 mod tests {
     use cardano_serialization_lib::crypto::Ed25519KeyHash;
-    use core::str::FromStr;
+    use std::str::FromStr;
     use crate::MurinError;
 
     #[test]
@@ -168,20 +168,20 @@ mod tests {
 
         assert_eq!(get_poolhash, pool_hash);
         assert_eq!(get_poolkeyhash, Ed25519KeyHash::from_bech32(pool_hash)?);
-        assert_eq!(get_registered, false);
+        assert!(!get_registered);
 
         // set values
         deleg_tx_data.set_registered(Some(true));
         let get_registered_true = deleg_tx_data.get_registered();
-        assert_eq!(get_registered_true, true);
+        assert!(get_registered_true);
 
         deleg_tx_data.set_registered(Some(false));
         let get_registered_false = deleg_tx_data.get_registered();
-        assert_eq!(get_registered_false, false);
+        assert!(!get_registered_false);
 
         deleg_tx_data.set_registered(None);
         let get_registered_none = deleg_tx_data.get_registered();
-        assert_eq!(get_registered_none, false);
+        assert!(!get_registered_none);
 
         // trait impls
         let to_string = deleg_tx_data.to_string();
@@ -209,20 +209,20 @@ mod tests {
 
         assert_eq!(get_poolhash, pool_hash);
         assert_eq!(get_poolkeyhash, Ed25519KeyHash::from_bech32(pool_hash).unwrap());
-        assert_eq!(get_registered, false);
+        assert!(!get_registered);
 
         // set values
         dereg_tx_data.set_registered(Some(true));
         let get_registered_true = dereg_tx_data.get_registered();
-        assert_eq!(get_registered_true, true);
+        assert!(get_registered_true);
 
         dereg_tx_data.set_registered(Some(false));
         let get_registered_false = dereg_tx_data.get_registered();
-        assert_eq!(get_registered_false, false);
+        assert!(!get_registered_false);
 
         dereg_tx_data.set_registered(None);
         let get_registered_none = dereg_tx_data.get_registered();
-        assert_eq!(get_registered_none, false);
+        assert!(!get_registered_none);
 
         // trait impls
         let to_string = dereg_tx_data.to_string();

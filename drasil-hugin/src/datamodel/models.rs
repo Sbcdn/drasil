@@ -745,9 +745,10 @@ impl Operation {
         use drasil_murin::txbuilder::stdtx::DeregTxData;
         match self {
             Operation::StakeDeregistration {
-                poolhash,
-                payment_addresses: _,
-            } => Ok(DeregTxData::new(poolhash)?),
+                poolhash, 
+                ..
+            } 
+            => Ok(DeregTxData::new(poolhash)?),
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
             )),
