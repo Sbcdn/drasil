@@ -20,7 +20,7 @@ pub enum TransferError {
     #[error("Custom Error")]
     Custom(String),
     #[error(transparent)]
-    ParseIntError(#[from] core::num::ParseIntError),
+    ParseIntError(#[from] std::num::ParseIntError),
     #[error(transparent)]
     MurinError(#[from] crate::error::MurinError),
     #[error(transparent)]

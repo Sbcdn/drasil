@@ -9,7 +9,7 @@ pub enum Error {
     #[error("AN error occured")]
     Custom(String),
     #[error(transparent)]
-    ParseIntError(#[from] core::num::ParseIntError),
+    ParseIntError(#[from] std::num::ParseIntError),
 }
 
 impl From<std::string::String> for Error {

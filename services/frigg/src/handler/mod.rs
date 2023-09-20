@@ -40,7 +40,7 @@ pub async fn get_user_from_string(us: &str) -> Result<i64> {
     Ok(user)
 }
 
-async fn get_rmq_con(pool: Pool) -> core::result::Result<Connection, deadpool_lapin::PoolError> {
+async fn get_rmq_con(pool: Pool) -> std::result::Result<Connection, deadpool_lapin::PoolError> {
     let connection = pool.get().await?;
     Ok(connection)
 }

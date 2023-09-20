@@ -1452,9 +1452,9 @@ pub fn balance_tx(
     txos: &mut clib::TransactionOutputs,
     already_paid: Option<&cutils::Value>,
     fee: &cutils::BigNum,
-    fee_paied: &mut bool,
+    fee_paid: &mut bool,
     first_run: &mut bool,
-    txos_paied: &mut bool,
+    txos_paid: &mut bool,
     tbb_values: &mut cutils::Value,
     senders_addr: &caddr::Address,
     change_address: &caddr::Address,
@@ -1529,9 +1529,9 @@ pub fn balance_tx(
                 txos,
                 already_paid,
                 fee,
-                fee_paied,
+                fee_paid,
                 first_run,
-                txos_paied,
+                txos_paid,
                 tbb_values,
                 senders_addr,
                 change_address,
@@ -1545,8 +1545,8 @@ pub fn balance_tx(
             if acc_change.coin().compare(&tbb_values.coin()) >= 0 {
                 debug!("\nPay: {:?} with value: {:?}", tbb_values, acc_change);
                 *acc_change = acc_change.clamped_sub(tbb_values);
-                *fee_paied = true;
-                *txos_paied = true;
+                *fee_paid = true;
+                *txos_paid = true;
                 debug!("------------------------------------------------------------------\n\n");
                 debug!("Acc after clamped sub: \n{:?}", acc_change);
                 debug!("------------------------------------------------------------------\n\n");
@@ -1554,7 +1554,7 @@ pub fn balance_tx(
             let min_utxo = txbuilder::calc_min_ada_for_utxo(acc_change, None);
 
             let min_ada_value = cutils::Value::new(&min_utxo);
-            if *txos_paied && *fee_paied && acc_change.coin().compare(&min_ada_value.coin()) >= 0 {
+            if *txos_paid && *fee_paid && acc_change.coin().compare(&min_ada_value.coin()) >= 0 {
                 debug!("\nAdded accumulated output: {:?}", acc_change.coin());
                 let acc_txo = clib::TransactionOutput::new(change_address, acc_change);
                 let mut out_txos = clib::TransactionOutputs::new();
@@ -1575,20 +1575,20 @@ pub fn balance_tx(
             {
                 panic!("\nERROR: Transaction does balance but last output is below min Ada value: {:?} overhead",acc_change.coin());
             }
-            if (!*txos_paied
-                || !*fee_paied
+            if (!*txos_paid
+                || !*fee_paid
                 || acc_change.coin().compare(&cutils::to_bignum(0u64)) != 0
                 || acc_change.multiasset().is_some())
                 && !*dummyrun
             {
                 let mut overhead = &mut cutils::Value::new(&cutils::to_bignum(0u64));
-                if !*txos_paied {
+                if !*txos_paid {
                     overhead = tbb_values;
                 }
-                if !*fee_paied {
+                if !*fee_paid {
                     overhead.set_coin(&overhead.coin().checked_add(fee).unwrap());
                 }
-                panic!("\nERROR: Transaction does not balance: {overhead:?} overhead, fee paied: {fee_paied:?}, outputs paied: {txos_paied:?}");
+                panic!("\nERROR: Transaction does not balance: {overhead:?} overhead, fee paid: {fee_paid:?}, outputs paid: {txos_paid:?}");
             }
             debug!("Accumulated Change is Zero?: {:?}", acc_change);
             Ok(txos.clone())
@@ -1961,9 +1961,9 @@ pub fn create_ada_tx(
         &cutils::Value::new(&cutils::to_bignum(lovelaces)),
     ));
 
-    let mut fee_paied = false;
+    let mut fee_paid = false;
     let mut first_run = true;
-    let mut txos_paied = false;
+    let mut txos_paid = false;
     let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64)); // Inital value to balance txos
     let mut acc = cutils::Value::new(&cutils::to_bignum(0u64)); // Inital value to for change accumulator
 
@@ -1989,9 +1989,9 @@ pub fn create_ada_tx(
         &mut txouts,
         None,
         fee,
-        &mut fee_paied,
+        &mut fee_paid,
         &mut first_run,
-        &mut txos_paied,
+        &mut txos_paid,
         &mut tbb_values,
         to,
         change,

@@ -185,7 +185,7 @@ pub async fn vault_connect_sdc() -> VaultClient {
             .address(address)
             .set_namespace(namespace)
             .token("")
-            .timeout(Some(core::time::Duration::from_secs(30)))
+            .timeout(Some(std::time::Duration::from_secs(30)))
             .build()
             .unwrap(),
     )
@@ -205,7 +205,7 @@ pub async fn vault_connect() -> VaultClient {
             .address(address)
             .set_namespace(namespace)
             .token(get_vtoken())
-            .timeout(Some(core::time::Duration::from_secs(30)))
+            .timeout(Some(std::time::Duration::from_secs(30)))
             .build()
             .unwrap(),
     )

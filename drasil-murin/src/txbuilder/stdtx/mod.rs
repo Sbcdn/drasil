@@ -49,7 +49,7 @@ impl FromStr for StandardTxData {
 pub struct DelegTxData {
     poolhash: String,
     poolkeyhash: ccrypto::Ed25519KeyHash,
-    registred: Option<bool>,
+    registered: Option<bool>,
 }
 
 impl DelegTxData {
@@ -58,7 +58,7 @@ impl DelegTxData {
         Ok(DelegTxData {
             poolhash: poolhash.to_string(),
             poolkeyhash: pool_keyhash,
-            registred: None,
+            registered: None,
         })
     }
 
@@ -71,7 +71,7 @@ impl DelegTxData {
     }
 
     pub fn get_registered(&self) -> bool {
-        if let Some(r) = self.registred {
+        if let Some(r) = self.registered {
             r
         } else {
             false
@@ -79,7 +79,7 @@ impl DelegTxData {
     }
 
     pub fn set_registered(&mut self, r: Option<bool>) {
-        self.registred = r;
+        self.registered = r;
     }
 }
 
@@ -89,7 +89,7 @@ impl ToString for DelegTxData {
     }
 }
 
-impl core::str::FromStr for DelegTxData {
+impl std::str::FromStr for DelegTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         DelegTxData::new(src)

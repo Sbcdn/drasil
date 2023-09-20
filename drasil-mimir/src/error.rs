@@ -9,7 +9,7 @@ pub enum MimirError {
     #[error("Custom Error")]
     Custom(String),
     #[error(transparent)]
-    ParseIntError(#[from] core::num::ParseIntError),
+    ParseIntError(#[from] std::num::ParseIntError),
     #[error(transparent)]
     DieselError(#[from] diesel::result::Error),
     #[error(transparent)]

@@ -500,7 +500,7 @@ impl Operation {
                 Ok(mptx)
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -526,7 +526,7 @@ impl Operation {
                 Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -626,7 +626,7 @@ impl Operation {
                 Ok(ColMinterTxData::new(out))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -711,7 +711,7 @@ impl Operation {
                 ))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -728,7 +728,7 @@ impl Operation {
                 addresses: _,
             } => Ok(DelegTxData::new(poolhash)?),
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this transaction",
+                "provided wrong specfic parameter for this transaction",
             )),
         }
     }
@@ -743,7 +743,7 @@ impl Operation {
             Operation::CPO { po_id, pw } => Ok(CPO::new(*po_id, pw.to_owned())),
 
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this transaction",
+                "provided wrong specfic parameter for this transaction",
             )),
         }
     }

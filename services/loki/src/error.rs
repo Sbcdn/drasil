@@ -41,8 +41,8 @@ impl From<jsonwebtoken::errors::Error> for Error {
         Error::Custom(err.to_string())
     }
 }
-impl From<core::num::ParseIntError> for Error {
-    fn from(err: core::num::ParseIntError) -> Self {
+impl From<std::num::ParseIntError> for Error {
+    fn from(err: std::num::ParseIntError) -> Self {
         Error::Custom(err.to_string())
     }
 }

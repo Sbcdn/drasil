@@ -29,7 +29,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
     ) -> std::result::Result<TxBO, MurinError> {
         if fcrun {
             info!("--------------------------------------------------------------------------------------------------------");
-            info!("-----------------------------------------Fee calcualtion------------------------------------------------");
+            info!("-----------------------------------------Fee Calculation------------------------------------------------");
             info!("---------------------------------------------------------------------------------------------------------\n");
         } else {
             info!("--------------------------------------------------------------------------------------------------------");
@@ -57,7 +57,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         let deleg_rwd_addr = caddr::RewardAddress::from_address(&delegators_address).unwrap();
         let deleg_stake_creds = deleg_rwd_addr.payment_cred();
         if owner_stakecred.to_bytes() != deleg_stake_creds.to_bytes() {
-            return Err(MurinError::new("Inconsitent Stake Key Data, forbidden!"));
+            return Err(MurinError::new("Inconsistent Stake Key Data, forbidden!"));
         }
 
         let mut certs = clib::Certificates::new();
@@ -99,9 +99,9 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         info!("K: {:?}", k);
 
         // Balance TX
-        let mut fee_paied = false;
+        let mut fee_paid = false;
         let mut first_run = true;
-        let mut txos_paied = false;
+        let mut txos_paid = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
         if !registered {
             tbb_values = deposit_val.clone();
@@ -133,9 +133,9 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
             &mut txouts,
             None,
             fee,
-            &mut fee_paied,
+            &mut fee_paid,
             &mut first_run,
-            &mut txos_paied,
+            &mut txos_paid,
             &mut tbb_values,
             &owner_address,
             &change_address,
