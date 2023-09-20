@@ -100,11 +100,6 @@ impl FinalizeStdTx {
                 self.finalize_std_tx(raw_tx.clone()).await?
             }
             StdTxType::DeregisterStake => {
-                if let Err(e) =
-                    drasil_murin::stdtx::DeregTxData::from_str(raw_tx.get_tx_specific_rawdata())
-                {
-                    return Err(CmdError::Custom{str:format!("ERROR Invalid Transaction Data, this is not a deregistration transaction, {:?}",e.to_string())}.into());
-                };
                 self.finalize_std_tx(raw_tx.clone()).await?
             }
             StdTxType::StandardTx => {
