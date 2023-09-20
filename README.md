@@ -54,57 +54,7 @@ Follow the Readme files in the single applications' folders
 
 
 ### Environment 
-Drasils individual services require the setting of many parameters which are passed via environment variables.  These are described in the Readme file corresponding to the specific service. Here is a list of (probably) all the environment variables used in this repo, with placeholder values:
-
-set_var("ADM_USER", "trsfasfue");
-set_var("POW", "trsfasfue");
-set_var("ODIN_URL", "trsfasfue");
-set_var("PLATFORM_DB_URL", "trsfasfue");
-set_var("MOUNT", "trsfasfue");
-set_var("VPATH", "trsfasfue");
-set_var("VSOCKET_PATH", "trsfasfue");
-set_var("OROLE_ID", "trsfasfue");
-set_var("OSECRET_ID", "trsfasfue");
-set_var("RUST_LOG", "trsfasfue");
-set_var("VAULT_TOKEN", "trsfasfue");
-set_var("REWARDS_DB_URL", "trsfasfue");
-set_var("DBSYNC_DB_URL", "trsfasfue");
-set_var("CARDANO_CLI_PATH", "trsfasfue");
-set_var("CARDANO_PROTOCOL_PARAMETER_PATH", "trsfasfue");
-set_var("TX_SUBMIT_ENDPOINT1", "trsfasfue");
-set_var("TX_SUBMIT_ENDPOINT2", "trsfasfue");
-set_var("TX_SUBMIT_ENDPOINT3", "trsfasfue");
-set_var("REDIS_DB", "redis://127.0.0.1:6379/0");
-set_var("REDIS_DB_URL_UTXOMIND", "trsfasfue");
-set_var("REDIS_DB_URL_REPLICA", "trsfasfue");
-set_var("REDIS_CLUSTER", "false");
-set_var("TXGSET", "tfsafasrue");
-set_var("USED_UTXO_DATASTORE_1", "trsfasfue");
-set_var("USED_UTXO_DATASTORE_2", "trfsafue");
-set_var("USED_UTXO_DATASTORE_3", "trfsafsaue");
-set_var("PENDING_TX_DATASTORE_1", "sfsafa");
-set_var("PENDING_TX_DATASTORE_2", "fasfsaf");
-set_var("PENDING_TX_DATASTORE_3", "fsafasf");
-set_var("JWT_KEY", "trsfasfue");
-set_var("DRASIL_REWARD_DB", "trsfasfue");
-set_var("JWT_PUB_KEY", "trsfasfue");
-set_var("RUST_LOG", "trsfasfue");
-set_var("POD_HOST", "trsfasfue");
-set_var("POD_PORT", "trsfasfue");
-set_var("VERIFICATION_LINK", "trsfasfue");
-set_var("SMTP_USER", "trsfasfue");
-set_var("SMTP_PW", "trsfasfue");
-set_var("FROM_EMAIL", "trsfasfue");
-set_var("EMAIL_API_KEY", "trsfasfue");
-set_var("AMQP_ADDR", "trsfasfue");
-set_var("QUEUE_NAME", "trsfasfue");
-set_var("CONSUMER_NAME", "trsfasfue");
-set_var("JWT_PUB_KEY", "trsfasfue");
-set_var("ODIN_URL", "trsfasfue");
-set_var("AMWP_ADDR", "trsfasfue");
-set_var("STREAM_TRIMMER", "trsfasfue");
-set_var("STREAMS", "trsfasfue");
-set_var("TIMEOUT", "trsfasfue");
+Drasils individual services require the setting of many parameters which are passed via environment variables.  These are described in the Readme file corresponding to the specific service.
 
 ## Architecture
 

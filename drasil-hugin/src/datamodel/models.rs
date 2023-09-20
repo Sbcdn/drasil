@@ -446,7 +446,6 @@ pub enum Operation {
         addresses: Option<Vec<String>>,
     },
     StakeDeregistration {
-        poolhash: String,
         payment_addresses: Option<Vec<String>>,
     },
     StdTx {
@@ -745,10 +744,9 @@ impl Operation {
         use drasil_murin::txbuilder::stdtx::DeregTxData;
         match self {
             Operation::StakeDeregistration {
-                poolhash, 
                 ..
             } 
-            => Ok(DeregTxData::new(poolhash)?),
+            => Ok(DeregTxData::new()?),
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
             )),
@@ -1099,14 +1097,11 @@ mod tests {
         let payment_addresses = Some(vec![
             addr1.to_string()
         ]);
-        let op = super::Operation::StakeDeregistration { poolhash: poolhash.clone(), payment_addresses };
+        let op = super::Operation::StakeDeregistration { payment_addresses };
 
         let deregistration = op.into_stake_deregistration().await.unwrap();
 
-        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash).unwrap();
-
-        assert_eq!(deregistration.get_poolhash(), poolhash);
-        assert_eq!(deregistration.get_poolkeyhash(), real_poolkeyhash);
+        assert!(!deregistration.get_registered()); // registration status undefined => null => false
     }
 
     #[tokio::test]

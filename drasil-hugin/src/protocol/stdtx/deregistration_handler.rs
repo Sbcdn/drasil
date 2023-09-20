@@ -28,7 +28,6 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
 
     let (mut deregtxd, addresses) = match op {
         Operation::StakeDeregistration {
-            poolhash: _,
             payment_addresses,
         } => (op.into_stake_deregistration().await?, payment_addresses),
         _ => {
@@ -117,7 +116,7 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
         &bld_tx.get_tx_unsigned(),
         &bld_tx.get_metadata(),
         &gtxd.to_string(),
-        &deregtxd.to_string(),
+        &"".to_string(),
         &bld_tx.get_used_utxos(),
         &hex::encode(gtxd.get_stake_address().to_bytes()),
         &(bst.customer_id()),
@@ -153,7 +152,7 @@ mod test {
             addr1.to_string()
         ]);
 
-        let script_spec = Operation::StakeDeregistration { poolhash, payment_addresses };
+        let script_spec = Operation::StakeDeregistration { payment_addresses };
         let network = 0;
         let txpattern = TransactionPattern::new_empty(customer_id, &script_spec, network);
 

@@ -39,26 +39,21 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
 
         let registered = self.stxd.get_registered();
         log::info!("\nThis user is registered: {}\n", registered);
-        let owner_address = match gtxd.get_senders_address(None) {
-            Some(a) => a,
-            None => {
-                return Err(MurinError::new(
-                    "Address of Wallet owner could not be found",
-                ))
-            }
-        };
+        let owner_address = gtxd.get_senders_address(None).ok_or(
+            MurinError::new(
+            "Address of Wallet owner could not be found",
+            )
+        ).unwrap();
         let delegators_address: caddr::Address = gtxd.get_stake_address(); 
   
         let delegators_address_bech32 = delegators_address.to_bech32(None)?;
         log::info!("Delegator Stake Address: {:?}", delegators_address_bech32);
 
-        let owner_base_addr = if let Some(address) = caddr::BaseAddress::from_address(&owner_address) {
-            address
-        } else {
-            return Err(MurinError::new(
-                "The given stake owner address isn't a base address. See https://docs.cardano.org/learn/cardano-addresses/"
-            ))
-        };
+        let owner_base_addr = caddr::BaseAddress::from_address(&owner_address).ok_or(
+            MurinError::new(
+                "The given address isn't a base address and doesn't contain staking information. See https://docs.cardano.org/learn/cardano-addresses/"
+            )
+        ).unwrap();
 
         let owner_stakecred = owner_base_addr.stake_cred();
         let dereg_rwd_addr = caddr::RewardAddress::from_address(&delegators_address).unwrap();
@@ -187,11 +182,9 @@ mod tests {
         set_var("REDIS_CLUSTER", "false");
         let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t";
         let base_address = "addr_test1qp6crwxyfwah6hy7v9yu5w6z2w4zcu53qxakk8ynld8fgcpxjae5d7xztgf0vyq7pgrrsk466xxk25cdggpq82zkpdcsdkpc68";
-        let at_dereg_params = super::DeregTxData::new(poolhash).unwrap();
+        let at_dereg_params = super::DeregTxData::new().unwrap();
         let at_dereg_builder = super::AtDeregBuilder::new(&at_dereg_params);
 
-        assert_eq!(at_dereg_builder.stxd.poolhash, poolhash);
-        assert_eq!(at_dereg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash).unwrap());
         assert!(at_dereg_builder.stxd.registered.is_none());
 
         // perform_txb
