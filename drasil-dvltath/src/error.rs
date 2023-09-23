@@ -6,7 +6,7 @@ use thiserror::Error;
 pub enum Error {
     #[error("An error occured")]
     StdError,
-    #[error("AN error occured")]
+    #[error("An error occured")]
     Custom(String),
     #[error(transparent)]
     ParseIntError(#[from] core::num::ParseIntError),

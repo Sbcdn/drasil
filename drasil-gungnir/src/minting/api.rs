@@ -11,29 +11,26 @@ use crate::*;
 
 impl MintProject {
     pub fn get_mintproject_by_id(id_in: i64) -> Result<MintProject, RWDError> {
-        let conn = &mut establish_connection()?;
-        let result = mint_projects::table
+        Ok(mint_projects::table
             .filter(mint_projects::id.eq(id_in))
-            .first::<MintProject>(conn)?;
-        Ok(result)
+            .first::<MintProject>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_mintproject_by_id_active(id_in: i64) -> Result<MintProject, RWDError> {
-        let conn = &mut establish_connection()?;
-        let result = mint_projects::table
+        Ok(mint_projects::table
             .filter(mint_projects::id.eq(id_in))
             .filter(mint_projects::active.eq(true))
-            .first::<MintProject>(conn)?;
-        Ok(result)
+            .first::<MintProject>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_mintproject_by_uid_cid(uid_in: i64, cid_in: i64) -> Result<MintProject, RWDError> {
-        let conn = &mut establish_connection()?;
-        let result = mint_projects::table
+        Ok(mint_projects::table
             .filter(mint_projects::user_id.eq(uid_in))
             .filter(mint_projects::mint_contract_id.eq(cid_in))
-            .first::<MintProject>(conn)?;
-        Ok(result)
+            .first::<MintProject>(&mut establish_connection()?)?
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -55,37 +52,33 @@ impl MintProject {
         nft_table_name: &'a String,
         active: &'a bool,
     ) -> Result<MintProject, RWDError> {
-        let conn = &mut establish_connection()?;
-        let new_entry = MintProjectNew {
-            project_name,
-            user_id,
-            mint_contract_id,
-            whitelists,
-            mint_start_date,
-            mint_end_date,
-            storage_type,
-            storage_url,
-            storage_access_token,
-            collection_name,
-            author,
-            meta_description,
-            meta_common_nft_name,
-            max_mint_p_addr,
-            nft_table_name,
-            active,
-        };
-        log::debug!("try to insert mint project into db...");
-        let q = diesel::insert_into(mint_projects::table)
-            .values(&new_entry)
-            .get_result::<MintProject>(conn);
-        println!("insert error: {q:?}");
-        Ok(q?)
+        Ok(diesel::insert_into(mint_projects::table)
+            .values(
+                &MintProjectNew {
+                    project_name,
+                    user_id,
+                    mint_contract_id,
+                    whitelists,
+                    mint_start_date,
+                    mint_end_date,
+                    storage_type,
+                    storage_url,
+                    storage_access_token,
+                    collection_name,
+                    author,
+                    meta_description,
+                    meta_common_nft_name,
+                    max_mint_p_addr,
+                    nft_table_name,
+                    active,
+                }
+            )
+            .get_result::<MintProject>(&mut establish_connection()?)?
+        )
     }
 
     pub fn remove_mintproject(conn: &mut PgConnection, id_in: &i64) -> Result<usize, RWDError> {
-        let result = diesel::delete(mint_projects::table.find(id_in)).execute(conn)?;
-
-        Ok(result)
+        Ok(diesel::delete(mint_projects::table.find(id_in)).execute(conn)?)
     }
 }
 
@@ -220,11 +213,11 @@ impl Nft {
         table: &str,
     ) -> Result<Vec<Nft>, RWDError> {
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
-            .load::<Nft>(conn)?;
-        Ok(result)
+            .load::<Nft>(conn)?
+        )
     }
 
     pub fn get_nft_by_assetnameb(
@@ -232,14 +225,13 @@ impl Nft {
         table: &str,
         assetname_in: &Vec<u8>,
     ) -> Result<Nft, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.1.eq(assetname_in))
-            .first::<Nft>(conn)?;
-        Ok(result)
+            .first::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_nft_by_assetname_str(
@@ -247,14 +239,13 @@ impl Nft {
         table: &str,
         assetname_in: &String,
     ) -> Result<Nft, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.2.eq(assetname_in))
-            .first::<Nft>(conn)?;
-        Ok(result)
+            .first::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     #[async_recursion]
@@ -370,14 +361,13 @@ impl Nft {
         claim_addr_in: &String,
         table: &str,
     ) -> Result<Vec<Nft>, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.8.eq(claim_addr_in))
-            .load::<Nft>(conn)?;
-        Ok(result)
+            .load::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_nft_by_claim_addr_unminted(
@@ -385,50 +375,46 @@ impl Nft {
         claim_addr_in: &String,
         table: &str,
     ) -> Result<Vec<Nft>, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.8.eq(claim_addr_in))
             .filter(clmns.9.eq(false))
-            .load::<Nft>(conn)?;
-        Ok(result)
+            .load::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_all_claimed_unminted(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.8.is_not_null())
             .filter(clmns.9.eq(false))
-            .load::<Nft>(conn)?;
-        Ok(result)
+            .load::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_all_minted(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.9.eq(true))
-            .load::<Nft>(conn)?;
-        Ok(result)
+            .load::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_all_unconfirmed(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.9.eq(true))
             .filter(clmns.11.eq(false))
-            .load::<Nft>(conn)?;
-        Ok(result)
+            .load::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     /*
@@ -450,15 +436,14 @@ impl Nft {
     */
 
     pub fn get_all_confirmed(pid_in: i64, table: &str) -> Result<Vec<Nft>, RWDError> {
-        let conn = &mut establish_connection()?;
         let (table, clmns) = Nft::diesel_nft_table_definition(table)?;
-        let result = table
+        Ok(table
             .select(clmns)
             .filter(clmns.0.eq(pid_in))
             .filter(clmns.9.eq(true))
             .filter(clmns.11.eq(true))
-            .load::<Nft>(conn)?;
-        Ok(result)
+            .load::<Nft>(&mut establish_connection()?)?
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -514,9 +499,7 @@ impl Nft {
             log::debug!("NFT existed already or another error {:?}", q)
         }
 
-        let nft = Nft::get_nft_by_assetnameb(*project_id, table_name, asset_name_b)?;
-
-        Ok(nft)
+        Ok(Nft::get_nft_by_assetnameb(*project_id, table_name, asset_name_b)?)
     }
 
     pub async fn set_nft_minted<'a>(
@@ -683,22 +666,22 @@ impl MintReward {
         pid_in: i64,
         pay_addr_in: &String,
     ) -> Result<Vec<MintReward>, RWDError> {
-        let result = mint_rewards::table
+        Ok(mint_rewards::table
             .filter(mint_rewards::pay_addr.eq(pay_addr_in))
             .filter(mint_rewards::project_id.eq(pid_in))
-            .load::<MintReward>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<MintReward>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_avail_mintrewards_by_addr(
         pay_addr_in: &String,
     ) -> Result<Vec<MintReward>, RWDError> {
-        let result = mint_rewards::table
+        Ok(mint_rewards::table
             .filter(mint_rewards::pay_addr.eq(pay_addr_in))
             .filter(mint_rewards::processed.eq(false))
             .filter(mint_rewards::minted.eq(false))
-            .load::<MintReward>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<MintReward>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_avail_mintrewards_cl_by_addr(
@@ -724,17 +707,17 @@ impl MintReward {
     }
 
     pub fn get_mintreward_by_id(id_in: i64) -> Result<MintReward, RWDError> {
-        let result = mint_rewards::table
+        Ok(mint_rewards::table
             .filter(mint_rewards::id.eq(id_in))
-            .first::<MintReward>(&mut establish_connection()?)?;
-        Ok(result)
+            .first::<MintReward>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_mintreward_by_nft_ids(ids_in: Vec<Vec<u8>>) -> Result<MintReward, RWDError> {
-        let result = mint_rewards::table
+        Ok(mint_rewards::table
             .filter(mint_rewards::nft_ids.eq(ids_in))
-            .first::<MintReward>(&mut establish_connection()?)?;
-        Ok(result)
+            .first::<MintReward>(&mut establish_connection()?)?
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -745,38 +728,33 @@ impl MintReward {
         nft_ids: Vec<&'a Vec<u8>>,
         v_nfts_b: Vec<&'a Vec<u8>>, // serialized clib::utils::Value
     ) -> Result<MintReward, RWDError> {
-        let conn = &mut establish_connection()?;
-
-        let mint_project = MintProject::get_mintproject_by_uid_cid(user_id, contract_id)?;
-
-        let new_entry = MintRewardNew {
-            project_id: &mint_project.id,
-            pay_addr,
-            nft_ids,
-            v_nfts_b,
-            processed: &false,
-            minted: &false,
-        };
-        log::debug!("try to insert mint reward into db...");
-        let q = diesel::insert_into(mint_rewards::table)
-            .values(&new_entry)
-            .get_result::<MintReward>(conn);
-        println!("insert error?: {q:?}");
-        Ok(q?)
+        Ok(diesel::insert_into(mint_rewards::table)
+            .values(
+                &MintRewardNew {
+                    project_id: &MintProject::get_mintproject_by_uid_cid(user_id, contract_id)?.id,
+                    pay_addr,
+                    nft_ids,
+                    v_nfts_b,
+                    processed: &false,
+                    minted: &false,
+                }
+            )
+            .get_result::<MintReward>(&mut establish_connection()?)?
+        )
     }
 
     pub fn update_payaddr(id_in: i64, pay_addr_in: &String) -> Result<MintReward, RWDError> {
         log::debug!("try to update payaddr on mint reward...");
-        let conn = &mut establish_connection()?;
-        let mintreward = diesel::update(
+
+        Ok(diesel::update(
             mint_rewards::table
                 .filter(mint_rewards::id.eq(id_in))
                 .filter(mint_rewards::processed.eq(false))
                 .filter(mint_rewards::minted.eq(false)),
+            )
+            .set((mint_rewards::pay_addr.eq(pay_addr_in),))
+            .get_result::<MintReward>(&mut establish_connection()?)?
         )
-        .set((mint_rewards::pay_addr.eq(pay_addr_in),))
-        .get_result::<MintReward>(conn)?;
-        Ok(mintreward)
     }
 
     pub fn process_mintreward(
@@ -784,7 +762,6 @@ impl MintReward {
         pid_in: i64,
         pay_addr_in: &String,
     ) -> Result<MintReward, RWDError> {
-        let conn = &mut establish_connection()?;
         let mint_reward = MintReward::get_mintreward_by_id(id_in)?;
 
         if mint_reward.pay_addr != *pay_addr_in
@@ -802,10 +779,11 @@ impl MintReward {
                 return Err(RWDError::new("invalid minting request"));
             }
         }
-        let mintreward = diesel::update(mint_rewards::table.filter(mint_rewards::id.eq(id_in)))
+
+        Ok(diesel::update(mint_rewards::table.filter(mint_rewards::id.eq(id_in)))
             .set((mint_rewards::processed.eq(true),))
-            .get_result::<MintReward>(conn)?;
-        Ok(mintreward)
+            .get_result::<MintReward>(&mut establish_connection()?)?
+        )
     }
 
     pub fn mint_mintreward(
@@ -813,7 +791,6 @@ impl MintReward {
         pid_in: i64,
         pay_addr_in: &String,
     ) -> Result<MintReward, RWDError> {
-        let conn = &mut establish_connection()?;
         let mint_reward = MintReward::get_mintreward_by_id(id_in)?;
 
         if mint_reward.pay_addr != *pay_addr_in
@@ -823,10 +800,11 @@ impl MintReward {
         {
             return Err(RWDError::new("The provided mintreward is invalid"));
         }
-        let mintreward = diesel::update(mint_rewards::table.filter(mint_rewards::id.eq(id_in)))
+
+        Ok(diesel::update(mint_rewards::table.filter(mint_rewards::id.eq(id_in)))
             .set((mint_rewards::minted.eq(true),))
-            .get_result::<MintReward>(conn)?;
-        Ok(mintreward)
+            .get_result::<MintReward>(&mut establish_connection()?)?
+        )
     }
 }
 
