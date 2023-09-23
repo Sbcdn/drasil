@@ -17,7 +17,7 @@ pub enum VError {
     #[error(transparent)]
     JWTError(#[from] jsonwebtoken::errors::Error),
     #[error(transparent)]
-    ParseIntError(#[from] core::num::ParseIntError),
+    ParseIntError(#[from] std::num::ParseIntError),
 }
 
 impl From<std::string::String> for VError {

@@ -16,7 +16,7 @@ pub enum CTSError {
     #[error("no permission")]
     Custom(String),
     #[error(transparent)]
-    ParseIntError(#[from] core::num::ParseIntError),
+    ParseIntError(#[from] std::num::ParseIntError),
     #[error("wrong transaction pattern")]
     TxSchemaError,
     #[error("could not resolve standtand transaction")]

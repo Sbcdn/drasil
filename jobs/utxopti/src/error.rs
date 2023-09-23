@@ -15,7 +15,7 @@ pub enum UOError {
     #[error("Error on Odin request")]
     OdinError(String),
     #[error(transparent)]
-    ParseIntError(#[from] core::num::ParseIntError),
+    ParseIntError(#[from] std::num::ParseIntError),
     #[error(transparent)]
     RWDError(#[from] drasil_gungnir::error::RWDError),
     #[error(transparent)]
