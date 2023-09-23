@@ -2,6 +2,7 @@ use serde::Serialize;
 use std::convert::Infallible;
 use thiserror::Error;
 use warp::{http::StatusCode, Rejection, Reply};
+use std::string::String;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -20,8 +21,8 @@ pub enum VError {
     ParseIntError(#[from] std::num::ParseIntError),
 }
 
-impl From<std::string::String> for VError {
-    fn from(err: std::string::String) -> Self {
+impl From<String> for VError {
+    fn from(err: String) -> Self {
         VError::Custom(err)
     }
 }

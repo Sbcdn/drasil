@@ -3,7 +3,9 @@ use drasil_sleipnir::SleipnirError;
 use serde::Serialize;
 use std::convert::Infallible;
 use thiserror::Error;
-use warp::{http::StatusCode, Rejection, Reply};
+use warp::{reject, http::StatusCode, Rejection, Reply};
+use std::num::ParseIntError;
+use std::string::String;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -38,7 +40,7 @@ struct ErrorResponse {
     status: String,
 }
 
-impl warp::reject::Reject for Error {}
+impl reject::Reject for Error {}
 
 pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply, Infallible> {
     let (code, message) = if err.is_not_found() {
@@ -54,7 +56,7 @@ pub async fn handle_rejection(err: Rejection) -> std::result::Result<impl Reply,
             ),
             _ => (StatusCode::BAD_REQUEST, e.to_string()),
         }
-    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
+    } else if err.find::<reject::MethodNotAllowed>().is_some() {
         (
             StatusCode::METHOD_NOT_ALLOWED,
             "Method Not Allowed".to_string(),
@@ -93,8 +95,8 @@ impl From<SleipnirError> for Error {
     }
 }
 
-impl From<std::string::String> for Error {
-    fn from(err: std::string::String) -> Self {
+impl From<String> for Error {
+    fn from(err: String) -> Self {
         Error::Custom(err)
     }
 }
@@ -104,8 +106,8 @@ impl From<jsonwebtoken::errors::Error> for Error {
         Error::Custom(err.to_string())
     }
 }
-impl From<std::num::ParseIntError> for Error {
-    fn from(err: std::num::ParseIntError) -> Self {
+impl From<ParseIntError> for Error {
+    fn from(err: ParseIntError) -> Self {
         Error::Custom(err.to_string())
     }
 }

@@ -1,5 +1,8 @@
 use drasil_murin::clib;
 use thiserror::Error;
+use std::string::String;
+use clib::error::DeserializeError;
+use clib::error::JsError;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -26,20 +29,20 @@ pub enum MimirError {
     NotOnChainMetadataFound,
 }
 
-impl From<std::string::String> for MimirError {
-    fn from(err: std::string::String) -> Self {
+impl From<String> for MimirError {
+    fn from(err: String) -> Self {
         MimirError::Custom(err)
     }
 }
 
-impl From<clib::error::JsError> for MimirError {
-    fn from(err: clib::error::JsError) -> Self {
+impl From<JsError> for MimirError {
+    fn from(err: JsError) -> Self {
         MimirError::Custom(err.to_string())
     }
 }
 
-impl From<clib::error::DeserializeError> for MimirError {
-    fn from(err: clib::error::DeserializeError) -> Self {
+impl From<DeserializeError> for MimirError {
+    fn from(err: DeserializeError) -> Self {
         MimirError::Custom(err.to_string())
     }
 }

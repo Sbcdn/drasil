@@ -1,5 +1,7 @@
 use serde::Serialize;
 use thiserror::Error;
+use std::string::String;
+use std::num::ParseIntError;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -30,8 +32,8 @@ struct ErrorResponse {
 
 impl warp::reject::Reject for Error {}
 
-impl From<std::string::String> for Error {
-    fn from(err: std::string::String) -> Self {
+impl From<String> for Error {
+    fn from(err: String) -> Self {
         Error::Custom(err)
     }
 }
@@ -41,8 +43,8 @@ impl From<jsonwebtoken::errors::Error> for Error {
         Error::Custom(err.to_string())
     }
 }
-impl From<std::num::ParseIntError> for Error {
-    fn from(err: std::num::ParseIntError) -> Self {
+impl From<ParseIntError> for Error {
+    fn from(err: ParseIntError) -> Self {
         Error::Custom(err.to_string())
     }
 }

@@ -1,5 +1,8 @@
 use crate::clib;
 use thiserror::Error;
+use std::string::String;
+use clib::error::JsError;
+use clib::error::DeserializeError;
 
 #[allow(clippy::enum_variant_names, dead_code)]
 #[derive(Error, Debug)]
@@ -26,20 +29,20 @@ pub enum TxToolsError {
     UTF8Error(#[from] std::string::FromUtf8Error),
 }
 
-impl From<std::string::String> for TxToolsError {
-    fn from(err: std::string::String) -> Self {
+impl From<String> for TxToolsError {
+    fn from(err: String) -> Self {
         TxToolsError::Custom(err)
     }
 }
 
-impl From<clib::error::JsError> for TxToolsError {
-    fn from(err: clib::error::JsError) -> Self {
+impl From<JsError> for TxToolsError {
+    fn from(err: JsError) -> Self {
         TxToolsError::Custom(err.to_string())
     }
 }
 
-impl From<clib::error::DeserializeError> for TxToolsError {
-    fn from(err: clib::error::DeserializeError) -> Self {
+impl From<DeserializeError> for TxToolsError {
+    fn from(err: DeserializeError) -> Self {
         TxToolsError::Custom(err.to_string())
     }
 }

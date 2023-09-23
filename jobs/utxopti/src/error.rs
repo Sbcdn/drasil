@@ -1,5 +1,7 @@
 use serde::Serialize;
 use thiserror::Error;
+use drasil_murin::clib::error::DeserializeError;
+use drasil_murin::clib::error::JsError;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -28,13 +30,13 @@ pub enum UOError {
     HuginError(#[from] drasil_hugin::error::SystemDBError),
 }
 
-impl From<drasil_murin::clib::error::JsError> for UOError {
-    fn from(err: drasil_murin::clib::error::JsError) -> Self {
+impl From<JsError> for UOError {
+    fn from(err: JsError) -> Self {
         UOError::Custom(err.to_string())
     }
 }
-impl From<drasil_murin::clib::error::DeserializeError> for UOError {
-    fn from(err: drasil_murin::clib::error::DeserializeError) -> Self {
+impl From<DeserializeError> for UOError {
+    fn from(err: DeserializeError) -> Self {
         UOError::Custom(err.to_string())
     }
 }

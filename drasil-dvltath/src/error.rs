@@ -1,5 +1,7 @@
 use serde::Serialize;
 use thiserror::Error;
+use std::string::String;
+use std::num::ParseIntError;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -9,11 +11,11 @@ pub enum Error {
     #[error("AN error occured")]
     Custom(String),
     #[error(transparent)]
-    ParseIntError(#[from] std::num::ParseIntError),
+    ParseIntError(#[from] ParseIntError),
 }
 
-impl From<std::string::String> for Error {
-    fn from(err: std::string::String) -> Self {
+impl From<String> for Error {
+    fn from(err: String) -> Self {
         Error::Custom(err)
     }
 }

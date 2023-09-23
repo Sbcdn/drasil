@@ -1,6 +1,8 @@
 use cardano_serialization_lib as csl;
 
 use thiserror::Error;
+use csl::error::JsError;
+use csl::error::DeserializeError;
 
 use super::enregistration;
 
@@ -33,13 +35,13 @@ pub enum CTSError {
     MurinError(#[from] crate::MurinError),
 }
 
-impl From<csl::error::JsError> for CTSError {
-    fn from(err: csl::error::JsError) -> Self {
+impl From<JsError> for CTSError {
+    fn from(err: JsError) -> Self {
         CTSError::Custom(err.to_string())
     }
 }
-impl From<csl::error::DeserializeError> for CTSError {
-    fn from(err: csl::error::DeserializeError) -> Self {
+impl From<DeserializeError> for CTSError {
+    fn from(err: DeserializeError) -> Self {
         CTSError::Custom(err.to_string())
     }
 }

@@ -1,6 +1,9 @@
 use crate::clib;
 use crate::modules::txtools::error::TxToolsError;
 use thiserror::Error;
+use std::string::String;
+use clib::error::JsError;
+use clib::error::DeserializeError;
 
 #[allow(clippy::enum_variant_names, dead_code)]
 #[derive(Error, Debug)]
@@ -33,20 +36,20 @@ pub enum TransferError {
     TxToolsError(#[from] TxToolsError),
 }
 
-impl From<std::string::String> for TransferError {
-    fn from(err: std::string::String) -> Self {
+impl From<String> for TransferError {
+    fn from(err: String) -> Self {
         TransferError::Custom(err)
     }
 }
 
-impl From<clib::error::JsError> for TransferError {
-    fn from(err: clib::error::JsError) -> Self {
+impl From<JsError> for TransferError {
+    fn from(err: JsError) -> Self {
         TransferError::Custom(err.to_string())
     }
 }
 
-impl From<clib::error::DeserializeError> for TransferError {
-    fn from(err: clib::error::DeserializeError) -> Self {
+impl From<DeserializeError> for TransferError {
+    fn from(err: DeserializeError) -> Self {
         TransferError::Custom(err.to_string())
     }
 }

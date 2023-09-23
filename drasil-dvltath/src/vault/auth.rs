@@ -1,6 +1,8 @@
 use lazy_static::lazy_static;
 use std::env::{set_var, var};
 use std::io::{Read, Write};
+use std::time::Duration;
+use std::fs::{File, remove_file};
 use vaultrs::api::auth::approle::responses::GenerateNewSecretIDResponse;
 use vaultrs::api::ResponseWrapper;
 use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
@@ -59,14 +61,14 @@ fn get_secret_path() -> String {
 }
 
 fn get_vtoken() -> String {
-    match std::env::var("VAULT_TOKEN") {
+    match var("VAULT_TOKEN") {
         Ok(o) => o,
         Err(_) => "".to_string(),
     }
 }
 
 async fn get_own_vault_token(client: &mut VaultClient) -> String {
-    match std::env::var("VAULT_TOKEN") {
+    match var("VAULT_TOKEN") {
         Ok(o) => {
             client.set_token(&o);
             match vaultrs::token::lookup_self(client).await {
@@ -89,7 +91,7 @@ async fn get_own_vault_token(client: &mut VaultClient) -> String {
 }
 
 async fn login(client: &mut VaultClient) {
-    match std::env::var("VAULT_TOKEN") {
+    match var("VAULT_TOKEN") {
         Ok(o) => {
             client.set_token(&o);
             match vaultrs::token::lookup_self(client).await {
@@ -128,7 +130,7 @@ async fn request_secret(
 
     let mut response = client.get(url);
 
-    match tokio::time::timeout(std::time::Duration::from_secs(1), &mut response).await {
+    match tokio::time::timeout(Duration::from_secs(1), &mut response).await {
         Err(_) => {
             log::error!("secret request timeout");
         }
@@ -185,7 +187,7 @@ pub async fn vault_connect_sdc() -> VaultClient {
             .address(address)
             .set_namespace(namespace)
             .token("")
-            .timeout(Some(std::time::Duration::from_secs(30)))
+            .timeout(Some(Duration::from_secs(30)))
             .build()
             .unwrap(),
     )
@@ -193,7 +195,7 @@ pub async fn vault_connect_sdc() -> VaultClient {
 
     let token = get_own_vault_token(&mut client).await;
     client.set_token(&token);
-    std::env::set_var("VAULT_TOKEN", &token);
+    set_var("VAULT_TOKEN", &token);
     client
 }
 
@@ -205,7 +207,7 @@ pub async fn vault_connect() -> VaultClient {
             .address(address)
             .set_namespace(namespace)
             .token(get_vtoken())
-            .timeout(Some(std::time::Duration::from_secs(30)))
+            .timeout(Some(Duration::from_secs(30)))
             .build()
             .unwrap(),
     )
@@ -225,7 +227,7 @@ async fn get_wrapped_secret_id(client: &VaultClient, role_id: &str) -> String {
 
 async fn lstore_wrapper_token(token: &String, file: &String) {
     let mut file =
-        std::fs::File::create(file).unwrap_or_else(|_| panic!("Could not create file: {file}"));
+        File::create(file).unwrap_or_else(|_| panic!("Could not create file: {file}"));
     file.write_all(token.as_bytes())
         .expect("Could not write to file");
 }
@@ -240,10 +242,10 @@ async fn read_wrapped_secret(
     client: &mut VaultClient,
     path: &String,
 ) -> GenerateNewSecretIDResponse {
-    let mut file = std::fs::File::open(path).unwrap();
+    let mut file = File::open(path).unwrap();
     let mut token = String::new();
     file.read_to_string(&mut token).unwrap();
-    std::fs::remove_file(path).expect("could not remove file");
+    remove_file(path).expect("could not remove file");
     client.set_token(&token);
     log::info!("Secret delivered");
     vaultrs::sys::wrapping::unwrap(client, None).await.unwrap()

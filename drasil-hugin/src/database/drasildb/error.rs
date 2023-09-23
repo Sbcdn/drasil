@@ -1,4 +1,10 @@
 use thiserror::Error;
+use std::io;
+use std::num::{ParseIntError, ParseFloatError};
+use std::str::ParseBoolError;
+use std::env::VarError;
+use std::string::String;
+use drasil_murin::clib::error;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -8,13 +14,13 @@ pub enum SystemDBError {
     #[error("Custom Error")]
     Custom(String),
     #[error(transparent)]
-    ParseIntError(#[from] std::num::ParseIntError),
+    ParseIntError(#[from] ParseIntError),
     #[error(transparent)]
     DieselError(#[from] diesel::result::Error),
     #[error(transparent)]
     MurinError(#[from] drasil_murin::error::MurinError),
     #[error(transparent)]
-    VarError(#[from] std::env::VarError),
+    VarError(#[from] VarError),
     #[error(transparent)]
     DieselConnectionError(#[from] diesel::ConnectionError),
     #[error(transparent)]
@@ -22,29 +28,29 @@ pub enum SystemDBError {
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
     #[error(transparent)]
-    FloatParseError(#[from] std::num::ParseFloatError),
+    FloatParseError(#[from] ParseFloatError),
     #[error(transparent)]
-    IOError(#[from] std::io::Error),
+    IOError(#[from] io::Error),
     #[error(transparent)]
-    BoolParseError(#[from] std::str::ParseBoolError),
+    BoolParseError(#[from] ParseBoolError),
     #[error(transparent)]
     CmdError(#[from] crate::CmdError),
 }
 
 impl From<std::string::String> for SystemDBError {
-    fn from(err: std::string::String) -> Self {
+    fn from(err: String) -> Self {
         SystemDBError::Custom(err)
     }
 }
 
 impl From<drasil_murin::clib::error::JsError> for SystemDBError {
-    fn from(err: drasil_murin::clib::error::JsError) -> Self {
+    fn from(err: error::JsError) -> Self {
         SystemDBError::Custom(err.to_string())
     }
 }
 
-impl From<drasil_murin::clib::error::DeserializeError> for SystemDBError {
-    fn from(err: drasil_murin::clib::error::DeserializeError) -> Self {
+impl From<error::DeserializeError> for SystemDBError {
+    fn from(err: error::DeserializeError) -> Self {
         SystemDBError::Custom(err.to_string())
     }
 }
