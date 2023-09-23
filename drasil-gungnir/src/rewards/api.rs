@@ -9,10 +9,10 @@ impl Rewards {
         stake_addr_in: String,
     ) -> Result<Vec<Rewards>, RWDError> {
         use crate::schema::rewards::dsl::*;
-        let result = rewards
+        Ok(rewards
             .filter(stake_addr.eq(&stake_addr_in))
-            .load::<Rewards>(conn)?;
-        Ok(result)
+            .load::<Rewards>(conn)?
+        )
     }
 
     pub fn get_rewards(
@@ -22,12 +22,12 @@ impl Rewards {
         user_id_in: i64,
     ) -> Result<Vec<Rewards>, RWDError> {
         use crate::schema::rewards::dsl::*;
-        let result = rewards
+        Ok(rewards
             .filter(stake_addr.eq(&stake_addr_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<Rewards>(conn)?;
-        Ok(result)
+            .load::<Rewards>(conn)?
+        )
     }
 
     pub fn get_client_rewards(
@@ -36,11 +36,11 @@ impl Rewards {
         user_id_in: i64,
     ) -> Result<Vec<Rewards>, RWDError> {
         use crate::schema::rewards::dsl::*;
-        let result = rewards
+        Ok(rewards
             .filter(stake_addr.eq(&stake_addr_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<Rewards>(conn)?;
-        Ok(result)
+            .load::<Rewards>(conn)?
+        )
     }
 
     pub fn get_specific_asset_reward(
@@ -51,13 +51,13 @@ impl Rewards {
         user_id_in: i64,
     ) -> Result<Vec<Rewards>, RWDError> {
         use crate::schema::rewards::dsl::*;
-        let result = rewards
+        Ok(rewards
             .filter(payment_addr.eq(&payment_addr_in))
             .filter(fingerprint.eq(&fingerprint_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<Rewards>(conn)?;
-        Ok(result)
+            .load::<Rewards>(conn)?
+        )
     }
 
     pub fn get_avail_specific_asset_reward(
@@ -113,13 +113,13 @@ impl Rewards {
         fingerprint_in: &String,
     ) -> Result<Vec<Rewards>, RWDError> {
         use crate::schema::rewards::dsl::*;
-        let result = rewards
+        match rewards
             .filter(stake_addr.eq(&stake_addr_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .filter(fingerprint.eq(&fingerprint_in))
-            .load::<Rewards>(conn);
-        match result {
+            .load::<Rewards>(conn) 
+        {
             Ok(o) => Ok(o),
             Err(e) => {
                 log::error!("Error: {:?}", e.to_string());
@@ -230,21 +230,22 @@ impl Rewards {
         oneshot: &'a bool,
         last_calc_epoch: &'a i64,
     ) -> Result<Rewards, RWDError> {
-        let new_rewards = RewardsNew {
-            stake_addr,
-            payment_addr,
-            fingerprint,
-            contract_id,
-            user_id,
-            tot_earned,
-            tot_claimed,
-            oneshot,
-            last_calc_epoch,
-        };
-
         Ok(diesel::insert_into(rewards::table)
-            .values(&new_rewards)
-            .get_result::<Rewards>(conn)?)
+            .values(
+                &RewardsNew {
+                    stake_addr,
+                    payment_addr,
+                    fingerprint,
+                    contract_id,
+                    user_id,
+                    tot_earned,
+                    tot_claimed,
+                    oneshot,
+                    last_calc_epoch,
+                }
+            )
+            .get_result::<Rewards>(conn)?
+        )
     }
 
     pub fn update_rewards<'a>(
@@ -257,20 +258,19 @@ impl Rewards {
         last_calc_epoch_in: &'a i64,
     ) -> Result<Rewards, RWDError> {
         use crate::schema::rewards::dsl::*;
-        let contract = diesel::update(
+        Ok(diesel::update(
             rewards
                 .filter(stake_addr.eq(stake_addr_in))
                 .filter(fingerprint.eq(fingerprint_in))
                 .filter(contract_id.eq(contract_id_in))
                 .filter(user_id.eq(user_id_in)),
+            )
+            .set((
+                tot_earned.eq(tot_earned_in),
+                last_calc_epoch.eq(last_calc_epoch_in),
+            ))
+            .get_result::<Rewards>(conn)?
         )
-        .set((
-            tot_earned.eq(tot_earned_in),
-            last_calc_epoch.eq(last_calc_epoch_in),
-        ))
-        .get_result::<Rewards>(conn)?;
-
-        Ok(contract)
     }
 
     pub fn update_claimed<'a>(
@@ -335,13 +335,13 @@ impl Claimed {
         user_id_in: i64,
     ) -> Result<Vec<Claimed>, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let result = claimed
+        Ok(claimed
             .filter(stake_addr.eq(&stake_addr_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
             .order(timestamp.asc())
-            .load::<Claimed>(conn)?;
-        Ok(result)
+            .load::<Claimed>(conn)?
+        )
     }
 
     pub fn get_all_claims(
@@ -349,11 +349,11 @@ impl Claimed {
         stake_addr_in: &String,
     ) -> Result<Vec<Claimed>, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let result = claimed
+        Ok(claimed
             .filter(stake_addr.eq(&stake_addr_in))
             .order(timestamp.asc())
-            .load::<Claimed>(conn)?;
-        Ok(result)
+            .load::<Claimed>(conn)?
+        )
     }
 
     pub fn get_token_claims(
@@ -364,13 +364,13 @@ impl Claimed {
         fingerprint_in: &String,
     ) -> Result<Vec<Claimed>, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let result = claimed
+        Ok(claimed
             .filter(stake_addr.eq(stake_addr_in))
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
             .filter(fingerprint.eq(fingerprint_in))
-            .load::<Claimed>(conn)?;
-        Ok(result)
+            .load::<Claimed>(conn)?
+        )
     }
 
     pub fn get_token_claims_tot_amt(
@@ -381,18 +381,18 @@ impl Claimed {
         user_id_in: i64,
     ) -> Result<i128, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let result = claimed
+        Ok(claimed
             .filter(stake_addr.eq(stake_addr_in))
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
             .filter(fingerprint.eq(fingerprint_in))
             .filter(invalid.is_null())
             .select(amount)
-            .load::<BigDecimal>(conn)?;
-
-        let sum = result.iter().map(|x| x.to_i128().unwrap()).sum();
-
-        Ok(sum)
+            .load::<BigDecimal>(conn)?
+            .iter()
+            .map(|x| x.to_i128().unwrap())
+            .sum()
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -408,20 +408,20 @@ impl Claimed {
         invalid: Option<&'a bool>,
         invalid_descr: Option<&'a String>,
     ) -> Result<Claimed, RWDError> {
-        let new_claimed = ClaimedNew {
-            stake_addr,
-            payment_addr,
-            fingerprint,
-            amount: &BigDecimal::from_u64(*amount).unwrap(),
-            contract_id,
-            user_id,
-            txhash,
-            invalid,
-            invalid_descr,
-        };
-
         Ok(diesel::insert_into(claimed::table)
-            .values(&new_claimed)
+            .values(
+                &ClaimedNew {
+                    stake_addr,
+                    payment_addr,
+                    fingerprint,
+                    amount: &BigDecimal::from_u64(*amount).unwrap(),
+                    contract_id,
+                    user_id,
+                    txhash,
+                    invalid,
+                    invalid_descr,
+                }
+            )
             .get_result::<Claimed>(conn)?)
     }
 
@@ -435,17 +435,17 @@ impl Claimed {
         invalid_descr_in: Option<&'a String>,
     ) -> Result<Claimed, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let contract = diesel::update(
+
+        Ok(diesel::update(
             claimed
                 .filter(stake_addr.eq(stake_addr_in))
                 .filter(fingerprint.eq(fingerprint_in))
                 .filter(contract_id.eq(contract_id_in))
                 .filter(user_id.eq(user_id_in)),
+            )
+            .set((invalid.eq(invalid_in), invalid_descr.eq(invalid_descr_in)))
+            .get_result::<Claimed>(conn)?
         )
-        .set((invalid.eq(invalid_in), invalid_descr.eq(invalid_descr_in)))
-        .get_result::<Claimed>(conn)?;
-
-        Ok(contract)
     }
 
     pub fn get_stat_count_all_tx_on_contr(
@@ -454,35 +454,33 @@ impl Claimed {
         fingerprint_in: Option<String>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let mut gconn = establish_connection()?;
+        Ok(
+            match fingerprint_in {
+                Some(f) => {
+                    let result = claimed
+                        .select(diesel::dsl::count_star())
+                        .filter(fingerprint.eq(f))
+                        .filter(contract_id.eq(contract_id_in))
+                        .filter(user_id.eq(user_id_in))
+                        .distinct_on(txhash)
+                        .group_by((user_id, txhash, timestamp))
+                        .load::<i64>(&mut establish_connection()?)?;
 
-        let result = match fingerprint_in {
-            Some(f) => {
-                let result = claimed
-                    .select(diesel::dsl::count_star())
-                    .filter(fingerprint.eq(f))
-                    .filter(contract_id.eq(contract_id_in))
-                    .filter(user_id.eq(user_id_in))
-                    .distinct_on(txhash)
-                    .group_by((user_id, txhash, timestamp))
-                    .load::<i64>(&mut gconn)?;
+                    result.len() as i64
+                }
+                None => {
+                    let result = claimed
+                        .select(diesel::dsl::count_star())
+                        .filter(contract_id.eq(contract_id_in))
+                        .filter(user_id.eq(user_id_in))
+                        .distinct_on(txhash)
+                        .group_by((user_id, txhash, timestamp))
+                        .load::<i64>(&mut establish_connection()?)?;
 
-                result.len() as i64
+                    result.len() as i64
+                }
             }
-            None => {
-                let result = claimed
-                    .select(diesel::dsl::count_star())
-                    .filter(contract_id.eq(contract_id_in))
-                    .filter(user_id.eq(user_id_in))
-                    .distinct_on(txhash)
-                    .group_by((user_id, txhash, timestamp))
-                    .load::<i64>(&mut gconn)?;
-
-                result.len() as i64
-            }
-        };
-
-        Ok(result)
+        )
     }
 
     pub fn get_stat_count_period_tx_token_user(
@@ -492,9 +490,8 @@ impl Claimed {
         to: DateTime<Utc>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let mut gconn = establish_connection()?;
-
-        let result = claimed
+        Ok(
+            claimed
             .select(diesel::dsl::count_star())
             .filter(fingerprint.eq(fingerprint_in))
             .filter(user_id.eq(user_id_in))
@@ -502,8 +499,9 @@ impl Claimed {
             .filter(timestamp.le(to))
             .distinct_on(txhash)
             .group_by((user_id, txhash, timestamp))
-            .load::<i64>(&mut gconn)?;
-        Ok(result.len() as i64)
+            .load::<i64>(&mut establish_connection()?)?
+            .len() as i64
+        )
     }
 
     pub fn get_stat_count_period_tx_contr_token(
@@ -514,52 +512,51 @@ impl Claimed {
         to: DateTime<Utc>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let mut gconn = establish_connection()?;
 
-        let result = match fingerprint_in {
-            Some(f) => {
-                let result = claimed
-                    .select(diesel::dsl::count_star())
-                    .filter(fingerprint.eq(f))
-                    .filter(user_id.eq(user_id_in))
-                    .filter(contract_id.eq(contract_id_in))
-                    .filter(timestamp.ge(from))
-                    .filter(timestamp.le(to))
-                    .distinct_on(txhash)
-                    .group_by((user_id, txhash, timestamp))
-                    .load::<i64>(&mut gconn)?;
-
-                result.len() as i64
+        Ok(
+            match fingerprint_in {
+                Some(f) => {
+                    let result = claimed
+                        .select(diesel::dsl::count_star())
+                        .filter(fingerprint.eq(f))
+                        .filter(user_id.eq(user_id_in))
+                        .filter(contract_id.eq(contract_id_in))
+                        .filter(timestamp.ge(from))
+                        .filter(timestamp.le(to))
+                        .distinct_on(txhash)
+                        .group_by((user_id, txhash, timestamp))
+                        .load::<i64>(&mut establish_connection()?)?;
+    
+                    result.len() as i64
+                }
+                None => {
+                    let result = claimed
+                        .select(diesel::dsl::count_star())
+                        .filter(user_id.eq(user_id_in))
+                        .filter(contract_id.eq(contract_id_in))
+                        .filter(timestamp.ge(from))
+                        .filter(timestamp.le(to))
+                        .distinct_on(txhash)
+                        .group_by((user_id, txhash, timestamp))
+                        .load::<i64>(&mut establish_connection()?)?;
+    
+                    result.len() as i64
+                }
             }
-            None => {
-                let result = claimed
-                    .select(diesel::dsl::count_star())
-                    .filter(user_id.eq(user_id_in))
-                    .filter(contract_id.eq(contract_id_in))
-                    .filter(timestamp.ge(from))
-                    .filter(timestamp.le(to))
-                    .distinct_on(txhash)
-                    .group_by((user_id, txhash, timestamp))
-                    .load::<i64>(&mut gconn)?;
-
-                result.len() as i64
-            }
-        };
-        Ok(result)
+        )
     }
 
     pub fn get_stat_count_all_tx_user(user_id_in: &i64) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let mut gconn = establish_connection()?;
-
-        let result = claimed
+        Ok(
+            claimed
             .select(diesel::dsl::count_star())
             .filter(user_id.eq(user_id_in))
             .distinct_on(txhash)
             .group_by((user_id, txhash, timestamp))
-            .load::<i64>(&mut gconn)?;
-
-        Ok(result.len() as i64)
+            .load::<i64>(&mut establish_connection()?)?
+            .len() as i64
+        )
     }
 
     pub fn get_stat_count_period_tx_user(
@@ -568,35 +565,32 @@ impl Claimed {
         to: &DateTime<Utc>,
     ) -> Result<i64, RWDError> {
         use crate::schema::claimed::dsl::*;
-        let mut gconn = establish_connection()?;
-
-        let result = claimed
+        Ok(
+            claimed
             .select(diesel::dsl::count_star())
             .filter(user_id.eq(user_id_in))
             .filter(timestamp.ge(from))
             .filter(timestamp.le(to))
             .distinct_on(txhash)
             .group_by((user_id, txhash, timestamp))
-            .load::<i64>(&mut gconn)?;
-
-        Ok(result.len() as i64)
+            .load::<i64>(&mut establish_connection()?)?
+            .len() as i64
+        )
     }
 }
 
 impl TokenWhitelist {
     pub fn get_whitelist() -> Result<Vec<TokenWhitelist>, RWDError> {
-        let result = token_whitelist::table.load::<TokenWhitelist>(&mut establish_connection()?)?;
-        Ok(result)
+        Ok(token_whitelist::table.load::<TokenWhitelist>(&mut establish_connection()?)?)
     }
 
     pub fn get_epoch_filtered_whitelist(
         current_epoch: i64,
     ) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let mut conn = establish_connection()?;
         let mut result = token_whitelist
             .filter(start_epoch.le(current_epoch))
-            .load::<TokenWhitelist>(&mut conn)?;
+            .load::<TokenWhitelist>(&mut establish_connection()?)?;
 
         result.retain(|r| {
             if let Some(end) = r.end_epoch {
@@ -614,15 +608,12 @@ impl TokenWhitelist {
         user_id_in: i64,
     ) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let mut conn = establish_connection()?;
-        let current_date = chrono::Utc::now();
-        let result = token_whitelist
+        Ok(token_whitelist
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
-            .filter(vesting_period.gt(current_date))
-            .load::<TokenWhitelist>(&mut conn)?;
-
-        Ok(result)
+            .filter(vesting_period.gt(chrono::Utc::now()))
+            .load::<TokenWhitelist>(&mut establish_connection()?)?
+        )
     }
 
     pub fn has_contract_valid_whitelisting(
@@ -631,26 +622,24 @@ impl TokenWhitelist {
         fingerprint_in: &String,
     ) -> Result<bool, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let mut conn = establish_connection()?;
-        let current_date = chrono::Utc::now();
-        let result = match token_whitelist
-            .filter(contract_id.eq(contract_id_in))
-            .filter(user_id.eq(user_id_in))
-            .filter(fingerprint.eq(fingerprint_in))
-            .filter(vesting_period.lt(current_date))
-            .first::<TokenWhitelist>(&mut conn)
-        {
-            Ok(o) => {
-                println!("O: {o:?}");
-                true
+        Ok(
+            match token_whitelist
+                .filter(contract_id.eq(contract_id_in))
+                .filter(user_id.eq(user_id_in))
+                .filter(fingerprint.eq(fingerprint_in))
+                .filter(vesting_period.lt(chrono::Utc::now()))
+                .first::<TokenWhitelist>(&mut establish_connection()?)
+            {
+                Ok(o) => {
+                    println!("O: {o:?}");
+                    true
+                }
+                Err(e) => {
+                    println!("E: {e:?}");
+                    false
+                }
             }
-            Err(e) => {
-                println!("E: {e:?}");
-                false
-            }
-        };
-
-        Ok(result)
+        )
     }
 
     pub fn get_token_info_ft(
@@ -658,12 +647,12 @@ impl TokenWhitelist {
         fingerprint_in: &String,
     ) -> Result<TokenInfo, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let result = token_whitelist
+        Ok(token_whitelist
             .filter(fingerprint.is_not_null())
             .filter(fingerprint.eq(&fingerprint_in))
             .select((policy_id, tokenname.nullable(), fingerprint.nullable()))
-            .first::<TokenInfo>(conn)?;
-        Ok(result)
+            .first::<TokenInfo>(conn)?
+        )
     }
 
     pub fn get_token_info_nft(
@@ -673,26 +662,27 @@ impl TokenWhitelist {
         tokenname_in: Option<String>,
     ) -> Result<TokenInfo, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let result: TokenInfo = match fingerprint_in {
-            Some(fin) => token_whitelist
-                .filter(fingerprint.is_not_null())
-                .filter(fingerprint.eq(&fin))
-                .select((policy_id, tokenname.nullable(), fingerprint.nullable()))
-                .first::<TokenInfo>(conn)?,
-            None => match tokenname_in {
-                Some(tn) => token_whitelist
-                    .filter(policy_id.eq(&policy_id_in))
-                    .filter(tokenname.eq(&tn))
+        Ok(
+            match fingerprint_in {
+                Some(fin) => token_whitelist
+                    .filter(fingerprint.is_not_null())
+                    .filter(fingerprint.eq(&fin))
                     .select((policy_id, tokenname.nullable(), fingerprint.nullable()))
                     .first::<TokenInfo>(conn)?,
-                None => {
-                    return Err(RWDError::new(
-                        "No tokenName and no fingerprint provided to retrieve tokeninfo",
-                    ))
-                }
-            },
-        };
-        Ok(result)
+                None => match tokenname_in {
+                    Some(tn) => token_whitelist
+                        .filter(policy_id.eq(&policy_id_in))
+                        .filter(tokenname.eq(&tn))
+                        .select((policy_id, tokenname.nullable(), fingerprint.nullable()))
+                        .first::<TokenInfo>(conn)?,
+                    None => {
+                        return Err(RWDError::new(
+                            "No tokenName and no fingerprint provided to retrieve tokeninfo",
+                        ))
+                    }
+                },
+            }
+        )
     }
 
     pub fn get_rwd_contract_tokens(
@@ -700,13 +690,10 @@ impl TokenWhitelist {
         user_id_in: i64,
     ) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-
-        let mut conn = establish_connection()?;
         let mut result = token_whitelist
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<TokenWhitelist>(&mut conn)?;
-
+            .load::<TokenWhitelist>(&mut establish_connection()?)?;
         result.retain(|t| t.mode != Calculationmode::AirDrop);
 
         Ok(result)
@@ -715,10 +702,9 @@ impl TokenWhitelist {
     pub fn get_user_tokens(user_id_in: &u64) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
 
-        let mut conn = establish_connection()?;
         let mut result = token_whitelist
             .filter(user_id.eq(&(*user_id_in as i64)))
-            .load::<TokenWhitelist>(&mut conn)?;
+            .load::<TokenWhitelist>(&mut establish_connection()?)?;
 
         result.retain(|t| t.mode != Calculationmode::AirDrop);
 
@@ -732,12 +718,12 @@ impl TokenWhitelist {
         user_id_in: i64,
     ) -> Result<Vec<TokenWhitelist>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let result = token_whitelist
+        Ok(token_whitelist
             .filter(fingerprint.eq(&fingerprint_in))
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<TokenWhitelist>(conn)?;
-        Ok(result)
+            .load::<TokenWhitelist>(conn)?
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -776,7 +762,8 @@ impl TokenWhitelist {
 
         Ok(diesel::insert_into(token_whitelist::table)
             .values(&new_twl_entry)
-            .get_result::<TokenWhitelist>(conn)?)
+            .get_result::<TokenWhitelist>(conn)?
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -793,23 +780,23 @@ impl TokenWhitelist {
         modificator_equ_in: Option<&'a String>,
     ) -> Result<TokenWhitelist, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let twl = diesel::update(
-            token_whitelist
-                .filter(fingerprint.eq(fingerprint_in))
-                .filter(contract_id.eq(contract_id_in))
-                .filter(user_id.eq(user_id_in)),
+        Ok(
+            diesel::update(
+                token_whitelist
+                    .filter(fingerprint.eq(fingerprint_in))
+                    .filter(contract_id.eq(contract_id_in))
+                    .filter(user_id.eq(user_id_in)),
+            )
+            .set((
+                vesting_period.eq(vesting_period_in),
+                mode.eq(mode_in),
+                equation.eq(equation_in),
+                start_epoch.eq(start_epoch_in),
+                end_epoch.eq(end_epoch_in),
+                modificator_equ.eq(modificator_equ_in),
+            ))
+            .get_result::<TokenWhitelist>(conn)?
         )
-        .set((
-            vesting_period.eq(vesting_period_in),
-            mode.eq(mode_in),
-            equation.eq(equation_in),
-            start_epoch.eq(start_epoch_in),
-            end_epoch.eq(end_epoch_in),
-            modificator_equ.eq(modificator_equ_in),
-        ))
-        .get_result::<TokenWhitelist>(conn)?;
-
-        Ok(twl)
     }
 
     pub fn remove_twl<'a>(
@@ -818,17 +805,15 @@ impl TokenWhitelist {
         user_id_in: &'a i64,
     ) -> Result<TokenWhitelist, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
-        let mut conn = establish_connection()?;
-
-        let result = diesel::delete(
-            token_whitelist
-                .filter(fingerprint.eq(fingerprint_in))
-                .filter(contract_id.eq(contract_id_in))
-                .filter(user_id.eq(user_id_in)),
+        Ok(
+            diesel::delete(
+                token_whitelist
+                    .filter(fingerprint.eq(fingerprint_in))
+                    .filter(contract_id.eq(contract_id_in))
+                    .filter(user_id.eq(user_id_in)),
+            )
+            .get_result::<TokenWhitelist>(&mut establish_connection()?)?
         )
-        .get_result::<TokenWhitelist>(&mut conn)?;
-
-        Ok(result)
     }
 
     pub fn get_pools(
@@ -838,18 +823,17 @@ impl TokenWhitelist {
     ) -> Result<Vec<GPools>, RWDError> {
         use crate::schema::token_whitelist::dsl::*;
         use std::str::FromStr;
-        let mut conn = establish_connection()?;
-        let result = token_whitelist
+
+        let mut resp = Vec::<GPools>::new();
+        resp.extend(
+            token_whitelist
             .filter(fingerprint.eq(&fingerprint_in))
             .filter(contract_id.eq(contract_id_in))
             .filter(user_id.eq(user_id_in))
             .select(pools)
-            .first::<Vec<String>>(&mut conn)?;
-        let mut resp = Vec::<GPools>::new();
-        resp.extend(
-            result
-                .iter()
-                .map(|n| GPools::from_str(n).expect("Could not convert string to GPools")),
+            .first::<Vec<String>>(&mut establish_connection()?)?
+            .iter()
+            .map(|n| GPools::from_str(n).expect("Could not convert string to GPools")),
         );
 
         Ok(resp)
@@ -881,21 +865,27 @@ impl TokenWhitelist {
                 .map(|n| GPools::from_str(n).expect("Could not convert string to GPools")),
         );
         old_pools.extend(pools_in.iter().cloned());
-        let npool: Vec<_> = old_pools.iter().unique_by(|p| p.pool_id.clone()).collect();
 
         let mut spools = Vec::<String>::new();
-        spools.extend(npool.iter().map(|n| n.to_string()));
+        spools.extend(
+            old_pools
+                .iter()
+                .unique_by(|p| p.pool_id.clone())
+                .collect::<Vec<_>>()
+                .iter()
+                .map(|n| n.to_string())
+        );
 
-        let result = diesel::update(
-            token_whitelist
-                .filter(fingerprint.eq(fingerprint_in))
-                .filter(contract_id.eq(contract_id_in))
-                .filter(user_id.eq(user_id_in)),
+        Ok(
+            diesel::update(
+                token_whitelist
+                    .filter(fingerprint.eq(fingerprint_in))
+                    .filter(contract_id.eq(contract_id_in))
+                    .filter(user_id.eq(user_id_in)),
+            )
+            .set(pools.eq(Vec::<String>::new()))
+            .get_result::<TokenWhitelist>(&mut conn)?
         )
-        .set(pools.eq(spools))
-        .get_result::<TokenWhitelist>(&mut conn)?;
-
-        Ok(result)
     }
 
     pub fn remove_pools<'a>(
@@ -927,16 +917,15 @@ impl TokenWhitelist {
         let mut spools = Vec::<String>::new();
         spools.extend(old_pools.iter().map(|n| n.to_string()));
 
-        let result = diesel::update(
-            token_whitelist
-                .filter(fingerprint.eq(fingerprint_in))
-                .filter(contract_id.eq(contract_id_in))
-                .filter(user_id.eq(user_id_in)),
+        Ok(diesel::update(
+                token_whitelist
+                    .filter(fingerprint.eq(fingerprint_in))
+                    .filter(contract_id.eq(contract_id_in))
+                    .filter(user_id.eq(user_id_in)),
+            )
+            .set(pools.eq(spools.clone()))
+            .get_result::<TokenWhitelist>(&mut conn)?
         )
-        .set(pools.eq(spools.clone()))
-        .get_result::<TokenWhitelist>(&mut conn)?;
-
-        Ok(result)
     }
 }
 
@@ -947,11 +936,11 @@ impl AirDropWhitelist {
         user_id_in: i64,
     ) -> Result<Vec<AirDropWhitelist>, RWDError> {
         use crate::schema::airdrop_whitelist::dsl::*;
-        let result = airdrop_whitelist
+        Ok(airdrop_whitelist
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<AirDropWhitelist>(conn)?;
-        Ok(result)
+            .load::<AirDropWhitelist>(conn)?
+        )
     }
 
     pub fn create_awl_entry<'a>(
@@ -959,14 +948,14 @@ impl AirDropWhitelist {
         contract_id: &'a i64,
         user_id: &'a i64,
     ) -> Result<AirDropWhitelist, RWDError> {
-        let new_twl_entry = AirDropWhitelistNew {
-            contract_id,
-            user_id,
-            reward_created: &false,
-        };
-
         Ok(diesel::insert_into(airdrop_whitelist::table)
-            .values(&new_twl_entry)
+            .values(
+                &AirDropWhitelistNew {
+                    contract_id,
+                    user_id,
+                    reward_created: &false,
+                }
+            )
             .get_result::<AirDropWhitelist>(conn)?)
     }
 
@@ -976,15 +965,14 @@ impl AirDropWhitelist {
         user_id_in: &'a i64,
     ) -> Result<AirDropWhitelist, RWDError> {
         use crate::schema::airdrop_whitelist::dsl::*;
-        let twl = diesel::update(
+        Ok(diesel::update(
             airdrop_whitelist
                 .filter(contract_id.eq(contract_id_in))
                 .filter(user_id.eq(user_id_in)),
+            )
+            .set(reward_created.eq(true))
+            .get_result::<AirDropWhitelist>(conn)?
         )
-        .set(reward_created.eq(true))
-        .get_result::<AirDropWhitelist>(conn)?;
-
-        Ok(twl)
     }
 
     pub fn remove_awl<'a>(
@@ -993,16 +981,14 @@ impl AirDropWhitelist {
         user_id_in: &'a i64,
     ) -> Result<usize, RWDError> {
         use crate::schema::airdrop_whitelist::dsl::*;
-
-        let result = diesel::delete(
+        Ok(diesel::delete(
             airdrop_whitelist
                 .filter(contract_id.eq(contract_id_in))
                 .filter(user_id.eq(user_id_in)),
+            )
+            .filter(reward_created.eq(true))
+            .execute(conn)?
         )
-        .filter(reward_created.eq(true))
-        .execute(conn)?;
-
-        Ok(result)
     }
 }
 
@@ -1013,11 +999,11 @@ impl AirDropParameter {
         user_id_in: i64,
     ) -> Result<Vec<AirDropParameter>, RWDError> {
         use crate::schema::airdrop_parameter::dsl::*;
-        let result = airdrop_parameter
+        Ok(airdrop_parameter
             .filter(contract_id.eq(&contract_id_in))
             .filter(user_id.eq(&user_id_in))
-            .load::<AirDropParameter>(conn)?;
-        Ok(result)
+            .load::<AirDropParameter>(conn)?
+        )
     }
 
     pub fn get_ad_parameter(
@@ -1025,10 +1011,10 @@ impl AirDropParameter {
         id_in: i64,
     ) -> Result<AirDropParameter, RWDError> {
         use crate::schema::airdrop_parameter::dsl::*;
-        let result = airdrop_parameter
+        Ok(airdrop_parameter
             .find(id_in)
-            .first::<AirDropParameter>(conn)?;
-        Ok(result)
+            .first::<AirDropParameter>(conn)?
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1044,20 +1030,20 @@ impl AirDropParameter {
         args_3: &'a Vec<String>,
         whitelist_ids: Option<&'a Vec<i64>>,
     ) -> Result<AirDropParameter, RWDError> {
-        let new_adp_entry = AirDropParameterNew {
-            contract_id,
-            user_id,
-            airdrop_token_type,
-            distribution_type,
-            selection_type,
-            args_1,
-            args_2,
-            args_3,
-            whitelist_ids,
-        };
-
         Ok(diesel::insert_into(airdrop_parameter::table)
-            .values(&new_adp_entry)
+            .values(
+                &AirDropParameterNew {
+                    contract_id,
+                    user_id,
+                    airdrop_token_type,
+                    distribution_type,
+                    selection_type,
+                    args_1,
+                    args_2,
+                    args_3,
+                    whitelist_ids,
+                }
+            )
             .get_result::<AirDropParameter>(conn)?)
     }
 
@@ -1066,35 +1052,30 @@ impl AirDropParameter {
         id_in: i64,
     ) -> Result<usize, RWDError> {
         use crate::schema::airdrop_parameter::dsl::*;
-        let result = diesel::delete(airdrop_parameter.find(id_in)).execute(conn)?;
-
-        Ok(result)
+        Ok(diesel::delete(airdrop_parameter.find(id_in)).execute(conn)?)
     }
 }
 
 impl WlAddresses {
     pub fn get_wladdress(conn: &mut PgConnection, id_in: i64) -> Result<WlAddresses, RWDError> {
         use crate::schema::wladdresses::dsl::*;
-        let result = wladdresses.find(id_in).first::<WlAddresses>(conn)?;
-        Ok(result)
+        Ok(wladdresses.find(id_in).first::<WlAddresses>(conn)?)
     }
 
     pub fn get_address(addr: String) -> Result<Vec<WlAddresses>, RWDError> {
         use crate::schema::wladdresses::dsl::*;
-        let conn = &mut establish_connection()?;
-        let result = wladdresses
+        Ok(wladdresses
             .filter(payment_address.eq(addr))
-            .load::<WlAddresses>(conn)?;
-        Ok(result)
+            .load::<WlAddresses>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_stake_address(addr: String) -> Result<Vec<WlAddresses>, RWDError> {
         use crate::schema::wladdresses::dsl::*;
-        let conn = &mut establish_connection()?;
-        let result = wladdresses
+        Ok(wladdresses
             .filter(stake_address.eq(addr).nullable())
-            .load::<WlAddresses>(conn)?;
-        Ok(result)
+            .load::<WlAddresses>(&mut establish_connection()?)?
+        )
     }
 
     pub fn create_wladdress(
@@ -1102,33 +1083,31 @@ impl WlAddresses {
         address: &String,
         stake_address: Option<&String>,
     ) -> Result<WlAddresses, RWDError> {
-        let new_entry = WlAddressesNew {
-            payment_address: address,
-            stake_address,
-        };
-
         Ok(diesel::insert_into(wladdresses::table)
-            .values(&new_entry)
+            .values(
+                &WlAddressesNew {
+                    payment_address: address,
+                    stake_address,
+                }
+            )
             .on_conflict_do_nothing()
             .get_result::<WlAddresses>(conn)?)
     }
 
     pub fn remove_wladdress(conn: &mut PgConnection, id_in: i64) -> Result<usize, RWDError> {
         use crate::schema::wladdresses::dsl::*;
-        let result = diesel::delete(wladdresses.find(id_in)).execute(conn)?;
-
-        Ok(result)
+        Ok(diesel::delete(wladdresses.find(id_in)).execute(conn)?)
     }
 }
 
 impl WlAlloc {
     pub fn get_whitelist(id_in: &i64) -> Result<Vec<String>, RWDError> {
-        let result = wlalloc::table
+        Ok(wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
             .select(wladdresses::payment_address)
-            .load::<String>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<String>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_whitelist_entries(
@@ -1136,7 +1115,7 @@ impl WlAlloc {
         whitelist_id_in: &i64,
     ) -> Result<Vec<WlEntry>, RWDError> {
         Whitelist::get_whitelist(user_id_in, whitelist_id_in)?;
-        let result = wlalloc::table
+        Ok(wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(whitelist_id_in))
             .select((
@@ -1147,12 +1126,12 @@ impl WlAlloc {
                 wlalloc::addr,
                 wlalloc::specific_asset,
             ))
-            .load::<WlEntry>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<WlEntry>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_address_whitelist(id_in: &i64, payaddr: &String) -> Result<Vec<WlEntry>, RWDError> {
-        let result = wlalloc::table
+        Ok(wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wladdresses::payment_address.eq(payaddr))
             .filter(wlalloc::wl.eq(id_in))
@@ -1164,12 +1143,12 @@ impl WlAlloc {
                 wlalloc::addr,
                 wlalloc::specific_asset,
             ))
-            .load::<WlEntry>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<WlEntry>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_address_allocations(payaddr: &String) -> Result<Vec<WlEntry>, RWDError> {
-        let result = wlalloc::table
+        Ok(wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wladdresses::payment_address.eq(payaddr))
             .select((
@@ -1180,15 +1159,15 @@ impl WlAlloc {
                 wlalloc::addr,
                 wlalloc::specific_asset,
             ))
-            .load::<WlEntry>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<WlEntry>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_specific_address_allocations(
         payaddr: &String,
         asset: &serde_json::Value,
     ) -> Result<WlEntry, RWDError> {
-        let result = wlalloc::table
+        Ok(wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wladdresses::payment_address.eq(payaddr))
             .filter(wlalloc::specific_asset.eq(asset).nullable())
@@ -1200,15 +1179,15 @@ impl WlAlloc {
                 wlalloc::addr,
                 wlalloc::specific_asset,
             ))
-            .first::<WlEntry>(&mut establish_connection()?)?;
-        Ok(result)
+            .first::<WlEntry>(&mut establish_connection()?)?
+        )
     }
 
     pub fn check_stake_address_in_whitelist(
         id_in: &i64,
         stake_address: &String,
     ) -> Result<Vec<WlEntry>, RWDError> {
-        let result = wlalloc::table
+        Ok(wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
             .filter(wladdresses::stake_address.eq(stake_address).nullable())
@@ -1220,15 +1199,15 @@ impl WlAlloc {
                 wlalloc::addr,
                 wlalloc::specific_asset,
             ))
-            .load::<WlEntry>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<WlEntry>(&mut establish_connection()?)?
+        )
     }
 
     pub fn check_pay_address_in_whitelist(
         id_in: &i64,
         address: &String,
     ) -> Result<Vec<WlEntry>, RWDError> {
-        let result = wlalloc::table
+        Ok(wlalloc::table
             .inner_join(wladdresses::table.on(wlalloc::addr.eq(wladdresses::id)))
             .filter(wlalloc::wl.eq(id_in))
             .filter(wladdresses::payment_address.eq(address).nullable())
@@ -1240,8 +1219,8 @@ impl WlAlloc {
                 wlalloc::addr,
                 wlalloc::specific_asset,
             ))
-            .load::<WlEntry>(&mut establish_connection()?)?;
-        Ok(result)
+            .load::<WlEntry>(&mut establish_connection()?)?
+        )
     }
 
     pub fn create_alloc<'a>(
@@ -1286,43 +1265,46 @@ impl WlAlloc {
             None
         };
 
-        Ok(diesel::update(
+        Ok(
+            diesel::update(
             wlalloc::table
                 .filter(wlalloc::wl.eq(wl_in))
                 .filter(wlalloc::addr.eq(addr_in)),
+            )
+            .set(wlalloc::specific_asset.eq(sa))
+            .get_result::<WlAlloc>(&mut establish_connection()?)?
         )
-        .set(wlalloc::specific_asset.eq(sa))
-        .get_result::<WlAlloc>(&mut establish_connection()?)?)
     }
 
     pub fn remove_wlentry<'a>(wl_in: &'a i64, addr_in: &'a i64) -> Result<usize, RWDError> {
-        let result = diesel::delete(wlalloc::table.find((wl_in, addr_in)))
-            .execute(&mut establish_connection()?)?;
-
-        Ok(result)
+        Ok(
+            diesel::delete(wlalloc::table.find((wl_in, addr_in)))
+                .execute(&mut establish_connection()?)?
+        )
     }
 
     pub fn remove_wl(wl_in: &i64) -> Result<usize, RWDError> {
-        let result = diesel::delete(wlalloc::table.filter(wlalloc::wl.eq(wl_in)))
-            .execute(&mut establish_connection()?)?;
-        Ok(result)
+        Ok(
+            diesel::delete(wlalloc::table.filter(wlalloc::wl.eq(wl_in)))
+                .execute(&mut establish_connection()?)?
+        )
     }
 }
 
 impl Whitelist {
     pub fn get_whitelist(user_id_in: &i64, id_in: &i64) -> Result<Whitelist, RWDError> {
-        let result = whitelist::table
+        Ok(whitelist::table
             .filter(whitelist::id.eq(id_in))
             .filter(whitelist::user_id.eq(user_id_in))
-            .first::<Whitelist>(&mut establish_connection()?)?;
-        Ok(result)
+            .first::<Whitelist>(&mut establish_connection()?)?
+        )
     }
 
     pub fn get_whitelists(user_id_in: &i64) -> Result<Whitelist, RWDError> {
-        let result = whitelist::table
+        Ok(whitelist::table
             .filter(whitelist::user_id.eq(user_id_in))
-            .first::<Whitelist>(&mut establish_connection()?)?;
-        Ok(result)
+            .first::<Whitelist>(&mut establish_connection()?)?
+        )
     }
 
     pub fn create_whitelist(
@@ -1332,17 +1314,19 @@ impl Whitelist {
         description: &String,
         notes: &String,
     ) -> Result<Whitelist, RWDError> {
-        let new_entry = WhitelistNew {
-            user_id: user_id_in,
-            max_addr_repeat,
-            wl_type,
-            description,
-            notes,
-        };
-
-        Ok(diesel::insert_into(whitelist::table)
-            .values(&new_entry)
-            .get_result::<Whitelist>(&mut establish_connection()?)?)
+        Ok(
+            diesel::insert_into(whitelist::table)
+                .values(
+                    &WhitelistNew {
+                        user_id: user_id_in,
+                        max_addr_repeat,
+                        wl_type,
+                        description,
+                        notes,
+                    }
+                )
+                .get_result::<Whitelist>(&mut establish_connection()?)?
+        )
     }
 
     pub fn add_to_wl<'a>(
@@ -1351,23 +1335,27 @@ impl Whitelist {
         stake_address: Option<&'a String>,
         specific_asset: Option<&'a SpecificAsset>,
     ) -> Result<WlAlloc, RWDError> {
-        let raddr = match WlAddresses::create_wladdress(
-            &mut establish_connection()?,
-            address,
-            stake_address,
-        ) {
-            Ok(o) => o,
-            Err(e) => {
-                log::error!("Error creating new wladdress: {:?}", e.to_string());
-                let addr = WlAddresses::get_address(address.to_string())?;
-                if addr.is_empty() {
-                    return Err(RWDError::new("Could also not find address"));
-                }
-                addr[0].clone()
-            }
-        };
-        let ralloc = WlAlloc::create_alloc(wl_in, &raddr.id, specific_asset)?;
-        Ok(ralloc)
+        Ok(
+            WlAlloc::create_alloc(
+                wl_in, 
+                &match WlAddresses::create_wladdress(
+                    &mut establish_connection()?,
+                    address,
+                    stake_address,
+                ) {
+                    Ok(o) => o,
+                    Err(e) => {
+                        log::error!("Error creating new wladdress: {:?}", e.to_string());
+                        let addr = WlAddresses::get_address(address.to_string())?;
+                        if addr.is_empty() {
+                            return Err(RWDError::new("Could also not find address"));
+                        }
+                        addr[0].clone()
+                    }
+                }.id, 
+                specific_asset
+            )?
+        )
     }
 
     pub fn remove_from_wl<'a>(
@@ -1394,20 +1382,21 @@ impl Whitelist {
     pub fn remove_wl(user_id_in: &i64, wl_in: &i64) -> Result<usize, RWDError> {
         Whitelist::get_whitelist(user_id_in, wl_in)?;
         WlAlloc::remove_wl(wl_in)?;
-        let result = diesel::delete(whitelist::table.filter(whitelist::id.eq(wl_in)))
-            .execute(&mut establish_connection()?)?;
-        Ok(result)
+
+        Ok(
+            diesel::delete(whitelist::table.filter(whitelist::id.eq(wl_in)))
+                .execute(&mut establish_connection()?)?
+        )
     }
 }
 
 impl Discount {
     pub fn get_discounts(cid_in: i64, uid_in: i64) -> Result<Vec<Discount>, RWDError> {
-        let conn = &mut establish_connection()?;
-        let result = discount::table
+        Ok(discount::table
             .filter(discount::contract_id.eq(cid_in))
             .filter(discount::user_id.eq(uid_in))
-            .load::<Discount>(conn)?;
-        Ok(result)
+            .load::<Discount>(&mut establish_connection()?)?
+        )
     }
 
     pub fn create_discount(
@@ -1417,25 +1406,24 @@ impl Discount {
         fingerprint: Option<&String>,
         metadata_path: &Vec<String>,
     ) -> Result<Discount, RWDError> {
-        let conn = &mut establish_connection()?;
-        let new_entry = DiscountNew {
-            contract_id,
-            user_id,
-            policy_id,
-            fingerprint,
-            metadata_path,
-        };
-
         Ok(diesel::insert_into(discount::table)
-            .values(&new_entry)
-            .get_result::<Discount>(conn)?)
+            .values(
+                &DiscountNew {
+                    contract_id,
+                    user_id,
+                    policy_id,
+                    fingerprint,
+                    metadata_path,
+                }
+            )
+            .get_result::<Discount>(&mut establish_connection()?)?)
     }
 
     pub fn remove_discount(id: &i64) -> Result<usize, RWDError> {
-        let conn = &mut establish_connection()?;
-
-        let result = diesel::delete(discount::table.filter(discount::id.eq(id))).execute(conn)?;
-        Ok(result)
+        Ok(
+            diesel::delete(discount::table.filter(discount::id.eq(id)))
+                .execute(&mut establish_connection()?)?
+        )
     }
 
     pub fn policy_id(&self) -> String {
