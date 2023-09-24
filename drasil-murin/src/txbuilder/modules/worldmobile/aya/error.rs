@@ -1,8 +1,7 @@
 use cardano_serialization_lib as csl;
 
 use thiserror::Error;
-use csl::error::JsError;
-use csl::error::DeserializeError;
+use csl::error::{JsError, DeserializeError};
 
 use super::enregistration;
 

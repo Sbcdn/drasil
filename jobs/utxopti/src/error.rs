@@ -1,7 +1,6 @@
 use serde::Serialize;
 use thiserror::Error;
-use drasil_murin::clib::error::DeserializeError;
-use drasil_murin::clib::error::JsError;
+use drasil_murin::clib::error::{DeserializeError, JsError};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]

@@ -1,10 +1,12 @@
 use thiserror::Error;
-use std::io;
-use std::num::{ParseIntError, ParseFloatError};
-use std::str::ParseBoolError;
-use std::env::VarError;
-use std::string::String;
-use drasil_murin::clib::error;
+use std::{
+    io,
+    num::{ParseIntError, ParseFloatError},
+    str::ParseBoolError,
+    env::VarError,
+    string::String
+};
+use drasil_murin::clib;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
@@ -43,14 +45,14 @@ impl From<std::string::String> for SystemDBError {
     }
 }
 
-impl From<drasil_murin::clib::error::JsError> for SystemDBError {
-    fn from(err: error::JsError) -> Self {
+impl From<clib::error::JsError> for SystemDBError {
+    fn from(err: clib::error::JsError) -> Self {
         SystemDBError::Custom(err.to_string())
     }
 }
 
-impl From<error::DeserializeError> for SystemDBError {
-    fn from(err: error::DeserializeError) -> Self {
+impl From<clib::error::DeserializeError> for SystemDBError {
+    fn from(err: clib::error::DeserializeError) -> Self {
         SystemDBError::Custom(err.to_string())
     }
 }

@@ -1,8 +1,7 @@
 use crate::clib;
 use thiserror::Error;
 use std::string::String;
-use clib::error::JsError;
-use clib::error::DeserializeError;
+use clib::error::{JsError, DeserializeError};
 
 #[allow(clippy::enum_variant_names, dead_code)]
 #[derive(Error, Debug)]

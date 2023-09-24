@@ -4,8 +4,10 @@ use serde::Serialize;
 use std::convert::Infallible;
 use thiserror::Error;
 use warp::{reject, http::StatusCode, Rejection, Reply};
-use std::num::ParseIntError;
-use std::string::String;
+use std::{
+    num::ParseIntError,
+    string::String
+};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]

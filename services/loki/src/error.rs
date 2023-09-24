@@ -1,7 +1,9 @@
 use serde::Serialize;
 use thiserror::Error;
-use std::string::String;
-use std::num::ParseIntError;
+use std::{
+    string::String,
+    num::ParseIntError,
+};
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]

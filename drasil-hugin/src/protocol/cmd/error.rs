@@ -1,4 +1,5 @@
 use std::fmt;
+use drasil_murin::clib;
 
 #[derive(Debug)]
 pub enum CmdError {
@@ -20,8 +21,8 @@ impl From<&str> for CmdError {
     }
 }
 
-impl From<drasil_murin::clib::error::DeserializeError> for CmdError {
-    fn from(src: drasil_murin::clib::error::DeserializeError) -> CmdError {
+impl From<clib::error::DeserializeError> for CmdError {
+    fn from(src: clib::error::DeserializeError) -> CmdError {
         src.to_string().into()
     }
 }

@@ -1,8 +1,10 @@
 use serde::Serialize;
-use std::convert::Infallible;
+use std::{
+    convert::Infallible,
+    string::String
+};
 use thiserror::Error;
 use warp::{http::StatusCode, Rejection, Reply};
-use std::string::String;
 
 #[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]

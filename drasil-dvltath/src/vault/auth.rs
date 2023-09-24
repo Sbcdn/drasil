@@ -1,31 +1,38 @@
 use lazy_static::lazy_static;
-use std::env::{set_var, var};
-use std::io::{Read, Write};
-use std::time::Duration;
-use std::fs::{File, remove_file};
-use vaultrs::api::auth::approle::responses::GenerateNewSecretIDResponse;
-use vaultrs::api::ResponseWrapper;
-use vaultrs::client::{VaultClient, VaultClientSettingsBuilder};
-use vaultrs::*;
-use vaultrs::{api::AuthInfo, client::Client};
+use std::{
+    env,
+    io::{Read, Write},
+    time::Duration,
+    fs::{self, File}
+};
+use vaultrs::{
+    api::{
+        auth::approle::responses::GenerateNewSecretIDResponse,
+        ResponseWrapper,
+        AuthInfo
+    },
+    client::{VaultClient, VaultClientSettingsBuilder, Client},
+    *,
+
+};
 
 use hyper::Client as HClient;
 use hyperlocal::{UnixClientExt, Uri};
 
 lazy_static! {
-    static ref VROLE_ID: String = var("VROLE_ID").unwrap_or_else(|_| "dummy_role".to_string());
-    static ref VROLE_NAME: String = var("VROLE_NAME").unwrap_or_else(|_| "dummy_role".to_string());
+    static ref VROLE_ID: String = env::var("VROLE_ID").unwrap_or_else(|_| "dummy_role".to_string());
+    static ref VROLE_NAME: String = env::var("VROLE_NAME").unwrap_or_else(|_| "dummy_role".to_string());
     static ref VSECRET_ID: String =
-        var("VSECRET_ID").unwrap_or_else(|_| "dummy_secret".to_string());
+        env::var("VSECRET_ID").unwrap_or_else(|_| "dummy_secret".to_string());
     static ref VAULT_ADDR: String =
-        var("VAULT_ADDR").unwrap_or_else(|_| "dummy_address".to_string());
+        env::var("VAULT_ADDR").unwrap_or_else(|_| "dummy_address".to_string());
     static ref VAULT_NAMESPACE: String =
-        var("VAULT_NAMESPACE").unwrap_or_else(|_| "dummy_ns".to_string());
-    static ref MOUNT: String = var("MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
-    static ref SPATH: String = var("SPATH").unwrap_or_else(|_| "dummy_path".to_string());
+        env::var("VAULT_NAMESPACE").unwrap_or_else(|_| "dummy_ns".to_string());
+    static ref MOUNT: String = env::var("MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
+    static ref SPATH: String = env::var("SPATH").unwrap_or_else(|_| "dummy_path".to_string());
     static ref VSOCKET_PATH: String =
-        var("VSOCKET_PATH").unwrap_or_else(|_| "dummy_path".to_string());
-    static ref VPATH: String = var("VPATH").unwrap_or_else(|_| "dummy_path".to_string());
+        env::var("VSOCKET_PATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref VPATH: String = env::var("VPATH").unwrap_or_else(|_| "dummy_path".to_string());
 }
 
 fn get_role_id() -> String {
@@ -61,14 +68,14 @@ fn get_secret_path() -> String {
 }
 
 fn get_vtoken() -> String {
-    match var("VAULT_TOKEN") {
+    match env::var("VAULT_TOKEN") {
         Ok(o) => o,
         Err(_) => "".to_string(),
     }
 }
 
 async fn get_own_vault_token(client: &mut VaultClient) -> String {
-    match var("VAULT_TOKEN") {
+    match env::var("VAULT_TOKEN") {
         Ok(o) => {
             client.set_token(&o);
             match vaultrs::token::lookup_self(client).await {
@@ -91,7 +98,7 @@ async fn get_own_vault_token(client: &mut VaultClient) -> String {
 }
 
 async fn login(client: &mut VaultClient) {
-    match var("VAULT_TOKEN") {
+    match env::var("VAULT_TOKEN") {
         Ok(o) => {
             client.set_token(&o);
             match vaultrs::token::lookup_self(client).await {
@@ -166,7 +173,7 @@ async fn obtain_token(client: &mut VaultClient, role_id: &str, secret_id: &str) 
 }
 
 async fn set_vault_token(client: &mut VaultClient, auth: &AuthInfo) -> String {
-    set_var("VAULT_TOKEN", auth.client_token.clone());
+    env::set_var("VAULT_TOKEN", auth.client_token.clone());
     client.set_token(&auth.client_token);
     auth.client_token.clone()
 }
@@ -195,7 +202,7 @@ pub async fn vault_connect_sdc() -> VaultClient {
 
     let token = get_own_vault_token(&mut client).await;
     client.set_token(&token);
-    set_var("VAULT_TOKEN", &token);
+    env::set_var("VAULT_TOKEN", &token);
     client
 }
 
@@ -245,7 +252,7 @@ async fn read_wrapped_secret(
     let mut file = File::open(path).unwrap();
     let mut token = String::new();
     file.read_to_string(&mut token).unwrap();
-    remove_file(path).expect("could not remove file");
+    fs::remove_file(path).expect("could not remove file");
     client.set_token(&token);
     log::info!("Secret delivered");
     vaultrs::sys::wrapping::unwrap(client, None).await.unwrap()
