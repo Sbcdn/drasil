@@ -1,9 +1,9 @@
-use crate::error::MurinError;
-use crate::marketplace::*;
-use crate::models;
-use crate::supporting_functions;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
+
+use crate::cardano::{models, supporting_functions};
+use crate::error::MurinError;
+use crate::marketplace::*;
 
 pub fn perform_listing(
     fee: &cutils::BigNum,
@@ -229,7 +229,7 @@ pub async fn build_mp_listing(
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
     let steps = cutils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: models::ExUnitPrice = crate::ExUnitPrice {
+    let ex_unit_price = models::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };

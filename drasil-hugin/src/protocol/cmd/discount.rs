@@ -1,6 +1,6 @@
 use drasil_gungnir::Discount;
 use drasil_mimir::TokenInfoMint;
-use drasil_murin::{make_fingerprint, Tokens, TransactionUnspentOutputs};
+use drasil_murin::cardano::{make_fingerprint, Tokens, TransactionUnspentOutputs};
 
 pub fn discount(utxos: TransactionUnspentOutputs, cid: i64, uid: i64) -> i64 {
     let discounts = Discount::get_discounts(cid, uid);

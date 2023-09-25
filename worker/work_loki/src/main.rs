@@ -4,12 +4,13 @@ mod error;
 mod handlers;
 mod models;
 
+use std::env;
+
 use deadpool_lapin::Pool;
-use drasil_gungnir::models::MintReward;
-use drasil_murin::{clib::Assets, utils::to_bignum, AssetName, MultiAsset, PolicyID};
+use drasil_gungnir::minting::models::MintReward;
+use drasil_murin::{clib::Assets, utils::to_bignum, wallet, AssetName, MultiAsset, PolicyID};
 use lapin::ConnectionProperties;
 use lazy_static::lazy_static;
-use std::env;
 
 lazy_static! {
     static ref AMQP_ADDR: String =
@@ -144,7 +145,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
             let stake_address: String = match address.to_bytes()[0] {
                 //base
                 0b0000 | 0b0001 => {
-                    drasil_murin::reward_address_from_address(&address)?.to_bech32(None)?
+                    wallet::reward_address_from_address(&address)?.to_bech32(None)?
                 }
                 //script address
                 0b0010 | 0b0011 => {

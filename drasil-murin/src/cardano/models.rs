@@ -1,8 +1,11 @@
-use crate::MurinError;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+
+use crate::wallet;
+use crate::txbuilder;
+use crate::MurinError;
 
 macro_rules! pub_struct {
     ($name:ident {$($field:ident: $t:ty,)*}) => {
@@ -350,27 +353,28 @@ impl TransactionUnspentOutputs {
     }
 
     pub fn coin_sum(&self) -> u64 {
-        //cutils::BigNum {
-        let coinsum = self.0.iter().fold(0u64, |acc: u64, x| {
-            acc + cutils::from_bignum(&x.output().amount().coin())
-        });
-        //cutils::to_bignum(coinsum)
-        coinsum
+        self.0
+            .iter()
+            .map(|utxo| cutils::from_bignum(&utxo.output().amount().coin()))
+            .sum()
     }
 
     pub fn coin_sum_minutxo(&self) -> u64 {
         //cutils::BigNum {
-        let coinsum = self.0.iter().fold(0u64, |acc: u64, x| {
-            acc + cutils::from_bignum(&x.output().amount().coin())
-        });
-        let minutxo = cutils::from_bignum(&crate::calc_min_ada_for_utxo(
+        let coinsum: u64 = self
+            .0
+            .iter()
+            .map(|utxo| cutils::from_bignum(&utxo.output().amount().coin()))
+            .sum();
+
+        let minutxo = cutils::from_bignum(&txbuilder::calc_min_ada_for_utxo(
             &self
                 .calc_total_value()
                 .expect("calc total value crashed in coin_sum_minutxo"),
             None,
         ));
 
-        std::cmp::min(coinsum as i64 - minutxo as i64, 0) as u64
+        std::cmp::min(coinsum - minutxo, 0)
     }
 
     pub fn coin_value_subset(
@@ -421,14 +425,13 @@ impl TransactionUnspentOutputs {
                         Done(acc)
                     } else {
                         Continue({
-                            let x_stake = crate::cip30::stake_keyhash_from_address(
+                            let x_stake = wallet::stake_keyhash_from_address(
                                 &x.output().address(),
                             )
                             .expect(
                                 "Could not determine stake address in coin_value_subset_minutxo 1",
                             );
-                            let payer_stake = crate::cip30::stake_keyhash_from_address(payaddr)
-                                .expect(
+                            let payer_stake = wallet::stake_keyhash_from_address(payaddr).expect(
                                 "Could not determine stake address in coin_value_subset_minutxo 2",
                             );
                             if x_stake == payer_stake {
@@ -829,4 +832,10 @@ pub fn acc_tokens(tok_l: &Tokens, tok_r: &Tokens) -> Tokens {
 pub fn token_diff(tok_l: &Tokens, tok_r: &Tokens) -> Tokens {
     let sub = check_overhead_tokens(tok_l, tok_r);
     acc_tokens(tok_l, &sub)
+}
+
+/// Create utxo from hex string slice
+pub fn utxo_from_hex(hex: &str) -> Result<TransactionUnspentOutput, crate::MurinError> {
+    let utxo = TransactionUnspentOutput::from_hex(hex)?;
+    Ok(utxo)
 }

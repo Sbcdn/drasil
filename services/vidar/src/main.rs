@@ -5,6 +5,7 @@ mod models;
 
 use std::env;
 use std::str;
+
 use warp::Filter;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -66,16 +67,14 @@ async fn main() {
 }
 
 mod auth {
-    use crate::error::{self, VError};
-    use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
-    use serde::{Deserialize, Serialize};
-    use warp::{
-        http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
-        reject, Rejection,
-    };
-
     use drasil_hugin::client::connect;
     use drasil_hugin::VerifyUser;
+    use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+    use serde::{Deserialize, Serialize};
+    use warp::http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+    use warp::{reject, Rejection};
+
+    use crate::error::{self, VError};
 
     const BEARER: &str = "Bearer ";
 
@@ -325,14 +324,15 @@ mod filters {
 
 ///Handlers
 mod handlers {
-    use cardano_serialization_lib::{address::Address, utils::from_bignum};
-    use drasil_gungnir::models::{MintProject, MintReward};
-    use drasil_hugin::{
-        datamodel::{ClaimedHandle, RewardHandle},
-        MintProjectHandle, MintRewardHandle,
-    };
-    use drasil_murin::make_fingerprint;
     use std::{convert::Infallible, str::from_utf8};
+
+    use cardano_serialization_lib::{address::Address, utils::from_bignum};
+    use drasil_gungnir::minting::models::{MintProject, MintReward};
+    use drasil_hugin::{
+        datamodel::{ClaimedHandle, MintProjectHandle, RewardHandle},
+        MintRewardHandle,
+    };
+    use drasil_murin::{cardano, wallet};
 
     use crate::models::{QAddresses, QStakeAddress};
 
@@ -878,9 +878,11 @@ mod handlers {
                         for a in 0..k.len() {
                             let asset = k.get(a);
                             let amt = assets.get(&asset).unwrap();
-                            let fingerprint =
-                                make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
-                                    .unwrap();
+                            let fingerprint = cardano::make_fingerprint(
+                                &policy.to_hex(),
+                                &hex::encode(asset.name()),
+                            )
+                            .unwrap();
                             let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
                             handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
@@ -974,9 +976,11 @@ mod handlers {
                         for a in 0..k.len() {
                             let asset = k.get(a);
                             let amt = assets.get(&asset).unwrap();
-                            let fingerprint =
-                                make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
-                                    .unwrap();
+                            let fingerprint = cardano::make_fingerprint(
+                                &policy.to_hex(),
+                                &hex::encode(asset.name()),
+                            )
+                            .unwrap();
                             let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
                             handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
@@ -1037,13 +1041,13 @@ mod handlers {
         stake_address: QStakeAddress,
     ) -> Result<impl warp::Reply, Infallible> {
         let stake_address = stake_address.stake_address;
-        let bstake_addr = match drasil_murin::address_from_string(&stake_address).await {
+        let bstake_addr = match wallet::address_from_string(&stake_address).await {
             Ok(s) => s,
             Err(e) => {
                 return make_error(e.to_string());
             }
         };
-        let reward_address = match drasil_murin::reward_address_from_address(&bstake_addr) {
+        let reward_address = match wallet::reward_address_from_address(&bstake_addr) {
             Ok(r) => r,
             Err(e) => {
                 return make_error(e.to_string());
@@ -1080,9 +1084,11 @@ mod handlers {
                         for a in 0..k.len() {
                             let asset = k.get(a);
                             let amt = assets.get(&asset).unwrap();
-                            let fingerprint =
-                                make_fingerprint(&policy.to_hex(), &hex::encode(asset.name()))
-                                    .unwrap();
+                            let fingerprint = cardano::make_fingerprint(
+                                &policy.to_hex(),
+                                &hex::encode(asset.name()),
+                            )
+                            .unwrap();
                             let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
                             handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),

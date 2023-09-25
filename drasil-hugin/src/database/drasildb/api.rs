@@ -1,16 +1,16 @@
-use super::*;
-use crate::{
-    admin::get_vaddr,
-    client::connect,
-    encryption::{decrypt, encrypt},
-    schema::{contracts, email_verification_token, multisig_keyloc},
-    BuildMultiSig, Operation, TransactionPattern,
-};
 use diesel::pg::upsert::on_constraint;
 use drasil_dvltath::vault::kv::{vault_get, vault_store};
 use drasil_murin::crypto::{Ed25519Signature, PrivateKey, PublicKey};
+use drasil_murin::wallet;
 use error::SystemDBError;
 use sha2::Digest;
+
+use super::*;
+use crate::admin::get_vaddr;
+use crate::client::connect;
+use crate::encryption::{decrypt, encrypt};
+use crate::schema::{contracts, email_verification_token, multisig_keyloc};
+use crate::{BuildMultiSig, Operation, TransactionPattern};
 
 impl TBContracts {
     pub fn get_all_active_rwd_contracts() -> Result<Vec<TBContracts>, SystemDBError> {
@@ -378,7 +378,7 @@ impl TBDrasilUser {
             .hash_password(pwd.as_bytes(), &SaltString::generate(&mut OsRng))?
             .to_string();
 
-        let (privkey, pubkey, pubkeyhash) = drasil_murin::wallet::create_drslkeypair();
+        let (privkey, pubkey, pubkeyhash) = wallet::create_drslkeypair();
         let privkey = encrypt(&privkey, pwd)?;
         vault_store(&pubkeyhash, "prvkey", &privkey).await;
 

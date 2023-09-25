@@ -13,8 +13,11 @@ pub use crate::error::SleipnirError;
 pub use crate::rewards::*;
 pub use ad_params::*;
 
-use chrono::{NaiveDateTime, Utc};
 use std::str::FromStr;
+
+use chrono::{NaiveDateTime, Utc};
+
+use drasil_murin::cardano;
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum ADTokenType {
@@ -194,7 +197,7 @@ pub async fn create_airdrop(
         ADTokenType::FungibleToken => {
             if let Some(name) = tokenname {
                 tn = name;
-                fingerprint = drasil_murin::make_fingerprint(&policy_id.clone(), &tn)?;
+                fingerprint = cardano::make_fingerprint(&policy_id.clone(), &tn)?;
             }
         }
         ADTokenType::NonFungibleToken => {
@@ -373,7 +376,7 @@ pub fn airdrop_whitelist_selection(
                     let fingerprint = if let Some(fp) = adparam.fingerprint.clone() {
                         fp
                     } else {
-                        drasil_murin::make_fingerprint(
+                        cardano::make_fingerprint(
                             &hex::encode(adparam.policy_id.to_bytes()),
                             &hex::encode(
                                 adparam
