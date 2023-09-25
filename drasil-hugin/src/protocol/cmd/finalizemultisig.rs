@@ -5,8 +5,8 @@ use crate::{Connection, Frame, IntoFrame};
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
-use drasil_gungnir::models::{MintProject, MintReward, Nft};
-use drasil_murin::make_fingerprint;
+use drasil_gungnir::minting::models::{MintProject, MintReward, Nft};
+use drasil_murin::cardano;
 use drasil_murin::minter::models::{CMintHandle, ColMinterTxData};
 use std::str::FromStr;
 
@@ -112,7 +112,7 @@ impl FinalizeMultiSig {
                 let mut gcon = drasil_gungnir::establish_connection()?;
 
                 for handle in rwd_data.get_rewards() {
-                    let fingerprint = drasil_murin::cardano::make_fingerprint(
+                    let fingerprint = cardano::make_fingerprint(
                         &hex::encode(handle.get_policy_id()?.to_bytes()),
                         &hex::encode(handle.get_assetname()?.name()),
                     )?;
@@ -179,9 +179,11 @@ impl FinalizeMultiSig {
                 for h in &handles {
                     MintReward::process_mintreward(h.1.id, h.1.project_id, &h.1.pay_addr)?;
                     for a in h.1.nft_ids.clone() {
-                        let fingerprint =
-                            make_fingerprint(h.3.policy_id.as_ref().unwrap(), &hex::encode(a))
-                                .unwrap();
+                        let fingerprint = cardano::make_fingerprint(
+                            h.3.policy_id.as_ref().unwrap(),
+                            &hex::encode(a),
+                        )
+                        .unwrap();
                         log::debug!("Fingerprint: {:?}", fingerprint);
                         Nft::set_nft_minted(&h.2.id, &h.2.nft_table_name, &fingerprint, &ret)
                             .await?;

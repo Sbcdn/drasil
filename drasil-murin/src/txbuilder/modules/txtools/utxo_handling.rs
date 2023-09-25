@@ -1,12 +1,12 @@
 use super::error::TxToolsError;
 use super::models::TokenAsset;
-use crate::cip30::stake_keyhash_from_address;
+use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
 use crate::clib;
 use crate::clib::{
     address::Address,
     utils::{to_bignum, Value},
 };
-use crate::{TransactionUnspentOutput, TransactionUnspentOutputs};
+use crate::wallet;
 
 pub async fn find_token_utxos(
     inputs: TransactionUnspentOutputs,
@@ -127,10 +127,10 @@ pub fn find_token_utxos_na(
                 let unspent_output = ins.get(i);
                 if let Some(addr) = on_addr {
                     if unspent_output.output().address().to_bytes() != addr.to_bytes()
-                        && if let Ok(stake_addr) = stake_keyhash_from_address(addr) {
-                            if let Ok(stake_addr_2) =
-                                stake_keyhash_from_address(&unspent_output.output().address())
-                            {
+                        && if let Ok(stake_addr) = wallet::stake_keyhash_from_address(addr) {
+                            if let Ok(stake_addr_2) = wallet::stake_keyhash_from_address(
+                                &unspent_output.output().address(),
+                            ) {
                                 stake_addr != stake_addr_2
                             } else {
                                 true

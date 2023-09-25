@@ -1,12 +1,13 @@
-use super::models::*;
-use crate::error::RWDError;
-use crate::schema::*;
-use crate::*;
 use async_recursion::async_recursion;
 use chrono::{DateTime, Utc};
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::sql_types::{Bool, Bytea, Int8, Nullable, Timestamptz, Varchar};
+
+use super::models::{MintProject, MintProjectNew, MintReward, MintRewardNew, Nft};
+use crate::error::RWDError;
+use crate::schema::*;
+use crate::*;
 
 impl MintProject {
     pub fn get_mintproject_by_id(id_in: i64) -> Result<MintProject, RWDError> {
@@ -485,9 +486,9 @@ impl Nft {
             }
         });
 
-        let insert_query = format!("INSERT INTO {table_name} 
-        (project_id, asset_name_b, asset_name, fingerprint, nft_id, file_name, ipfs_hash, metadata, claim_addr, minted, confirmed) 
-        VALUES 
+        let insert_query = format!("INSERT INTO {table_name}
+        (project_id, asset_name_b, asset_name, fingerprint, nft_id, file_name, ipfs_hash, metadata, claim_addr, minted, confirmed)
+        VALUES
         ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)");
 
         let q = client
@@ -526,7 +527,7 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {table_name} SET minted = true, tx_hash=$1 WHERE project_id=$2 AND fingerprint=$3 AND minted is false AND tx_hash is Null", 
+            "UPDATE {table_name} SET minted = true, tx_hash=$1 WHERE project_id=$2 AND fingerprint=$3 AND minted is false AND tx_hash is Null",
         );
         let rows = client
             .query(&update_query, &[txhash_in, &pid_in, fingerprint])
@@ -547,7 +548,7 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {table_name} SET confirmed = true WHERE project_id=$1 AND fingerprint=$2 AND minted = true AND tx_hash=$3", 
+            "UPDATE {table_name} SET confirmed = true WHERE project_id=$1 AND fingerprint=$2 AND minted = true AND tx_hash=$3",
         );
         let rows = client
             .query(&update_query, &[pid_in, fingerprint, txhash_in])
@@ -568,7 +569,7 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {table_name} SET claim_addr = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false AND tx_hash IS NULL", 
+            "UPDATE {table_name} SET claim_addr = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false AND tx_hash IS NULL",
         );
         let rows = client
             .query(&update_query, &[claim_addr, &pid_in, asset_name_b])
@@ -590,7 +591,7 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {table_name} SET ipfs_hash = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false", 
+            "UPDATE {table_name} SET ipfs_hash = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false",
         );
 
         let rows = client
@@ -613,7 +614,7 @@ impl Nft {
     ) -> Result<(), RWDError> {
         let client = Nft::db_client().await?;
         let update_query = format!(
-            "UPDATE {table_name} SET metadata = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false", 
+            "UPDATE {table_name} SET metadata = $1 WHERE project_id=$2 AND asset_name_b=$3 AND minted = false",
         );
         let rows = client
             .query(&update_query, &[metadata, &pid_in, asset_name_b])
@@ -874,7 +875,7 @@ mod tests {
         )
         .unwrap();
 
-        models::Nft::create_nft_table(&"test_table".to_string())
+        Nft::create_nft_table(&"test_table".to_string())
             .await
             .unwrap();
 

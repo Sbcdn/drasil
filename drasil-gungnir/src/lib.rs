@@ -8,5 +8,4 @@ pub mod schema;
 extern crate pretty_env_logger;
 pub use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 pub use error::*;
-pub use minting::*;
 pub use rewards::*;

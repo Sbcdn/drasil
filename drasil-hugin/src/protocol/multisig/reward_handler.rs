@@ -3,7 +3,7 @@ use crate::protocol::{create_response, determine_contracts};
 use crate::{discount, CmdError};
 use crate::{BuildMultiSig, TBMultiSigLoc};
 use drasil_murin::modules::transfer::models::*;
-use drasil_murin::PerformTxb;
+use drasil_murin::{wallet, PerformTxb};
 //use drasil_gungnir::schema::whitelist;
 
 pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<String> {
@@ -26,18 +26,18 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             }
             .into());
             if rewards.is_empty()
-                || drasil_murin::address_from_string(&recipient_stake_addr)
+                || wallet::address_from_string(&recipient_stake_addr)
                     .await
                     .is_err()
-                || drasil_murin::address_from_string(&recipient_payment_addr)
+                || wallet::address_from_string(&recipient_payment_addr)
                     .await
                     .is_err()
-                || drasil_murin::wallet::stake_keyhash_from_address(
-                    &drasil_murin::address_from_string(&recipient_stake_addr).await?,
-                )? != drasil_murin::wallet::stake_keyhash_from_address(
-                    &drasil_murin::address_from_string(
+                || wallet::stake_keyhash_from_address(
+                    &wallet::address_from_string(&recipient_stake_addr).await?,
+                )? != wallet::stake_keyhash_from_address(
+                    &wallet::address_from_string(
                         &drasil_mimir::api::select_addr_of_first_transaction(
-                            &drasil_murin::decode_address_from_bytes(&recipient_stake_addr)
+                            &wallet::decode_address_from_bytes(&recipient_stake_addr)
                                 .await?
                                 .to_bech32(None)
                                 .unwrap(),
@@ -65,7 +65,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         .into_rwd()
         .await?;
     rwdtxd.set_payment_addr(
-        &drasil_murin::address_from_string(&drasil_mimir::api::select_addr_of_first_transaction(
+        &wallet::address_from_string(&drasil_mimir::api::select_addr_of_first_transaction(
             &rwdtxd
                 .get_stake_addr()
                 .to_bech32(None)
@@ -294,7 +294,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
 
         let ident = crate::encryption::mident(&c.user_id, &c.contract_id, &c.version, &c.address);
         let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks.clone(), &ident).await?;
-        let tw_addr = drasil_murin::address_from_string(&c.address).await?;
+        let tw_addr = wallet::address_from_string(&c.address).await?;
         let tw_script = drasil_murin::clib::NativeScript::from_bytes(hex::decode(c.plutus)?)
             .map_err::<CmdError, _>(|_| CmdError::Custom {
             str: "could not convert string to native script".to_string(),
