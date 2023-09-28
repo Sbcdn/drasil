@@ -1,6 +1,5 @@
-use crate::{
-    redis_usedutxos_connection, MurinError, TransactionUnspentOutput, TransactionUnspentOutputs,
-};
+use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
+use crate::{redis_usedutxos_connection, MurinError};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

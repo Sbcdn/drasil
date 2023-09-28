@@ -1,8 +1,12 @@
-use crate::{reward_address_from_address, MurinError};
+use std::fmt;
+use std::str;
+
 use cardano_serialization_lib as clib;
 use clib::utils::BigNum;
 use serde::{Deserialize, Serialize};
-use std::{fmt, str};
+
+use crate::wallet;
+use crate::MurinError;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CMintHandle {
@@ -32,8 +36,8 @@ impl From<String> for CMintHandle {
 
 impl CMintHandle {
     pub fn reward_addr(&self) -> Result<clib::address::Address, MurinError> {
-        let addr = crate::address_from_string_non_async(&self.pay_addr)?;
-        reward_address_from_address(&addr)
+        let addr = wallet::address_from_string_non_async(&self.pay_addr)?;
+        wallet::reward_address_from_address(&addr)
     }
 
     pub fn total_value(handles: &[CMintHandle]) -> Result<clib::utils::Value, MurinError> {

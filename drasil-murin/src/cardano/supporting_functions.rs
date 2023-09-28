@@ -1,4 +1,4 @@
-use crate::models::*;
+use crate::cardano::models::*;
 use crate::MurinError;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{
@@ -301,7 +301,7 @@ pub fn get_network(nws: &String) -> (clib::NetworkIdKind, &str) {
 }
 
 pub fn get_network_from_address(address: &String) -> Result<clib::NetworkIdKind, MurinError> {
-    let addr: caddr::Address = crate::cip30::wallet::address_from_string_non_async(address)?;
+    let addr: caddr::Address = crate::wallet::address_from_string_non_async(address)?;
     match addr.network_id()? {
         1 => Ok(clib::NetworkIdKind::Mainnet),
         _ => Ok(clib::NetworkIdKind::Testnet),

@@ -1,8 +1,11 @@
+use crate::cardano::supporting_functions::{
+    balance_tx, get_ttl_tx, get_vkey_count, sum_output_values,
+};
+use crate::cardano::{self, Tokens};
 use crate::error::MurinError;
 use crate::minter::*;
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
-use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
-use crate::{models::*, ServiceFees};
+use crate::ServiceFees;
 
 use crate::minter::models::CMintHandle;
 use crate::txbuilder::{calc_min_ada_for_utxo, harden, input_selection, TxBO};
@@ -134,8 +137,9 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
 
         let mut needed_value = sum_output_values(&txouts);
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
-        let security =
-            cutils::to_bignum(cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * MIN_ADA)); // 10% Security for min utxo etc.
+        let security = cutils::to_bignum(
+            cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * cardano::MIN_ADA),
+        ); // 10% Security for min utxo etc.
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
         let mut needed_value = cutils::Value::new(&needed_value.coin());
 
