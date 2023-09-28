@@ -54,7 +54,7 @@ Follow the Readme files in the single applications' folders
 
 
 ### Environment 
-Drasils individual services require the setting of many parameters which are passed via environment variables.  These are described in the Readme file corresponding to the specific service. 
+Drasils individual services require the setting of many parameters which are passed via environment variables.  These are described in the Readme file corresponding to the specific service.
 
 ## Architecture
 

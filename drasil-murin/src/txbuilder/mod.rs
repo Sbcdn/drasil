@@ -372,7 +372,7 @@ impl ToString for TxData {
     }
 }
 
-impl core::str::FromStr for TxData {
+impl std::str::FromStr for TxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let slice: Vec<&str> = src.split('|').collect();

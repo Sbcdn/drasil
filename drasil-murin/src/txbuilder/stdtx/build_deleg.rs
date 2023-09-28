@@ -31,7 +31,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
     ) -> std::result::Result<TxBO, MurinError> {
         if fcrun {
             info!("--------------------------------------------------------------------------------------------------------");
-            info!("-----------------------------------------Fee calcualtion------------------------------------------------");
+            info!("-----------------------------------------Fee Calculation------------------------------------------------");
             info!("---------------------------------------------------------------------------------------------------------\n");
         } else {
             info!("--------------------------------------------------------------------------------------------------------");
@@ -59,7 +59,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         let deleg_rwd_addr = caddr::RewardAddress::from_address(&delegators_address).unwrap();
         let deleg_stake_creds = deleg_rwd_addr.payment_cred();
         if owner_stakecred.to_bytes() != deleg_stake_creds.to_bytes() {
-            return Err(MurinError::new("Inconsitent Stake Key Data, forbidden!"));
+            return Err(MurinError::new("Inconsistent Stake Key Data, forbidden!"));
         }
 
         let mut certs = clib::Certificates::new();
@@ -101,9 +101,9 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         info!("K: {:?}", k);
 
         // Balance TX
-        let mut fee_paied = false;
+        let mut fee_paid = false;
         let mut first_run = true;
-        let mut txos_paied = false;
+        let mut txos_paid = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
         if !registered {
             tbb_values = deposit_val.clone();
@@ -135,9 +135,9 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
             &mut txouts,
             None,
             fee,
-            &mut fee_paied,
+            &mut fee_paid,
             &mut first_run,
-            &mut txos_paied,
+            &mut txos_paid,
             &mut tbb_values,
             &owner_address,
             &change_address,
@@ -165,5 +165,127 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         debug!("--------------------Iteration Ended------------------------------");
         debug!("Vkey Counter at End: {:?}", vkey_counter);
         Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use cardano_serialization_lib::crypto::Ed25519KeyHash;
+    use clib::Certificate;
+    use clib::Certificates;
+    use clib::StakeDelegation;
+    use clib::StakeRegistration;
+    use clib::Transaction;
+    use clib::TransactionInputs;
+    use clib::TransactionOutputs;
+    use clib::TransactionWitnessSet;
+    use clib::address::StakeCredential;
+    use clib::utils::BigNum;
+    use std::env::set_var;
+
+    use crate::PerformTxb;
+    use crate::TxData;
+    use cardano_serialization_lib as clib;
+
+    #[test]
+    fn at_deleg_builder() {
+        // initialize
+        set_var("REDIS_DB", "redis://127.0.0.1:6379/0");
+        set_var("REDIS_DB_URL_UTXOMIND", "redis://127.0.0.1:6379/0");
+        set_var("REDIS_CLUSTER", "false");
+        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t";
+        let base_address = "addr_test1qp6crwxyfwah6hy7v9yu5w6z2w4zcu53qxakk8ynld8fgcpxjae5d7xztgf0vyq7pgrrsk466xxk25cdggpq82zkpdcsdkpc68";
+        let at_deleg_params = super::DelegTxData::new(poolhash).unwrap();
+        let at_deleg_builder = super::AtDelegBuilder::new(&at_deleg_params);
+
+        assert_eq!(at_deleg_builder.stxd.poolhash, poolhash);
+        assert_eq!(at_deleg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash).unwrap());
+        assert!(at_deleg_builder.stxd.registered.is_none());
+
+        // perform_txb
+        let perform_txb = at_deleg_builder.perform_txb(
+            &clib::utils::BigNum::from_str("1").unwrap(), 
+            &TxData::new(
+                None, 
+                vec![
+                    super::caddr::Address::from_bech32(base_address).unwrap()
+                ], 
+                None, 
+                crate::TransactionUnspentOutputs::new(), 
+                clib::NetworkIdKind::Testnet, 
+                10
+            ).unwrap(), 
+            &["".to_string()], 
+            true
+        ).unwrap();
+
+        // check that the perform_txb output can be used for creating transaction
+        let tx: Transaction = Transaction::new(
+            &perform_txb.0, 
+            &perform_txb.1, 
+            perform_txb.2
+        );
+
+        // take function output as it is, check that it isn't unintentionally changed by future PR:s (doesn't check against real data)
+        assert_eq!(
+            tx.body().inputs(), 
+            TransactionInputs::new()
+        );
+        assert_eq!(
+            tx.body().outputs(), 
+            TransactionOutputs::new()
+        );
+        assert_eq!(
+            tx.body().fee(),
+            BigNum::from_str("1").unwrap() // This value doesn't make sense to me (I think 2000000 lovelace makes more sense). Maybe something's wrong with perform_txb(), but this investigation is for a future task
+        );
+        assert_eq!(
+            tx.body().ttl_bignum().unwrap(), 
+            BigNum::from_str("1810").unwrap()
+        );
+        let mut certs = Certificates::new();
+        certs.add(&Certificate::new_stake_registration(
+            &StakeRegistration::new(
+                &StakeCredential::from_keyhash(
+                    &Ed25519KeyHash::from_bytes(
+                        vec![38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141, 101, 83, 13, 66, 2, 3, 168, 86, 11, 113]
+                    ).unwrap()
+                )
+            )
+        ));
+        certs.add(&Certificate::new_stake_delegation(
+            &StakeDelegation::new(
+                &StakeCredential::from_keyhash(
+                    &Ed25519KeyHash::from_bytes(
+                        vec![38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141, 101, 83, 13, 66, 2, 3, 168, 86, 11, 113]
+                    ).unwrap()
+                ),
+                &Ed25519KeyHash::from_bech32(poolhash).unwrap()
+            )
+        ));
+        assert_eq!(
+            tx.body().certs(), 
+            Some(
+                certs
+            )
+        );
+        assert!(tx.body().withdrawals().is_none());
+        assert!(tx.body().update().is_none());
+        assert!(tx.body().auxiliary_data_hash().is_none());
+        assert!(tx.body().validity_start_interval_bignum().is_none());
+        assert!(tx.body().mint().is_none());
+        assert!(tx.body().script_data_hash().is_none());
+        assert!(tx.body().collateral().is_none());
+        assert!(tx.body().required_signers().is_none());
+        assert!(tx.body().network_id().is_none());
+        assert!(tx.body().collateral_return().is_none());
+        assert!(tx.body().total_collateral().is_none());
+        assert!(tx.body().reference_inputs().is_none());
+        assert_eq!(
+            tx.witness_set(), 
+            TransactionWitnessSet::new()
+        );
+        assert!(tx.is_valid());
+        assert!(tx.auxiliary_data().is_none());
     }
 }

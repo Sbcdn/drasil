@@ -160,6 +160,7 @@ pub async fn stdtx_exec_build(
 
     match tx_type {
         StdTxType::DelegateStake => {}
+        StdTxType::DeregisterStake => {}
         StdTxType::StandardTx => {}
     }
     let payload = match payload {

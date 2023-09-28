@@ -177,7 +177,7 @@ impl ToString for MinterTxData {
     }
 }
 
-impl core::str::FromStr for MinterTxData {
+impl std::str::FromStr for MinterTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> std::result::Result<Self, Self::Err> {
         let slice: Vec<&str> = src.split('|').collect();
