@@ -3,6 +3,7 @@ use std::str::FromStr;
 use crate::models::*;
 use crate::rwd_handling::handle_rewards;
 use bigdecimal::{BigDecimal, FromPrimitive};
+use drasil_murin::wallet;
 use drasil_sleipnir::rewards::models::*;
 
 pub(crate) async fn handle_whitelist_address(
@@ -11,7 +12,7 @@ pub(crate) async fn handle_whitelist_address(
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
     let stake_addr =
-        drasil_murin::reward_address_from_address(&drasil_murin::address_from_string(addr).await?)?
+        wallet::reward_address_from_address(&wallet::address_from_string(addr).await?)?
             .to_bech32(None)
             .unwrap_or_else(|_| addr.clone());
     let script_reward = *addr == stake_addr;

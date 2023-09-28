@@ -1,17 +1,17 @@
+use std::collections::HashMap;
+use std::io::Error;
+use std::str::FromStr;
+
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use drasil_gungnir::{Rewards, TokenInfo};
+use drasil_murin::address::Address;
 use drasil_murin::cardano;
-use drasil_murin::{
-    address_from_string_non_async,
-    clib::address::Address,
-    stdtx::{AssetTransfer, StdAssetHandle},
-    utils::to_bignum,
-    AssetName, PolicyID, TxData,
-};
-
+use drasil_murin::stdtx::{AssetTransfer, StdAssetHandle};
+use drasil_murin::utils::to_bignum;
+use drasil_murin::wallet;
+use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, io::Error, str::FromStr};
 use strum::{Display, EnumString, EnumVariantNames};
 
 #[derive(
@@ -358,10 +358,7 @@ impl TransactionPattern {
         };
 
         let saddr = match self.stake_addr() {
-            Some(sa) => match drasil_murin::wallet::decode_address_from_bytes(&sa).await {
-                Ok(addr) => Some(addr),
-                Err(_) => None,
-            },
+            Some(sa) => wallet::decode_address_from_bytes(&sa).await.ok(),
             None => None,
         };
 
@@ -371,29 +368,27 @@ impl TransactionPattern {
         };
         let mut txd = TxData::new(
             Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
-            drasil_murin::wallet::addresses_from_string(&self.used_addresses()).await?,
+            wallet::addresses_from_string(&self.used_addresses()).await?,
             saddr,
-            drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
+            wallet::transaction_unspent_outputs_from_string_vec(
                 inputs.as_ref(),
                 self.collateral().as_ref().map(|x| vec![x.clone()]).as_ref(),
                 self.excludes().as_ref(),
             )?,
-            drasil_murin::wallet::get_network_kind(self.network).await?,
+            wallet::get_network_kind(self.network).await?,
             0u64,
         )?;
 
         if let Some(collateral) = self.collateral() {
-            txd.set_collateral(
-                drasil_murin::wallet::transaction_unspent_outputs_from_string(&collateral)?,
-            )
+            txd.set_collateral(wallet::transaction_unspent_outputs_from_string(
+                &collateral,
+            )?)
         }
 
         if let Some(excludes) = self.excludes() {
-            txd.set_excludes(
-                drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
-                    &excludes, None, None,
-                )?,
-            )
+            txd.set_excludes(wallet::transaction_unspent_outputs_from_string_vec(
+                &excludes, None, None,
+            )?)
         }
 
         Ok(txd)
@@ -488,9 +483,7 @@ impl Operation {
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
                 if let Some(royaddr) = royalties_addr {
-                    mptx.set_royalties_address(
-                        drasil_murin::decode_address_from_bytes(royaddr).await?,
-                    );
+                    mptx.set_royalties_address(wallet::decode_address_from_bytes(royaddr).await?);
                 }
 
                 if let Some(royrate) = royalties_rate {
@@ -522,10 +515,9 @@ impl Operation {
                 recipient_payment_addr,
             } => {
                 // let assets = Token::for_all_into_asset(reward_tokens)?;
-                let stake_addr =
-                    drasil_murin::decode_address_from_bytes(recipient_stake_addr).await?;
+                let stake_addr = wallet::decode_address_from_bytes(recipient_stake_addr).await?;
                 let payment_addr =
-                    drasil_murin::decode_address_from_bytes(recipient_payment_addr).await?;
+                    wallet::decode_address_from_bytes(recipient_payment_addr).await?;
 
                 Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
@@ -549,7 +541,8 @@ impl Operation {
             } => {
                 let mut trans = Vec::<AssetTransfer>::new();
                 for t in transfers {
-                    let receiver = address_from_string_non_async(&t.receiving_address).unwrap();
+                    let receiver =
+                        wallet::address_from_string_non_async(&t.receiving_address).unwrap();
                     let mut assets = Vec::<StdAssetHandle>::new();
                     let metadata = t.message.clone();
                     for n in &t.asset_handles {
@@ -580,7 +573,7 @@ impl Operation {
                 }
                 let wal_addr = if let Some(addr) = wallet_addresses {
                     let r = addr.iter().fold(Vec::<Address>::new(), |mut acc, a| {
-                        acc.push(address_from_string_non_async(a).unwrap());
+                        acc.push(wallet::address_from_string_non_async(a).unwrap());
                         acc
                     });
                     r
@@ -656,11 +649,10 @@ impl Operation {
                     None => Vec::<drasil_murin::MintTokenAsset>::new(),
                 };
                 let stake_addr = match receiver_stake_addr {
-                    Some(addr) => Some(drasil_murin::decode_address_from_bytes(addr).await?),
+                    Some(addr) => Some(wallet::decode_address_from_bytes(addr).await?),
                     None => None,
                 };
-                let payment_addr =
-                    drasil_murin::decode_address_from_bytes(receiver_payment_addr).await?;
+                let payment_addr = wallet::decode_address_from_bytes(receiver_payment_addr).await?;
                 let metadata = match mint_metadata {
                     Some(data) => {
                         if !data.is_empty() {
@@ -702,7 +694,7 @@ impl Operation {
                     let amt = drasil_murin::cardano::u64_to_bignum(amounts[i]);
                     assets.push((None, tn, amt))
                 }
-                let payment_addr = drasil_murin::address_from_string(receiver).await?;
+                let payment_addr = wallet::address_from_string(receiver).await?;
                 Ok(MinterTxData::new(
                     assets,
                     None,

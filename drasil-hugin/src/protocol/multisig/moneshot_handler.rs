@@ -1,10 +1,10 @@
+use drasil_murin::{wallet, PerformTxb};
+use serde_json::json;
+
 use crate::datamodel::OneShotReturn;
 use crate::drasildb::TBContracts;
 use crate::BuildMultiSig;
 use crate::CmdError;
-use drasil_murin::PerformTxb;
-
-use serde_json::json;
 
 pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     log::debug!("Entered Oneshot Minter...");
@@ -78,7 +78,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
 
     log::debug!("Try to build transactions...");
     let txb_param: drasil_murin::txbuilder::minter::build_oneshot_mint::AtOSMParams = (
-        drasil_murin::cip30::address_from_string(&contract.address).await?,
+        wallet::address_from_string(&contract.address).await?,
         ns_script.clone(),
         &minttxd,
     );

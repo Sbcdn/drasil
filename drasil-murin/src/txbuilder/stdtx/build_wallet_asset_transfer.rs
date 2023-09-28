@@ -1,8 +1,8 @@
 use super::StandardTxData;
+use crate::cardano::supporting_functions;
 use crate::error::MurinError;
 use crate::min_ada_for_utxo;
 use crate::modules::transfer::models::{Sink, Source, TransBuilder, TransWallets, Transfer};
-use crate::supporting_functions::{self};
 use crate::txbuilder::TxBO;
 use crate::PerformTxb;
 use crate::TxData;
@@ -221,18 +221,17 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
 
 #[cfg(test)]
 mod tests {
-    use crate::modules::transfer::models::TransWallet;
-    use crate::{
-        clib::address::Address,
-        txbuilder::{
-            modules::transfer::models::TransWallets,
-            stdtx::{build_wallet_asset_transfer::AtSATBuilder, StandardTxData},
-            PerformTxb,
-        },
-        MurinError,
-    };
-    use crate::{reward_address_from_address, TransactionUnspentOutputs};
     use std::env::set_var;
+
+    use crate::cardano::TransactionUnspentOutputs;
+    use crate::clib::address::Address;
+    use crate::modules::transfer::models::TransWallet;
+    use crate::stdtx::{build_wallet_asset_transfer::AtSATBuilder, StandardTxData};
+    use crate::txbuilder::modules::transfer::models::TransWallets;
+    use crate::wallet::reward_address_from_address;
+    use crate::PerformTxb;
+
+    use crate::MurinError;
 
     #[tokio::test]
     async fn test_metadata_for_stdtx_1transfer() -> Result<(), MurinError> {
@@ -312,7 +311,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you\"
             }
@@ -447,7 +446,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you\"
             },
@@ -462,7 +461,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you 2\"
             }
@@ -595,7 +594,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you\"
             },
@@ -610,7 +609,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you 2\"
             },
@@ -625,7 +624,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you 3\"
             },
@@ -640,7 +639,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you 4\"
             },
@@ -655,7 +654,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you 5\"
             },
@@ -670,7 +669,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you 6\"
             },
@@ -685,7 +684,7 @@ mod tests {
                         \"policy\":\"dfd18a815a25339777dcc80bce9c438ad632272d95f334a111711ac9\",
                         \"tokenname\":\"7441726b\",
                         \"amount\": \"200\"
-                    }  
+                    }
                 ],
                 \"metadata\" : \"Hello My friend this is for you 7\"
             }

@@ -1,14 +1,16 @@
 use std::cmp::Ordering;
 
+use drasil_gungnir::minting::models::MintProject;
+use drasil_gungnir::Whitelist;
+use drasil_murin::minter::build_minttx::{AtCMBuilder, AtCMParams};
+use drasil_murin::utils::{from_bignum, to_bignum};
+use drasil_murin::wallet;
+use drasil_murin::{NativeScript, PerformTxb, ServiceFees};
+
 use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::{discount, BuildMultiSig, TBContracts};
 use crate::{CmdError, TBMultiSigLoc};
-use drasil_gungnir::models::MintProject;
-use drasil_gungnir::Whitelist;
-use drasil_murin::minter::build_minttx::{AtCMBuilder, AtCMParams};
-use drasil_murin::utils::{from_bignum, to_bignum};
-use drasil_murin::{NativeScript, PerformTxb, ServiceFees};
 
 pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     match bms
@@ -27,15 +29,15 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             if mint_handles.is_empty() {
                 return err;
             }
-            if drasil_murin::address_from_string(&mint_handles[0].addr)
+            if wallet::address_from_string(&mint_handles[0].addr)
                 .await
                 .is_err()
             {
                 return err;
             } else {
-                let payer0 = drasil_murin::address_from_string(&mint_handles[0].addr).await?;
+                let payer0 = wallet::address_from_string(&mint_handles[0].addr).await?;
                 for mint in &mint_handles {
-                    if payer0 != drasil_murin::address_from_string(&mint.addr).await? {
+                    if payer0 != wallet::address_from_string(&mint.addr).await? {
                         return err;
                     }
                 }
@@ -59,7 +61,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         .await?;
     let stake_address = minttxd.mint_handles[0].reward_addr()?.to_bech32(None)?;
 
-    let first_address = drasil_murin::address_from_string(
+    let first_address = wallet::address_from_string(
         &drasil_mimir::api::select_addr_of_first_transaction(&stake_address)?,
     )
     .await?;
@@ -101,7 +103,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         if let Some(addr) = kl.fee_wallet_addr {
             fees.push(ServiceFees {
                 fee: to_bignum(kl.fee.unwrap() as u64),
-                fee_addr: drasil_murin::address_from_string(&addr).await?,
+                fee_addr: wallet::address_from_string(&addr).await?,
             });
         }
         ns_scripts.push(NativeScript::from_bytes(hex::decode(&c.2.plutus)?)?);
