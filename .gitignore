@@ -1,5 +1,10 @@
+deploy/
 target/
 *.cargo
+.docker
+.env
+.github/workflows/build.yml
 .idea
 .vscode
 **/settings/
+

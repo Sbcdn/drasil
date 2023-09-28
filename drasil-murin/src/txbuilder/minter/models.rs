@@ -111,7 +111,7 @@ impl ToString for ColMinterTxData {
     }
 }
 
-impl core::str::FromStr for ColMinterTxData {
+impl std::str::FromStr for ColMinterTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> std::result::Result<Self, Self::Err> {
         serde_json::from_str::<ColMinterTxData>(src)

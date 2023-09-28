@@ -243,7 +243,7 @@ impl ToString for RWDTxData {
     }
 }
 
-impl core::str::FromStr for RWDTxData {
+impl std::str::FromStr for RWDTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let slice: Vec<&str> = src.split('|').collect();

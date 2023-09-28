@@ -100,9 +100,9 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             input_txuos.remove_used_utxos(used_utxos);
         }
 
-        let mut fee_paied = false;
+        let mut fee_paid = false;
         let mut first_run = true;
-        let mut txos_paied = false;
+        let mut txos_paid = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
         let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
 
@@ -128,9 +128,9 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             &mut txouts,
             None,
             fee,
-            &mut fee_paied,
+            &mut fee_paid,
             &mut first_run,
-            &mut txos_paied,
+            &mut txos_paid,
             &mut tbb_values,
             &script_address,
             &script_address,
