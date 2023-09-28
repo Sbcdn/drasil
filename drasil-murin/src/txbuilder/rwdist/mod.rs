@@ -66,7 +66,7 @@ impl RewardHandle {
         self.contract_id
     }
     pub fn get_stake_addr(&self) -> Result<clib::address::RewardAddress, MurinError> {
-        let addr = crate::address_from_string_non_async(&self.stake_addr)?;
+        let addr = wallet::address_from_string_non_async(&self.stake_addr)?;
         clib::address::RewardAddress::from_address(&addr).ok_or_else(|| {
             MurinError::new("Error: could not construct RewardAddress for RewardHandle")
         })

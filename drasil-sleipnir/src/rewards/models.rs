@@ -68,7 +68,7 @@ impl std::str::FromStr for WhitelistLink {
 
 impl WhitelistLink {
     pub fn is_wl_link(str: &str) -> bool {
-        matches!(WhitelistLink::from_str(str), Ok(_))
+        WhitelistLink::from_str(str).is_ok()
     }
 }
 

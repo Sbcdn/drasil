@@ -1,3 +1,5 @@
+use drasil_murin::{cardano, PerformTxb, TransactionUnspentOutputs, TxData};
+
 use crate::admin::get_vaddr;
 use crate::error::SystemDBError;
 use crate::BuildMultiSig;
@@ -6,10 +8,6 @@ use crate::TBCaPayment;
 use crate::TBCaPaymentHash;
 use crate::TBContracts;
 use crate::TBDrasilUser;
-use drasil_murin::get_network_from_address;
-use drasil_murin::PerformTxb;
-use drasil_murin::TransactionUnspentOutputs;
-use drasil_murin::TxData;
 
 pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result<String> {
     let poid = bms
@@ -47,7 +45,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
         vec![drasil_murin::wallet::address_from_string(&get_vaddr(&po.user_id).await?).await?],
         None,
         TransactionUnspentOutputs::new(),
-        get_network_from_address(&contract.address)?,
+        cardano::get_network_from_address(&contract.address)?,
         0,
     )?;
 
