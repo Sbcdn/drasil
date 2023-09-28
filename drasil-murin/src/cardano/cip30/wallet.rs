@@ -1,11 +1,12 @@
-use crate::error::MurinError;
-use crate::models::*;
 use argon2::password_hash::rand_core::{OsRng, RngCore};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto};
 use clib::address::{BaseAddress, EnterpriseAddress};
 use clib::crypto::{Ed25519KeyHash, PrivateKey, PublicKey, ScriptHash};
 use clib::MultiAsset;
+
+use crate::cardano::models::*;
+use crate::error::MurinError;
 
 /// decode an hex encoded address into an address
 pub async fn decode_address_from_bytes(bytes: &String) -> Result<caddr::Address, MurinError> {
@@ -408,7 +409,7 @@ pub fn restore_bip0039_wallet(
 #[cfg(test)]
 mod tests {
 
-    use crate::{create_bip0039_wallet, restore_bip0039_wallet};
+    use crate::wallet::{create_bip0039_wallet, restore_bip0039_wallet};
 
     #[tokio::test]
     async fn bip0039_seed_test() {

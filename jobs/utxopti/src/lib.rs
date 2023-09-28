@@ -1,9 +1,10 @@
 mod error;
 mod models;
 
-use drasil_murin::{
-    calc_min_ada_for_utxo, calc_txfee, find_token_utxos_na, tokens_to_value, value_to_tokens,
-};
+use drasil_murin::cardano::supporting_functions;
+use drasil_murin::cardano::{self, Tokens, TransactionUnspentOutputs};
+use drasil_murin::cardano::{calc_txfee, tokens_to_value, value_to_tokens};
+use drasil_murin::{calc_min_ada_for_utxo, find_token_utxos_na, wallet};
 use error::UOError;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -17,7 +18,7 @@ pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
     let mut t_utxos = contract_utxos.get_token_only();
     let ada_on_token_utxos = t_utxos.coin_sum();
     let tokens = t_utxos.sum_avail_tokens();
-    let mut tokens_on_contract = drasil_murin::Tokens::new();
+    let mut tokens_on_contract = Tokens::new();
     log::debug!("Get token whitelistsings...");
     let twl = drasil_gungnir::TokenWhitelist::get_rwd_contract_tokens(cid, uid)?;
     log::debug!("Get contracts...");
@@ -25,7 +26,7 @@ pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
     log::debug!("Decode native script...");
     let ns = &drasil_murin::clib::NativeScript::from_bytes(hex::decode(contract.plutus.clone())?)?;
     log::debug!("Decode address...");
-    let addr = drasil_murin::address_from_string_non_async(&contract.address)?;
+    let addr = wallet::address_from_string_non_async(&contract.address)?;
     log::debug!("Get tokens on contract...");
     for t in tokens {
         let tmp = twl.iter().find(|n| {
@@ -74,12 +75,12 @@ pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
 
 async fn submit_tx(
     transaction: drasil_murin::clib::Transaction,
-    used_utxos: drasil_murin::TransactionUnspentOutputs,
+    used_utxos: TransactionUnspentOutputs,
     uid: i64,
     cid: i64,
     //version: f32,
 ) -> Result<String> {
-    let bld_tx = drasil_murin::supporting_functions::tx_output_data(
+    let bld_tx = supporting_functions::tx_output_data(
         transaction.body(),
         transaction.witness_set(),
         None,
@@ -120,7 +121,7 @@ async fn submit_tx(
 
 fn reallocate_tokens(
     t_utxos: &mut drasil_murin::TransactionUnspentOutputs,
-    tokens: &drasil_murin::Tokens,
+    tokens: &Tokens,
     addr: &drasil_murin::clib::address::Address,
     script: &drasil_murin::clib::NativeScript,
     liquidity: u64,
@@ -153,7 +154,7 @@ fn reallocate_tokens(
 }
 
 fn get_values_and_tamt_per_utxo(
-    tokens: &drasil_murin::Tokens,
+    tokens: &Tokens,
     ada: u64,
 ) -> (
     drasil_murin::clib::utils::Value,
@@ -303,7 +304,7 @@ fn add_utxos(
     );
     let security = drasil_murin::clib::utils::to_bignum(
         drasil_murin::clib::utils::from_bignum(&needed_value.coin())
-            + (utxo_amt / 2 * drasil_murin::models::MIN_ADA),
+            + (utxo_amt / 2 * cardano::MIN_ADA),
     );
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
@@ -319,7 +320,7 @@ fn add_utxos(
     utxos.delete_set(used_input_utxos);
     outputs.add(&drasil_murin::clib::TransactionOutput::new(addr, std_value));
 
-    let mut out_value = drasil_murin::supporting_functions::sum_output_values(&outputs);
+    let mut out_value = supporting_functions::sum_output_values(&outputs);
     let in_value = used_input_utxos.calc_total_value()?;
     let mut change = in_value.checked_sub(&out_value)?;
 
@@ -335,7 +336,7 @@ fn add_utxos(
             >= 0
     {
         outputs.add(&drasil_murin::clib::TransactionOutput::new(addr, std_value));
-        out_value = drasil_murin::supporting_functions::sum_output_values(&outputs);
+        out_value = supporting_functions::sum_output_values(&outputs);
         change = in_value.checked_sub(&out_value)?;
         let (stmptx, _) = finalize_tx(
             &inputs,
@@ -404,7 +405,7 @@ fn finalize_tx(
 )> {
     let mem = drasil_murin::clib::utils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
     let steps = drasil_murin::clib::utils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: drasil_murin::models::ExUnitPrice = drasil_murin::ExUnitPrice {
+    let ex_unit_price = cardano::models::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };
@@ -426,7 +427,7 @@ fn finalize_tx(
     let mut native_scripts = drasil_murin::clib::NativeScripts::new();
     native_scripts.add(script);
     txw.set_native_scripts(&native_scripts);
-    let vkeys = drasil_murin::make_dummy_vkeywitnesses(2);
+    let vkeys = cardano::make_dummy_vkeywitnesses(2);
     txw.set_vkeys(&vkeys);
 
     let mut tmp_txb = drasil_murin::clib::TransactionBody::new_tx_body(inputs, &tmp_outputs, fee);

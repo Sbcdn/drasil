@@ -1,9 +1,9 @@
 pub mod build_minttx;
 pub mod build_oneshot_mint;
 pub mod models;
-use super::PerformTxb;
-use crate::MurinError;
-use crate::{MintTokenAsset, TokenAsset};
+
+use std::str;
+
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
 use chrono::{DateTime, Utc};
@@ -12,7 +12,11 @@ use clib::metadata::{MetadataList, MetadataMap};
 use clib::{NativeScript, NativeScripts, ScriptAll, ScriptPubkey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::str::{self, from_utf8};
+
+use super::PerformTxb;
+use crate::wallet;
+use crate::MurinError;
+use crate::{MintTokenAsset, TokenAsset};
 
 #[derive(Debug, Clone)]
 pub struct MinterTxData {
@@ -57,7 +61,7 @@ impl MinterTxData {
     pub fn get_stake_addr(&self) -> caddr::Address {
         match self.receiver_stake_addr.clone() {
             Some(addr) => addr,
-            None => crate::reward_address_from_address(&self.get_payment_addr()).unwrap(),
+            None => wallet::reward_address_from_address(&self.get_payment_addr()).unwrap(),
         }
     }
 
@@ -492,7 +496,7 @@ fn chunk_string(metamap: &mut MetadataMap, key: &str, s: &String) -> Result<(), 
         let chunks = s
             .as_bytes()
             .chunks(64)
-            .map(from_utf8)
+            .map(str::from_utf8)
             .collect::<Result<Vec<&str>, _>>()
             .unwrap();
         log::debug!("Chunks: {:?}", chunks);

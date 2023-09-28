@@ -2,41 +2,33 @@ mod buildcontract;
 pub use buildcontract::BuildContract;
 
 mod buildmultisig;
+mod discount;
+mod error;
+mod finalizecontract;
+mod finalizemultisig;
+mod finalizestdtx;
+mod hydra;
+mod unknown;
+mod verifydata;
+mod verifyuser;
 pub use buildmultisig::BuildMultiSig;
-
+pub use finalizecontract::FinalizeContract;
 pub mod buildtx;
 pub use buildtx::BuildStdTx;
-
-mod finalizecontract;
-pub use finalizecontract::FinalizeContract;
-
-mod finalizemultisig;
-pub use finalizemultisig::FinalizeMultiSig;
-
-mod finalizestdtx;
-pub use finalizestdtx::FinalizeStdTx;
-
-mod verifyuser;
-use drasil_murin::address::BaseAddress;
-use drasil_murin::reward_address_from_address;
+pub(crate) use discount::*;
+pub use error::CmdError;
+pub use hydra::HydraOps;
+pub use unknown::Unknown;
+pub use verifydata::VerifyData;
 pub use verifyuser::VerifyUser;
 
-mod hydra;
-pub use hydra::HydraOps;
+use drasil_murin::address::BaseAddress;
+use drasil_murin::{cardano, wallet};
 
-mod verifydata;
-pub use verifydata::VerifyData;
-
-mod unknown;
-pub use unknown::Unknown;
-
-mod error;
-pub use error::CmdError;
-
-mod discount;
 use crate::error::SystemDBError;
 use crate::{Connection, Frame, Parse, Shutdown, TransactionPattern};
-pub(crate) use discount::*;
+pub use finalizemultisig::FinalizeMultiSig;
+pub use finalizestdtx::FinalizeStdTx;
 
 pub trait IntoFrame {
     fn into_frame(self) -> Frame;
@@ -159,13 +151,12 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     }
 
     if txp.stake_addr().is_some() {
-        let addresses = drasil_murin::cip30::addresses_from_string(&txp.used_addresses()).await?;
-        let stake_addr =
-            drasil_murin::cip30::decode_address_from_bytes(&txp.stake_addr().unwrap()).await?;
-        let mut rewardaddr = reward_address_from_address(&stake_addr)?;
+        let addresses = wallet::addresses_from_string(&txp.used_addresses()).await?;
+        let stake_addr = wallet::decode_address_from_bytes(&txp.stake_addr().unwrap()).await?;
+        let mut rewardaddr = wallet::reward_address_from_address(&stake_addr)?;
         for address in addresses {
             if BaseAddress::from_address(&address).is_some() {
-                let raddr = reward_address_from_address(&address)?;
+                let raddr = wallet::reward_address_from_address(&address)?;
                 if raddr != rewardaddr {
                     return Err(CmdError::Custom{str:"ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string()}.into());
                 }
@@ -178,7 +169,7 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
 }
 
 pub fn create_response(
-    bld_tx: &drasil_murin::models::BuildOutput,
+    bld_tx: &cardano::models::BuildOutput,
     raw_tx: &drasil_murin::utxomngr::RawTx,
     wallet_type: Option<&crate::datamodel::models::WalletType>,
 ) -> Result<crate::datamodel::models::UnsignedTransaction, drasil_murin::MurinError> {
@@ -225,9 +216,9 @@ pub fn convert_nfts_to_minter_token_asset(
     let mut out = Vec::<drasil_murin::MintTokenAsset>::new();
     for nft in nfts {
         out.push((
-            Some(drasil_murin::cardano::string_to_policy(policy_id)?),
-            drasil_murin::cardano::string_to_assetname(&nft.asset_name)?,
-            drasil_murin::u64_to_bignum(1),
+            Some(cardano::string_to_policy(policy_id)?),
+            cardano::string_to_assetname(&nft.asset_name)?,
+            cardano::u64_to_bignum(1),
         ))
     }
     Ok(out)

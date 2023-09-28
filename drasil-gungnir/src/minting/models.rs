@@ -1,7 +1,8 @@
-use crate::schema::{mint_projects, mint_rewards, nft_table};
 use chrono::serde::ts_seconds::serialize as to_ts;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+use crate::schema::{mint_projects, mint_rewards, nft_table};
 
 #[derive(Queryable, Identifiable, Debug, Clone, Serialize, Deserialize)]
 #[diesel(table_name = mint_projects)]

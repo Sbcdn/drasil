@@ -1,12 +1,12 @@
 use super::super::txtools::utxo_handling::input_selection;
 use super::error::TransferError;
+use crate::cardano::TransactionUnspentOutputs;
 use crate::clib::{
     address::{Address, RewardAddress},
     utils::Value,
     TransactionInputs, TransactionOutput, TransactionOutputs,
 };
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
-use crate::TransactionUnspentOutputs;
 use crate::{clib, min_ada_for_utxo};
 use clib::utils::{to_bignum, BigNum};
 use std::fmt::Debug;
