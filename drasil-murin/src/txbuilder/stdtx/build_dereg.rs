@@ -1,6 +1,6 @@
+use crate::cardano::{MIN_ADA, Tokens};
 use crate::error::MurinError;
-use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
-use crate::models::*;
+use crate::txbuilder::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
 use crate::txbuilder::{input_selection, stdtx::DeregTxData, TxBO};
 use crate::PerformTxb;
 use crate::TxData;
@@ -101,7 +101,7 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
         let mut fee_paid = false;
         let mut first_run = true;
         let mut txos_paid = false;
-        let tbb_values = deposit_val.clone();
+        let tbb_values = deposit_val;
 
         let mut acc = cutils::Value::zero();
         let change_address = owner_address.clone();
@@ -180,7 +180,7 @@ mod tests {
         set_var("REDIS_DB", "redis://127.0.0.1:6379/0");
         set_var("REDIS_DB_URL_UTXOMIND", "redis://127.0.0.1:6379/0");
         set_var("REDIS_CLUSTER", "false");
-        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t";
+        let _poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t";
         let base_address = "addr_test1qp6crwxyfwah6hy7v9yu5w6z2w4zcu53qxakk8ynld8fgcpxjae5d7xztgf0vyq7pgrrsk466xxk25cdggpq82zkpdcsdkpc68";
         let at_dereg_params = super::DeregTxData::new().unwrap();
         let at_dereg_builder = super::AtDeregBuilder::new(&at_dereg_params);
