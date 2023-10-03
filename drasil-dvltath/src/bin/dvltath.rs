@@ -93,7 +93,7 @@ mod filters {
         warp::options()
             .and(warp::header("origin"))
             .map(|origin: String| {
-                Ok(warp::http::Response::builder()
+                warp::http::Response::builder()
                     .status(warp::http::StatusCode::OK)
                     .header("access-control-allow-methods", "GET")
                     .header("access-control-allow-headers", "Authorization")
@@ -101,7 +101,7 @@ mod filters {
                     .header("access-control-max-age", "300")
                     .header("access-control-allow-origin", origin)
                     .header("vary", "origin")
-                    .body(""))
+                    .body("")
             })
     }
 
