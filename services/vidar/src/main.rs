@@ -754,10 +754,7 @@ mod handlers {
                         }),
                         Err(e) => {
                             log::info!("Error: could not find active mint project");
-                            return Ok(warp::reply::with_status(
-                                warp::reply::json(&e.to_string()),
-                                warp::http::StatusCode::NO_CONTENT,
-                            ));
+                            continue;
                         }
                     }
                 }
