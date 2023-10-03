@@ -103,14 +103,12 @@ impl std::str::FromStr for DelegTxData {
 pub struct DeregTxData {
     registered: Option<bool>,
 }
-  
+
 impl DeregTxData {
     pub fn new() -> Result<DeregTxData, MurinError> {
-        Ok(DeregTxData {
-            registered: None,
-        })
+        Ok(DeregTxData { registered: None })
     }
-    
+
     pub fn get_registered(&self) -> bool {
         if let Some(r) = self.registered {
             r
@@ -126,12 +124,12 @@ impl DeregTxData {
 
 #[cfg(test)]
 mod tests {
+    use crate::MurinError;
     use cardano_serialization_lib::crypto::Ed25519KeyHash;
     use std::str::FromStr;
-    use crate::MurinError;
 
     #[test]
-    fn deleg_tx_data() -> Result<(), MurinError>{
+    fn deleg_tx_data() -> Result<(), MurinError> {
         let pool_hash = "pool162ezmfwy0r5px0mll0lkxyshqfh58em6jutl3wasvrnx7w74gcd";
         let mut deleg_tx_data = super::DelegTxData::new(pool_hash)?;
 
@@ -169,11 +167,9 @@ mod tests {
         Ok(())
     }
 
-    
-
     #[test]
     fn dereg_tx_data() {
-        let pool_hash = "pool162ezmfwy0r5px0mll0lkxyshqfh58em6jutl3wasvrnx7w74gcd";
+        let _pool_hash = "pool162ezmfwy0r5px0mll0lkxyshqfh58em6jutl3wasvrnx7w74gcd";
         let mut dereg_tx_data = super::DeregTxData::new().unwrap();
 
         // initial values
