@@ -47,5 +47,5 @@ features = ["json", "rustls-tls"]
 
 [dependencies.cryptoxide]
 git = "https://github.com/typed-io/cryptoxide.git"
-branch = "master"
+rev = "c20f189"
 features = ["blake2"]
