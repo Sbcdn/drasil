@@ -39,6 +39,8 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
             info!("--------------------------------------------------------------------------------------------------------\n");
         }
 
+
+
         // let registered = self.stxd.get_registered();
         // log::info!("\nThis user is registered: {}\n", registered);
         // let owner_address = match gtxd.get_senders_address(None) {
@@ -164,6 +166,19 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
         // debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
         // debug!("--------------------Iteration Ended------------------------------");
         // debug!("Vkey Counter at End: {:?}", vkey_counter);
+
+
+
+
+        let txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
+
+
+
+        let txwitness = true;
+        let aux_data = true;
+        let saved_input_txuos = true;
+        let vkey_counter = true;
+
         Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
     }
 }
