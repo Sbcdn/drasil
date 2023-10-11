@@ -735,10 +735,7 @@ impl Operation {
         use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::DeregTxData;
         match self {
-            Operation::StakeDeregistration {
-                ..
-            } 
-            => Ok(DeregTxData::new()?),
+            Operation::StakeDeregistration { .. } => Ok(DeregTxData::new()?),
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
             )),
@@ -1080,15 +1077,13 @@ pub struct TransferHandle {
 
 #[cfg(test)]
 mod tests {
-    use tokio;
     use drasil_murin::clib::crypto::Ed25519KeyHash;
+    use tokio;
     #[tokio::test]
     async fn stake_deregistration() {
-        let poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();
+        //let poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();
         let addr1 = "stake_test1uqd2nz8ugrn6kwkflvmt9he8dr966dszfmm5lt66qdmn28qt4wff9";
-        let payment_addresses = Some(vec![
-            addr1.to_string()
-        ]);
+        let payment_addresses = Some(vec![addr1.to_string()]);
         let op = super::Operation::StakeDeregistration { payment_addresses };
 
         let deregistration = op.into_stake_deregistration().await.unwrap();
@@ -1101,7 +1096,10 @@ mod tests {
         let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
         let addr1 = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708".to_string();
         let addresses = Some(vec![addr1]);
-        let op = super::Operation::StakeDelegation { poolhash: poolhash.clone(), addresses };
+        let op = super::Operation::StakeDelegation {
+            poolhash: poolhash.clone(),
+            addresses,
+        };
 
         let delegation = op.into_stake_delegation().await.unwrap();
 

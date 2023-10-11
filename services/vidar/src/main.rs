@@ -752,8 +752,8 @@ mod handlers {
                                 image: None,
                             },
                         }),
-                        Err(e) => {
-                            log::info!("Error: could not find active mint project");
+                        Err(err) => {
+                            log::error!("Error: could not find active mint project, {err:?}");
                             continue;
                         }
                     }
