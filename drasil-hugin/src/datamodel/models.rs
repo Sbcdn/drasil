@@ -72,6 +72,7 @@ pub enum StdTxType {
     DelegateStake,
     StandardTx,
     DeregisterStake,
+    RewardWithdrawal,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -443,6 +444,9 @@ pub enum Operation {
     StakeDeregistration {
         payment_addresses: Option<Vec<String>>,
     },
+    RewardWithdrawal {
+        amount: BigDecimal,
+    },
     StdTx {
         transfers: Vec<TransferHandle>,
         wallet_addresses: Option<Vec<String>>,
@@ -725,6 +729,21 @@ impl Operation {
             } => Ok(DelegTxData::new(poolhash)?),
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
+            )),
+        }
+    }
+
+    pub async fn into_withdrawal(
+        &self,
+    ) -> Result<drasil_murin::txbuilder::stdtx::WithdrawalTxData, drasil_murin::error::MurinError>{
+        use drasil_murin::error::MurinError;
+        use drasil_murin::txbuilder::stdtx::WithdrawalTxData;
+        match self {
+            Operation::RewardWithdrawal {
+                amount,
+            } => Ok(WithdrawalTxData::new(amount)),
+            _ => Err(MurinError::new(
+                "provided wrong specific parameter for this withdrawal transaction"
             )),
         }
     }
