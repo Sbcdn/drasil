@@ -162,6 +162,7 @@ pub async fn stdtx_exec_build(
         StdTxType::DelegateStake => {}
         StdTxType::DeregisterStake => {}
         StdTxType::StandardTx => {}
+        StdTxType::RewardWithdrawal => {}
     }
     let payload = match payload {
         TXPWrapper::TransactionPattern(txp) => txp,

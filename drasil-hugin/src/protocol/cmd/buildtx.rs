@@ -70,6 +70,8 @@ impl BuildStdTx {
                 .unwrap_or_else(|err| err.to_string()),
             StdTxType::StandardTx => stdtx::handle_stx(&self).await
                 .unwrap_or_else(|err| err.to_string()),
+            StdTxType::RewardWithdrawal => stdtx::handle_reward_withdrawal(&self).await
+                .unwrap_or_else(|err| err.to_string()),
         };
         log::debug!("Return String before parsing into BC:\n{:?}", ret);
         let response = Frame::Bulk(Bytes::from(
