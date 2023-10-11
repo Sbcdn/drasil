@@ -13,8 +13,11 @@ pub use crate::error::SleipnirError;
 pub use crate::rewards::*;
 pub use ad_params::*;
 
-use chrono::{NaiveDateTime, Utc};
 use std::str::FromStr;
+
+use chrono::{NaiveDateTime, Utc};
+
+use drasil_murin::cardano;
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum ADTokenType {
@@ -52,7 +55,7 @@ pub enum ADSelType {
     WalletWhitelist, // -> take an existing wallet whitelist
     //MintingWhitelist, -> Scan for TokenHolders
     Custom,                        // -> Import from csv or sql
-    DeligatorsOfStakePoolInEpochX, // Scan pool for addresses in epoch range
+    DelegatorsOfStakePoolInEpochX, // Scan pool for addresses in epoch range
     TokenPool,                     // Every Wallet is eligable which did not already claimed
     Combination(Vec<ADSelType>),
 }
@@ -64,7 +67,7 @@ impl ToString for ADSelType {
             ADSelType::ScanForHoldersNFTMetaCond => "ScanForHoldersNFTMetaCond".to_string(),
             ADSelType::WalletWhitelist => "WalletWhitelist".to_string(),
             ADSelType::Custom => "Custom".to_string(),
-            ADSelType::DeligatorsOfStakePoolInEpochX => "DeligatorsOfStakePoolInEpochX".to_string(),
+            ADSelType::DelegatorsOfStakePoolInEpochX => "DelegatorsOfStakePoolInEpochX".to_string(),
             ADSelType::TokenPool => "TokenPool".to_string(),
             ADSelType::Combination(comb) => {
                 let mut ret = String::new();
@@ -86,7 +89,7 @@ impl std::str::FromStr for ADSelType {
             "ScanForHoldersNFTMetaCond" => Ok(ADSelType::ScanForHoldersNFTMetaCond),
             "WalletWhitelist" => Ok(ADSelType::WalletWhitelist),
             "Custom" => Ok(ADSelType::Custom),
-            "DeligatorsOfStakePoolInEpochX" => Ok(ADSelType::DeligatorsOfStakePoolInEpochX),
+            "DelegatorsOfStakePoolInEpochX" => Ok(ADSelType::DelegatorsOfStakePoolInEpochX),
             "TokenPool" => Ok(ADSelType::TokenPool),
             comb => {
                 if !comb.contains('|') {
@@ -109,7 +112,7 @@ impl std::str::FromStr for ADSelType {
 #[derive(PartialEq, Clone, Debug)]
 pub enum ADDistType {
     StakeDependentOnPools,
-    FixedAmoutPerDeligatorOnPools,
+    FixedAmoutPerDelegatorOnPools,
     Custom,
     FixedAmoutPerToken,
     FixedAmountDevidedByWallets,
@@ -121,8 +124,8 @@ impl ToString for ADDistType {
     fn to_string(&self) -> String {
         match &self {
             ADDistType::StakeDependentOnPools => "StakeDendentOnPools".to_string(),
-            ADDistType::FixedAmoutPerDeligatorOnPools => {
-                "FixedAmoutPerDeligatorOnPools".to_string()
+            ADDistType::FixedAmoutPerDelegatorOnPools => {
+                "FixedAmoutPerDelegatorOnPools".to_string()
             }
             ADDistType::Custom => "Custom".to_string(),
             ADDistType::FixedAmoutPerToken => "FixedAmoutPerToken".to_string(),
@@ -138,7 +141,7 @@ impl std::str::FromStr for ADDistType {
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
             "StakeDependentOnPools" => Ok(ADDistType::StakeDependentOnPools),
-            "FixedAmoutPerDeligatorOnPools" => Ok(ADDistType::FixedAmoutPerDeligatorOnPools),
+            "FixedAmoutPerDelegatorOnPools" => Ok(ADDistType::FixedAmoutPerDelegatorOnPools),
             "Custom" => Ok(ADDistType::Custom),
             "FixedAmoutPerToken" => Ok(ADDistType::FixedAmoutPerToken),
             "FixedAmountDevidedByWallets" => Ok(ADDistType::FixedAmountDevidedByWallets),
@@ -194,7 +197,7 @@ pub async fn create_airdrop(
         ADTokenType::FungibleToken => {
             if let Some(name) = tokenname {
                 tn = name;
-                fingerprint = drasil_murin::make_fingerprint(&policy_id.clone(), &tn)?;
+                fingerprint = cardano::make_fingerprint(&policy_id.clone(), &tn)?;
             }
         }
         ADTokenType::NonFungibleToken => {
@@ -217,10 +220,10 @@ pub async fn create_airdrop(
         }
     }
 
-    //pools is just containing pools if the distribution type is "share depending on stake" or "each deligator of pool" otherwise empty list
+    //pools is just containing pools if the distribution type is "share depending on stake" or "each delegator of pool" otherwise empty list
     let mut apools = Vec::<drasil_gungnir::GPools>::new();
     if airdrop_dist_type == ADDistType::StakeDependentOnPools
-        || airdrop_dist_type == ADDistType::FixedAmoutPerDeligatorOnPools
+        || airdrop_dist_type == ADDistType::FixedAmoutPerDelegatorOnPools
     {
         if let Some(pool) = pools {
             apools.extend(pool.iter().map(|p| drasil_gungnir::GPools {
@@ -237,7 +240,7 @@ pub async fn create_airdrop(
     //                            NFT,
     //                          }
     // - Distribution Type(FT): {   share depending on stake,
-    //                          fixed amount for each deligator of a pool,
+    //                          fixed amount for each delegator of a pool,
     //                          custom amounts (csv import),
     //                          for each token holder a certain amount,
     //                          fixed amount devided by all receivers
@@ -246,7 +249,7 @@ pub async fn create_airdrop(
     //                          .....},
 
     //                           StakeDendentOnPools,
-    //                          FixedAmoutPerDeligatorOnPools,
+    //                          FixedAmoutPerDelegatorOnPools,
     //                          Custom,
     //                          FixedAmoutPerTokenHolder,
     //                          FixedAmountDevidedByHolders,
@@ -258,13 +261,13 @@ pub async fn create_airdrop(
     //                              Wallet Whitelisting with message verification,
     //                              Minting - > Mint a Token to whitelist and burn it on claim,
     //                              custom (csv import),
-    //                              deligators of a stake pool at a certain epoch,
+    //                              delegators of a stake pool at a certain epoch,
     //                              testnet distro for one address
     //                              ....
     //                            },
     // - ARGS1:                   { Array of Text, Depending on Distribution Type
     //                              StakeDendentOnPools : [Fixed Amount Of Fungible Tokens to be distributed, Amount Distributed Already, ],
-    //                              FixedAmoutPerDeligatorOnPools : [A Fixed Amount Everybody staking with the pool gets, Total Amount, Total Distributed Already],
+    //                              FixedAmoutPerDelegatorOnPools : [A Fixed Amount Everybody staking with the pool gets, Total Amount, Total Distributed Already],
     //                              Custom: [{JSON Object showing Addresses and amount per Address}],
     //                              FixedAmoutPerTokenHolder: [(The fixed AMount per token),(PolicyID of the Token), (Optional: TokenName of the token), (Min Amount to Hold)],
     //                              FixedAmountDevidedByHolders: [(The fixed amount),(PolicyID od Token),(Optional: TokenName od the TOken), (Min amount to Hold)],
@@ -281,7 +284,7 @@ pub async fn create_airdrop(
     //                              WalletWhitelisting: [WhitelistingContractId, Max Amount of Whitelistentries],
     //                              MintingWhitelist: [(PolicyId),(Tokenname),(MintingContractId),],
     //                              Custom: (CSV Import as JSON Object see also ADDistType),
-    //                              DeligatorsOfStakePoolInEpochX: [PoolId, Epoch],
+    //                              DelegatorsOfStakePoolInEpochX: [PoolId, Epoch],
     //                              Testnet: [(ProvidedStakeAddr)],
     //                              Combination(Vec<ADSelType>): Comes Later,
     //                            },
@@ -373,7 +376,7 @@ pub fn airdrop_whitelist_selection(
                     let fingerprint = if let Some(fp) = adparam.fingerprint.clone() {
                         fp
                     } else {
-                        drasil_murin::make_fingerprint(
+                        cardano::make_fingerprint(
                             &hex::encode(adparam.policy_id.to_bytes()),
                             &hex::encode(
                                 adparam
@@ -422,7 +425,7 @@ pub fn airdrop_whitelist_selection(
         //ADSelType::DiscordBotWhitelist => {
         // Is Custom Import from .csv or sql
         //},
-        ADSelType::DeligatorsOfStakePoolInEpochX => {
+        ADSelType::DelegatorsOfStakePoolInEpochX => {
             // Scan all wallets of a specif epoch range and add to whitelist
         }
         ADSelType::WalletWhitelist => {
@@ -460,8 +463,8 @@ pub fn determine_rewards(
         ADDistType::FixedAmountPerWallet => {
             // each wallet in the whitelist gets a fixed amount of rewards
         }
-        ADDistType::FixedAmoutPerDeligatorOnPools => {
-            // For each delegiator on a set of pools (optional: above a certain stake limit)
+        ADDistType::FixedAmoutPerDelegatorOnPools => {
+            // For each delegator on a set of pools (optional: above a certain stake limit)
             // the wallets get a fixed amount of rewards
         }
         ADDistType::FixedAmoutPerToken => {
@@ -472,7 +475,7 @@ pub fn determine_rewards(
             // this specifies the reward for each wallet
         }
         ADDistType::TokenPool => {
-            // On TOken Pools we distribute a fixed amount once to each wallet for a whitelisted token,
+            // On Token Pools we distribute a fixed amount once to each wallet for a whitelisted token,
             // The TokenPool needs a special contract as the claim and the reward are created at the same time.
             // Is it possible to just create claim? As we need a special contract type we can check for existing claims
             // on transaction creation

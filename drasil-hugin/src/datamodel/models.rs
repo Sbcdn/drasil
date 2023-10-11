@@ -1,17 +1,17 @@
+use std::collections::HashMap;
+use std::io::Error;
+use std::str::FromStr;
+
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use chrono::{DateTime, Utc};
 use drasil_gungnir::{Rewards, TokenInfo};
+use drasil_murin::address::Address;
 use drasil_murin::cardano;
-use drasil_murin::{
-    address_from_string_non_async,
-    clib::address::Address,
-    stdtx::{AssetTransfer, StdAssetHandle},
-    utils::to_bignum,
-    AssetName, PolicyID, TxData,
-};
-
+use drasil_murin::stdtx::{AssetTransfer, StdAssetHandle};
+use drasil_murin::utils::to_bignum;
+use drasil_murin::wallet;
+use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, io::Error, str::FromStr};
 use strum::{Display, EnumString, EnumVariantNames};
 
 #[derive(
@@ -71,6 +71,7 @@ impl FromStr for Utxopti {
 pub enum StdTxType {
     DelegateStake,
     StandardTx,
+    DeregisterStake,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -357,10 +358,7 @@ impl TransactionPattern {
         };
 
         let saddr = match self.stake_addr() {
-            Some(sa) => match drasil_murin::wallet::decode_address_from_bytes(&sa).await {
-                Ok(addr) => Some(addr),
-                Err(_) => None,
-            },
+            Some(sa) => wallet::decode_address_from_bytes(&sa).await.ok(),
             None => None,
         };
 
@@ -370,29 +368,27 @@ impl TransactionPattern {
         };
         let mut txd = TxData::new(
             Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
-            drasil_murin::wallet::addresses_from_string(&self.used_addresses()).await?,
+            wallet::addresses_from_string(&self.used_addresses()).await?,
             saddr,
-            drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
+            wallet::transaction_unspent_outputs_from_string_vec(
                 inputs.as_ref(),
                 self.collateral().as_ref().map(|x| vec![x.clone()]).as_ref(),
                 self.excludes().as_ref(),
             )?,
-            drasil_murin::wallet::get_network_kind(self.network).await?,
+            wallet::get_network_kind(self.network).await?,
             0u64,
         )?;
 
         if let Some(collateral) = self.collateral() {
-            txd.set_collateral(
-                drasil_murin::wallet::transaction_unspent_outputs_from_string(&collateral)?,
-            )
+            txd.set_collateral(wallet::transaction_unspent_outputs_from_string(
+                &collateral,
+            )?)
         }
 
         if let Some(excludes) = self.excludes() {
-            txd.set_excludes(
-                drasil_murin::wallet::transaction_unspent_outputs_from_string_vec(
-                    &excludes, None, None,
-                )?,
-            )
+            txd.set_excludes(wallet::transaction_unspent_outputs_from_string_vec(
+                &excludes, None, None,
+            )?)
         }
 
         Ok(txd)
@@ -444,6 +440,9 @@ pub enum Operation {
         poolhash: String,
         addresses: Option<Vec<String>>,
     },
+    StakeDeregistration {
+        payment_addresses: Option<Vec<String>>,
+    },
     StdTx {
         transfers: Vec<TransferHandle>,
         wallet_addresses: Option<Vec<String>>,
@@ -484,9 +483,7 @@ impl Operation {
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
                 if let Some(royaddr) = royalties_addr {
-                    mptx.set_royalties_address(
-                        drasil_murin::decode_address_from_bytes(royaddr).await?,
-                    );
+                    mptx.set_royalties_address(wallet::decode_address_from_bytes(royaddr).await?);
                 }
 
                 if let Some(royrate) = royalties_rate {
@@ -500,7 +497,7 @@ impl Operation {
                 Ok(mptx)
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -518,15 +515,14 @@ impl Operation {
                 recipient_payment_addr,
             } => {
                 // let assets = Token::for_all_into_asset(reward_tokens)?;
-                let stake_addr =
-                    drasil_murin::decode_address_from_bytes(recipient_stake_addr).await?;
+                let stake_addr = wallet::decode_address_from_bytes(recipient_stake_addr).await?;
                 let payment_addr =
-                    drasil_murin::decode_address_from_bytes(recipient_payment_addr).await?;
+                    wallet::decode_address_from_bytes(recipient_payment_addr).await?;
 
                 Ok(RWDTxData::new(rewards, &stake_addr, &payment_addr))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -545,7 +541,8 @@ impl Operation {
             } => {
                 let mut trans = Vec::<AssetTransfer>::new();
                 for t in transfers {
-                    let receiver = address_from_string_non_async(&t.receiving_address).unwrap();
+                    let receiver =
+                        wallet::address_from_string_non_async(&t.receiving_address).unwrap();
                     let mut assets = Vec::<StdAssetHandle>::new();
                     let metadata = t.message.clone();
                     for n in &t.asset_handles {
@@ -576,7 +573,7 @@ impl Operation {
                 }
                 let wal_addr = if let Some(addr) = wallet_addresses {
                     let r = addr.iter().fold(Vec::<Address>::new(), |mut acc, a| {
-                        acc.push(address_from_string_non_async(a).unwrap());
+                        acc.push(wallet::address_from_string_non_async(a).unwrap());
                         acc
                     });
                     r
@@ -590,7 +587,7 @@ impl Operation {
                 })
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramters for the transaction type",
+                "provided wrong specfic parameters for the transaction type",
             )),
         }
     }
@@ -626,7 +623,7 @@ impl Operation {
                 Ok(ColMinterTxData::new(out))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -652,11 +649,10 @@ impl Operation {
                     None => Vec::<drasil_murin::MintTokenAsset>::new(),
                 };
                 let stake_addr = match receiver_stake_addr {
-                    Some(addr) => Some(drasil_murin::decode_address_from_bytes(addr).await?),
+                    Some(addr) => Some(wallet::decode_address_from_bytes(addr).await?),
                     None => None,
                 };
-                let payment_addr =
-                    drasil_murin::decode_address_from_bytes(receiver_payment_addr).await?;
+                let payment_addr = wallet::decode_address_from_bytes(receiver_payment_addr).await?;
                 let metadata = match mint_metadata {
                     Some(data) => {
                         if !data.is_empty() {
@@ -698,7 +694,7 @@ impl Operation {
                     let amt = drasil_murin::cardano::u64_to_bignum(amounts[i]);
                     assets.push((None, tn, amt))
                 }
-                let payment_addr = drasil_murin::address_from_string(receiver).await?;
+                let payment_addr = wallet::address_from_string(receiver).await?;
                 Ok(MinterTxData::new(
                     assets,
                     None,
@@ -711,7 +707,7 @@ impl Operation {
                 ))
             }
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this contract",
+                "provided wrong specfic parameter for this contract",
             )),
         }
     }
@@ -728,7 +724,23 @@ impl Operation {
                 addresses: _,
             } => Ok(DelegTxData::new(poolhash)?),
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this transaction",
+                "provided wrong specfic parameter for this transaction",
+            )),
+        }
+    }
+
+    pub async fn into_stake_deregistration(
+        &self,
+    ) -> Result<drasil_murin::txbuilder::stdtx::DeregTxData, drasil_murin::error::MurinError> {
+        use drasil_murin::error::MurinError;
+        use drasil_murin::txbuilder::stdtx::DeregTxData;
+        match self {
+            Operation::StakeDeregistration {
+                ..
+            } 
+            => Ok(DeregTxData::new()?),
+            _ => Err(MurinError::new(
+                "provided wrong specfic parameter for this transaction",
             )),
         }
     }
@@ -743,7 +755,7 @@ impl Operation {
             Operation::CPO { po_id, pw } => Ok(CPO::new(*po_id, pw.to_owned())),
 
             _ => Err(MurinError::new(
-                "provided wrong specfic paramter for this transaction",
+                "provided wrong specfic parameter for this transaction",
             )),
         }
     }
@@ -1064,4 +1076,39 @@ pub struct TransferHandle {
     pub receiving_address: String,
     pub asset_handles: Vec<AssetHandle>,
     pub message: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio;
+    use drasil_murin::clib::crypto::Ed25519KeyHash;
+    #[tokio::test]
+    async fn stake_deregistration() {
+        let poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();
+        let addr1 = "stake_test1uqd2nz8ugrn6kwkflvmt9he8dr966dszfmm5lt66qdmn28qt4wff9";
+        let payment_addresses = Some(vec![
+            addr1.to_string()
+        ]);
+        let op = super::Operation::StakeDeregistration { payment_addresses };
+
+        let deregistration = op.into_stake_deregistration().await.unwrap();
+
+        assert!(!deregistration.get_registered()); // registration status undefined => null => false
+    }
+
+    #[tokio::test]
+    async fn stake_delegation() {
+        let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
+        let addr1 = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708".to_string();
+        let addresses = Some(vec![addr1]);
+        let op = super::Operation::StakeDelegation { poolhash: poolhash.clone(), addresses };
+
+        let delegation = op.into_stake_delegation().await.unwrap();
+
+        let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash).unwrap();
+        let real_registered = false; // Placeholder value. Unit test can't test this. Needs integration test.
+        assert_eq!(delegation.get_poolhash(), poolhash);
+        assert_eq!(delegation.get_poolkeyhash(), real_poolkeyhash);
+        assert_eq!(delegation.get_registered(), real_registered);
+    }
 }

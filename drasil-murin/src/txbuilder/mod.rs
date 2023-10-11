@@ -6,16 +6,6 @@
 # Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
 #################################################################################
 */
-use crate::{models, supporting_functions};
-use cardano_serialization_lib as clib;
-use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
-use clib::address::Address;
-use clib::utils::{to_bignum, BigNum};
-use clib::{NetworkIdKind, TransactionOutput};
-use serde::{Deserialize, Serialize};
-use std::ops::{Div, Rem, Sub};
-
-use crate::error::MurinError;
 pub mod finalize;
 pub mod marketplace;
 pub mod minter;
@@ -26,7 +16,19 @@ pub mod stdtx;
 pub use marketplace::*;
 pub use rwdist::*;
 
-use crate::{TransactionUnspentOutput, TransactionUnspentOutputs};
+use serde::{Deserialize, Serialize};
+use std::ops::{Div, Rem, Sub};
+
+use crate::cardano::{models, supporting_functions, value_to_tokens, BuildOutput};
+use crate::error::MurinError;
+use crate::wallet;
+use cardano_serialization_lib as clib;
+use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
+use clib::address::Address;
+use clib::utils::{to_bignum, BigNum};
+use clib::{NetworkIdKind, TransactionOutput};
+
+use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
 
 type TxBO = (
     clib::TransactionBody,
@@ -65,11 +67,11 @@ impl TxBuilder {
     pub async fn build<P, A: PerformTxb<P>>(
         &self,
         app_type: &A,
-    ) -> Result<crate::BuildOutput, MurinError> {
+    ) -> Result<BuildOutput, MurinError> {
         // Temp until Protocol Parameters fixed
         let mem = cutils::to_bignum(7000000u64);
         let steps = cutils::to_bignum(2500000000u64);
-        let ex_unit_price: models::ExUnitPrice = crate::ExUnitPrice {
+        let ex_unit_price = models::ExUnitPrice {
             priceSteps: 7.21e-5,
             priceMemory: 5.77e-2,
         };
@@ -164,7 +166,7 @@ impl TxData {
     ) -> Result<TxData, MurinError> {
         let sa = match sstake {
             Some(stake) => stake,
-            None => crate::cip30::reward_address_from_address(&saddresses[0])?,
+            None => wallet::reward_address_from_address(&saddresses[0])?,
         };
         Ok(TxData {
             user_id: None,
@@ -370,7 +372,7 @@ impl ToString for TxData {
     }
 }
 
-impl core::str::FromStr for TxData {
+impl std::str::FromStr for TxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let slice: Vec<&str> = src.split('|').collect();
@@ -1002,7 +1004,7 @@ impl Persona {
             let mut input_utxos = avail_input_utxos.clone();
             match needed.multiasset() {
                 Some(_) => {
-                    let assets = crate::value_to_tokens(&needed)?;
+                    let assets = value_to_tokens(&needed)?;
                     let mut utxo_selection = find_token_utxos_na(
                         avail_input_utxos,
                         assets,

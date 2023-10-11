@@ -7,7 +7,7 @@ use crate::{Connection, Frame, IntoFrame};
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
-use drasil_murin::MIN_ADA;
+use drasil_murin::cardano::MIN_ADA;
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]

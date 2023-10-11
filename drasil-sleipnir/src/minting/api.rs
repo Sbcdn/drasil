@@ -1,7 +1,9 @@
-use super::models::*;
-use crate::SleipnirError;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use drasil_gungnir::minting::models::*;
+use drasil_murin::{cardano, wallet};
+
+use super::models::*;
+use crate::SleipnirError;
 
 pub async fn create_mintproject(data: &CreateMintProj) -> Result<MintProject, SleipnirError> {
     let time_constraint = if let Some(date) = &data.time_constraint {
@@ -14,7 +16,7 @@ pub async fn create_mintproject(data: &CreateMintProj) -> Result<MintProject, Sl
     };
 
     let policy_script_id = super::create_policy_script(
-        drasil_murin::get_network_kind(data.network).await?,
+        wallet::get_network_kind(data.network).await?,
         data.user_id.unwrap(),
         None,
         time_constraint,
@@ -74,7 +76,7 @@ pub fn make_table_name(
         + project_name
         + collection_name
         + policy_id;
-    "zznft_".to_string() + &hex::encode(drasil_murin::blake2b160(name.as_bytes()))
+    "zznft_".to_string() + &hex::encode(cardano::blake2b160(name.as_bytes()))
 }
 
 pub async fn import_nfts_from_csv_metadata(
@@ -141,10 +143,7 @@ pub async fn import_from_asset_metadata(
             &mpid,
             &hex::decode(&m.tokenname)?, //asset_name_b
             &m.name.unwrap(),            //asset_name
-            &drasil_murin::make_fingerprint(
-                mint_contract.policy_id.as_ref().unwrap(),
-                &m.tokenname,
-            )?,
+            &cardano::make_fingerprint(mint_contract.policy_id.as_ref().unwrap(), &m.tokenname)?,
             &nft_id,
             Some(&("file_".to_string() + m.image_url.as_ref().unwrap())),
             m.image_url.as_ref(),

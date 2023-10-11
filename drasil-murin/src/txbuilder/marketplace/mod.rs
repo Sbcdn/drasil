@@ -84,7 +84,7 @@ impl ToString for MpTxData {
 }
 
 //TODO
-impl core::str::FromStr for MpTxData {
+impl std::str::FromStr for MpTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let slice: Vec<&str> = src.split('|').collect();

@@ -1,14 +1,15 @@
-use crate::error::MurinError;
-use crate::models::*;
-use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
-use crate::{
-    txbuilder::{input_selection, TxBO},
-    PerformTxb, TxData,
-};
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
 use clib::address::{EnterpriseAddress, StakeCredential};
 use clib::TransactionOutput;
+
+use crate::cardano::supporting_functions::{
+    balance_tx, get_ttl_tx, get_vkey_count, sum_output_values,
+};
+use crate::cardano::{self, Tokens, TransactionUnspentOutputs};
+use crate::error::MurinError;
+use crate::txbuilder::{input_selection, TxBO};
+use crate::{PerformTxb, TxData};
 
 // One Shot Minter Builder Type
 #[derive(Debug, Clone)]
@@ -99,16 +100,17 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             input_txuos.remove_used_utxos(used_utxos);
         }
 
-        let mut fee_paied = false;
+        let mut fee_paid = false;
         let mut first_run = true;
-        let mut txos_paied = false;
+        let mut txos_paid = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
         let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
 
         let mut needed_value = sum_output_values(&txouts);
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
-        let security =
-            cutils::to_bignum(cutils::from_bignum(&needed_value.coin()) / 100 * 10 + MIN_ADA); // 10% Security for min utxo etc.
+        let security = cutils::to_bignum(
+            cutils::from_bignum(&needed_value.coin()) / 100 * 10 + cardano::MIN_ADA,
+        ); // 10% Security for min utxo etc.
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
         debug!("Needed Value: {:?}", needed_value);
@@ -126,9 +128,9 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             &mut txouts,
             None,
             fee,
-            &mut fee_paied,
+            &mut fee_paid,
             &mut first_run,
-            &mut txos_paied,
+            &mut txos_paid,
             &mut tbb_values,
             &script_address,
             &script_address,

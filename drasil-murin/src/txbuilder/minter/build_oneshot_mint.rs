@@ -1,7 +1,9 @@
+use crate::cardano::models::*;
+use crate::cardano::supporting_functions::{
+    balance_tx, get_ttl_tx, get_vkey_count, sum_output_values,
+};
 use crate::error::MurinError;
 use crate::minter::*;
-use crate::models::*;
-use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
 use crate::txbuilder::minter::MinterTxData;
 use crate::txbuilder::{calc_min_ada_for_utxo, harden, input_selection, TxBO};
 use crate::TxData;
@@ -98,9 +100,9 @@ impl<'a> super::PerformTxb<AtOSMParams<'a>> for AtOSMBuilder {
 
         // Balance TX
 
-        let mut fee_paied = false;
+        let mut fee_paid = false;
         let mut first_run = true;
-        let mut txos_paied = false;
+        let mut txos_paid = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
         let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
         let change_address = self.liquidity_addr.clone();
@@ -164,9 +166,9 @@ impl<'a> super::PerformTxb<AtOSMParams<'a>> for AtOSMBuilder {
             &mut txouts,
             Some(mint_val_zero_coin).as_ref(), // but not the ADA!!!!
             fee,
-            &mut fee_paied,
+            &mut fee_paid,
             &mut first_run,
-            &mut txos_paied,
+            &mut txos_paid,
             &mut tbb_values,
             &change_address, //who is sender ?
             &change_address,

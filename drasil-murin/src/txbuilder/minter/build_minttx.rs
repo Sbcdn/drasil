@@ -1,8 +1,11 @@
+use crate::cardano::supporting_functions::{
+    balance_tx, get_ttl_tx, get_vkey_count, sum_output_values,
+};
+use crate::cardano::{self, Tokens};
 use crate::error::MurinError;
 use crate::minter::*;
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
-use crate::supporting_functions::{balance_tx, get_ttl_tx, get_vkey_count, sum_output_values};
-use crate::{models::*, ServiceFees};
+use crate::ServiceFees;
 
 use crate::minter::models::CMintHandle;
 use crate::txbuilder::{calc_min_ada_for_utxo, harden, input_selection, TxBO};
@@ -125,17 +128,18 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         debug!("\nCollateral Input: {:?}", collateral_input_txuo);
 
         // Balance TX
-        let mut fee_paied = false;
+        let mut fee_paid = false;
         let mut first_run = true;
-        let mut txos_paied = false;
+        let mut txos_paid = false;
         let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
         let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
         let change_address = receiver.clone();
 
         let mut needed_value = sum_output_values(&txouts);
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
-        let security =
-            cutils::to_bignum(cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * MIN_ADA)); // 10% Security for min utxo etc.
+        let security = cutils::to_bignum(
+            cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * cardano::MIN_ADA),
+        ); // 10% Security for min utxo etc.
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
         let mut needed_value = cutils::Value::new(&needed_value.coin());
 
@@ -172,9 +176,9 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             &mut txouts,
             Some(mint_val_zero_coin).as_ref(), // but not the ADA!!!!
             fee,
-            &mut fee_paied,
+            &mut fee_paid,
             &mut first_run,
-            &mut txos_paied,
+            &mut txos_paid,
             &mut tbb_values,
             &receiver, //who is sender ?
             &change_address,

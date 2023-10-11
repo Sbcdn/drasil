@@ -1,9 +1,9 @@
-use crate::error::MurinError;
-use crate::marketplace::*;
-use crate::models;
-use crate::supporting_functions;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
+
+use crate::cardano::{models, supporting_functions};
+use crate::error::MurinError;
+use crate::marketplace::*;
 
 pub fn perform_listing(
     fee: &cutils::BigNum,
@@ -37,8 +37,8 @@ pub fn perform_listing(
         roy_rate = (royrate * 1000.0) as u64;
     }
 
-    let unpaied_royalties: u64 = mptxd.clone().get_price() / 1000 * roy_rate;
-    info!("Royalties: {:?}", unpaied_royalties);
+    let unpaid_royalties: u64 = mptxd.clone().get_price() / 1000 * roy_rate;
+    info!("Royalties: {:?}", unpaid_royalties);
     if roy_rate > 500 {
         //panic!("Royalty Rate is formated wrong (0.015 = 1.5%); or Royalty Rate is larger 50%, artifct does not accept that");
 
@@ -137,9 +137,9 @@ pub fn perform_listing(
     debug!("Before Balance: Transaction Inputs: {:?}", input_txuos);
     debug!("Before Balance: Transaction Outputs: {:?}", txouts);
 
-    let mut fee_paied = false;
+    let mut fee_paid = false;
     let mut first_run = true;
-    let mut txos_paied = false;
+    let mut txos_paid = false;
     let mut tbb_values = cutils::Value::new(&cutils::to_bignum(0u64));
     let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
     let change_address = &gtxd.clone().get_senders_addresses()[0];
@@ -186,9 +186,9 @@ pub fn perform_listing(
         &mut txouts,
         None,
         fee,
-        &mut fee_paied,
+        &mut fee_paid,
         &mut first_run,
-        &mut txos_paied,
+        &mut txos_paid,
         &mut tbb_values,
         trade_owner,
         change_address,
@@ -229,7 +229,7 @@ pub async fn build_mp_listing(
     // Temp until Protocol Parameters fixed
     let mem = cutils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
     let steps = cutils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: models::ExUnitPrice = crate::ExUnitPrice {
+    let ex_unit_price = models::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };

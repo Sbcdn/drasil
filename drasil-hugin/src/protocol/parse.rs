@@ -19,7 +19,7 @@ impl Parse {
         let array = match frame {
             Frame::Array(array) => array,
             frame => {
-                return Err(format!("protocol error; epected array type, got {frame:?}").into())
+                return Err(format!("protocol error; expected array type, got {frame:?}").into())
             }
         };
 

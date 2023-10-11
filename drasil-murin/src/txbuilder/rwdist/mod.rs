@@ -66,7 +66,7 @@ impl RewardHandle {
         self.contract_id
     }
     pub fn get_stake_addr(&self) -> Result<clib::address::RewardAddress, MurinError> {
-        let addr = crate::address_from_string_non_async(&self.stake_addr)?;
+        let addr = wallet::address_from_string_non_async(&self.stake_addr)?;
         clib::address::RewardAddress::from_address(&addr).ok_or_else(|| {
             MurinError::new("Error: could not construct RewardAddress for RewardHandle")
         })
@@ -243,7 +243,7 @@ impl ToString for RWDTxData {
     }
 }
 
-impl core::str::FromStr for RWDTxData {
+impl std::str::FromStr for RWDTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let slice: Vec<&str> = src.split('|').collect();
