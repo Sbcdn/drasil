@@ -18,7 +18,10 @@ pub async fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<Client> {
 impl Client {
     pub async fn build_cmd<T: IntoFrame>(&mut self, cmd: T) -> crate::Result<String> {
         let frame = cmd.into_frame();
+        log::debug!("Client::build_cmd frame to write: {:?}", frame);
         self.connection.write_frame(&frame).await?;
+
+        log::debug!("Client::build_cmd read response: {:?}", self.read_response().await?);
 
         match self.read_response().await? {
             Frame::Simple(response) => Ok(response),

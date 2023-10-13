@@ -171,8 +171,12 @@ pub async fn stdtx_exec_build(
     let mut client = connect_odin().await;
     log::debug!("Create Command...");
     let cmd = BuildStdTx::new(customer_id, tx_type.clone(), *payload.clone());
+    log::debug!("Command Created: {:?}", cmd);
     match client.build_cmd::<BuildStdTx>(cmd).await {
-        Ok(ok) => match UnsignedTransaction::from_str(&ok) {
+        Ok(ok) => {
+            log::debug!("client.build_cmd::<BuildStdTx>(cmd).await => ok: {:?}", ok);
+            log::debug!("client.build_cmd::<BuildStdTx>(cmd).await => UnsignedTransaction::from_str(&ok): {:?}", UnsignedTransaction::from_str(&ok));
+            match UnsignedTransaction::from_str(&ok) {
             Ok(resp) => Ok(warp::reply::with_status(
                 warp::reply::json(&resp),
                 warp::http::StatusCode::OK,
@@ -192,7 +196,7 @@ pub async fn stdtx_exec_build(
                     ))
                 }
             },
-        },
+        }},
         Err(otherwise) => Ok(warp::reply::with_status(
             warp::reply::json(&ReturnError::new(&otherwise.to_string())),
             warp::http::StatusCode::INTERNAL_SERVER_ERROR,
