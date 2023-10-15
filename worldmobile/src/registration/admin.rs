@@ -1,143 +1,116 @@
-use super::RegistrationDatum;
-use crate::{
-    address_from_string_non_async, calc_min_ada_for_utxo, find_utxos_by_address,
-    modules::{
-        txtools::utxo_handling::input_selection,
-        worldmobile::aya::{
-            enregistration::{
-                error::TransactionBuildingError, RegistrationRedeemer, ENREGCONTRACT,
-            },
-            models::{
-                BuilderResult, EarthNodeConfig, RegisterEarthNode, TransactionSchema,
-                UnsignedTransaction,
-            },
-        },
-    },
-    payment_keyhash_from_address, transaction_unspent_outputs_from_string,
-    transaction_unspent_outputs_from_string_vec,
-    txbuilders::get_input_position,
-    TransactionUnspentOutputs,
+use cdp::provider::CardanoDataProvider;
+use cdp::{DBSyncProvider, DataProvider};
+use murin::address::{Address, BaseAddress, EnterpriseAddress, StakeCredential};
+use murin::cardano;
+use murin::crypto::{Ed25519KeyHash, ScriptHash};
+use murin::fees::LinearFee;
+use murin::plutus::{self, CostModel, Costmdls, ExUnitPrices, ExUnits, Language};
+use murin::plutus::{PlutusData, PlutusDatumSchema, PlutusList, PlutusScript};
+use murin::plutus::{Redeemer, RedeemerTag, Redeemers};
+use murin::pparams::ProtocolParameters;
+use murin::tx_builder::tx_inputs_builder::{
+    DatumSource, PlutusScriptSource, PlutusWitness, TxInputsBuilder,
 };
-use cardano_serialization_lib::{
-    address::{Address, BaseAddress, EnterpriseAddress, StakeCredential},
-    crypto::{Ed25519KeyHash, ScriptDataHash, ScriptHash},
-    fees::LinearFee,
-    plutus::{
-        self, ExUnitPrices, ExUnits, Languages, PlutusData, PlutusList, PlutusScript, Redeemer,
-        RedeemerTag,
-    },
-    tx_builder::{
-        tx_inputs_builder::{
-            DatumSource, PlutusScriptSource, PlutusWitness, PlutusWitnesses, TxInputsBuilder,
-        },
-        CoinSelectionStrategyCIP2, TransactionBuilder, TransactionBuilderConfigBuilder,
-    },
-    utils::{hash_plutus_data, to_bignum, Value},
-    AssetName, Assets, MultiAsset, TransactionInputs, TransactionOutput, UnitInterval,
-};
-use log::debug;
-use sha2::Digest;
+use murin::tx_builder::{TransactionBuilder, TransactionBuilderConfigBuilder};
+use murin::txbuilder::modules::txtools::utxo_handling;
+use murin::utils::{self, to_bignum, Value};
+use murin::{wallet, AssetName, TransactionOutput, TransactionUnspentOutputs, UnitInterval};
 
+use super::RegistrationDatum;
+use crate::config::Config;
+use crate::error::{Error, Result};
+use crate::models::{BuilderResult, RegisterEarthNode, TransactionSchema, UnsignedTransaction};
+
+#[tracing::instrument(name = "admin::admin_register_en", skip(provider), ret(Debug))]
 pub(crate) async fn admin_register_en(
+    config: Config,
     tx_schema: TransactionSchema,
-) -> Result<BuilderResult, TransactionBuildingError> {
+    provider: DataProvider<DBSyncProvider>,
+) -> Result<BuilderResult> {
     let op_data = match tx_schema.operation {
         Some(d) => serde_json::from_value::<RegisterEarthNode>(d)?,
-        None => return Err(TransactionBuildingError::StandardTransactionBuildingError),
+        None => return Err(Error::StandardTransactionBuildingError),
     };
 
-    let policy_str =
-        std::env::var("ENNFT_POLICY").expect("No ENNFT policyID set for this tx-building service");
-    let policy = ScriptHash::from_bytes(hex::decode(&policy_str)?)?;
-
-    let smartcontract = PlutusScript::from_bytes_v2(hex::decode(ENREGCONTRACT.as_str())?)?;
+    let policy = ScriptHash::from_bytes(hex::decode(&config.registration.policy)?)?;
+    let smartcontract = PlutusScript::from_bytes_v2(hex::decode(&config.registration.contract)?)?;
     let scripthash = smartcontract.hash();
     let cred = StakeCredential::from_scripthash(&scripthash);
 
     // check against wallet
-    let utxos: TransactionUnspentOutputs = transaction_unspent_outputs_from_string_vec(
+    let utxos: TransactionUnspentOutputs = wallet::transaction_unspent_outputs_from_string_vec(
         &tx_schema.utxos.unwrap(),
         tx_schema.collateral.as_ref(),
         tx_schema.excludes.as_ref(),
-    )
-    .into()?;
+    )?;
 
-    let collateral = transaction_unspent_outputs_from_string_vec(
+    let collateral = wallet::transaction_unspent_outputs_from_string_vec(
         tx_schema
             .collateral
             .as_ref()
             .expect("no collateral utxos provided"),
         None,
         None,
-    )
-    .into()?;
-
-    // check against dataprovider
-    //let dp = cdp::DataProvider::new(cdp::DBSyncProvider::new(cdp::Config {
-    //    db_path: std::env::var("DBSYNC_URL").unwrap(),
-    //}));
+    )?;
 
     let stake_address = if let Some(stake_addr) = tx_schema.stake_address {
-        address_from_string_non_async(&stake_addr[0].clone())
+        wallet::address_from_string_non_async(&stake_addr[0].clone())
             .unwrap()
             .to_bech32(None)
             .unwrap()
     } else {
-        return Err(TransactionBuildingError::RewardAddressNotFound);
+        return Err(Error::RewardAddressNotFound);
     };
 
-    debug!("Stake Address: {}", stake_address);
-    debug!("Wallet UTxOs empty: {:?}\n", utxos.is_empty());
-    let first_address = first_transaction_from_stake_addr(&stake_address).await?;
+    tracing::debug!("Stake Address: {}", stake_address);
+    tracing::debug!("Wallet UTxOs empty: {:?}\n", utxos.is_empty());
+    let first_address = provider
+        .first_transaction_from_stake_addr(&stake_address)
+        .await?;
     let first_pkh = BaseAddress::from_address(&first_address)
         .unwrap()
         .payment_cred()
         .to_keyhash()
         .unwrap();
-    log::debug!(
+    tracing::debug!(
         "\nPubKeyHash First Address: {}\n",
         hex::encode(first_pkh.to_bytes())
     );
     let script_address = EnterpriseAddress::new(first_address.network_id()?, &cred).to_address();
-    log::debug!("\nScript Address: {}\n", script_address.to_bech32(None)?);
+    tracing::debug!("\nScript Address: {}\n", script_address.to_bech32(None)?);
 
-    let sutxos = dp
+    let sutxos = provider
         .script_utxos(&script_address.to_bech32(None)?)
         .await
         .unwrap();
 
-    let ennft_tokeninfo = dp.token_info(&op_data.ennft_assetname).await?;
-    let script_utxos = sutxos.find_utxos_containing_asset(
-        &policy,
-        //&ScriptHash::from_bytes(hex::decode(
-        //"d8bebcb0abd89193874c59ed3023f5b4f81b89b6676d187ad7fbdb0e",
-        //)?)?,
-        &AssetName::new(hex::decode(&ennft_tokeninfo.tokenname)?)?,
-    )?;
+    let ennft_tokeninfo = provider.token_info(&op_data.ennft_assetname).await?;
+    let asset = AssetName::new(hex::decode(&ennft_tokeninfo.tokenname)?)?;
+    let script_utxos = sutxos
+        .find_utxos_containing_asset(&policy, &asset)
+        .map_err(|err| Error::Custom(err.to_string()))?;
 
-    let pubkeyhash = payment_keyhash_from_address(&first_address).into()?;
+    let pubkeyhash = wallet::payment_keyhash_from_address(&first_address)?;
 
     if script_utxos.len() != 1 {
-        return Err(TransactionBuildingError::Custom(
+        return Err(Error::Custom(
             "smart contract does not contain the specified ENNFT".to_owned(),
         ));
     }
     //assert_eq!(ennft_tokeninfo.policy, policy_str);
     let script_utxo = script_utxos.get(0);
-    log::debug!("Try to restore datum...");
+    tracing::debug!("Try to restore datum");
     if script_utxo.output().plutus_data().is_none() {
-        return Err(TransactionBuildingError::Custom(
+        return Err(Error::Custom(
             "the utxo of the ENNFT does not contain the correct datum, invalid registration"
                 .to_owned(),
         ));
     }
 
     let datum = script_utxo.output().plutus_data().unwrap();
-    let d_str = datum
-        .to_json(cardano_serialization_lib::plutus::PlutusDatumSchema::DetailedSchema)?
-        .clone();
+    let d_str = datum.to_json(PlutusDatumSchema::DetailedSchema)?;
     let d_svalue = serde_json::from_str::<serde_json::Value>(&d_str)?;
-    log::debug!("Deserialized Datum: \n{:?}", &d_str);
+    tracing::debug!("Deserialized Datum: \n{:?}", &d_str);
     let fields = d_svalue.get("fields").unwrap().as_array().unwrap();
     let operator_address = hex::decode(
         fields[0]
@@ -166,28 +139,30 @@ pub(crate) async fn admin_register_en(
             .as_str()
             .unwrap(),
     )?;
+    let used_nft = AssetName::new(hex::decode(
+        fields[3]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )?)?;
+    let owner = Ed25519KeyHash::from_bytes(hex::decode(
+        fields[4]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )?)?;
     let regdat = RegistrationDatum {
         validator_address,
         operator_address,
         moniker: en_moniker,
-        enUsedNftTn: AssetName::new(hex::decode(
-            fields[3]
-                .as_object()
-                .unwrap()
-                .get("bytes")
-                .unwrap()
-                .as_str()
-                .unwrap(),
-        )?)?,
-        enOwner: Ed25519KeyHash::from_bytes(hex::decode(
-            fields[4]
-                .as_object()
-                .unwrap()
-                .get("bytes")
-                .unwrap()
-                .as_str()
-                .unwrap(),
-        )?)?,
+        used_nft,
+        owner,
     };
 
     //
@@ -210,12 +185,12 @@ pub(crate) async fn admin_register_en(
     let mut builder = TransactionBuilder::new(&builderconfig);
 
     // Create Plutus Datum
-    let mut inner = plutus::PlutusList::new();
+    let mut inner = PlutusList::new();
     inner.add(&PlutusData::new_bytes(regdat.operator_address.to_vec()));
     inner.add(&PlutusData::new_bytes(regdat.validator_address.to_vec()));
     inner.add(&PlutusData::new_bytes(regdat.moniker.to_vec()));
-    inner.add(&PlutusData::new_bytes(regdat.enUsedNftTn.name()));
-    inner.add(&PlutusData::new_bytes(regdat.enOwner.to_bytes()));
+    inner.add(&PlutusData::new_bytes(regdat.used_nft.name()));
+    inner.add(&PlutusData::new_bytes(regdat.owner.to_bytes()));
 
     // Create Plutus Datum
     //let mut inner = plutus::PlutusMap::new();
@@ -232,8 +207,8 @@ pub(crate) async fn admin_register_en(
 
     let mut datums_ = plutus::PlutusList::new();
     datums_.add(datum_);
-    let datumhash = hash_plutus_data(datum_);
-    log::info!("DatumHash: {:?}\n", hex::encode(datumhash.to_bytes()));
+    let datumhash = utils::hash_plutus_data(datum_);
+    tracing::info!("DatumHash: {:?}\n", hex::encode(datumhash.to_bytes()));
 
     //// ToDo: Lookup utxo with datumhash on dbsync
     //let contract_utxo = dp
@@ -248,8 +223,8 @@ pub(crate) async fn admin_register_en(
     // sending the ENNFT fback to the owner
     let mut unregistration_value = script_utxo.output().amount();
 
-    unregistration_value.set_coin(&calc_min_ada_for_utxo(&unregistration_value, None));
-    debug!("Registration Value: {:?}", unregistration_value);
+    unregistration_value.set_coin(&murin::calc_min_ada_for_utxo(&unregistration_value, None));
+    tracing::debug!("Registration Value: {:?}", unregistration_value);
     builder.add_output(&TransactionOutput::new(
         &first_address,
         &unregistration_value,
@@ -264,12 +239,13 @@ pub(crate) async fn admin_register_en(
 
     let mut needed = Value::new(&to_bignum(3000000));
     let inputs =
-        input_selection(None, &mut needed, &utxos, Some(collateral.get(0)), None).into()?;
+        utxo_handling::input_selection(None, &mut needed, &utxos, Some(collateral.get(0)), None)
+            .map_err(|err| Error::Custom(err.to_string()))?;
     let admin_addr = Address::from_bech32("addr_test1qrkt8rppznv4hxfrk6c4uvgvy9dhcp6y7c6hkukx70pqsg7p5n9fnvekx7cv5kye9k5xwlrqgylxlu4hdc7d85mhu6yqmwlh9s").unwrap();
-    let req_signer_inputs = find_utxos_by_address(admin_addr.clone(), &utxos).0;
+    let req_signer_inputs = cardano::find_utxos_by_address(admin_addr.clone(), &utxos).0;
 
     if req_signer_inputs.is_empty() {
-        return Err(TransactionBuildingError::Custom(format!(
+        return Err(Error::Custom(format!(
             "cannot add UTxOs of the required signer, please populate address: {:?} with UTxOs",
             first_address.clone()
         )));
@@ -283,7 +259,7 @@ pub(crate) async fn admin_register_en(
         txis.add(&req_signer_inputs.get(0).input());
     }
 
-    let index = get_input_position(txis, script_utxo.clone());
+    let index = cardano::get_input_position(txis, script_utxo.clone());
     let mut txinbuilder = TxInputsBuilder::new();
 
     for i in inputs.1 {
@@ -297,9 +273,9 @@ pub(crate) async fn admin_register_en(
         );
     }
 
-    let redeemer_data = plutus::PlutusData::new_constr_plutus_data(&plutus::ConstrPlutusData::new(
+    let redeemer_data = PlutusData::new_constr_plutus_data(&plutus::ConstrPlutusData::new(
         &to_bignum(2), //&RegistrationRedeemer::Admin.redeemer(),
-        &plutus::PlutusList::new(),
+        &PlutusList::new(),
     ));
 
     let redeemer = Redeemer::new(
@@ -332,31 +308,30 @@ pub(crate) async fn admin_register_en(
     );
     builder.set_collateral(&colbuilder);
 
-    let protocol_parameters = crate::pparams::ProtocolParameters::read_protocol_parameter(
+    let protocol_parameters = ProtocolParameters::read_protocol_parameter(
         &std::env::var("PPPATH").unwrap_or_else(|_| "protocol_parameters_preview.json".to_owned()),
     )
     .unwrap();
     // CostModel
     let cost_models = protocol_parameters.get_CostMdls().unwrap();
-    let costmodel = cost_models.get(&plutus::Language::new_plutus_v2()).unwrap();
-    let mut pcm = plutus::CostModel::new();
+    let costmodel = cost_models.get(&Language::new_plutus_v2()).unwrap();
+    let mut pcm = CostModel::new();
     for i in 0..costmodel.len() {
         pcm.set(i, &pcm.get(i)?)?;
     }
-    let mut cstmodls = plutus::Costmdls::new();
-    cstmodls.insert(&plutus::Language::new_plutus_v2(), &pcm);
+    let mut cstmodls = Costmdls::new();
+    cstmodls.insert(&Language::new_plutus_v2(), &pcm);
 
-    let costmodel = cost_models.get(&plutus::Language::new_plutus_v2()).unwrap();
-    let mut cstmodls_ = plutus::Costmdls::new();
-    cstmodls_.insert(&plutus::Language::new_plutus_v2(), &costmodel);
+    let costmodel = cost_models.get(&Language::new_plutus_v2()).unwrap();
+    let mut cstmodls_ = Costmdls::new();
+    cstmodls_.insert(&Language::new_plutus_v2(), &costmodel);
 
-    let mut redeemers = plutus::Redeemers::new();
+    let mut redeemers = Redeemers::new();
     redeemers.add(&redeemer);
-    log::debug!("\nCostModels:\n{:?}\n\n", cstmodls_);
+    tracing::debug!("\nCostModels:\n{:?}\n\n", cstmodls_);
 
-    let scriptdatahash =
-        cardano_serialization_lib::utils::hash_script_data(&redeemers, &cstmodls_, None);
-    log::debug!(
+    let scriptdatahash = utils::hash_script_data(&redeemers, &cstmodls_, None);
+    tracing::debug!(
         "ScriptDataHash: {:?}\n",
         hex::encode(scriptdatahash.to_bytes())
     );

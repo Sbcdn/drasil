@@ -4,6 +4,7 @@ members = [
     "drasil-hugin",
     "drasil-mimir",
     "drasil-murin",
+    "worldmobile",
     "drasil-sleipnir",
     "drasil-dvltath",
     "jobs/freki",

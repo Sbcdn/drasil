@@ -1,23 +1,17 @@
-use cardano_serialization_lib as csl;
-use csl::{
-    address::{Address, BaseAddress},
-    crypto::ScriptHash,
-    utils::BigNum,
-    AssetName,
-};
+use std::fmt;
+use std::str::FromStr;
+
+use murin::address::{Address, BaseAddress};
+use murin::crypto::ScriptHash;
+use murin::utils::BigNum;
+use murin::{wallet, AssetName};
 use serde::{Deserialize, Serialize};
-use std::{fmt, str::FromStr};
 use strum_macros::{Display, EnumString};
+
+use crate::error::Error;
 
 pub type Token = (ScriptHash, AssetName, BigNum);
 pub type Tokens = Vec<Token>;
-
-use crate::{
-    address_from_string_non_async, reward_address_from_address,
-    transaction_unspent_outputs_from_string_vec,
-};
-
-use super::error::CTSError;
 
 #[derive(Serialize, Debug)]
 pub(crate) struct ErrorResponse {
@@ -77,19 +71,19 @@ pub enum TxSchemaWrapper {
 }
 
 impl TxSchemaWrapper {
-    pub fn unwrap_txschema(&self) -> Result<TransactionSchema, CTSError> {
+    pub fn unwrap_txschema(&self) -> Result<TransactionSchema, Error> {
         match self {
             TxSchemaWrapper::TransactionPattern(x) => Ok(*x.clone()),
-            _ => Err(CTSError::TxSchemaError),
+            _ => Err(Error::TxSchemaError),
         }
     }
     pub fn is_txschema(&self) -> bool {
         matches!(self, TxSchemaWrapper::TransactionPattern(_))
     }
-    pub fn unwrap_signature(&self) -> Result<Signature, CTSError> {
+    pub fn unwrap_signature(&self) -> Result<Signature, Error> {
         match self {
             TxSchemaWrapper::Signature(x) => Ok(x.clone()),
-            _ => Err(CTSError::TxSchemaError),
+            _ => Err(Error::TxSchemaError),
         }
     }
     pub fn is_signature(&self) -> bool {
@@ -124,70 +118,71 @@ impl fmt::Display for TransactionSchema {
 }
 
 impl TransactionSchema {
-    pub fn check_txschema(&self) -> Result<(), CTSError> {
-        log::debug!("Check operation available...");
+    pub fn check_txschema(&self) -> Result<(), Error> {
+        tracing::debug!("Check operation available...");
         if self.operation.is_none() {
-            return Err(CTSError::NoOperation);
+            return Err(Error::NoOperation);
         }
-        log::debug!("Check used addresses...");
+        tracing::debug!("Check used addresses...");
         let grwd: Address;
         if !self.used_addresses.is_empty() {
             // addresses need to all have the same stake address or non otherwise we have a frankenadress in the set,
             // here we can have also enterprise addresses, those we ignore as we cannot check to whom they belong
-            let mut rewardaddr = reward_address_from_address(&address_from_string_non_async(
-                &self.used_addresses[0],
-            )?)?;
+            let mut rewardaddr = wallet::reward_address_from_address(
+                &wallet::address_from_string_non_async(&self.used_addresses[0])?,
+            )?;
+
             for address in &self.used_addresses {
-                let addr = address_from_string_non_async(address)?;
+                let addr = wallet::address_from_string_non_async(address)?;
                 if BaseAddress::from_address(&addr).is_some() {
-                    let raddr = reward_address_from_address(&addr)?;
+                    let raddr = wallet::reward_address_from_address(&addr)?;
                     if raddr != rewardaddr {
-                        return Err(CTSError::TxSchemaError);
+                        return Err(Error::TxSchemaError);
                     }
                     rewardaddr = raddr
                 }
             }
+
             grwd = rewardaddr;
         } else if self.unused_addresses.is_empty() {
-            return Err(CTSError::TxSchemaError);
+            return Err(Error::TxSchemaError);
         } else {
-            grwd = reward_address_from_address(&address_from_string_non_async(
-                &self.unused_addresses[0],
-            )?)?
+            let addr = wallet::address_from_string_non_async(&self.unused_addresses[0])?;
+            grwd = wallet::reward_address_from_address(&addr)?;
         }
-        log::debug!("Check unused addresses...");
+        tracing::debug!("Check unused addresses...");
         if !self.unused_addresses.is_empty() {
             // If unused addresses are provided all need to have the same stake address as the used addresses, otherwise we have a frankenadress in the set
             for address in &self.unused_addresses {
-                let addr = address_from_string_non_async(address)?;
-                let rwd = reward_address_from_address(&addr)?;
+                let addr = wallet::address_from_string_non_async(address)?;
+                let rwd = wallet::reward_address_from_address(&addr)?;
                 if rwd != grwd {
-                    return Err(CTSError::TxSchemaError);
+                    return Err(Error::TxSchemaError);
                 }
             }
         }
-        log::debug!("Check netowork...");
+        tracing::debug!("Check network...");
         if self.network != 1 && self.network != 0 {
-            return Err(CTSError::TxSchemaError);
+            return Err(Error::TxSchemaError);
         }
-        log::debug!("Check reward address...");
+        tracing::debug!("Check reward address...");
         if let Some(reward_addresses) = &self.stake_address {
             let grwd_bech32 = hex::encode(grwd.to_bytes());
             if !reward_addresses.contains(&grwd_bech32) {
-                return Err(CTSError::TxSchemaError);
+                return Err(Error::TxSchemaError);
             }
         }
-        log::debug!("Check change address...");
+        tracing::debug!("Check change address...");
         if let Some(change_address) = &self.change_address {
-            let addr = address_from_string_non_async(change_address)?;
-            let rwd = reward_address_from_address(&addr)?;
+            let addr = wallet::address_from_string_non_async(change_address)?;
+            let rwd = wallet::reward_address_from_address(&addr)?;
             if rwd != grwd {
-                return Err(CTSError::TxSchemaError);
+                return Err(Error::TxSchemaError);
             }
         }
-        log::debug!("Check utxos...");
+        tracing::debug!("Check utxos...");
         if let Some(utxos) = &self.utxos {
-            transaction_unspent_outputs_from_string_vec(
+            wallet::transaction_unspent_outputs_from_string_vec(
                 utxos,
                 self.collateral.as_ref(),
                 self.excludes.as_ref(),
@@ -197,10 +192,10 @@ impl TransactionSchema {
         Ok(())
     }
 
-    pub fn check_operation(&self, s: TxTypeWrapper) -> Result<(), CTSError> {
+    pub fn check_operation(&self, s: TxTypeWrapper) -> Result<(), Error> {
         let op = self.operation.clone();
         if op.is_none() {
-            return Err(CTSError::NoOperation);
+            return Err(Error::NoOperation);
         }
         match s {
             TxTypeWrapper::StandardTxType(stx) => match stx {
@@ -297,11 +292,11 @@ impl ToString for UnsignedTransaction {
 }
 
 impl FromStr for UnsignedTransaction {
-    type Err = CTSError;
-    fn from_str(src: &str) -> Result<Self, CTSError> {
+    type Err = Error;
+    fn from_str(src: &str) -> Result<Self, Error> {
         let slice: Vec<&str> = src.split('|').collect();
         if slice.len() != 2 {
-            Err(CTSError::TxSchemaError)
+            Err(Error::TxSchemaError)
         } else {
             Ok(UnsignedTransaction {
                 id: slice[0].to_string(),
@@ -323,8 +318,8 @@ impl ToString for TxHash {
 }
 
 impl FromStr for TxHash {
-    type Err = CTSError;
-    fn from_str(src: &str) -> Result<Self, CTSError> {
+    type Err = Error;
+    fn from_str(src: &str) -> Result<Self, Error> {
         Ok(TxHash {
             hash: src.to_string(),
         })
@@ -343,8 +338,8 @@ impl ToString for TxbError {
 }
 
 impl FromStr for TxbError {
-    type Err = CTSError;
-    fn from_str(src: &str) -> Result<Self, CTSError> {
+    type Err = Error;
+    fn from_str(src: &str) -> Result<Self, Error> {
         Ok(TxbError {
             message: src.to_string(),
         })

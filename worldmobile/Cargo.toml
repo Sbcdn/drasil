@@ -1,0 +1,17 @@
+[package]
+name = "worldmobile"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.73"
+hex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+sha2 = { workspace = true }
+strum = "0.25.0"
+strum_macros = "0.25"
+thiserror = { workspace = true }
+tracing = "0.1"
+murin = { path = "../drasil-murin", package = "drasil-murin" }
+cdp = { path = "../../cdp", package = "cardano-data-provider" }
