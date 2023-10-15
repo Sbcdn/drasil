@@ -8,11 +8,7 @@ use drasil_murin::PerformTxb;
 use drasil_murin::TransactionUnspentOutputs;
 
 pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Result<String> {
-    match bst
-        .transaction_pattern()
-        .operation()
-        .ok_or("ERROR: No transaction specific data supplied for stake deregistration")?
-    {
+    match bst.transaction_pattern().operation() {
         Operation::StakeDeregistration { .. } => (),
         _ => {
             return Err(CmdError::Custom {
@@ -21,7 +17,9 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
             .into());
         }
     }
-    let op = &bst.transaction_pattern().operation().unwrap();
+
+    let pattern = &bst.transaction_pattern();
+    let op = pattern.operation();
 
     let (mut deregtxd, addresses) = match op {
         Operation::StakeDeregistration { payment_addresses } => {

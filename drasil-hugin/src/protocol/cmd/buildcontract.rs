@@ -117,11 +117,7 @@ impl BuildContract {
     }
 
     async fn handle_marketplace(&self) -> crate::Result<String> {
-        match self
-            .transaction_pattern()
-            .operation()
-            .ok_or("ERROR: No specific contract data supplied")?
-        {
+        match self.transaction_pattern().operation() {
             Operation::Marketplace {
                 tokens,
                 metadata,
@@ -132,7 +128,7 @@ impl BuildContract {
                     || (metadata.is_empty()
                         && !(self.action()
                             == ContractAction::MarketplaceActions(MarketplaceActions::List)))
-                    || (selling_price <= MIN_ADA * 3
+                    || (*selling_price <= MIN_ADA * 3
                         && (self.action()
                             == ContractAction::MarketplaceActions(MarketplaceActions::List)
                             || self.action()
@@ -159,7 +155,6 @@ impl BuildContract {
         let mptxd = self
             .transaction_pattern()
             .operation()
-            .unwrap()
             .into_mp(gtxd.clone().get_inputs())
             .await?;
         gtxd.set_user_id(self.customer_id as i64);

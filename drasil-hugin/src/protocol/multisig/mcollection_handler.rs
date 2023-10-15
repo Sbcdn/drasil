@@ -13,11 +13,7 @@ use crate::{discount, BuildMultiSig, TBContracts};
 use crate::{CmdError, TBMultiSigLoc};
 
 pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result<String> {
-    match bms
-        .transaction_pattern()
-        .operation()
-        .ok_or("ERROR: No specific contract data supplied")?
-    {
+    match bms.transaction_pattern().operation() {
         Operation::NftCollectionMinter { mint_handles } => {
             let err = Err(CmdError::Custom {
                 str: format!(
@@ -36,7 +32,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 return err;
             } else {
                 let payer0 = wallet::address_from_string(&mint_handles[0].addr).await?;
-                for mint in &mint_handles {
+                for mint in mint_handles {
                     if payer0 != wallet::address_from_string(&mint.addr).await? {
                         return err;
                     }
@@ -56,7 +52,6 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     let minttxd = bms
         .transaction_pattern()
         .operation()
-        .unwrap()
         .into_colmintdata()
         .await?;
     let stake_address = minttxd.mint_handles[0].reward_addr()?.to_bech32(None)?;

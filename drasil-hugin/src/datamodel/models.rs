@@ -341,8 +341,8 @@ impl TransactionPattern {
         self.network
     }
 
-    pub fn operation(&self) -> Option<Operation> {
-        Some(self.operation.clone())
+    pub fn operation(&self) -> &Operation {
+        &self.operation
     }
 
     pub async fn into_txdata(

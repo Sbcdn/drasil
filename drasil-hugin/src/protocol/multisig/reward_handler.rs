@@ -8,11 +8,7 @@ use drasil_murin::{wallet, PerformTxb};
 
 pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<String> {
     info!("verify transaction data...");
-    match bms
-        .transaction_pattern()
-        .operation()
-        .ok_or("ERROR: No specific contract data supplied")?
-    {
+    match bms.transaction_pattern().operation() {
         Operation::SpoRewardClaim {
             rewards,
             recipient_stake_addr,
@@ -26,18 +22,18 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             }
             .into());
             if rewards.is_empty()
-                || wallet::address_from_string(&recipient_stake_addr)
+                || wallet::address_from_string(recipient_stake_addr)
                     .await
                     .is_err()
-                || wallet::address_from_string(&recipient_payment_addr)
+                || wallet::address_from_string(recipient_payment_addr)
                     .await
                     .is_err()
                 || wallet::stake_keyhash_from_address(
-                    &wallet::address_from_string(&recipient_stake_addr).await?,
+                    &wallet::address_from_string(recipient_stake_addr).await?,
                 )? != wallet::stake_keyhash_from_address(
                     &wallet::address_from_string(
                         &drasil_mimir::api::select_addr_of_first_transaction(
-                            &wallet::decode_address_from_bytes(&recipient_stake_addr)
+                            &wallet::decode_address_from_bytes(recipient_stake_addr)
                                 .await?
                                 .to_bech32(None)
                                 .unwrap(),
@@ -58,12 +54,7 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     }
 
     info!("create raw data...");
-    let mut rwdtxd = bms
-        .transaction_pattern()
-        .operation()
-        .unwrap()
-        .into_rwd()
-        .await?;
+    let mut rwdtxd = bms.transaction_pattern().operation().into_rwd().await?;
     rwdtxd.set_payment_addr(
         &wallet::address_from_string(&drasil_mimir::api::select_addr_of_first_transaction(
             &rwdtxd

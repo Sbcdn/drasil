@@ -11,7 +11,6 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let minttxd = bms
         .transaction_pattern()
         .operation()
-        .unwrap()
         .into_mintdata()
         .await?;
     log::debug!("Minter Txd: {:?}", minttxd);

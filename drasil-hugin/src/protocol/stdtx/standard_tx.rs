@@ -13,16 +13,7 @@ use drasil_murin::{wallet, PerformTxb};
 
 // Handler for ordinary token transfers
 pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
-    match bss
-        .transaction_pattern()
-        .operation()
-        .ok_or("ERROR: No specific contract data supplied")
-        .map_err(|e| {
-            MurinError::new(&format!(
-                "Could not get 'Operation' from transaction patttern, error: {:?}",
-                e.to_string()
-            ))
-        })? {
+    match bss.transaction_pattern().operation() {
         Operation::StdTx {
             wallet_addresses,
             transfers,
@@ -56,7 +47,6 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
     let std_asset_txd = bss
         .transaction_pattern()
         .operation()
-        .unwrap()
         .into_stdassettx()
         .await?;
 

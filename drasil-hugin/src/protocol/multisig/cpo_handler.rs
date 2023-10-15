@@ -10,12 +10,7 @@ use crate::TBContracts;
 use crate::TBDrasilUser;
 
 pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result<String> {
-    let poid = bms
-        .transaction_pattern()
-        .operation()
-        .unwrap()
-        .into_cpo()
-        .await?;
+    let poid = bms.transaction_pattern().operation().into_cpo().await?;
     let po = TBCaPayment::find(&poid.get_po_id())?;
 
     if po.stauts_pa == "cancel" || po.stauts_bl.is_some() {
