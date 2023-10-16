@@ -127,7 +127,7 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
             input_selection(None, &mut needed_value, &input_txuos, None, None)?;
 
         let saved_input_txuos = input_txuos.clone();
-        let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
+        let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 due to signature in finalize
 
         let txouts_fin = balance_tx(
             &mut input_txuos,
