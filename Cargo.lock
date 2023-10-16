@@ -1255,8 +1255,8 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "strum",
- "strum_macros",
+ "strum 0.25.0",
+ "strum_macros 0.24.3",
  "tokio",
  "tokio-postgres",
 ]
@@ -1290,8 +1290,8 @@ dependencies = [
  "serde_json",
  "sha2 0.10.8",
  "structopt",
- "strum",
- "strum_macros",
+ "strum 0.25.0",
+ "strum_macros 0.24.3",
  "thiserror",
  "tokio",
  "vaultrs",
@@ -1347,8 +1347,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.8",
- "strum",
- "strum_macros",
+ "strum 0.25.0",
+ "strum_macros 0.24.3",
  "thiserror",
  "tokio",
  "unwrap_or",
@@ -1373,8 +1373,8 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "strum",
- "strum_macros",
+ "strum 0.25.0",
+ "strum_macros 0.24.3",
  "textnonce",
  "tokio",
  "warp",
@@ -1593,8 +1593,8 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "tokio",
 ]
 
@@ -1772,7 +1772,7 @@ dependencies = [
  "redis",
  "serde",
  "serde_json",
- "strum_macros",
+ "strum_macros 0.24.3",
 ]
 
 [[package]]
@@ -1909,8 +1909,8 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "structopt",
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "thiserror",
  "tokio",
  "warp",
@@ -1931,8 +1931,8 @@ dependencies = [
  "serde",
  "serde-aux",
  "serde_json",
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "thiserror",
  "tokio",
  "tracing",
@@ -4077,8 +4077,14 @@ name = "strum"
 version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
+
+[[package]]
+name = "strum"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
 dependencies = [
- "strum_macros",
+ "strum_macros 0.25.3",
 ]
 
 [[package]]
@@ -4092,6 +4098,19 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23dc1fa9ac9c169a78ba62f0b841814b7abae11bdd047b9c58f893439e309ea0"
+dependencies = [
+ "heck 0.4.1",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.37",
 ]
 
 [[package]]
@@ -4675,8 +4694,8 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "thiserror",
  "tokio",
 ]

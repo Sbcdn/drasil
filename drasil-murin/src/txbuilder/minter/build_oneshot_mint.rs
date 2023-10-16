@@ -154,7 +154,7 @@ impl<'a> super::PerformTxb<AtOSMParams<'a>> for AtOSMBuilder {
          */
         let saved_input_txuos = input_txuos.clone();
 
-        let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
+        let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 due to signature in finalize
 
         // ToDo:
         let mut mint_val_zero_coin = mint_val.clone();

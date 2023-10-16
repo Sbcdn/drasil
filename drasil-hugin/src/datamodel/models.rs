@@ -12,7 +12,7 @@ use drasil_murin::utils::to_bignum;
 use drasil_murin::wallet;
 use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumString, EnumVariantNames};
+use strum::{Display, EnumString, EnumVariantNames, EnumIs};
 
 #[derive(
     Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
@@ -396,7 +396,7 @@ impl TransactionPattern {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, EnumIs)]
 pub enum Operation {
     SpoRewardClaim {
         rewards: Vec<drasil_murin::RewardHandle>,
@@ -444,9 +444,7 @@ pub enum Operation {
     StakeDeregistration {
         payment_addresses: Option<Vec<String>>,
     },
-    RewardWithdrawal {
-        amount: BigDecimal,
-    },
+    RewardWithdrawal {},
     StdTx {
         transfers: Vec<TransferHandle>,
         wallet_addresses: Option<Vec<String>>,
@@ -739,9 +737,7 @@ impl Operation {
         use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::WithdrawalTxData;
         match self {
-            Operation::RewardWithdrawal {
-                amount,
-            } => Ok(WithdrawalTxData::new(amount)),
+            Operation::RewardWithdrawal {} => Ok(WithdrawalTxData::new()?),
             _ => Err(MurinError::new(
                 "provided wrong specific parameter for this withdrawal transaction"
             )),

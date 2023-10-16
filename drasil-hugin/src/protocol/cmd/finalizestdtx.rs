@@ -111,11 +111,6 @@ impl FinalizeStdTx {
                 self.finalize_std_tx(raw_tx.clone()).await?
             }
             StdTxType::RewardWithdrawal => {
-                if let Err(e) = 
-                    drasil_murin::stdtx::WithdrawalTxData::from_str(raw_tx.get_tx_specific_rawdata()) 
-                {
-                    return Err(CmdError::Custom{str: format!("ERROR invalid Transaction data. This is not a withdrawal transaction, {:?}", e.to_string())}.into());
-                }
                 self.finalize_std_tx(raw_tx.clone()).await?
             }
         };
