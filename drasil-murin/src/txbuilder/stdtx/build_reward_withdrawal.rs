@@ -63,7 +63,7 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
         }
 
         // Choose inputs for transaction body
-        let (txins, _input_txuos) =
+        let (txins, mut input_txuos) =
         input_selection(None, &mut needed_value, &input_txuos, None, None)?;
         let saved_input_txuos = input_txuos.clone();
 
