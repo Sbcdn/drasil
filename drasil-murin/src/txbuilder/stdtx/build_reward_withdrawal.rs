@@ -90,7 +90,7 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
         let mut withdrawals = Withdrawals::new();
         withdrawals.insert(
             &RewardAddress::from_address(&gtxd.get_stake_address()).unwrap(),
-            &BigNum::zero() // TODO: insert correct value 
+            &gtxd.get_withdrawal().unwrap()
         );
         txbody.set_withdrawals(&withdrawals);
         txbody.set_ttl(&cutils::to_bignum(
