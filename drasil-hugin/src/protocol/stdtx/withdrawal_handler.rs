@@ -1,4 +1,5 @@
-use drasil_murin::{RawTx, PerformTxb};
+use drasil_murin::{RawTx, PerformTxb, utils::BigNum};
+use drasil_mimir::api;
 
 use crate::{create_response, BuildStdTx, Operation, CmdError};
 
@@ -15,13 +16,18 @@ pub(crate) async fn handle_reward_withdrawal(bst: &BuildStdTx) -> crate::Result<
         .into_txdata()
         .await?;
     gtxd.set_user_id(bst.customer_id());
-
-    let mut dbsync = drasil_mimir::establish_connection().map_err(|e| 
-        CmdError::Custom {str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string())}
-    )?;
-
-    gtxd.set_current_slot(drasil_mimir::get_slot(&mut dbsync)? as u64);
-    let withdraw_txd = op.into_withdrawal().await?;
+    gtxd.set_withdrawal(
+        BigNum::from_str(
+            &api::withdrawable_rewards(
+                &gtxd.get_stake_address().to_bech32(None)?
+        ).await?.to_string()
+        )?
+    );
+    gtxd.set_current_slot(drasil_mimir::get_slot(
+        &mut drasil_mimir::establish_connection().map_err(|e| 
+            CmdError::Custom {str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string())}
+        )?
+    )? as u64);
 
     let bld_tx = &drasil_murin::TxBuilder::new(
             &gtxd,
@@ -30,7 +36,7 @@ pub(crate) async fn handle_reward_withdrawal(bst: &BuildStdTx) -> crate::Result<
         .build(
             &drasil_murin::txbuilder::stdtx::AtAWBuilder::new(
                 &match op {
-                    Operation::RewardWithdrawal{} => withdraw_txd,
+                    Operation::RewardWithdrawal{} => op.into_withdrawal().await?,
                     _ => {
                         return Err(CmdError::Custom {
                             str: format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()),
