@@ -1,6 +1,6 @@
 use super::*;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
-use drasil_murin::TransactionUnspentOutputs;
+use drasil_murin::{TransactionUnspentOutputs, AssetName};
 use error::MimirError;
 
 /// get all tokens of an utxo
@@ -389,15 +389,13 @@ pub struct TokenInfoMint {
     pub txhash: String,
 }
 
-pub fn get_mint_metadata(fingerprint_in: &String) -> Result<TokenInfoMint, MimirError> {
-    let mut conn = crate::establish_connection()?;
-
+pub fn get_mint_metadata(fingerprint_in: &str) -> Result<TokenInfoMint, MimirError> {
     let metadata = ma_tx_mint::table
         .inner_join(multi_asset::table.on(multi_asset::id.eq(ma_tx_mint::ident)))
         .inner_join(tx_metadata::table.on(tx_metadata::tx_id.eq(ma_tx_mint::tx_id)))
         .inner_join(tx::table.on(ma_tx_mint::tx_id.eq(tx::id)))
         .inner_join(block::table.on(tx::block_id.eq(block::id)))
-        .filter(multi_asset::fingerprint.eq(fingerprint_in))
+        .filter(multi_asset::fingerprint.eq(fingerprint_in.to_string()))
         .order_by(block::slot_no.desc())
         .select((
             multi_asset::fingerprint,
@@ -414,20 +412,19 @@ pub fn get_mint_metadata(fingerprint_in: &String) -> Result<TokenInfoMint, Mimir
             BigDecimal,
             Option<serde_json::Value>,
             Vec<u8>,
-        )>(&mut conn);
+        )>(&mut crate::establish_connection()?)
+        .map_err(|_| MimirError::NotOnChainMetadataFound)?;
 
-    if let Ok(meta) = metadata {
-        return Ok(TokenInfoMint {
-            fingerprint: meta.0,
-            policy: hex::encode(meta.1),
-            tokenname: String::from_utf8(meta.2)?,
-            meta_key: meta.3.to_i64().unwrap(),
-            json: meta.4,
-            txhash: hex::encode(meta.5),
-        });
-    }
-
-    Err(MimirError::NotOnChainMetadataFound)
+    Ok(TokenInfoMint {
+        fingerprint: metadata.0,
+        policy: hex::encode(metadata.1),
+        tokenname: String::from_utf8(metadata.2.clone()).unwrap_or(
+            hex::encode(metadata.2.clone())
+        ),
+        meta_key: metadata.3.to_i64().unwrap(),
+        json: metadata.4,
+        txhash: hex::encode(metadata.5),
+    })
 }
 
 /*
@@ -500,6 +497,9 @@ pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MimirError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::TokenInfoMint;
+    use serde_json::json;
+
     #[test]
     fn stake_registration() {
         let mut conn = crate::establish_connection().unwrap();
@@ -553,5 +553,26 @@ mod tests {
         let real_value = true;
 
         assert_eq!(func_value, real_value);
+    }
+
+    #[test]
+    fn get_mint_metadata() {
+        let fingerprint_in = "asset1t3m9e0gysc4xy392q25qwgj2hwca5qf3nhgcf4";
+        let func_value = super::get_mint_metadata(fingerprint_in).unwrap();
+        let real_value = TokenInfoMint {
+            fingerprint: "asset1t3m9e0gysc4xy392q25qwgj2hwca5qf3nhgcf4".to_string(),
+            policy: "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a".to_string(),
+            tokenname: "000643b0766963746f722e656c6261".to_string(),
+            meta_key: 721, 
+            json: Some(json!({"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a": {"000de140766963746f722e656c6261": {"og": 0, "name": "$victor.elba", "image": "ipfs://zb2rhoGr5TMRmSYhupacB5pVSbViLWrt2MyTs1DH8i8ArRQAU", "length": 11, "rarity": "basic", "version": 1, "mediaType": "image/jpeg", "og_number": 0, "characters": "letters,special", "numeric_modifiers": ""}}})), 
+            txhash: "fcc86f8adb7349eca89ec75a79be19091fb3040bf94baf95fdd421a625eaf045".to_string(), 
+        };
+
+        assert_eq!(func_value.fingerprint, real_value.fingerprint);
+        assert_eq!(func_value.policy, real_value.policy);
+        assert_eq!(func_value.tokenname, real_value.tokenname);
+        assert_eq!(func_value.meta_key, real_value.meta_key);
+        assert_eq!(func_value.json, real_value.json);
+        assert_eq!(func_value.txhash, real_value.txhash);
     }
 }
