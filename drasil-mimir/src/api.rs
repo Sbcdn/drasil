@@ -520,31 +520,29 @@ pub async fn total_rewards(
 pub async fn total_withdrawals(
     stake_addr: &str,
 ) -> Result<BigDecimal, MimirError> {
-    Ok(
-        withdrawal::table
+    let response = withdrawal::table
         .inner_join(stake_address::table.on(stake_address::id.eq(withdrawal::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
         .select(withdrawal::amount)
         .load::<BigDecimal>(&mut establish_connection()?)?
         .iter()
-        .sum()
-    )
+        .sum();
+    Ok(response)
 }
 
 /// The sum of all delegations (deposits) ever made by the given stake address.
 pub async fn total_deposits(
     stake_addr: &str,
 ) -> Result<BigDecimal, MimirError> {
-    Ok(
-        delegation::table
+    let response =         delegation::table
         .inner_join(tx::table.on(tx::id.eq(delegation::tx_id)))
         .inner_join(stake_address::table.on(stake_address::id.eq(delegation::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
         .select(tx::out_sum)
         .load::<BigDecimal>(&mut establish_connection()?)?
         .iter()
-        .sum()
-    )
+        .sum();
+    Ok(response)
 }
 
 /// The total amount of rewards that the given stake address
@@ -552,8 +550,7 @@ pub async fn total_deposits(
 pub async fn withdrawable_rewards(
     stake_addr: &str,
 ) -> Result<BigDecimal, MimirError> {
-    Ok(
-        reward::table
+    let response = reward::table
         .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
         .select(reward::amount)
@@ -569,8 +566,8 @@ pub async fn withdrawable_rewards(
             .iter()
             .sum::<BigDecimal>()
             .neg()
-        )
-    )
+        );
+    Ok(response)
 }
 
 #[cfg(test)]
