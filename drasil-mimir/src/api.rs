@@ -415,12 +415,13 @@ pub fn get_mint_metadata(fingerprint_in: &str) -> Result<TokenInfoMint, MimirErr
         )>(&mut crate::establish_connection()?)
         .map_err(|_| MimirError::NotOnChainMetadataFound)?;
 
+        let tokenname = String::from_utf8(metadata.2.clone()).unwrap_or(
+            hex::encode(metadata.2.clone())
+        );
     Ok(TokenInfoMint {
         fingerprint: metadata.0,
         policy: hex::encode(metadata.1),
-        tokenname: String::from_utf8(metadata.2.clone()).unwrap_or(
-            hex::encode(metadata.2.clone())
-        ),
+        tokenname,
         meta_key: metadata.3.to_i64().unwrap(),
         json: metadata.4,
         txhash: hex::encode(metadata.5),
