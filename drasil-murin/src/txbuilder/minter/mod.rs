@@ -340,7 +340,9 @@ impl AssetMetadata {
                         Value::String(s) => match hex::decode(s) {
                             Ok(v) => {
                                 a.tokenname = hex::encode(v.clone());
-                                a.name = Some(String::from_utf8(v)?);
+                                a.name = Some(String::from_utf8(v.clone()).unwrap_or(
+                                    hex::encode(v)
+                                ));
                             }
                             Err(_e) => {
                                 a.tokenname = hex::encode(s.as_bytes());
@@ -496,14 +498,18 @@ fn chunk_string(metamap: &mut MetadataMap, key: &str, s: &String) -> Result<(), 
         let chunks = s
             .as_bytes()
             .chunks(64)
-            .map(str::from_utf8)
-            .collect::<Result<Vec<&str>, _>>()
-            .unwrap();
+            .map(|c|
+                String::from(str::from_utf8(c).unwrap_or(
+                    &hex::encode(c)
+                ))
+            )
+            .collect::<Vec<String>>();
+
         log::debug!("Chunks: {:?}", chunks);
         let mut list = MetadataList::new();
         for s in chunks {
             list.add(&clib::metadata::TransactionMetadatum::new_text(
-                s.to_string(),
+                s,
             )?)
         }
         metamap.insert_str(key, &clib::metadata::TransactionMetadatum::new_list(&list))?;
@@ -672,7 +678,9 @@ pub fn make_mint_metadata_from_json(
     // Check if all tokens have metadata available
     let mut i = 0;
     'avail_tok: for token in tokens.clone() {
-        let t_name = str::from_utf8(&token.1.name())?.to_string();
+        let t_name = str::from_utf8(&token.1.name())
+            .unwrap_or(&hex::encode(token.1.name()))
+            .to_string();
         debug!("TName: {}", t_name);
         for asset in raw_metadata.assets.clone() {
             if asset.tokenname == t_name {
