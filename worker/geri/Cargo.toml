@@ -14,7 +14,7 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 redis = { version = "0.21.5", features = ["cluster"] } # "tokio-comp",
 serde_json = { version = "1.0.79", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
-strum_macros = "0.24"
+strum_macros = "0.25"
 merge = "0.1.0"
 pretty_env_logger = "0.4.0"
 log = "0.4"

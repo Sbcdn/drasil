@@ -110,6 +110,9 @@ impl FinalizeStdTx {
                 };
                 self.finalize_std_tx(raw_tx.clone()).await?
             }
+            StdTxType::RewardWithdrawal => {
+                self.finalize_std_tx(raw_tx.clone()).await?
+            }
         };
 
         // store used Utxos into utxo manager and store txhash for ovserver

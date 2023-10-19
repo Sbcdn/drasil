@@ -1,9 +1,13 @@
 use std::{fmt::Display, str::FromStr};
 
 pub mod build_deleg;
+use bigdecimal::BigDecimal;
 pub use build_deleg::{AtDelegBuilder, AtDelegParams};
 pub mod build_dereg;
 pub use build_dereg::{AtDeregBuilder, AtDeregParams};
+pub mod build_reward_withdrawal;
+pub use build_reward_withdrawal::{AtAWBuilder, AtAWParams};
+
 use cardano_serialization_lib::crypto as ccrypto;
 use cardano_serialization_lib::{address::Address, utils::BigNum, AssetName, PolicyID};
 use serde::{Deserialize, Serialize};
@@ -45,6 +49,15 @@ impl FromStr for StandardTxData {
     type Err = crate::MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         Ok(serde_json::from_str::<StandardTxData>(src)?)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WithdrawalTxData {}
+
+impl WithdrawalTxData {
+    pub fn new() -> Result<WithdrawalTxData, MurinError> {
+        Ok(WithdrawalTxData{})
     }
 }
 

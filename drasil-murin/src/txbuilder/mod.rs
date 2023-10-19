@@ -24,9 +24,9 @@ use crate::error::MurinError;
 use crate::wallet;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
-use clib::address::Address;
+use clib::address::{Address, RewardAddress};
 use clib::utils::{to_bignum, BigNum};
-use clib::{NetworkIdKind, TransactionOutput};
+use clib::{NetworkIdKind, TransactionOutput, Withdrawals};
 
 use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
 
@@ -95,7 +95,6 @@ impl TxBuilder {
         );
         // (txbody, txwitness, aux_data, used_utxos, vkey_counter_2)
         let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
-
         let transaction2 = clib::Transaction::new(&tx.0, &tx_.1, tx.2.clone());
 
         if tx.4 != tx_.4 || transaction2.to_bytes().len() != transaction_.to_bytes().len() {
@@ -150,6 +149,7 @@ pub struct TxData {
     collateral: Option<TransactionUnspentOutput>,
     network: clib::NetworkIdKind,
     current_slot: u64,
+    withdrawal: Option<BigNum>,
 }
 
 const LV_PLUTUSV1           : &str = "a141005901d59f1a000302590001011a00060bc719026d00011a000249f01903e800011a000249f018201a0025cea81971f70419744d186419744d186419744d186419744d186419744d186419744d18641864186419744d18641a000249f018201a000249f018201a000249f018201a000249f01903e800011a000249f018201a000249f01903e800081a000242201a00067e2318760001011a000249f01903e800081a000249f01a0001b79818f7011a000249f0192710011a0002155e19052e011903e81a000249f01903e8011a000249f018201a000249f018201a000249f0182001011a000249f0011a000249f0041a000194af18f8011a000194af18f8011a0002377c190556011a0002bdea1901f1011a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000242201a00067e23187600010119f04c192bd200011a000249f018201a000242201a00067e2318760001011a000242201a00067e2318760001011a0025cea81971f704001a000141bb041a000249f019138800011a000249f018201a000302590001011a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a00330da70101ff";
@@ -179,6 +179,7 @@ impl TxData {
             excludes: None,
             collateral: None,
             current_slot,
+            withdrawal: None,
         })
     }
 
@@ -216,6 +217,10 @@ impl TxData {
 
     pub fn set_current_slot(&mut self, current_slot: u64) {
         self.current_slot = current_slot;
+    }
+
+    pub fn set_withdrawal(&mut self, withdrawal: BigNum) {
+        self.withdrawal = Some(withdrawal);
     }
 
     pub fn get_user_id(&self) -> Option<i64> {
@@ -272,6 +277,10 @@ impl TxData {
 
     pub fn get_current_slot(&self) -> u64 {
         self.current_slot
+    }
+
+    pub fn get_withdrawal(&self) -> Option<BigNum> {
+        self.withdrawal
     }
 }
 
@@ -445,6 +454,8 @@ impl std::str::FromStr for TxData {
                 }
             };
 
+            let withdrawal = Some(BigNum::from_str(slice[10])?);
+
             Ok(TxData {
                 user_id,
                 contract_id,
@@ -456,6 +467,7 @@ impl std::str::FromStr for TxData {
                 collateral,
                 network,
                 current_slot: curr_slot,
+                withdrawal,
             })
         } else {
             Err(MurinError::new(&format!(
