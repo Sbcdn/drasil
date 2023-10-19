@@ -160,7 +160,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         let saved_input_txuos = input_txuos.clone();
         info!("Saved Inputs: {:?}", saved_input_txuos);
 
-        let vkey_counter = get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 3; // +1 dues to signature in finalize
+        let vkey_counter = get_vkey_count(&input_txuos, collateral_input_txuo.as_ref()) + 3; // +1 due to signature in finalize
         debug!(
             "\n\n\n\n\nTxIns Before Balance:\n {:?}\n\n\n\n\n",
             input_txuos

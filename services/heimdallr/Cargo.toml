@@ -24,8 +24,8 @@ structopt = "0.3.26"
 jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
 thiserror = "1.0"
 bytes = "1"
-strum = "0.24"
-strum_macros = "0.24"
+strum = "0.25"
+strum_macros = "0.25"
 
 
 chrono = { version = "0.4", features = ["serde"] }

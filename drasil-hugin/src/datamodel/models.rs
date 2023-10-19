@@ -12,7 +12,7 @@ use drasil_murin::utils::to_bignum;
 use drasil_murin::wallet;
 use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumString, EnumVariantNames};
+use strum::{Display, EnumString, EnumVariantNames, EnumIs};
 
 #[derive(
     Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
@@ -72,6 +72,7 @@ pub enum StdTxType {
     DelegateStake,
     StandardTx,
     DeregisterStake,
+    RewardWithdrawal,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -395,7 +396,7 @@ impl TransactionPattern {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, EnumIs)]
 pub enum Operation {
     SpoRewardClaim {
         rewards: Vec<drasil_murin::RewardHandle>,
@@ -443,6 +444,7 @@ pub enum Operation {
     StakeDeregistration {
         payment_addresses: Option<Vec<String>>,
     },
+    RewardWithdrawal {},
     StdTx {
         transfers: Vec<TransferHandle>,
         wallet_addresses: Option<Vec<String>>,
@@ -725,6 +727,19 @@ impl Operation {
             } => Ok(DelegTxData::new(poolhash)?),
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
+            )),
+        }
+    }
+
+    pub async fn into_withdrawal(
+        &self,
+    ) -> Result<drasil_murin::txbuilder::stdtx::WithdrawalTxData, drasil_murin::error::MurinError>{
+        use drasil_murin::error::MurinError;
+        use drasil_murin::txbuilder::stdtx::WithdrawalTxData;
+        match self {
+            Operation::RewardWithdrawal {} => Ok(WithdrawalTxData::new()?),
+            _ => Err(MurinError::new(
+                "provided wrong specific parameter for this withdrawal transaction"
             )),
         }
     }
