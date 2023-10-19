@@ -884,7 +884,12 @@ mod handlers {
                             handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
-                                tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                                tokenname: Some(
+                                    from_utf8(&asset.name())
+                                        .unwrap_or(
+                                            &hex::encode(asset.name())
+                                        ).to_owned()
+                                ),
                                 amount: from_bignum(&amt),
                                 metadata: metadata.json,
                             })
@@ -982,7 +987,9 @@ mod handlers {
                             handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
-                                tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                                tokenname: Some(from_utf8(&asset.name()).unwrap_or(
+                                    &hex::encode(&asset.name())
+                                ).to_owned()),
                                 amount: from_bignum(&amt),
                                 metadata: metadata.json,
                             })
@@ -1090,7 +1097,9 @@ mod handlers {
                             handles.push(drasil_hugin::AssetHandle {
                                 fingerprint: Some(fingerprint),
                                 policy: Some(policy.to_hex()),
-                                tokenname: Some(from_utf8(&asset.name()).unwrap().to_owned()),
+                                tokenname: Some(from_utf8(&asset.name()).unwrap_or(
+                                    &hex::encode(&asset.name())
+                                ).to_owned()),
                                 amount: from_bignum(&amt),
                                 metadata: metadata.json,
                             })
