@@ -225,7 +225,7 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         let saved_input_txuos = builder.tx.clone().unwrap().0;
         let mut vkey_counter =
             supporting_functions::get_vkey_count(&builder.tx.as_ref().unwrap().0, None)
-                + rwd_contract_ids.len(); // +1 dues to signature in finalize
+                + rwd_contract_ids.len(); // +1 due to signature in finalize
         let slot = cutils::to_bignum(
             gtxd.clone().get_current_slot()
                 + supporting_functions::get_ttl_tx(&gtxd.clone().get_network()),
@@ -531,7 +531,7 @@ fn perform_txb(
         )?;
         let saved_input_txuos = input_txuos.clone();
 
-        let mut vkey_counter = hfn::get_vkey_count(&input_txuos, None) + 1; // +1 dues to signature in finalize
+        let mut vkey_counter = hfn::get_vkey_count(&input_txuos, None) + 1; // +1 due to signature in finalize
 
         let txouts_fin = hfn::balance_tx(
             &mut input_txuos,

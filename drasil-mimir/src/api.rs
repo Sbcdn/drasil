@@ -1,7 +1,10 @@
+use crate::schema::ada_pots::rewards;
+
 use super::*;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
 use drasil_murin::{TransactionUnspentOutputs, AssetName};
 use error::MimirError;
+use std::ops::{Add, Neg};
 
 /// get all tokens of an utxo
 pub fn get_utxo_tokens(
@@ -496,13 +499,88 @@ pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MimirError> {
     }
 }
 
+/// The sum of all rewards ever received by the given stake address.
+pub async fn total_rewards(
+    stake_addr: &str,
+) -> Result<BigDecimal, MimirError> {
+    Ok(
+        reward::table
+        .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
+        .filter(stake_address::view.eq(stake_addr.to_string()))
+        .select(reward::amount)
+        .load::<BigDecimal>(&mut establish_connection()?)?
+        .iter()
+        .sum()
+    )
+}
+
+/// The sum of all reward withdrawals ever made by the given stake address.
+pub async fn total_withdrawals(
+    stake_addr: &str,
+) -> Result<BigDecimal, MimirError> {
+    let response = withdrawal::table
+        .inner_join(stake_address::table.on(stake_address::id.eq(withdrawal::addr_id)))
+        .filter(stake_address::view.eq(stake_addr.to_string()))
+        .select(withdrawal::amount)
+        .load::<BigDecimal>(&mut establish_connection()?)?
+        .iter()
+        .sum();
+    Ok(response)
+}
+
+/// The sum of all delegations (deposits) ever made by the given stake address.
+pub async fn total_deposits(
+    stake_addr: &str,
+) -> Result<BigDecimal, MimirError> {
+    let response =         delegation::table
+        .inner_join(tx::table.on(tx::id.eq(delegation::tx_id)))
+        .inner_join(stake_address::table.on(stake_address::id.eq(delegation::addr_id)))
+        .filter(stake_address::view.eq(stake_addr.to_string()))
+        .select(tx::out_sum)
+        .load::<BigDecimal>(&mut establish_connection()?)?
+        .iter()
+        .sum();
+    Ok(response)
+}
+
+/// The total amount of rewards that the given stake address
+/// has earned but not withdrawn. 
+pub async fn withdrawable_rewards(
+    stake_addr: &str,
+) -> Result<BigDecimal, MimirError> {
+    let response = reward::table
+        .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
+        .filter(stake_address::view.eq(stake_addr.to_string()))
+        .select(reward::amount)
+        .load::<BigDecimal>(&mut establish_connection()?)?
+        .iter()
+        .sum::<BigDecimal>()
+        .add(
+            withdrawal::table
+            .inner_join(stake_address::table.on(stake_address::id.eq(withdrawal::addr_id)))
+            .filter(stake_address::view.eq(stake_addr.to_string()))
+            .select(withdrawal::amount)
+            .load::<BigDecimal>(&mut establish_connection()?)?
+            .iter()
+            .sum::<BigDecimal>()
+            .neg()
+        );
+    Ok(response)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::TokenInfoMint;
     use serde_json::json;
+    use tokio;
+    use bigdecimal::BigDecimal;
+    use std::str::FromStr;
+    use dotenv::dotenv;
+    use std::ops::{Add, Neg};
 
     #[test]
     fn stake_registration() {
+        dotenv().ok();
         let mut conn = crate::establish_connection().unwrap();
         let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
         let func_value = super::stake_registration(&mut conn, stake_addr_in).unwrap();
@@ -526,6 +604,7 @@ mod tests {
 
     #[test]
     fn stake_deregistration() {
+        dotenv().ok();
         let mut conn = crate::establish_connection().unwrap();
         let stake_addr_in = "stake_test1urtyeyl0qz20tsteu5uqzz0tamczyfzegn3ezn6mej360ycky7cg5";
         let func_value = super::stake_deregistration(&mut conn, stake_addr_in).unwrap();
@@ -549,6 +628,7 @@ mod tests {
 
     #[test]
     fn check_stakeaddr_registered() {
+        dotenv().ok();
         let stake_addr_in = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708";
         let func_value = super::check_stakeaddr_registered(stake_addr_in).unwrap();
         let real_value = true;
@@ -575,5 +655,46 @@ mod tests {
         assert_eq!(func_value.meta_key, real_value.meta_key);
         assert_eq!(func_value.json, real_value.json);
         assert_eq!(func_value.txhash, real_value.txhash);
+    }
+    
+    #[tokio::test]
+    async fn total_rewards() {
+        dotenv().ok();
+        let stake_addr = "stake_test1urjuh5w4xxlma4pauruygvraqsuv5r8rctsnh9jj7n6ff0gs6zhde";
+        let _func_value = super::total_rewards(stake_addr).await.unwrap();
+        let _manual_value = BigDecimal::from(19800282);
+    }
+
+    #[tokio::test]
+    async fn total_withdrawals() {
+        dotenv().ok();
+        let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh";
+        let _func_value = super::total_withdrawals(stake_addr).await.unwrap();
+        let _manual_value = BigDecimal::from(1974883422);
+    }
+
+    #[tokio::test]
+    async fn total_deposits() {
+        dotenv().ok();
+        let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh";
+        let _func_value = super::total_deposits(stake_addr).await.unwrap();
+        let _manual_value = BigDecimal::from_str("15552531005").unwrap();
+    }
+
+    #[tokio::test]
+    async fn withdrawable_rewards() {
+        dotenv().ok();
+        let stake_addr = "stake_test1upvv3c4l2jfhkannqf3lp4htmqvpscdsmhvyhalaecj3jdqtfcgvh";
+        let func_value = super::withdrawable_rewards(stake_addr).await.unwrap();
+        let manual_value = super::total_rewards(stake_addr)
+            .await
+            .unwrap()
+            .add(
+                super::total_withdrawals(stake_addr)
+                .await
+                .unwrap()
+                .neg()
+            );
+        assert_eq!(func_value, manual_value);
     }
 }
