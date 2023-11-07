@@ -444,7 +444,9 @@ pub enum Operation {
     StakeDeregistration {
         payment_addresses: Option<Vec<String>>,
     },
-    RewardWithdrawal {},
+    RewardWithdrawal {
+        withdrawal_amount: u64,
+    },
     StdTx {
         transfers: Vec<TransferHandle>,
         wallet_addresses: Option<Vec<String>>,
@@ -737,7 +739,7 @@ impl Operation {
         use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::WithdrawalTxData;
         match self {
-            Operation::RewardWithdrawal {} => Ok(WithdrawalTxData::new()?),
+            Operation::RewardWithdrawal {withdrawal_amount} => Ok(WithdrawalTxData::new(*withdrawal_amount)?),
             _ => Err(MurinError::new(
                 "provided wrong specific parameter for this withdrawal transaction"
             )),
@@ -1036,7 +1038,7 @@ impl RewardHandle {
 pub struct MintRewardHandle {
     pub id: i64,
     pub addr: String,
-    pub nfts: Vec<String>,
+    pub nfts: Option<Vec<String>>,
     pub project: MintProjectHandle,
 }
 
@@ -1099,7 +1101,7 @@ mod tests {
     use drasil_murin::clib::crypto::Ed25519KeyHash;
     #[tokio::test]
     async fn stake_deregistration() {
-        let poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();
+        let _poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();
         let addr1 = "stake_test1uqd2nz8ugrn6kwkflvmt9he8dr966dszfmm5lt66qdmn28qt4wff9";
         let payment_addresses = Some(vec![
             addr1.to_string()
