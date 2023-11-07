@@ -744,7 +744,7 @@ mod handlers {
                         Ok(p) => ret.push(MintRewardHandle {
                             id: rwd.id,
                             addr: rwd.pay_addr,
-                            nfts: v,
+                            nfts: Some(v),
                             project: MintProjectHandle {
                                 project_name: p.project_name,
                                 collection_name: p.collection_name,
@@ -753,7 +753,7 @@ mod handlers {
                             },
                         }),
                         Err(e) => {
-                            log::info!("Error: could not find active mint project");
+                            log::info!("Error: could not find active mint project: {e:?}");
                             continue;
                         }
                     }
@@ -810,7 +810,7 @@ mod handlers {
                         Ok(p) => ret.push(MintRewardHandle {
                             id: rwd.id,
                             addr: rwd.pay_addr,
-                            nfts: v,
+                            nfts: Some(v),
                             project: MintProjectHandle {
                                 project_name: p.project_name,
                                 collection_name: p.collection_name,
