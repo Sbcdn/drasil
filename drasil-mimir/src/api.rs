@@ -1,8 +1,6 @@
-use crate::schema::ada_pots::rewards;
-
 use super::*;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
-use drasil_murin::{TransactionUnspentOutputs, AssetName};
+use drasil_murin::TransactionUnspentOutputs;
 use error::MimirError;
 use std::ops::{Add, Neg};
 
