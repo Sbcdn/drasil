@@ -1,6 +1,6 @@
 use crate::cardano::models::*;
 use crate::cardano::supporting_functions::{
-    balance_tx, get_ttl_tx, get_vkey_count, sum_output_values,
+    balance_tx, get_ttl_tx, sum_output_values,
 };
 use crate::error::MurinError;
 use crate::txbuilder::{input_selection, stdtx::WithdrawalTxData, TxBO};
@@ -8,10 +8,9 @@ use crate::PerformTxb;
 use crate::TxData;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
-use clib::address::{RewardAddress, StakeCredential};
+use clib::address::RewardAddress;
 use clib::metadata::AuxiliaryData;
-use clib::utils::BigNum;
-use clib::{TransactionInputs, TransactionOutputs, TransactionWitnessSet, Withdrawals, Certificates, Certificate, StakeRegistration};
+use clib::{ TransactionOutputs, TransactionWitnessSet, Withdrawals, Certificates, Certificate, StakeRegistration};
 
 // Withdrawal Builder Type
 #[derive(Debug, Clone)]
@@ -90,7 +89,7 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
         let mut withdrawals = Withdrawals::new();
         withdrawals.insert(
             &RewardAddress::from_address(&gtxd.get_stake_address()).unwrap(),
-            &gtxd.get_withdrawal().unwrap()
+            &self.stxd.withdrawl.unwrap()
         );
         txbody.set_withdrawals(&withdrawals);
         txbody.set_ttl(&cutils::to_bignum(

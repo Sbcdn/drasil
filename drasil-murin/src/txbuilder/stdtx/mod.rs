@@ -1,14 +1,13 @@
 use std::{fmt::Display, str::FromStr};
 
 pub mod build_deleg;
-use bigdecimal::BigDecimal;
 pub use build_deleg::{AtDelegBuilder, AtDelegParams};
 pub mod build_dereg;
 pub use build_dereg::{AtDeregBuilder, AtDeregParams};
 pub mod build_reward_withdrawal;
 pub use build_reward_withdrawal::{AtAWBuilder, AtAWParams};
 
-use cardano_serialization_lib::crypto as ccrypto;
+use cardano_serialization_lib::{crypto as ccrypto, utils};
 use cardano_serialization_lib::{address::Address, utils::BigNum, AssetName, PolicyID};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -16,6 +15,12 @@ use serde_json::json;
 use crate::MurinError;
 pub mod build_cpo;
 pub mod build_wallet_asset_transfer;
+
+/// The stdtx model incoperates the Types for Standard Transactions
+/// We consider all Transactions which does not use smart contracts or native scripts as Standard Transactions.
+/// Using the functions created in build_wallet_asset_transfer.rs it is possible to run a Cardano Wallet Backend.  
+/// 
+/// 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StdAssetHandle {
@@ -53,11 +58,15 @@ impl FromStr for StandardTxData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WithdrawalTxData {}
+pub struct WithdrawalTxData {
+    pub withdrawl: Option<BigNum>,
+}
 
 impl WithdrawalTxData {
-    pub fn new() -> Result<WithdrawalTxData, MurinError> {
-        Ok(WithdrawalTxData{})
+    pub fn new(withdrawl: u64) -> Result<WithdrawalTxData, MurinError> {
+        Ok(WithdrawalTxData{
+            withdrawl: Some(utils::to_bignum(withdrawl)),
+        })
     }
 }
 
