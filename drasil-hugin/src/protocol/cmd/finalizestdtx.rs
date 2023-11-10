@@ -74,9 +74,7 @@ impl FinalizeStdTx {
             .with_varint_encoding()
             .deserialize(&txtype)?;
         let tx_id = parse.next_string()?;
-        let tx_id = tx_id;
         let signature = parse.next_string()?;
-        let signature = signature;
 
         Ok(FinalizeStdTx {
             customer_id,
@@ -99,9 +97,7 @@ impl FinalizeStdTx {
                 };
                 self.finalize_std_tx(raw_tx.clone()).await?
             }
-            StdTxType::DeregisterStake => {
-                self.finalize_std_tx(raw_tx.clone()).await?
-            }
+            StdTxType::DeregisterStake => self.finalize_std_tx(raw_tx.clone()).await?,
             StdTxType::StandardTx => {
                 if let Err(e) =
                     drasil_murin::stdtx::StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())
@@ -110,9 +106,7 @@ impl FinalizeStdTx {
                 };
                 self.finalize_std_tx(raw_tx.clone()).await?
             }
-            StdTxType::RewardWithdrawal => {
-                self.finalize_std_tx(raw_tx.clone()).await?
-            }
+            StdTxType::RewardWithdrawal => self.finalize_std_tx(raw_tx.clone()).await?,
         };
 
         // store used Utxos into utxo manager and store txhash for ovserver

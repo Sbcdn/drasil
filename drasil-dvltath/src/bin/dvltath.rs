@@ -129,6 +129,7 @@ mod filters {
 
 mod handlers {
     use std::convert::Infallible;
+    #[allow(clippy::let_unit_value)]
     pub async fn handle_get_secret(_: (), role_id: String) -> Result<impl warp::Reply, Infallible> {
         drasil_dvltath::vault::auth::store_wrapped_secret(&role_id).await;
         Ok(warp::reply::with_status(

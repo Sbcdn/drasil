@@ -79,10 +79,7 @@ impl FinalizeMultiSig {
             .deserialize(&mtype)?;
 
         let tx_id = parse.next_string()?;
-        let tx_id = tx_id;
-
         let signature = parse.next_string()?;
-        let signature = signature;
 
         Ok(FinalizeMultiSig {
             customer_id,
