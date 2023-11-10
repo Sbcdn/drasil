@@ -491,7 +491,7 @@ impl Operation {
             } => {
                 let assets = Token::for_all_into_asset(tokens)?;
                 let token_utxos =
-                    drasil_murin::txbuilder::find_token_utxos(avail_inputs, assets.clone()).await?;
+                    drasil_murin::txbuilder::find_token_utxos_na(&avail_inputs, assets.clone(),None)?;
 
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
