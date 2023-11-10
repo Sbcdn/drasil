@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heimdallr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-heimdallr
+  template:
+    metadata:
+      labels:
+        app: drasil-heimdallr
+    spec:
+      containers:
+      - env:
+        - name: POD_HOST
+          value: "0.0.0.0"
+        - name: POD_PORT
+          value: "4000"
+        - name: JWT_PUB_KEY
+          value: '-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+LwS66RkRJ3gYlrXCisZwWaNQo3nkNjRujIVVI9jEGCWYRdECga9lUjrg==-----END
+            PUBLIC KEY-----'
+        - name: ODIN_URL
+          value: 34.118.237.45:6142
+        - name: RUST_LOG
+          value: debug
+        image: docker.io/minikube/heimdallr:v1.3
+        imagePullPolicy: Never
+        name: heimdallr

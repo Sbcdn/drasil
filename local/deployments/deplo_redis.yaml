@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: redis-standalone-preview-testnet
+  name: redis-standalone-preview-testnet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-standalone-preview-testnet
+  template:
+    metadata:
+      labels:
+        app: redis-standalone-preview-testnet
+    spec:
+      containers:
+      - image: redis:alpine3.16
+        imagePullPolicy: IfNotPresent
+        name: redis-1

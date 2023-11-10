@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drasil-loki
+  name: loki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-loki
+  template:
+    metadata:
+      labels:
+        app: drasil-loki
+    spec:
+      containers:
+      - env:
+        - name: POD_HOST
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_PORT
+          value: "6142"
+        - name: AMQP_ADDR
+          value: ***REMOVED***
+        - name: RUST_LOG
+          value: debug
+        image: docker.io/minikube/loki:v1.3
+        imagePullPolicy: Never
+        name: loki

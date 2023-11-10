@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frigg-storage
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteMany
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frigg
+  labels:
+    app: drasil-frigg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-frigg
+  template:
+    metadata:
+      labels:
+        app: drasil-frigg
+    spec:
+      volumes:
+        - name: cache-volume
+          persistentVolumeClaim:
+            claimName: frigg-storage
+      containers:
+      - image: docker.io/minikube/frigg:v1.3
+        imagePullPolicy: Never
+        name: frigg
+        volumeMounts:
+        - mountPath: /cache
+          name: cache-volume
+        env:
+        - name: POD_HOST
+          value: "0.0.0.0"
+        - name: POD_PORT
+          value: "6142"
+        - name: CONFIG
+          value: /usr/bin/config.toml
+        - name: RUST_LOG
+          value: debug
+        - name: JWT_PUB_KEY
+          value: '-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAElaXuWqmOcE8oS7NQrV51u1U+0px2Hlrrh/gf46du83u2amBuI6VDlIcb5Eu097IvmiWjBGKQYc4HZ5neBGeAdA==-----END
+            PUBLIC KEY-----'
+        - name: JWT_KEY
+          value: '-----BEGIN PRIVATE KEY-----MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgEIMw/HZDb8/6xz4mDDb7X8ri718cO/1WMTeUR+P0gcuhRANCAASVpe5aqY5wTyhLs1CtXnW7VT7SnHYeWuuH+B/jp27ze7ZqYG4jpUOUhxvkS7T3si+aJaMEYpBhzgdnmd4EZ4B0-----END
+            PRIVATE KEY-----'
+        - name: REWARDS_DB_URL
+          value: postgres://***REMOVED***:password@***REMOVED***/rewarddb?password=***REMOVED***
+        - name: PLATFORM_DB_URL
+          value: postgres://***REMOVED***:password@***REMOVED***/drasildb?password=***REMOVED***
+        - name: DBSYNC_DB_URL
+          value: postgres://***REMOVED***:***REMOVED***@***REMOVED***/testnet
+        - name: PENDING_TX_DATASTORE_1
+          value: pendingtx1
+        - name: PENDING_TX_DATASTORE_2
+          value: pendingtx2
+        - name: PENDING_TX_DATASTORE_3
+          value: pendingtx3
+        - name: USED_UTXO_DATASTORE_1
+          value: usedutxos1
+        - name: USED_UTXO_DATASTORE_2
+          value: usedutxos2
+        - name: USED_UTXO_DATASTORE_3
+          value: usedutxos3
+        - name: TXGSET
+        - name: TX_SUBMIT_ENDPOINT1
+          value: http://***REMOVED***:8090/api/submit/tx
+        - name: TX_SUBMIT_ENDPOINT2
+          value: http://***REMOVED***:8090/api/submit/tx
+        - name: TX_SUBMIT_ENDPOINT3
+          value: http://***REMOVED***:8090/api/submit/tx
+        - name: REDIS_DB
+          value: redis://***REMOVED***:6379/0
+        - name: REDIS_DB_URL_UTXOMIND
+          value: redis://***REMOVED***:6379/0
+        - name: REDIS_DB_URL_REPLICA
+          value: redis://***REMOVED***:6379/1
+        - name: REDIS_CLUSTER
+          value: "false"
+        - name: VSOCKET_PATH
+          value: /cache/req.sock
+        - name: SPATH
+          value: /cache/sec
+        - name: VPATH
+          value: drasil/
+        - name: MOUNT
+          value: secret
+        - name: ADM_USER
+          value: "dummy"
+        - name: POW
+          value: "dummy"
+        - name: VAULT_TOKEN
+          value: "w4tsefsxds4"
+        - name: VAULT_ADDR
+          value: http://***REMOVED***:8200
+        - name: VROLE_ID
+          value: 7212d6d5-0e28-d5ec-e4bc-8024136d3da5
+        - name: VSECRET_ID
+          value: 7775d5a8-6f1b-d502-1fb0-032e20fb3133
+        - name: VROLE_NAME
+          value: drslapp
+        - name: VAULT_NAMESPACE
+          value: "admin"
+        - name: RUST_BACKTRACE
+          value: full
+      - env:
+        - name: POD_HOST
+          value: "0.0.0.0"
+        - name: POD_PORT
+          value: "4001"
+        - name: VSOCKET_PATH
+          value: /cache/req.sock
+        - name: SPATH
+          value: /cache/sec
+        - name: MOUNT
+          value: secret
+        - name: VROLE_ID
+          value: 88b372bb-ae5b-e747-a8de-60f681f59db5
+        - name: VSECRET_ID
+          value: a99adf0a-89c1-5d88-7a44-0f12622af788
+        - name: VAULT_NAMESPACE
+        - name: VPATH
+          value: drasil/
+        - name: VAULT_TOKEN
+          value: 2d3w34wd3
+        - name: VAULT_ADDR
+          value: http://***REMOVED***:8200
+        image: docker.io/minikube/dvltath:v1.3
+        imagePullPolicy: Never
+        name: dvltath
+        volumeMounts:
+        - mountPath: /cache
+          name: cache-volume
