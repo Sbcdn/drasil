@@ -29,6 +29,9 @@ pub enum SystemDBError {
     BoolParseError(#[from] std::str::ParseBoolError),
     #[error(transparent)]
     CmdError(#[from] crate::CmdError),
+    /// This is the error when a smart contract action is invalid.
+    #[error("Invalid contract action: {0}")]
+    InvalidContractAction(String),
 }
 
 impl From<std::string::String> for SystemDBError {

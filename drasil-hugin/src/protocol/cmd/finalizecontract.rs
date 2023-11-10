@@ -76,10 +76,7 @@ impl FinalizeContract {
             .deserialize(&ctype)?;
 
         let tx_id = parse.next_string()?;
-        let tx_id = tx_id;
-
         let signature = parse.next_string()?;
-        let signature = signature;
 
         Ok(FinalizeContract {
             customer_id,
