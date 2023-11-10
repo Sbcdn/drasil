@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geri
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-geri
+  template:
+    metadata:
+	  name: geri
+	  labels:
+        app: drasil-geri
+    spec:
+      containers:
+      - env:
+        - name: REDIS_CLUSTER
+          valueFrom:
+            configMapKeyRef:
+              key: REDIS_CLUSTER
+              name: preview-testnet-geri-config-do85
+        - name: REDIS_DB
+          valueFrom:
+            configMapKeyRef:
+              key: REDIS_DB
+              name: preview-testnet-geri-config-do85
+        - name: STREAM_TRIMMER
+          valueFrom:
+            configMapKeyRef:
+              key: STREAM_TRIMMER
+              name: preview-testnet-geri-config-do85
+        - name: STREAMS
+          valueFrom:
+            configMapKeyRef:
+              key: STREAMS
+              name: preview-testnet-geri-config-do85
+        - name: TIMEOUT
+          valueFrom:
+            configMapKeyRef:
+              key: TIMEOUT
+              name: preview-testnet-geri-config-do85
+        - name: RUST_LOG
+          value: debug
+        image: docker.io/minikube/geri:v1.3
+        imagePullPolicy: Never
+        name: geri

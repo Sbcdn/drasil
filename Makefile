@@ -6,6 +6,7 @@ MAINNET_PROJECT=kebvmwbusajq
 TESTNET_REGISTRY=preview-testnet-registry
 TESTNET_PROJECT=efvgtwmyqlpe
 
+LOC_PROJECT=minikube
 VERSION=v1.3
 
 # Create Docker Compose for Local Setup
@@ -161,3 +162,30 @@ push-all-testnet:
 	make push-freki-testnet
 	make push-utxopti-testnet
 	make push-dvltath-testnet
+
+# Build for Minikube
+build-all-loc:
+	docker build --progress=plain -t $(LOC_PROJECT)/vidar:$(VERSION) -f Dockerfile --target=vidar .
+	docker build --progress=plain -t $(LOC_PROJECT)/heimdallr:$(VERSION) -f Dockerfile --target=heimdallr .
+	docker build --progress=plain -t $(LOC_PROJECT)/odin:$(VERSION) -f Dockerfile --target=odin .
+	docker build --progress=plain -t $(LOC_PROJECT)/loki:$(VERSION) -f Dockerfile --target=loki .
+	docker build --progress=plain -t $(LOC_PROJECT)/frigg:$(VERSION) -f Dockerfile --target=frigg .
+	docker build --progress=plain -t $(LOC_PROJECT)/geri:$(VERSION) -f Dockerfile --target=geri .
+	docker build --progress=plain -t $(LOC_PROJECT)/drasil-jobs:$(VERSION) -f Dockerfile --target=drasil_jobs .
+	docker build --progress=plain -t $(LOC_PROJECT)/work-loki:$(VERSION) -f Dockerfile --target=work_loki .
+	docker build --progress=plain -t $(LOC_PROJECT)/freki:$(VERSION) -f Dockerfile --target=freki .
+	docker build --progress=plain -t $(LOC_PROJECT)/utxopti:$(VERSION) -f Dockerfile --target=utxopti .
+	docker build --progress=plain -t $(LOC_PROJECT)/dvltath:$(VERSION) -f Dockerfile --target=dvltath .
+	minikube image load $(LOC_PROJECT)/vidar:$(VERSION)
+	minikube image load $(LOC_PROJECT)/heimdallr:$(VERSION)
+	minikube image load $(LOC_PROJECT)/odin:$(VERSION)
+	minikube image load $(LOC_PROJECT)/loki:$(VERSION)
+	minikube image load $(LOC_PROJECT)/frigg:$(VERSION)
+	minikube image load $(LOC_PROJECT)/geri:$(VERSION)
+	minikube image load $(LOC_PROJECT)/drasil-jobs:$(VERSION)
+	minikube image load $(LOC_PROJECT)/work-loki:$(VERSION)
+	minikube image load $(LOC_PROJECT)/freki:$(VERSION)
+	minikube image load $(LOC_PROJECT)/utxopti:$(VERSION)
+	minikube image load $(LOC_PROJECT)/dvltath:$(VERSION)
+	minikube cache reload
+	minikube image ls
