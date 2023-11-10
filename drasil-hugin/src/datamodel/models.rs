@@ -12,7 +12,9 @@ use drasil_murin::utils::to_bignum;
 use drasil_murin::wallet;
 use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumString, EnumVariantNames, EnumIs};
+use strum::{Display, EnumIs, EnumString, EnumVariantNames};
+
+use super::staking::StakingAction;
 
 #[derive(
     Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
@@ -23,6 +25,7 @@ pub enum ContractType {
     NftMinter,
     TokenMinter,
     DrasilAPILiquidity,
+    WmtStaking,
     Other,
 }
 
@@ -89,6 +92,7 @@ impl Signature {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ContractAction {
     MarketplaceActions(MarketplaceActions),
+    StakingAction(StakingAction),
 }
 
 impl ContractAction {}
@@ -96,30 +100,29 @@ impl ContractAction {}
 impl FromStr for ContractAction {
     type Err = Error;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        match src {
-            "List" => Ok(ContractAction::MarketplaceActions(MarketplaceActions::List)),
-            "Buy" => Ok(ContractAction::MarketplaceActions(MarketplaceActions::Buy)),
-            "Cancel" => Ok(ContractAction::MarketplaceActions(
-                MarketplaceActions::Cancel,
-            )),
-            "Update" => Ok(ContractAction::MarketplaceActions(
-                MarketplaceActions::Update,
-            )),
-            _ => Err(Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("ContractAction '{src}' does not exist"),
-            )),
-        }
+        let action = match src.to_lowercase().as_str() {
+            "list" => ContractAction::MarketplaceActions(MarketplaceActions::List),
+            "buy" => ContractAction::MarketplaceActions(MarketplaceActions::Buy),
+            "cancel" => ContractAction::MarketplaceActions(MarketplaceActions::Cancel),
+            "update" => ContractAction::MarketplaceActions(MarketplaceActions::Update),
+            "stake" => ContractAction::StakingAction(StakingAction::Stake),
+            "unstake" => ContractAction::StakingAction(StakingAction::UnStake),
+            _ => {
+                return Err(Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("ContractAction '{src}' does not exist"),
+                ))
+            }
+        };
+        Ok(action)
     }
 }
 
 impl ToString for ContractAction {
     fn to_string(&self) -> String {
         match &self {
-            ContractAction::MarketplaceActions(MarketplaceActions::List) => "list".to_string(),
-            ContractAction::MarketplaceActions(MarketplaceActions::Buy) => "buy".to_string(),
-            ContractAction::MarketplaceActions(MarketplaceActions::Cancel) => "cancel".to_string(),
-            ContractAction::MarketplaceActions(MarketplaceActions::Update) => "update".to_string(),
+            ContractAction::MarketplaceActions(action) => action.to_string().to_lowercase(),
+            ContractAction::StakingAction(action) => action.to_string().to_lowercase(),
         }
     }
 }
@@ -461,6 +464,12 @@ pub enum Operation {
         metadata: drasil_murin::minter::Cip25Metadata,
         receiver: String,
     },
+    WmtStaking {
+        /// The EN to stake to.
+        target_en: String,
+        /// The staking amount.
+        amount: u64,
+    },
 }
 
 impl Operation {
@@ -735,13 +744,16 @@ impl Operation {
 
     pub async fn into_withdrawal(
         &self,
-    ) -> Result<drasil_murin::txbuilder::stdtx::WithdrawalTxData, drasil_murin::error::MurinError>{
+    ) -> Result<drasil_murin::txbuilder::stdtx::WithdrawalTxData, drasil_murin::error::MurinError>
+    {
         use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::WithdrawalTxData;
         match self {
-            Operation::RewardWithdrawal {withdrawal_amount} => Ok(WithdrawalTxData::new(*withdrawal_amount)?),
+            Operation::RewardWithdrawal { withdrawal_amount } => {
+                Ok(WithdrawalTxData::new(*withdrawal_amount)?)
+            }
             _ => Err(MurinError::new(
-                "provided wrong specific parameter for this withdrawal transaction"
+                "provided wrong specific parameter for this withdrawal transaction",
             )),
         }
     }
@@ -752,10 +764,7 @@ impl Operation {
         use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::DeregTxData;
         match self {
-            Operation::StakeDeregistration {
-                ..
-            } 
-            => Ok(DeregTxData::new()?),
+            Operation::StakeDeregistration { .. } => Ok(DeregTxData::new()?),
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
             )),
@@ -1097,15 +1106,13 @@ pub struct TransferHandle {
 
 #[cfg(test)]
 mod tests {
-    use tokio;
     use drasil_murin::clib::crypto::Ed25519KeyHash;
+    use tokio;
     #[tokio::test]
     async fn stake_deregistration() {
         let _poolhash = "pool1a7h89sr6ymj9g2a9tm6e6dddghl64tp39pj78f6cah5ewgd4px0".to_string();
         let addr1 = "stake_test1uqd2nz8ugrn6kwkflvmt9he8dr966dszfmm5lt66qdmn28qt4wff9";
-        let payment_addresses = Some(vec![
-            addr1.to_string()
-        ]);
+        let payment_addresses = Some(vec![addr1.to_string()]);
         let op = super::Operation::StakeDeregistration { payment_addresses };
 
         let deregistration = op.into_stake_deregistration().await.unwrap();
@@ -1118,7 +1125,10 @@ mod tests {
         let poolhash = "pool1pt39c4va0aljcgn4jqru0jhtws9q5wj8u0xnajtkgk9g7lxlk2t".to_string();
         let addr1 = "stake_test1uqnfwu6xlrp95yhkzq0q5p3ct2adrrt92vx5yqsr4ptqkugn5s708".to_string();
         let addresses = Some(vec![addr1]);
-        let op = super::Operation::StakeDelegation { poolhash: poolhash.clone(), addresses };
+        let op = super::Operation::StakeDelegation {
+            poolhash: poolhash.clone(),
+            addresses,
+        };
 
         let delegation = op.into_stake_delegation().await.unwrap();
 
