@@ -5,7 +5,7 @@ use drasil_murin::cardano::MIN_ADA;
 use crate::database::TBContracts;
 use crate::datamodel::{ContractAction, MarketplaceActions, Operation, TransactionPattern};
 use crate::{BuildContract, CmdError};
-async fn handle_marketplace(build_contract: BuildContract) -> crate::Result<String> {
+pub async fn handle_marketplace(build_contract: BuildContract) -> crate::Result<String> {
     todo!()
     // match build_contract
     //     .transaction_pattern()

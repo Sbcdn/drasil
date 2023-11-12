@@ -5,7 +5,6 @@ use bincode as bc;
 use bytes::Bytes;
 
 use crate::datamodel::{ContractAction, ContractType, TransactionPattern};
-use crate::protocol::smartcontract::nft_marketplace;
 use crate::{CmdError, Parse};
 use crate::{Connection, Frame, IntoFrame};
 
@@ -32,8 +31,8 @@ impl BuildContract {
         }
     }
 
-    pub fn customer_id(&self) -> u64 {
-        self.customer_id
+    pub fn customer_id(&self) -> i64 {
+        self.customer_id as i64
     }
 
     pub fn contract_type(&self) -> &ContractType {
@@ -82,17 +81,15 @@ impl BuildContract {
             return Err(Box::new(CmdError::InvalidData));
         }
 
-        let mut ret = String::new();
+        let ret : String;
         match self.ctype {
             ContractType::MarketPlace => {
-                ret = self
-                    .handle_marketplace()
+                ret =crate::protocol::smartcontract::nft_marketplace::handle_marketplace(self)
                     .await
                     .unwrap_or_else(|err| err.to_string());
             }
             ContractType::WmtStaking => {
-                ret = self
-                    .handle_wmt_staking()
+                ret = crate::protocol::worldmobile::build_wmt_sc::handle_wmt_staking(self)
                     .await
                     .unwrap_or_else(|err| err.to_string());
             }

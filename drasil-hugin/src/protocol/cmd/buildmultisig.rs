@@ -79,7 +79,6 @@ impl BuildMultiSig {
                     Err(e) => e.to_string(),
                 };
             }
-            MultiSigType::NftVendor => {}
             MultiSigType::Mint => {
                 ret = match multisig::handle_collection_mint(&self).await {
                     Ok(s) => s,

@@ -14,19 +14,15 @@ use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIs, EnumString, EnumVariantNames};
 
-use super::staking::StakingAction;
+use crate::protocol::worldmobile::staking::StakingAction;
 
 #[derive(
     Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
 )]
 pub enum ContractType {
     MarketPlace,
-    NftShop,
-    NftMinter,
-    TokenMinter,
-    DrasilAPILiquidity,
     WmtStaking,
-    Other,
+    DrasilAPILiquidity,
 }
 
 #[derive(
@@ -44,9 +40,6 @@ pub enum MarketplaceActions {
 )]
 pub enum MultiSigType {
     SpoRewardClaim,
-    NftVendor,
-    DAOVoting,
-    VestingWallet,
     Mint,
     NftCollectionMinter,
     ClAPIOneShotMint,
@@ -466,7 +459,7 @@ pub enum Operation {
     },
     WmtStaking {
         /// The EN to stake to.
-        target_en: String,
+        ennft: String,
         /// The staking amount.
         amount: u64,
     },
@@ -782,6 +775,20 @@ impl Operation {
 
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
+            )),
+        }
+    }
+
+    pub async fn into_wmt_staking(
+        &self,
+    ) -> Result<drasil_murin::worldmobile::wmtstaking::StakeTxData, drasil_murin::error::MurinError> {
+        use drasil_murin::error::MurinError;
+        use drasil_murin::worldmobile::wmtstaking::StakeTxData;
+
+        match self {
+            Operation::WmtStaking { amount,ennft } => Ok(StakeTxData::new(*amount, ennft.to_owned())),
+            _ => Err(MurinError::new(
+                "provided wrong specfic parameter for wmt staking transaction",
             )),
         }
     }

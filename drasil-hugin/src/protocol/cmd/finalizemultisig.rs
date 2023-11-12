@@ -187,11 +187,6 @@ impl FinalizeMultiSig {
                     }
                 }
             }
-            MultiSigType::NftVendor => {}
-
-            MultiSigType::DAOVoting => {}
-
-            MultiSigType::VestingWallet => {}
 
             MultiSigType::UTxOpti => {
                 if let Err(e) = crate::Utxopti::from_str(raw_tx.get_tx_specific_rawdata()) {
