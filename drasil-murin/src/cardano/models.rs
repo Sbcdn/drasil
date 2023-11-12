@@ -175,7 +175,7 @@ impl ARemove for clib::TransactionOutputs {
 
 pub type TransactionUnspentOutput = cutils::TransactionUnspentOutput;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug,Serialize, Deserialize)]
 pub struct TransactionUnspentOutputs(pub(crate) Vec<TransactionUnspentOutput>);
 
 impl Default for TransactionUnspentOutputs {
@@ -183,6 +183,7 @@ impl Default for TransactionUnspentOutputs {
         Self::new()
     }
 }
+
 
 impl TransactionUnspentOutputs {
     pub fn new() -> Self {
@@ -701,6 +702,16 @@ impl<'a> FromIterator<&'a cutils::TransactionUnspentOutput> for TransactionUnspe
         let mut tuos = TransactionUnspentOutputs::new();
         for i in iter {
             tuos.add(i);
+        }
+        tuos
+    }
+}
+
+impl FromIterator<cutils::TransactionUnspentOutput> for TransactionUnspentOutputs {
+    fn from_iter<I: IntoIterator<Item = cutils::TransactionUnspentOutput>>(iter: I) -> Self {
+        let mut tuos = TransactionUnspentOutputs::new();
+        for i in iter {
+            tuos.add(&i);
         }
         tuos
     }

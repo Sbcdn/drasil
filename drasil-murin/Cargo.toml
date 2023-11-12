@@ -14,7 +14,7 @@ authors = ["Torben Poguntke <torben@drasil.io>"]
 tokio = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
-cardano-serialization-lib = "11.2.0"
+cardano-serialization-lib = "11.5.0"
 pretty_env_logger = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true, features = ["preserve_order"] }

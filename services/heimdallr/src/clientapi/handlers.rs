@@ -41,18 +41,6 @@ pub async fn contract_exec_build(
                 return Ok(badreq);
             }
         }
-        ContractType::NftShop => {
-            // Not implemented
-            return Ok(badreq);
-        }
-        ContractType::NftMinter => {
-            // Not implemented
-            return Ok(badreq);
-        }
-        ContractType::TokenMinter => {
-            // Not implemented
-            return Ok(badreq);
-        }
         _ => {
             // Wrong Parameter
             return Ok(badreq);
@@ -104,9 +92,6 @@ pub async fn multisig_exec_build(
     match multisig_type {
         MultiSigType::SpoRewardClaim => {}
         MultiSigType::NftCollectionMinter => {}
-        MultiSigType::NftVendor => {
-            return Ok(badreq);
-        }
         MultiSigType::Mint => {}
         MultiSigType::TestRewards => {
             return Ok(badreq);

@@ -107,12 +107,6 @@ impl FinalizeContract {
                 response = self.finalize_marketplace(raw_tx).await?;
             }
 
-            ContractType::NftShop => {}
-
-            ContractType::NftMinter => {}
-
-            ContractType::TokenMinter => {}
-
             _ => {
                 return Err(CmdError::Custom {
                     str: format!("This ccontract Type does not exists {:?}", self.ctype),

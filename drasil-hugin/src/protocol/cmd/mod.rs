@@ -7,7 +7,6 @@ mod error;
 mod finalizecontract;
 mod finalizemultisig;
 mod finalizestdtx;
-mod hydra;
 mod unknown;
 mod verifydata;
 mod verifyuser;
@@ -17,7 +16,6 @@ pub mod buildtx;
 pub use buildtx::BuildStdTx;
 pub(crate) use discount::*;
 pub use error::CmdError;
-pub use hydra::HydraOps;
 pub use unknown::Unknown;
 pub use verifydata::VerifyData;
 pub use verifyuser::VerifyUser;
@@ -43,7 +41,6 @@ pub enum Command {
     FinalizeMultiSig(FinalizeMultiSig),
     FinalizeStdTx(FinalizeStdTx),
     VerifyUser(VerifyUser),
-    HydraOperation(HydraOps),
     VerifyData(VerifyData),
     Unknown(Unknown),
 }
@@ -117,7 +114,6 @@ impl Command {
             Command::FinalizeMultiSig(_) => "fms",
             Command::FinalizeStdTx(_) => "ftx",
             Command::VerifyUser(_) => "vus",
-            Command::HydraOperation(_) => "hyd",
             Command::VerifyData(_) => "vd",
             Command::Unknown(_) => "unkw",
         }

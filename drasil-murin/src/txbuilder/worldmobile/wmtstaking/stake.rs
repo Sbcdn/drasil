@@ -3,29 +3,27 @@
 //! This module implement the staking transaction for WorldMobile token.
 //!
 
-use std::collections::HashMap;
-
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::utils as cutils;
 use clib::address::{BaseAddress, EnterpriseAddress, StakeCredential};
-use clib::plutus::{ConstrPlutusData, PlutusData, PlutusList, PlutusScript, PlutusScripts};
-use clib::utils::to_bignum;
-use clib::{AssetName, Assets, MultiAsset, PolicyID, TransactionOutput, TransactionOutputs};
+use clib::plutus::{ConstrPlutusData, PlutusData, PlutusList, PlutusScripts, self, Redeemer, RedeemerTag, Redeemers, Language, ExUnits};
+use clib::utils::{to_bignum, hash_script_data};
+use clib::{AssetName, Assets, MultiAsset, TransactionOutput, TransactionOutputs, TransactionInputs};
 
-use super::configuration::StakingConfig;
-use super::models::StakeTxData;
 use crate::cardano::{self, supporting_functions, Tokens};
 use crate::error::MurinError;
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
+use crate::pparams::ProtocolParameters;
 use crate::txbuilder::{input_selection, TxBO};
 use crate::TxData;
+use crate::worldmobile::configuration::StakingConfig;
 use crate::{min_ada_for_utxo, PerformTxb};
+
+use super::StakeTxData;
 
 /// This type is a staking transaction builder for WMT.
 #[derive(Debug, Clone)]
 pub struct AtStakingBuilder {
-    /// List of Plutus contracts/policies
-    pub contracts: HashMap<String, PlutusScript>,
     /// Staking data.
     pub stxd: StakeTxData,
     /// Configuration data.
@@ -33,27 +31,14 @@ pub struct AtStakingBuilder {
 }
 
 /// This type represents a staking transaction parameters.
-pub type AtStakingParams<'param> = (&'param HashMap<String, PlutusScript>, &'param StakeTxData);
-
-impl AtStakingBuilder {
-    /// Create new staking builder
-    pub fn new(stxd: StakeTxData, config: StakingConfig) -> Self {
-        Self {
-            stxd,
-            config,
-            contracts: HashMap::with_capacity(2),
-        }
-    }
-}
+pub type AtStakingParams<'param> = &'param StakeTxData;
 
 impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
     /// Creates new staking builder.
     fn new(params: AtStakingParams) -> Self {
-        let (contracts, stxd) = params;
         let config = StakingConfig::load();
         Self {
-            contracts: contracts.to_owned(),
-            stxd: stxd.clone(),
+            stxd: params.clone(),
             config,
         }
     }
@@ -75,19 +60,19 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
             debug!("--------------------------------------------------------------------------------------------------------\n");
         }
 
-        if self.contracts.len() != 1usize {
+        if self.config.smart_contracts.len() != 1usize {
             return Err(MurinError::new(
                 "Minting multiple NFTs from different scripts isn't yet supported",
             ));
         }
 
         // No unwraping Styvane
-        let validator_contract = self.contracts.get("validator").unwrap();
+        let validator_contract = self.config.smart_contracts.get("validator").unwrap();
         let script_hash = validator_contract.hash();
         let credential = StakeCredential::from_scripthash(&script_hash);
 
         // No unwraping Styvane
-        let network_id = self.stxd.wallet_addr.network_id()?;
+        let network_id = self.stxd.wallet_addr.clone().unwrap().network_id()?;
         let contract_address = EnterpriseAddress::new(network_id, &credential).to_address();
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,23 +86,20 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
         let mut assets = Assets::new();
 
         // Key is the asset name, should come from configuration data.
-        let key = AssetName::new(hex::decode(&self.config.asset_name)?)?;
-        assets.insert(&key, &cutils::to_bignum(self.stxd.staking_amount));
-
+        assets.insert(&self.config.wmt_assetname, &cutils::to_bignum(self.stxd.staking_amount));
         // We create a policy from the policy in configuration data.
-        let wmt_policy_id = PolicyID::from_hex(&self.config.policy)?;
-        multiassets.insert(&wmt_policy_id, &assets);
-
-        // TODO: Generate from smart contract.
-        let execution_proof_policy_id =
-            PolicyID::from_hex("b090c134738121e6c96dd9eedc3f7a99e6ac9d21985c1b97cba72077")?;
+        multiassets.insert(&self.config.wmt_policy_id, &assets);
 
         // Create new asset for execution proof.
         // Dummy token name is needed to resolve the correct token name
         // because we know the size of the token name which is a transaction hash(32bits) of
-        // an input UTXO.
+        // an input UTXO. But Input UTxOs are not select yet so we use a dummy to first select tokens and still have a correct minUtxO calculation.
         let dummy_token_name =
             hex::decode("b9df48c3f4614337d7c67fc4ecd81e404cc75b89ef348a92e6d34f02a70b242e")?;
+
+        // Restore PolicyId from Plutus Minting Policy
+        let minting_policy_ex_proof = self.config.smart_contracts.get("minting").unwrap();
+        let execution_proof_policy_id = minting_policy_ex_proof.hash();
 
         let mut assets = Assets::new();
         let key = AssetName::new(dummy_token_name.clone())?;
@@ -131,14 +113,13 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
         // Create Plutus Datum
         let mut inner = PlutusList::new();
         inner.add(&PlutusData::new_bytes(
-            self.stxd.registration_datum.en_used_nft_tn.to_bytes(),
+            hex::decode(&self.stxd.ennft)?,
         ));
-
         // With a staking address we can determine which addresses belong to the
         // same wallet.
 
         // Should never fail.
-        let base_addr = BaseAddress::from_address(&self.stxd.wallet_addr).unwrap();
+        let base_addr = BaseAddress::from_address(&self.stxd.wallet_addr.clone().unwrap()).unwrap();
         // Should never fail.
         let payment_credential = base_addr.payment_cred().to_keyhash().unwrap();
         inner.add(&PlutusData::new_bytes(payment_credential.to_bytes()));
@@ -151,15 +132,6 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
         validator_output.set_plutus_data(datum);
         let min_utxo_val = min_ada_for_utxo(&validator_output)?.amount().coin();
         validator_value.set_coin(&min_utxo_val);
-
-        // Set real validator out.
-        let validator_output = TransactionOutput::new(&contract_address, &validator_value);
-
-        // Add validator output to transaction output.
-        // create new TxOutputs because previous one still has dummy token name.
-        // The outputs are the UTXOs which will exist after the transaction successfuly execution.
-        let mut txouts = TransactionOutputs::new();
-        txouts.add(&validator_output);
 
         // Inputs
         let mut input_txuos = gtxd.clone().get_inputs();
@@ -177,17 +149,16 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
         debug!("\nCollateral Input: {:?}", collateral_input_txuo);
 
         // The required value for the transaction.
-        let mut needed_value = cardano::sum_output_values(&txouts);
+        let mut needed_value = validator_value.clone();
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone()).unwrap());
         let security = cutils::to_bignum(
             cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * cardano::MIN_ADA),
         ); // 10% Security for min utxo etc.
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
-        let needed_value = cutils::Value::new(&needed_value.coin());
 
         debug!("Needed Value: {:?}", needed_value);
         debug!(
-            "\n\n\n\n\nTxIns Before selection:\n {:?}\n\n\n\n\n",
+            "\n\nTxIns Before selection:\n {:?}\n\n",
             input_txuos
         );
 
@@ -223,13 +194,13 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
         // Create Plutus Datum
         let mut inner = PlutusList::new();
         inner.add(&PlutusData::new_bytes(
-            self.stxd.registration_datum.en_used_nft_tn.to_bytes(),
+            hex::decode(&self.stxd.ennft)?
         ));
 
         // With a staking address we can determine which addresses belong to the
         // same wallet.
         // Should never fail.
-        let base_addr = BaseAddress::from_address(&self.stxd.wallet_addr).unwrap();
+        let base_addr = BaseAddress::from_address(&self.stxd.wallet_addr.clone().unwrap()).unwrap();
         // Should never fail.
         let payment_credential = base_addr.payment_cred().to_keyhash().unwrap();
         inner.add(&PlutusData::new_bytes(payment_credential.to_bytes()));
@@ -253,6 +224,10 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
 
         let mut validator_output = TransactionOutput::new(&contract_address, &validator_value);
         validator_output.set_plutus_data(datum);
+
+        let mut txouts = TransactionOutputs::new();
+        txouts.add(&validator_output);
+
         // The number of verification keys. This determine the number of signatures required.
         let vkey_counter = cardano::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
 
@@ -281,8 +256,8 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
             &mut first_run,
             &mut txos_paid,
             &mut tbb_values,
-            &self.stxd.wallet_addr,
-            &self.stxd.wallet_addr,
+            &self.stxd.wallet_addr.clone().unwrap(),
+            &self.stxd.wallet_addr.clone().unwrap(),
             &mut acc,
             None,
             &fcrun,
@@ -304,25 +279,78 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
         let ttl = cardano::get_ttl_tx(&gtxd.clone().get_network());
         // Current slot of the network.
         let slot = cutils::to_bignum(gtxd.clone().get_current_slot() + ttl);
-        log::info!("Added Slot: {:?}", slot);
-        log::info!("Current Slot: {:?}", gtxd.clone().get_current_slot());
-        log::info!("Added Slot Time: {:?}", ttl,);
 
         // Create the transaction body.
         let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
-        txbody.set_reference_inputs(&self.stxd.registration_utxos);
+        let mut inputs = TransactionInputs::new();
+        inputs.add(&self.stxd.registration_reference.clone().unwrap().input());
+        txbody.set_reference_inputs(&inputs);
         txbody.set_ttl(&slot);
-        info!("\nTxOutputs: {:?}\n", txbody.outputs());
-        debug!("\nTxInputs: {:?}\n", txbody.inputs());
         txbody.set_mint(&mint);
 
+        // Redeemer
+        let redeemer_data = plutus::PlutusData::new_constr_plutus_data(&plutus::ConstrPlutusData::new(
+            &to_bignum(1u64),
+            &plutus::PlutusList::new(),
+        ));
+
+  
+
+        let protocol_parameters =ProtocolParameters::read_protocol_parameter(
+            &std::env::var("PPPATH")
+                .unwrap_or_else(|_| "protocol_parameters_preview.json".to_owned()),
+        )
+        .unwrap();
+        // CostModel
+        let cost_models = protocol_parameters.get_CostMdls().unwrap();
+        let costmodel = cost_models
+            .get(&Language::new_plutus_v2())
+            .unwrap();
+        let mut pcm = plutus::CostModel::new();
+        let mut c = 0;
+        for i in 0..costmodel.len() {
+            if let Ok(n) = costmodel.get(i) {
+                if n != cutils::Int::from_str("0")? {
+                    pcm.set(c, &n)?;
+                    c += 1;
+                }
+            }
+            
+        }
+        let mut cstmodls = plutus::Costmdls::new();
+        cstmodls.insert(&plutus::Language::new_plutus_v2(), &pcm);
+
+        //let costmodel = cost_models
+        //    .get(&Language::new_plutus_v2())
+        //    .unwrap();
+        //let mut cstmodls_ = plutus::Costmdls::new();
+        //cstmodls_.insert(&costmodel);
+
+        let exunits = ExUnits::new(&to_bignum(protocol_parameters.execution_unit_prices.priceMemory as u64), &to_bignum(protocol_parameters.execution_unit_prices.priceSteps as u64));   
+        let redeemer = Redeemer::new(
+            &RedeemerTag::new_mint(),
+            &to_bignum(0 as u64),
+            &redeemer_data,
+            &exunits,
+        );
+
+        let mut redeemers = Redeemers::new();
+        redeemers.add(&redeemer);
+        log::debug!("\nCostModels:\n{:?}\n\n", cstmodls);
+
+        let scriptdatahash = hash_script_data(
+            &redeemers, &cstmodls, None,
+        );
+        log::debug!(
+            "ScriptDataHash: {:?}\n",
+            hex::encode(scriptdatahash.to_bytes())
+        );
+    
         // Create the transaction witnesses.
         let mut txwitness = clib::TransactionWitnessSet::new();
+        txwitness.set_redeemers(&redeemers);
         let mut plutus_scripts = PlutusScripts::new();
-
-        // No unwraping Styvane
-        let plutus_contract = self.contracts.get("minting").unwrap();
-        plutus_scripts.add(plutus_contract);
+        plutus_scripts.add(minting_policy_ex_proof);
         txwitness.set_plutus_scripts(&plutus_scripts);
 
         Ok((txbody, txwitness, None, saved_input_txuos, vkey_counter))

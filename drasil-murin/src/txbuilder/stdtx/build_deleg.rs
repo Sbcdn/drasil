@@ -151,13 +151,6 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         txbody.set_ttl(&cutils::to_bignum(slot));
         txbody.set_certs(&certs);
 
-        // Set network Id
-        //if gtxd.get_network() == clib::NetworkIdKind::Testnet {
-        //    txbody.set_network_id(&clib::NetworkId::testnet());
-        //} else {
-        //    txbody.set_network_id(&clib::NetworkId::mainnet());
-        //}
-
         let txwitness = clib::TransactionWitnessSet::new();
 
         debug!("TxWitness: {:?}", hex::encode(txwitness.to_bytes()));
