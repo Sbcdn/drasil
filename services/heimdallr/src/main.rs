@@ -6,9 +6,11 @@ use std::env;
 use heimdallr::clientapi;
 use warp::Filter;
 
+/// The default socket address exposed by Heimdallr server unless another address is specified. 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: &str = "4000";
 
+/// Run Heimdallr server on the given socket address, with the given filters.
 #[tokio::main]
 async fn main() {
     if env::var_os("RUST_LOG").is_none() {

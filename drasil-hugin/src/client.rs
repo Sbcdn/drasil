@@ -8,6 +8,7 @@ pub struct Client {
     pub connection: Connection,
 }
 
+/// Create a client connected to the given address
 pub async fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<Client> {
     let socket = TcpStream::connect(addr).await?;
     let connection = Connection::new(socket);

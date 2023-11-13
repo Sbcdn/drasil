@@ -1,3 +1,7 @@
+//! This file checks whether a JWT bearer token was provided in the HTTP request to Heimdallr server, and whether that
+//! bearer token is correct. HTTP requests to Heimdallr server must always contain a correct JWT bearer token, or else 
+//! the request gets rejected.
+
 use std::str;
 
 use drasil_hugin::Signature;
@@ -9,14 +13,18 @@ use warp::{reject, Rejection};
 
 use crate::error::Error;
 
+/// Prefix for bearer token in HTTP request header
 const BEARER: &str = "Bearer ";
 
+/// The required format of the JWT bearer token's payload
 #[derive(Debug, Deserialize, Serialize)]
 struct ApiClaims {
     sub: String,
     exp: usize,
 }
 
+/// This method authenticates and authorizes the client by using the given JWT token in the HTTP headers. 
+/// It also tries to parse the request body into a transaction pattern.
 pub(crate) async fn authorize(
     headers: HeaderMap<HeaderValue>,
     body: bytes::Bytes,
@@ -49,16 +57,6 @@ pub(crate) async fn authorize(
             .map_err(Error::JWTTokenError)?;
             log::info!("lookup user data ...");
             let user_id: u64 = decoded.claims.sub.parse().map_err(Error::ParseIntError)?;
-            // Deactivates User Identification, only API token validity checked
-            //let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
-            //let cmd = VerifyUser::new(user_id, jwt);
-            //log::info!("try to verify user ...");
-            //match client.build_cmd::<VerifyUser>(cmd).await {
-            //    Ok(_) => {}
-            //    Err(_) => {
-            //        return Err(reject::custom(Error::JWTTokenError));
-            //    }
-            //};
             log::debug!("Authentication successful: User_id: {user_id:?}; txp: {txp_out:?}");
             Ok((user_id, txp_out))
         }
@@ -70,6 +68,7 @@ pub(crate) async fn authorize(
     }
 }
 
+/// Find JWT among HTTP request's headers and format it as a string
 fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String, Error> {
     let header = headers.get(AUTHORIZATION).ok_or(Error::NoAuthHeaderError)?;
     let header = str::from_utf8(header.as_bytes()).map_err(|_| Error::NoAuthHeaderError)?;

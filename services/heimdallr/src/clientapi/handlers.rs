@@ -1,3 +1,6 @@
+//! Handlers that define what code Heimdallr will run in response to different requests to different endpoints. 
+//! These handlers are used in corresponding Warp filters. 
+
 use std::convert::Infallible;
 use std::env;
 use std::str::FromStr;
@@ -14,10 +17,12 @@ use drasil_hugin::{
 
 use strum::VariantNames;
 
+/// Create a client connected to the given Odin address
 async fn connect_odin() -> Client {
     connect(env::var("ODIN_URL").unwrap()).await.unwrap()
 }
 
+/// Return a list of all smart-contract types and multi-signature transaction types to choose from
 pub async fn contracts_list() -> Result<impl warp::Reply, Infallible> {
     Ok(warp::reply::json(
         &ContractType::VARIANTS
@@ -27,6 +32,7 @@ pub async fn contracts_list() -> Result<impl warp::Reply, Infallible> {
     ))
 }
 
+/// Build a smart-contract transaction
 pub async fn contract_exec_build(
     contract: ContractType,
     action: String,
@@ -94,6 +100,7 @@ pub async fn contract_exec_build(
     }
 }
 
+/// Build a MultiSig transaction
 pub async fn multisig_exec_build(
     multisig_type: MultiSigType,
     (customer_id, payload): (u64, TXPWrapper),
@@ -151,6 +158,7 @@ pub async fn multisig_exec_build(
     }
 }
 
+/// Build a standard transaction
 pub async fn stdtx_exec_build(
     tx_type: StdTxType,
     (customer_id, payload): (u64, TXPWrapper),
@@ -201,6 +209,7 @@ pub async fn stdtx_exec_build(
     }
 }
 
+/// Finalize a smart-contract transaction.
 pub async fn contract_exec_finalize(
     contract: ContractType,
     tx_id: String,
@@ -234,6 +243,7 @@ pub async fn contract_exec_finalize(
     Ok(response)
 }
 
+/// Finalize a Multi-signature transaction
 pub async fn multisig_exec_finalize(
     multisig_type: MultiSigType,
     tx_id: String,
@@ -268,6 +278,7 @@ pub async fn multisig_exec_finalize(
     Ok(response)
 }
 
+/// Finalize a standard transaction
 pub async fn stdtx_exec_finalize(
     txtype: StdTxType,
     tx_id: String,
@@ -296,6 +307,8 @@ pub async fn stdtx_exec_finalize(
     Ok(response)
 }
 
+/// Transaction for minting new tokens. Payload specifies which tokens to mint, how much to mint,
+/// which address will receive the minted tokens, minting metadata, and whether it's testnet/mainnet.
 pub async fn hnd_oneshot_minter_api(
     (customer_id, payload): (u64, TXPWrapper),
 ) -> Result<impl warp::Reply, Infallible> {

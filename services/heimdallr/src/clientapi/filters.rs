@@ -1,13 +1,20 @@
+//! This is a list of all filters used by Heimdallr server. The filters are all bundled 
+//! together into the `endpoints()` function. Each filter specifies a function to run and 
+//! which path will activate that function. 
+
 #![allow(opaque_hidden_inferred_bound)]
 use super::handlers;
 
 use drasil_hugin::datamodel::models::{ContractType, MultiSigType, StdTxType, TXPWrapper};
 use warp::Filter;
 
+/// Either tell the client which request types are valid, or mint new tokens. 
 fn api_endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    resp_option().or(oneshot_minter_api())
+    request_options().or(oneshot_minter_api())
 }
 
+/// Transaction for minting new tokens. HTTP Request's payload specifies which tokens to mint, how much
+/// to mint, which address will receive the minted tokens, minting metadata, and whether it's testnet/mainnet.
 fn oneshot_minter_api() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 {
     warp::path("api")
@@ -18,12 +25,14 @@ fn oneshot_minter_api() -> impl Filter<Extract = impl warp::Reply, Error = warp:
         .and_then(handlers::hnd_oneshot_minter_api)
 }
 
+/// Summary of all the endpoints that Heimdallr server listens to, and what Heimdallr does in 
+/// response to given HTTP request.
 pub fn endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     list_contracts()
         .or(exec_build_multisig())
         .or(exec_build_contract())
         .or(exec_build_stdtx())
-        .or(resp_option())
+        .or(request_options())
         .or(exec_finalize_contract())
         .or(exec_finalize_multisig())
         .or(exec_finalize_stdtx())
@@ -31,7 +40,8 @@ pub fn endpoints() -> impl Filter<Extract = impl warp::Reply, Error = warp::Reje
         .or(warp::get().and(warp::any().map(warp::reply)))
 }
 
-fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+/// Tell the client which request types it can send (i.e. HEAD, GET, POST, OPTION). 
+fn request_options() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::options()
         .and(warp::header("origin"))
         .map(|origin: String| {
@@ -47,14 +57,15 @@ fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Reject
         })
 }
 
-/// GET contracts
+/// GET contracts.
+/// Returns a list of all smart-contract types and multi-signature transaction types that the user can choose from.
 fn list_contracts() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path!("lcn")
         .and(warp::get())
         .and_then(handlers::contracts_list)
 }
 
-/// Build a Smart Contract transaction
+/// Build a Smart-Contract transaction
 fn exec_build_contract() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 {
     warp::path("cn")
@@ -65,7 +76,7 @@ fn exec_build_contract() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and_then(handlers::contract_exec_build)
 }
 
-/// Finalize a Contract transaction
+/// Finalize a Smart Contract transaction
 fn exec_finalize_contract(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("cn")
@@ -87,7 +98,7 @@ fn exec_build_multisig() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and_then(handlers::multisig_exec_build)
 }
 
-/// Finalize a MultiSig transaction
+/// Finalize a multi-signature transaction
 fn exec_finalize_multisig(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::post()
@@ -108,7 +119,7 @@ fn exec_build_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = warp::R
         .and_then(handlers::stdtx_exec_build)
 }
 
-/// Build a MultiSig transaction
+/// Finalize a standard transaction
 fn exec_finalize_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 {
     warp::path("tx")
@@ -120,6 +131,7 @@ fn exec_finalize_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = warp
         .and_then(handlers::stdtx_exec_finalize)
 }
 
+/// `Filter` that adds bearer token to HTTP request's header
 fn auth() -> impl Filter<Extract = ((u64, TXPWrapper),), Error = warp::Rejection> + Clone {
     use super::auth::authorize;
     use warp::{
