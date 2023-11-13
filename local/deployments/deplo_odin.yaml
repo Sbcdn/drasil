@@ -33,28 +33,11 @@ spec:
             claimName: odin-storage
       containers:
         - name: dvltath
-          env:
-            - name: POD_HOST
-              value: "0.0.0.0"
-            - name: POD_PORT
-              value: "4001"
-            - name: VSOCKET_PATH
-              value: /cache/req.sock
-            - name: SPATH
-              value: /cache/sec
-            - name: MOUNT
-              value: secret
-            - name: VROLE_ID
-              value: 88b372bb-ae5b-e747-a8de-60f681f59db5
-            - name: VSECRET_ID
-              value: a99adf0a-89c1-5d88-7a44-0f12622af788
-            - name: VAULT_NAMESPACE
-            - name: VPATH
-              value: drasil/
-            - name: VAULT_TOKEN
-              value: 2d3w34wd3
-            - name: VAULT_ADDR
-              value: http://34.118.225.4:8200
+          envFrom:
+          - configMapRef:
+              name: drasil-config
+          - configMapRef:
+              name: drasil-dvltath-config
           image: docker.io/minikube/dvltath:v1.3
           imagePullPolicy: Never
           resources:
@@ -64,6 +47,11 @@ spec:
             requests:
                 cpu: 25m
                 memory: 10Mi
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 3000
+            fsGroup: 2000
+            fsGroupChangePolicy: "OnRootMismatch"
           volumeMounts:
           - mountPath: /cache
             name: cache-volume
@@ -80,76 +68,8 @@ spec:
             requests:
                 cpu: 25m
                 memory: 10Mi
-          env:
-            - name: POD_HOST
-              value: "0.0.0.0"
-            - name: POD_PORT
-              value: "6142"
-            - name: CONFIG
-              value: /usr/bin/config.toml
-            - name: RUST_LOG
-              value: debug
-            - name: JWT_PUB_KEY
-              value: '-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+LwS66RkRJ3gYlrXCisZwWaNQo3nkNjRujIVVI9jEGCWYRdECga9lUjrg==-----END
-              PUBLIC KEY-----'
-            - name: JWT_KEY
-              value: '-----BEGIN PRIVATE KEY-----MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgoC2z4jAczA6AkVwgoglFOd16hEIwGFAvTxxxssEYvGahRANCAAQwyRqlrWZU1C1R1Y/0HrU6kxy4EebD4vBLrpGREneBiWtcKKxnBZo1CjeeQ2NG6MhVUj2MQYJZhF0QKBr2VSOu-----END
-              PRIVATE KEY-----'
-            - name: REWARDS_DB_URL
-              value: postgres://wm_rw_dbuser:password@34.147.214.161:5432/rewarddb?password=fgMGtznfIs1OZzL
-            - name: PLATFORM_DB_URL
-              value: postgres://wm_rw_dbuser:password@34.147.214.161:5432/drasildb?password=fgMGtznfIs1OZzL
-            - name: DBSYNC_DB_URL
-              value: postgres://wm_ro_dbuser:dbsyncwmro#1@34.142.44.177/testnet
-            - name: PENDING_TX_DATASTORE_1
-              value: pendingtx1
-            - name: PENDING_TX_DATASTORE_2
-              value: pendingtx2
-            - name: PENDING_TX_DATASTORE_3
-              value: pendingtx3
-            - name: USED_UTXO_DATASTORE_1
-              value: usedutxos1
-            - name: USED_UTXO_DATASTORE_2
-              value: usedutxos2
-            - name: USED_UTXO_DATASTORE_3
-              value: usedutxos3
-            - name: AMQP_ADDR
-              value: amqp://rmq:rmq@34.118.227.181:5672
-            - name: QUEUE_NAME
-              value: drasil_jobs
-            - name: TXGSET
-            - name: TX_SUBMIT_ENDPOINT1
-              value: http://34.142.44.177:8090/api/submit/tx
-            - name: TX_SUBMIT_ENDPOINT2
-            - name: TX_SUBMIT_ENDPOINT3
-            - name: REDIS_DB
-              value: redis://34.118.225.230:6379/0
-            - name: REDIS_DB_URL_UTXOMIND
-              value: redis://34.118.225.230:6379/0
-            - name: REDIS_DB_URL_REPLICA
-              value: redis://34.118.225.230:6379/1
-            - name: REDIS_CLUSTER
-              value: "false"
-            - name: VSOCKET_PATH
-              value: /cache/req.sock
-            - name: SPATH
-              value: /cache/sec
-            - name: VPATH
-              value: drasil/
-            - name: MOUNT
-              value: secret
-            - name: ADM_USER
-            - name: POW
-            - name: VAULT_TOKEN
-              value: w4tsefsxds4
-            - name: VAULT_ADDR
-              value: http://34.118.225.103:8200
-            - name: VROLE_ID
-              value: 129243c1-8b6a-5fbb-8d4f-221e01cb089d
-            - name: VSECRET_ID
-              value: "123456"
-            - name: VROLE_NAME
-              value: drslapp
-            - name: VAULT_NAMESPACE
-            - name: RUST_BACKTRACE
-              value: full
+          envFrom:
+          - configMapRef:
+              name: drasil-config
+          - configMapRef:
+              name: drasil-odin-config

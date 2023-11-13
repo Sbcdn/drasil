@@ -14,25 +14,15 @@ spec:
       labels:
         app: drasil-drasil-job-processor
     spec:
-      containers:Hi Enrique,
+      containers:
       - env:
-        - name: AMQP_ADDR
-          value: amqp://rmq:rmq@34.118.227.181:5672
-        - name: RUST_LOG
-          value: debug
         - name: CONSUMER_NAME
           valueFrom:
-            configMapKeyRef:
-              key: CONSUMER_NAME
-              name: preview-testnet-drasil-job-processor-config-1zhm
-        - name: QUEUE_NAME
-          value: drasil_jobs
-        - name: REWARDS_DB_URL
-          value: postgres://wm_rw_dbuser:password@34.147.214.161:5432/rewarddb?password=fgMGtznfIs1OZzL
-        - name: PLATFORM_DB_URL
-          value: postgres://wm_rw_dbuser:password@34.147.214.161:5432/drasildb?password=fgMGtznfIs1OZzL
-        - name: DBSYNC_DB_URL
-          value: postgres://wm_ro_dbuser:dbsyncwmro#1@34.142.44.177/testnet
+            fieldRef:
+              fieldPath: status.podName
+        envFrom:
+          - configMapRef:
+              name: drasil-config
         image: docker.io/minikube/drasil-jobs:v1.3
         imagePullPolicy: Never
         name: drasil-jobs

@@ -15,15 +15,15 @@ lazy_static! {
     static ref VROLE_NAME: String = var("VROLE_NAME").unwrap_or_else(|_| "dummy_role".to_string());
     static ref VSECRET_ID: String =
         var("VSECRET_ID").unwrap_or_else(|_| "dummy_secret".to_string());
-    static ref VAULT_ADDR: String =
-        var("VAULT_ADDR").unwrap_or_else(|_| "dummy_address".to_string());
+    static ref VAULT_ADDRESS: String =
+        var("VAULT_ADDRESS").unwrap_or_else(|_| "dummy_address".to_string());
     static ref VAULT_NAMESPACE: String =
         var("VAULT_NAMESPACE").unwrap_or_else(|_| "dummy_ns".to_string());
-    static ref MOUNT: String = var("MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
-    static ref SPATH: String = var("SPATH").unwrap_or_else(|_| "dummy_path".to_string());
-    static ref VSOCKET_PATH: String =
-        var("VSOCKET_PATH").unwrap_or_else(|_| "dummy_path".to_string());
-    static ref VPATH: String = var("VPATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref VAULT_MOUNT: String = var("VAULT_MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
+    static ref DVLTATH_SPATH: String = var("DVLTATH_SPATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref DVLTATH_VSOCKET_PATH: String =
+        var("DVLTATH_VSOCKET_PATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref VAULT_PATH: String = var("VAULT_PATH").unwrap_or_else(|_| "dummy_path".to_string());
 }
 
 fn get_role_id() -> String {
@@ -38,8 +38,8 @@ fn get_secret_id() -> String {
     VSECRET_ID.to_string()
 }
 
-fn get_vault_address() -> String {
-    VAULT_ADDR.to_string()
+fn get_VAULT_ADDRESSess() -> String {
+    VAULT_ADDRESS.to_string()
 }
 
 fn get_namespace() -> String {
@@ -47,15 +47,15 @@ fn get_namespace() -> String {
 }
 
 pub(crate) fn get_gl_mount() -> String {
-    MOUNT.to_string()
+    VAULT_MOUNT.to_string()
 }
 
 pub(crate) fn get_v_path() -> String {
-    VPATH.to_string()
+    VAULT_PATH.to_string()
 }
 
 fn get_secret_path() -> String {
-    SPATH.to_string()
+    DVLTATH_SPATH.to_string()
 }
 
 fn get_vtoken() -> String {
@@ -119,7 +119,7 @@ async fn request_secret(
     path: &String,
 ) -> Result<GenerateNewSecretIDResponse, crate::error::Error> {
     let url = Uri::new(
-        VSOCKET_PATH.to_string(),
+        DVLTATH_VSOCKET_PATH.to_string(),
         &("/auth/".to_string() + &get_role_name()),
     )
     .into();
@@ -178,7 +178,7 @@ async fn vault_auth(client: &VaultClient) -> AuthInfo {
 }
 
 pub async fn vault_connect_sdc() -> VaultClient {
-    let address = get_vault_address();
+    let address = get_VAULT_ADDRESSess();
     let namespace = get_namespace();
     let mut client = VaultClient::new(
         VaultClientSettingsBuilder::default()
@@ -198,7 +198,7 @@ pub async fn vault_connect_sdc() -> VaultClient {
 }
 
 pub async fn vault_connect() -> VaultClient {
-    let address = get_vault_address();
+    let address = get_VAULT_ADDRESSess();
     let namespace = get_namespace();
     let mut client = VaultClient::new(
         VaultClientSettingsBuilder::default()

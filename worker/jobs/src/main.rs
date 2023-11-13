@@ -15,8 +15,8 @@ use drasil_sleipnir::jobs::JobTypes;
 lazy_static! {
     static ref AMQP_ADDR: String =
         std::env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://rmq:rmq@127.0.0.1:5672/%2f".into());
-    static ref QUEUE_NAME: String =
-        std::env::var("QUEUE_NAME").unwrap_or_else(|_| "drasil_jobs".to_string());
+    static ref JOB_QUEUE_NAME: String =
+        std::env::var("JOB_QUEUE_NAME").unwrap_or_else(|_| "drasil_jobs".to_string());
     static ref CONSUMER_NAME: String =
         std::env::var("CONSUMER_NAME").unwrap_or_else(|_| "job_processor_".to_string());
 }
@@ -66,7 +66,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
 
     let queue = channel
         .queue_declare(
-            &QUEUE_NAME.to_string(),
+            &JOB_QUEUE_NAME.to_string(),
             lapin::options::QueueDeclareOptions::default(),
             lapin::types::FieldTable::default(),
         )
@@ -75,7 +75,7 @@ async fn init_rmq_listen(pool: Pool) -> Result<(), error::Error> {
 
     let mut consumer = channel
         .basic_consume(
-            &QUEUE_NAME.to_string(),
+            &JOB_QUEUE_NAME.to_string(),
             &(CONSUMER_NAME.to_owned() + &random::<u64>().to_string()),
             lapin::options::BasicConsumeOptions::default(),
             lapin::types::FieldTable::default(),

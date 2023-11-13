@@ -21,6 +21,15 @@ spec:
       - env:
         - name: RUST_LOG
           value: debug
+        args:
+          - "daemon"
+        volumeMounts:
+          - mountPath: /etc/oura
+            name: config
         image: ghcr.io/txpipe/oura:latest
         imagePullPolicy: IfNotPresent
         name: oura
+      volumes:
+      - name: config
+        configMap:
+          name: oura-config

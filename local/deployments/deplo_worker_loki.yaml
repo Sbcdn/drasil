@@ -16,16 +16,13 @@ spec:
     spec:
       containers:
       - env:
-        - name: AMQP_ADDR
-          valueFrom:
-            configMapKeyRef:
-              key: AMQP_ADDR
-              name: preview-testnet-worker-loki-config-aymp
         - name: CONSUMER_NAME
           valueFrom:
-            configMapKeyRef:
-              key: CONSUMER_NAME
-              name: preview-testnet-worker-loki-config-aymp
+            fieldRef:
+              fieldPath: metadata.name
+        envFrom:
+          - configMapRef:
+              name: drasil-config
         image: docker.io/minikube/work-loki:v1.3
         imagePullPolicy: Never
         name: worker-loki

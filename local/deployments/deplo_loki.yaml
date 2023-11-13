@@ -22,11 +22,10 @@ spec:
               apiVersion: v1
               fieldPath: status.podIP
         - name: POD_PORT
-          value: "6142"
-        - name: AMQP_ADDR
-          value: amqp://rmq:rmq@34.118.227.181:5672
-        - name: RUST_LOG
-          value: debug
+          value: "6144"
+        envFrom:
+          - configMapRef:
+              name: drasil-config
         image: docker.io/minikube/loki:v1.3
         imagePullPolicy: Never
         name: loki

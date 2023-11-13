@@ -13,7 +13,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 lazy_static! {
     static ref SOCKET_PATH: String =
-        std::env::var("VSOCKET_PATH").unwrap_or_else(|_| "./warp.sock".to_string());
+        std::env::var("DVLTATH_VSOCKET_PATH").unwrap_or_else(|_| "./warp.sock".to_string());
     static ref OROLE_ID: String =
         std::env::var("OROLE_ID").unwrap_or_else(|_| "role-id".to_string());
     static ref OSECRET_ID: String =

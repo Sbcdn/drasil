@@ -1,7 +1,7 @@
 use super::get_user_from_string;
 use crate::{
     error,
-    handler::{get_rmq_con, QUEUE_NAME},
+    handler::{get_rmq_con, JOB_QUEUE_NAME},
     WebResult,
 };
 use deadpool_lapin::Pool;
@@ -63,7 +63,7 @@ pub async fn entrp_create_nfts_from_csv(
 
     let q = channel
         .queue_declare(
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::QueueDeclareOptions::default(),
             lapin::types::FieldTable::default(),
         )
@@ -74,7 +74,7 @@ pub async fn entrp_create_nfts_from_csv(
     channel
         .basic_publish(
             "",
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::BasicPublishOptions::default(),
             serde_json::to_string(&job)
                 .map_err(|_| crate::error::Error::Custom("serde serialization failed".to_owned()))?
