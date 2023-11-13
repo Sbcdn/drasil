@@ -1140,9 +1140,9 @@ pub async fn submit_endpoint(
 /// Submits a CBOR Transaction to the Cardano Network, it is possible to send the transaction to three endpoints simultaneously.
 /// TODO: Make it generic for an arbitrary amount of submit endpoints. 
 pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<String, MurinError> {
-    let submit1 = std::env::var("TX_SUBMIT_ENDPOINT1")?;
-    let submit2 = std::env::var("TX_SUBMIT_ENDPOINT2")?;
-    let submit3 = std::env::var("TX_SUBMIT_ENDPOINT3")?;
+    let submit1 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT1")?;
+    let submit2 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT2")?;
+    let submit3 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT3")?;
 
     let client = reqwest::Client::new();
     let tx = hex::decode(tx.cbor_hex.clone())?;

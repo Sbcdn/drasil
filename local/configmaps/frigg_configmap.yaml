@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drasil-frigg-config
+data:
+  FRIGG_PORT: "6143"
+  FRIGG_CONFIG_PATH: /usr/bin/config.toml
+  # For future use
+  POW: ""
+  # Login Information to retrieve vault login information via dvltath for Frigg
+  FRIGG_VAULT_TOKEN: "w4tsefsxds4"
+  FRIGG_VROLE_ID: 129243c1-8b6a-5fbb-8d4f-221e01cb089d
+  FRIGG_VSECRET_ID: "dummy"
+  FRIGG_VROLE_NAME: drslapp

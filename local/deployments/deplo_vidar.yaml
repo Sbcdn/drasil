@@ -15,25 +15,9 @@ spec:
         app: drasil-vidar
     spec:
       containers:
-      - env:
-        - name: POD_HOST
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        - name: POD_PORT
-          value: "4101"
-        - name: JWT_PUB_KEY
-          value: '-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+LwS66RkRJ3gYlrXCisZwWaNQo3nkNjRujIVVI9jEGCWYRdECga9lUjrg==-----END
-            PUBLIC KEY-----'
-        - name: ODIN_URL
-          value: 34.118.237.45:6142
-        - name: RUST_LOG
-          value: debug
-        - name: DBSYNC_DB_URL
-          value: postgres://***REMOVED***:***REMOVED***@***REMOVED***/testnet
-        - name: REWARDS_DB_URL
-          value: postgres://***REMOVED***:password@***REMOVED***/rewarddb?password=***REMOVED***
+      - envFrom:
+          - configMapRef:
+              name: drasil-config
         image: docker.io/minikube/vidar:v1.3
         imagePullPolicy: Never
         name: vidar

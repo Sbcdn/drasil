@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drasil-dvltath-config
+data:
+  # Vault Role-Id to request secret for Odin / Frigg user
+  DVLTATH_VAULT_ROLE_ID: 88b372bb-ae5b-e747-a8de-60f681f59db5
+  # Vault Secret-Id for the role above
+  DVLTATH_VAULT_SECRET_ID: a99adf0a-89c1-5d88-7a44-0f12622af788
+  # Dummy Token
+  VAULT_TOKEN: 2d3w34wd3

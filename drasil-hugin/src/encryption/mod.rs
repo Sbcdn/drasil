@@ -41,8 +41,8 @@ pub async fn generate_pph(ident: &str) -> String {
     let mut hasher = sha2::Sha512::new();
     hasher.update(password);
     let password = hex::encode(hasher.finalize());
-    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
-    let mut path = std::env::var("VPATH").unwrap();
+    let mount = std::env::var("VAULT_MOUNT").unwrap_or_else(|_| "secret".to_string());
+    let mut path = std::env::var("VAULT_PATH").unwrap();
     let vault = vault_connect().await;
     //path.push('/');
     path.push_str(ident);
@@ -114,8 +114,8 @@ pub fn encrypt(source: &String, password: &String) -> Result<String, MurinError>
 }
 
 pub async fn decrypt_data(encrypted_source: &String, ident: &str) -> Result<String, MurinError> {
-    let mount = std::env::var("MOUNT").unwrap_or_else(|_| "secret".to_string());
-    let mut path = std::env::var("VPATH").unwrap();
+    let mount = std::env::var("VAULT_MOUNT").unwrap_or_else(|_| "secret".to_string());
+    let mut path = std::env::var("VAULT_PATH").unwrap();
     let vault = vault_connect().await;
 
     path.push_str(ident);

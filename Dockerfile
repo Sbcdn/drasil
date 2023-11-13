@@ -332,7 +332,7 @@ COPY --from=drasil/builder:latest /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr
 COPY --from=drasil/builder:latest /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/libcrypt.so.1
 COPY --from=drasil/builder:latest /usr/lib/x86_64-linux-gnu/libffi.so.7 /usr/lib/x86_64-linux-gnu/libffi.so.7
 ENV AMQP_ADDR="amqp://rmq:rmq@127.0.0.1:5672"
-ENV QUEUE_NAME="drasil_jobs"
+ENV JOB_QUEUE_NAME="drasil_jobs"
 ENV CONSUMER_NAME="drasil_jobs_default"
 USER drasil:drasil
 CMD ["drasil_jobs"]
@@ -376,7 +376,7 @@ COPY --from=drasil/builder:latest /usr/lib/x86_64-linux-gnu/libsqlite3.so.0 /usr
 COPY --from=drasil/builder:latest /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/libcrypt.so.1
 COPY --from=drasil/builder:latest /usr/lib/x86_64-linux-gnu/libffi.so.7 /usr/lib/x86_64-linux-gnu/libffi.so.7
 ENV AMQP_ADDR="amqp://rmq:rmq@127.0.0.1:5672/%2f"
-ENV QUEUE_NAME="mint_response"
+ENV JOB_QUEUE_NAME="mint_response"
 ENV CONSUMER_NAME="worker_loki_0"
 USER drasil:drasil
 CMD ["work_loki"]

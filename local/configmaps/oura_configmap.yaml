@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oura-config
+data:
+  daemon.toml: |-
+    [source]
+    type = "N2N"
+    address = ["Tcp", "preview-node.play.dev.cardano.org:3001"] 
+    magic = "preview"
+
+    [source.mapper]
+    include_block_end_events = false
+    include_transaction_details = true
+    include_transaction_end_events = true
+    include_block_cbor = false
+    include_byron_ebb = false
+
+    [[filters]]
+    type = "Selection"
+
+    [filters.check]
+    predicate = "variant_in"
+    argument = ["Transaction"]
+
+    [sink]
+    type = "Redis"
+    redis_server = "redis://***REMOVED***:6379/0"
+    stream_strategy = "ByEventType"
