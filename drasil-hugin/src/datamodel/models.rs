@@ -483,8 +483,11 @@ impl Operation {
                 selling_price,
             } => {
                 let assets = Token::for_all_into_asset(tokens)?;
-                let token_utxos =
-                    drasil_murin::txbuilder::find_token_utxos_na(&avail_inputs, assets.clone(),None)?;
+                let token_utxos = drasil_murin::txbuilder::find_token_utxos_na(
+                    &avail_inputs,
+                    assets.clone(),
+                    None,
+                )?;
 
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
@@ -781,12 +784,15 @@ impl Operation {
 
     pub async fn into_wmt_staking(
         &self,
-    ) -> Result<drasil_murin::worldmobile::wmtstaking::StakeTxData, drasil_murin::error::MurinError> {
+    ) -> Result<drasil_murin::worldmobile::wmtstaking::StakeTxData, drasil_murin::error::MurinError>
+    {
         use drasil_murin::error::MurinError;
         use drasil_murin::worldmobile::wmtstaking::StakeTxData;
 
         match self {
-            Operation::WmtStaking { amount,ennft } => Ok(StakeTxData::new(*amount, ennft.to_owned())),
+            Operation::WmtStaking { amount, ennft } => {
+                Ok(StakeTxData::new(*amount, ennft.to_owned()))
+            }
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for wmt staking transaction",
             )),

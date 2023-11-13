@@ -1,11 +1,11 @@
 //pub(crate) mod reward_handler;
 //pub(crate) use reward_handler::handle_rewardclaim;
-use drasil_murin::cardano::MIN_ADA;
+// use drasil_murin::cardano::MIN_ADA;
 
-use crate::database::TBContracts;
-use crate::datamodel::{ContractAction, MarketplaceActions, Operation, TransactionPattern};
-use crate::{BuildContract, CmdError};
-pub async fn handle_marketplace(build_contract: BuildContract) -> crate::Result<String> {
+// use crate::database::TBContracts;
+// use crate::datamodel::{ContractAction, MarketplaceActions, Operation, TransactionPattern};
+use crate::BuildContract; //, CmdError};
+pub async fn handle_marketplace(_build_contract: BuildContract) -> crate::Result<String> {
     todo!()
     // match build_contract
     //     .transaction_pattern()

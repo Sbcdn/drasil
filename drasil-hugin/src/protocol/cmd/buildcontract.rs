@@ -74,24 +74,23 @@ impl BuildContract {
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response = Frame::Simple("OK".to_string());
 
-        if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
+        if let Err(e) = super::check_txpattern(self.transaction_pattern()).await {
             log::debug!("{:?}", response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
             return Err(Box::new(CmdError::InvalidData));
         }
 
-        let ret : String;
-        match self.ctype {
+        let ret = match self.ctype {
             ContractType::MarketPlace => {
-                ret =crate::protocol::smartcontract::nft_marketplace::handle_marketplace(self)
+                crate::protocol::smartcontract::nft_marketplace::handle_marketplace(self)
                     .await
-                    .unwrap_or_else(|err| err.to_string());
+                    .unwrap_or_else(|err| err.to_string())
             }
             ContractType::WmtStaking => {
-                ret = crate::protocol::worldmobile::build_wmt_sc::handle_wmt_staking(self)
+                crate::protocol::worldmobile::build_wmt_sc::handle_wmt_staking(self)
                     .await
-                    .unwrap_or_else(|err| err.to_string());
+                    .unwrap_or_else(|err| err.to_string())
             }
             _ => {
                 return Err(CmdError::Custom {
@@ -99,7 +98,7 @@ impl BuildContract {
                 }
                 .into());
             }
-        }
+        };
 
         response = Frame::Bulk(Bytes::from(
             bc::DefaultOptions::new()
