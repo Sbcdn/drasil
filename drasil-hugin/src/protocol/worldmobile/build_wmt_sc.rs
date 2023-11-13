@@ -2,6 +2,7 @@
 
 use drasil_murin::utils::to_bignum;
 use drasil_murin::worldmobile::configuration::StakingConfig;
+use drasil_murin::worldmobile::enreg::restore_wmreg_datum;
 use drasil_murin::worldmobile::wmtstaking::stake::{AtStakingBuilder, AtStakingParams};
 use drasil_murin::{wallet, TransactionUnspentOutputs, AssetName, PerformTxb};
 
@@ -86,8 +87,7 @@ pub async fn handle_wmt_staking(build_contract: BuildContract) -> crate::Result<
     let registration_utxo = registration_utxo.find_utxos_containing_asset(&wmt_staking_config.ennft_policy_id, &AssetName::new( hex::decode(&stxd.ennft)?)?)?.get(0);
 
     let registration_datum = if let Some(d) = registration_utxo.output().plutus_data() {
-        todo!();
-        // The Registration Transaction has a decoding function, use it here. 
+        restore_wmreg_datum(&d.to_bytes())?
     } else {
         return Err(Box::new(CmdError::Custom {
             str: String::from("No correct EN registration found"),
