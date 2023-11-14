@@ -1,30 +1,24 @@
-//! Stake transaction
+//! Staking transaction
 //!
-//! This module implement the staking transaction for WorldMobile token.
-//!
+//! This module implements staking transaction for WorldMobile token.
 
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::utils as cutils;
 use clib::address::{BaseAddress, EnterpriseAddress, StakeCredential};
-use clib::plutus::{
-    self, ConstrPlutusData, ExUnits, Language, PlutusData, PlutusList, PlutusScripts, Redeemer,
-    RedeemerTag, Redeemers,
-};
+use clib::plutus::{self, Redeemer, RedeemerTag, Redeemers};
+use clib::plutus::{ConstrPlutusData, ExUnits, Language, PlutusData, PlutusList, PlutusScripts};
 use clib::utils::{hash_script_data, to_bignum};
-use clib::{
-    AssetName, Assets, MultiAsset, TransactionInputs, TransactionOutput, TransactionOutputs,
-};
+use clib::{AssetName, Assets, MultiAsset};
+use clib::{TransactionInputs, TransactionOutput, TransactionOutputs};
 
+use super::StakeTxData;
 use crate::cardano::{self, supporting_functions, Tokens};
 use crate::error::MurinError;
 use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
 use crate::pparams::ProtocolParameters;
 use crate::txbuilder::{input_selection, TxBO};
 use crate::worldmobile::configuration::StakingConfig;
-use crate::TxData;
-use crate::{min_ada_for_utxo, PerformTxb};
-
-use super::StakeTxData;
+use crate::{min_ada_for_utxo, PerformTxb, TxData};
 
 /// This type is a staking transaction builder for WMT.
 #[derive(Debug, Clone)]
@@ -88,9 +82,7 @@ impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
         let contract_address = EnterpriseAddress::new(network_id, &credential).to_address();
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
-        //Add Inputs and Outputs
-        //
-        //
+        // Add Inputs and Outputs
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
         // This variable is named "ma" in other places.
