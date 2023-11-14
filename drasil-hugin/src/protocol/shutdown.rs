@@ -1,5 +1,8 @@
 use tokio::sync::broadcast;
 
+/// Specifies the state of a given connection between server and client. 
+/// This can be used as a trigger mechanism for whether the server should
+/// continue listening to a connection or drop it.
 #[derive(Debug)]
 pub struct Shutdown {
     shutdown: bool,
@@ -18,6 +21,7 @@ impl Shutdown {
         self.shutdown
     }
 
+    /// 
     pub async fn recv(&mut self) {
         if self.shutdown {
             return;
