@@ -6,6 +6,7 @@ use tokio::io::BufWriter;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+/// Buffered TCP connection.
 #[derive(Debug)]
 pub struct Connection {
     stream: BufWriter<TcpStream>,
@@ -13,6 +14,7 @@ pub struct Connection {
 }
 
 impl Connection {
+    /// Creates a buffered TCP connection from a TCP stream.
     pub fn new(stream: TcpStream) -> Connection {
         Connection {
             stream: BufWriter::new(stream),
@@ -20,6 +22,7 @@ impl Connection {
         }
     }
 
+    /// Reads frame from TCP connection.
     pub async fn read_frame(&mut self) -> crate::Result<Option<Frame>> {
         loop {
             if let Some(frame) = self.parse_frame().await? {

@@ -1,5 +1,8 @@
 use tokio::sync::broadcast;
 
+/// Specifies the state of a given TCP connection. Can be used as 
+/// a trigger mechanism for whether the server should continue 
+/// listening to a TCP connection or drop it.
 #[derive(Debug)]
 pub struct Shutdown {
     shutdown: bool,

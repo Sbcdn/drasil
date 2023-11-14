@@ -5,6 +5,9 @@ use std::io::Cursor;
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
+/// Data package that can be sent and received through TCP connection. 
+/// A peer can receive a frame by reading the TCP connection, and send 
+/// a frame by writing to the TCP connection.
 #[derive(Clone, Debug)]
 pub enum Frame {
     Simple(String),
