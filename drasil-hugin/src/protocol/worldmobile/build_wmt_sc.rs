@@ -3,7 +3,7 @@
 use drasil_murin::utils::to_bignum;
 use drasil_murin::worldmobile::configuration::StakingConfig;
 use drasil_murin::worldmobile::enreg::restore_wmreg_datum;
-use drasil_murin::worldmobile::wmtstaking::stake::{AtStakingBuilder, AtStakingParams};
+use drasil_murin::worldmobile::wmtstaking::stake::AtStakingBuilder;
 use drasil_murin::{wallet, AssetName, PerformTxb, TransactionUnspentOutputs};
 
 use super::staking::StakingAction;
@@ -109,9 +109,8 @@ pub async fn handle_wmt_staking(build_contract: BuildContract) -> crate::Result<
     stxd.registration_datum = Some(registration_datum);
 
     log::debug!("Try to build transaction...");
-    let txb_param: AtStakingParams = &stxd;
 
-    let minter = AtStakingBuilder::new(txb_param);
+    let minter = AtStakingBuilder::new(&stxd);
     let builder = drasil_murin::TxBuilder::new(&gtxd, &vec![]);
     let tx_builder_out = builder.build(&minter).await?;
 

@@ -29,12 +29,9 @@ pub struct AtStakingBuilder {
     pub config: StakingConfig,
 }
 
-/// This type represents a staking transaction parameters.
-pub type AtStakingParams<'param> = &'param StakeTxData;
-
-impl<'param> PerformTxb<AtStakingParams<'param>> for AtStakingBuilder {
+impl PerformTxb<&StakeTxData> for AtStakingBuilder {
     /// Creates new staking builder.
-    fn new(params: AtStakingParams) -> Self {
+    fn new(params: &StakeTxData) -> Self {
         let config = StakingConfig::load();
         Self {
             stxd: params.clone(),
