@@ -5,10 +5,9 @@ use std::io::Cursor;
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
-/// Data package sent through a network connection to instruct the recipient which 
-/// Drasil transaction to execute.
-/// Example: Heimdallr (client) sending compressed data to Odin (server) via TCP 
-///     connection to tell Odin which transaction to perform
+/// Data package that can be sent and received through TCP connection. 
+/// A peer can receive a frame by reading the TCP connection, and send 
+/// a frame by writing to the TCP connection.
 #[derive(Clone, Debug)]
 pub enum Frame {
     Simple(String),

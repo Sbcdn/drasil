@@ -34,7 +34,7 @@ pub trait IntoFrame {
     fn into_frame(self) -> Frame;
 }
 
-/// The transaction types that can be executed in Drasil.
+/// Instruction types that the user can give to Drasil.
 #[derive(Debug)]
 pub enum Command {
     BuildContract(BuildContract),
@@ -50,10 +50,7 @@ pub enum Command {
 }
 
 impl Command {
-    /// Parse compressed data from a network connection into human-readable form.
-    /// Example: if Heimdallr (client) sends a transaction request (command) to Odin 
-    ///     (server) via network connection, then Odin can use this function to parse
-    ///     the data into a more convenient (human-readable) form.  
+    /// Parses frame into a command.
     pub fn from_frame(frame: Frame) -> crate::Result<Command> {
         let mut parse = Parse::new(frame)?;
         log::debug!("FromFrame: {:?}", &parse);
@@ -92,8 +89,7 @@ impl Command {
         Ok(command)
     }
 
-    /// Execute the given command. The command contains parsed data in convenient format, ready 
-    /// to be used as inputs for execution.
+    /// Executes command.
     pub async fn apply(self, dst: &mut Connection, _shutdown: &mut Shutdown) -> crate::Result<()> {
         match self {
             Command::BuildContract(cmd) => cmd.apply(dst).await?,

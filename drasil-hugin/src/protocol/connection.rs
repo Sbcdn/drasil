@@ -6,7 +6,7 @@ use tokio::io::BufWriter;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-/// Wrapper around `TcpStream` connection that adds the ability to store I/O data in buffer.
+/// Buffered TCP connection.
 #[derive(Debug)]
 pub struct Connection {
     stream: BufWriter<TcpStream>,
@@ -14,8 +14,7 @@ pub struct Connection {
 }
 
 impl Connection {
-
-    /// Create new connection that allows you to store I/O data in buffer. 
+    /// Creates a buffered TCP connection from a TCP stream.
     pub fn new(stream: TcpStream) -> Connection {
         Connection {
             stream: BufWriter::new(stream),
@@ -23,8 +22,7 @@ impl Connection {
         }
     }
 
-    /// Read data sent by your counterpart in the given connection.
-    /// Example: Odin server reading data sent by a client. 
+    /// Reads frame from TCP connection.
     pub async fn read_frame(&mut self) -> crate::Result<Option<Frame>> {
         loop {
             if let Some(frame) = self.parse_frame().await? {

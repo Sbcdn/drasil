@@ -17,7 +17,7 @@ use tokio::time::{self, Duration};
 use std::env;
 use std::str;
 
-/// Wrapper that extends the server (`TcpListener`) with additional network capabilities.  
+/// TCP listener that can limit the number of active connections.
 struct Listener {
     /// basic server implementation
     listener: TcpListener,
@@ -29,8 +29,7 @@ struct Listener {
     shutdown_complete_tx: mpsc::Sender<()>,
 }
 
-/// Wrapper around `Connection` connection that prevents the number of connections from exceeding
-/// a maximal number, and enables the checking of whether the connection is alive. 
+/// A buffered TCP connection that keeps track on the number of TCP connections left on the TCP listener.
 struct Handler {
     connection: Connection,
     limit_connections: Arc<Semaphore>,
@@ -85,8 +84,7 @@ pub async fn run(listener: TcpListener, shutdown: impl Future) -> crate::Result<
 }
 
 impl Listener {
-    /// Run Odin server by establishing connections between Odin server 
-    /// and (one or) many remote clients. 
+    /// Establishes connections with one or more remote TCP clients.
     async fn run(&mut self) -> crate::Result<()> {
         log::info!(
             "accepting inbound connections at {:?}",
@@ -113,9 +111,12 @@ impl Listener {
         }
     }
 
-    /// Accept incoming connection from remote client. This function checks for
-    /// connection requests over and over. If remote client hasn't made any connection 
-    /// requests, this function will wait twice as long as last time before checking again. 
+    /// Accepts incoming connection from remote client. 
+    /// 
+    /// This function checks for connection requests over and over. If remote client 
+    /// hasn't made any connection requests, this function will wait twice as long as 
+    /// last time before checking again. If no connection requests were made for some 
+    /// time, then it will stop checking.  
     async fn accept(&mut self) -> crate::Result<TcpStream> {
         log::info!("accepted connection");
         let mut backoff = 1;
@@ -135,8 +136,8 @@ impl Listener {
 }
 
 impl Handler {
-    /// Continuously listen for incoming instructions from the given remote client
-    /// to Odin server until the connection is shut down. 
+    /// Continuously listens for incoming instructions from remote client to Odin server
+    /// until the connection is shut down.
     async fn run(&mut self) -> crate::Result<()> {
         log::debug!("started new handler");
         while !self.shutdown.is_shutdown() {
@@ -159,15 +160,18 @@ impl Handler {
     }
 }
 
-/// Increase the number of allowed connections to Odin server by 1 when 
-/// current connection is terminated
+/// Increases the number of allowed connections to Odin server by 1 when 
+/// current connection is terminated.
 impl Drop for Handler {
     fn drop(&mut self) {
         self.limit_connections.add_permits(1);
     }
 }
 
-/// Specify the address that Odin server will expose, and then run the Odin server. 
+/// Runs the Odin server.
+/// 
+/// It specifies the address that Odin server will expose, creates a TCP listener on that address
+/// and then runs that TCP listener.
 use tokio::signal;
 #[tokio::main]
 pub async fn main() -> crate::Result<()> {
