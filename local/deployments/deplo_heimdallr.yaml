@@ -18,6 +18,21 @@ spec:
       - envFrom:
           - configMapRef:
               name: drasil-config
-        image: docker.io/minikube/heimdallr:v1.3
-        imagePullPolicy: Never
+        image: k3d-drasil-registry.localhost:12345/heimdallr:v1.3
+        imagePullPolicy: IfNotPresent
         name: heimdallr
+---
+# Heimdallr Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-heimdallr-service
+spec:
+  selector:
+    app: drasil-heimdallr
+  type: LoadBalancer
+  ports:
+    - port: 4000
+      nodePort: 30000
+      protocol: TCP
+      targetPort: 4000

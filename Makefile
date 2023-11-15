@@ -6,7 +6,7 @@ MAINNET_PROJECT=kebvmwbusajq
 TESTNET_REGISTRY=preview-testnet-registry
 TESTNET_PROJECT=efvgtwmyqlpe
 
-LOC_PROJECT=minikube
+LOC_PROJECT=k3d-drasil-registry.localhost:12345
 VERSION=v1.3
 
 # Create Docker Compose for Local Setup
@@ -163,8 +163,31 @@ push-all-testnet:
 	make push-utxopti-testnet
 	make push-dvltath-testnet
 
-# Build for Minikube
+# Build for Local Testing
+
+# Docker must be installed already
+setup-dependencies:
+	sudo apt-get update
+	sudo apt install -y curl
+	curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+	curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+	sudo apt-get install -y apt-transport-https ca-certificates curl
+	curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+	echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+	sudo apt-get update
+	sudo apt-get install -y kubectl
+
+create-local-cluster:
+	mkdir -p ${HOME}/k3dvol
+	mkdir -p ${HOME}/k3dvol/task-pv-volume-1
+	mkdir -p ${HOME}/k3dvol/task-pv-volume-2
+	mkdir -p ${HOME}/k3dvol/task-pv-volume-3
+	k3d cluster delete --all
+	k3d cluster create --config ./local/local.yaml --api-port 6550 --registry-create k3d-drasil-registry.localhost:12345 --volume ${HOME}/k3dvol:${HOME}/k3dvol -p "30000-30010:30000-30010@server:0" --agents 2
+
 build-all-loc:
+# docker image delete drasil/builder:latest
+# make build-drasil-builder
 	docker build --progress=plain -t $(LOC_PROJECT)/vidar:$(VERSION) -f Dockerfile --target=vidar .
 	docker build --progress=plain -t $(LOC_PROJECT)/heimdallr:$(VERSION) -f Dockerfile --target=heimdallr .
 	docker build --progress=plain -t $(LOC_PROJECT)/odin:$(VERSION) -f Dockerfile --target=odin .
@@ -176,16 +199,78 @@ build-all-loc:
 	docker build --progress=plain -t $(LOC_PROJECT)/freki:$(VERSION) -f Dockerfile --target=freki .
 	docker build --progress=plain -t $(LOC_PROJECT)/utxopti:$(VERSION) -f Dockerfile --target=utxopti .
 	docker build --progress=plain -t $(LOC_PROJECT)/dvltath:$(VERSION) -f Dockerfile --target=dvltath .
-	minikube image load $(LOC_PROJECT)/vidar:$(VERSION)
-	minikube image load $(LOC_PROJECT)/heimdallr:$(VERSION)
-	minikube image load $(LOC_PROJECT)/odin:$(VERSION)
-	minikube image load $(LOC_PROJECT)/loki:$(VERSION)
-	minikube image load $(LOC_PROJECT)/frigg:$(VERSION)
-	minikube image load $(LOC_PROJECT)/geri:$(VERSION)
-	minikube image load $(LOC_PROJECT)/drasil-jobs:$(VERSION)
-	minikube image load $(LOC_PROJECT)/work-loki:$(VERSION)
-	minikube image load $(LOC_PROJECT)/freki:$(VERSION)
-	minikube image load $(LOC_PROJECT)/utxopti:$(VERSION)
-	minikube image load $(LOC_PROJECT)/dvltath:$(VERSION)
-	minikube cache reload
-	minikube image ls
+
+
+push-all-loc:
+	docker push $(LOC_PROJECT)/vidar:$(VERSION)
+	docker push $(LOC_PROJECT)/heimdallr:$(VERSION)
+	docker push $(LOC_PROJECT)/odin:$(VERSION)
+	docker push $(LOC_PROJECT)/loki:$(VERSION)
+	docker push $(LOC_PROJECT)/frigg:$(VERSION)
+	docker push $(LOC_PROJECT)/geri:$(VERSION)
+	docker push $(LOC_PROJECT)/drasil-jobs:$(VERSION)
+	docker push $(LOC_PROJECT)/work-loki:$(VERSION)
+	docker push $(LOC_PROJECT)/freki:$(VERSION)
+	docker push $(LOC_PROJECT)/utxopti:$(VERSION)
+	docker push $(LOC_PROJECT)/dvltath:$(VERSION)
+
+local-deploy: 
+	kubectl apply -f ./local/configmaps/drasil_configmap.yaml
+	kubectl apply -f ./local/configmaps/dvltath_configmap.yaml
+	kubectl apply -f ./local/configmaps/frigg_configmap.yaml
+	kubectl apply -f ./local/configmaps/geri_configmap.yaml
+	kubectl apply -f ./local/configmaps/odin_configmap.yaml
+	kubectl apply -f ./local/configmaps/oura_configmap.yaml
+	kubectl apply -f ./local/configmaps/system_db.yaml
+	kubectl apply -f ./local/configmaps/reward_db.yaml
+# Tooling
+	kubectl apply -f ./local/deployments/deplo_oura.yaml
+	kubectl apply -f ./local/deployments/deplo_redis.yaml
+	kubectl apply -f ./local/deployments/deplo_rmq.yaml
+# Deployments
+	kubectl apply -f ./local/deployments/persistent_volume.yaml
+	kubectl apply -f ./local/deployments/deplo_odin.yaml
+	kubectl apply -f ./local/deployments/deplo_frigg.yaml
+	kubectl apply -f ./local/deployments/deplo_geri.yaml
+	kubectl apply -f ./local/deployments/deplo_heimdallr.yaml
+	kubectl apply -f ./local/deployments/deplo_loki.yaml
+	kubectl apply -f ./local/deployments/deplo_vidar.yaml
+	kubectl apply -f ./local/deployments/deplo_worker_loki.yaml
+# Local Hashicorp Vault 
+	helm repo add hashicorp https://helm.releases.hashicorp.com
+	helm install vault hashicorp/vault --namespace default --set "server.dev.enabled=true" --set "server.dev.devRootToken=root" --set "server.global.tlsDisable=true"
+# Stateful Sets
+# Postgres Database StatefulSet
+	kubectl apply -f ./local/deployments/deplo_postgres_system.yaml
+	kubectl apply -f ./local/deployments/deplo_postgres_reward.yaml
+	kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+# Build for Local Testing
+start-local-cluster:
+	@-pkill -9 -f 'kubectl proxy' || true
+	make create-local-cluster
+	make push-all-loc
+	make local-deploy
+	nohup kubectl proxy &
+	kubectl get pods
+	kubectl apply -f ./local/accounts/kubeadmin.yaml
+	@echo "\nKubeadmin Token:\n"
+	@kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} | base64 -d
+	@echo "\n\nKubernetes Dashboard at:\nhttp://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/"
+	@echo "\nWhen database pods are running execute: 'make setup-databases'"
+	
+
+delete-cluster:
+	k3d cluster delete --all
+
+setup-databases:
+	export PGPASSWORD=***REMOVED***password
+	kubectl exec -it postgresql-db-sys-0 -- psql -h localhost -U ***REMOVED*** -p 5432 -d systemdb -a -f ./migrations/systemdb_tables.sql
+	kubectl exec -it postgresql-db-rwd-0 -- psql -h localhost -U ***REMOVED*** -p 5432 -d rewarddb -a -f ./migrations/rewarddb_tables.sql
+	@echo "\nteam leadDatabase tables and admin user created; User: dadmin, Password: drasil123; you can login now via frigg"
+
+first-setup: 
+	make setup-dependencies
+	make build-drasil-builder
+	make build-all-loc
+	make setup-local-all
