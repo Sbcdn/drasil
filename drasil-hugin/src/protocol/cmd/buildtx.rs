@@ -7,11 +7,13 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 
-/// The parsed data attached to the incoming command that requests a standard transaction to be built. 
+/// Command data for building a standard transaction.
+/// 
+/// This can be used as a source of building blocks from which to assemble a standard transaction.
 #[derive(Debug, Clone)]
 pub struct BuildStdTx {
     customer_id: u64,
-    /// This is the type of standard transaction that the user wants to build.
+    /// The type of standard transaction that the user wants to build.
     txtype: StdTxType,
     /// Specification of the basic attributes of this transaction (i.e. the aspects held in 
     /// common with all other transactions)

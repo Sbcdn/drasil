@@ -14,9 +14,9 @@ use std::str::FromStr;
 #[derive(Debug, Clone)]
 pub struct FinalizeMultiSig {
     customer_id: u64,
-    /// This is the type of multisig transaction that the user wants to finalize
+    /// The type of multisig transaction that the user wants to finalize
     mtype: MultiSigType,
-    /// This is the specific built multisig transaction that the user wants to finalize
+    /// The specific built multisig transaction that the user wants to finalize
     tx_id: String,
     /// Signature from the sender's private key to confirm that the owner of 
     /// the input UTxOs approves this multisig transaction
@@ -63,14 +63,18 @@ impl FinalizeMultiSig {
         self.customer_id
     }
 
+    /// Obtains the multisig type of the transaction that the user wants to finalize.
     pub fn get_contract_type(&self) -> MultiSigType {
         self.mtype.clone()
     }
 
+    /// Obtains the specific built multisig transaction that the user wants to finalize.
     pub fn get_tx_id(&self) -> String {
         self.tx_id.clone()
     }
 
+    /// Obtains the signature from the sender's private key that confirms that the owner of 
+    /// the input UTxOs approves this transaction.
     pub fn get_signature(&self) -> String {
         self.signature.clone()
     }

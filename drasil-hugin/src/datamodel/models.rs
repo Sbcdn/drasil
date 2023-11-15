@@ -14,8 +14,8 @@ use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString, EnumVariantNames, EnumIs};
 
-/// This is the type of smart contract that the user wants to include in the transaction that
-/// they are requesting to build/finalize
+/// The type of smart contract that the user wants to include in the transaction that they
+/// are requesting to build/finalize
 #[derive(
     Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
 )]
@@ -38,7 +38,7 @@ pub enum MarketplaceActions {
     Update,
 }
 
-/// Which type of multisig transaction does the user want to build/finalize?
+/// The type of multisig transaction that the user wants to build/finalize.
 #[derive(
     Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumVariantNames, Display, EnumString,
 )]
@@ -70,7 +70,7 @@ impl FromStr for Utxopti {
     }
 }
 
-/// This is the type of standard transaction that the user wants to build/finalize.
+/// The type of standard transaction that the user wants to build/finalize.
 #[derive(Serialize, Deserialize, Debug, Clone, Display, EnumString, EnumVariantNames)]
 pub enum StdTxType {
     DelegateStake,
@@ -79,6 +79,7 @@ pub enum StdTxType {
     RewardWithdrawal,
 }
 
+/// Signature obtained from payload of HTTP request. 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Signature {
     signature: String,
@@ -204,6 +205,7 @@ pub enum Network {
     Mainnet,
 }
 
+/// Payload parsed from HTTP body.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum TXPWrapper {
     TransactionPattern(Box<TransactionPattern>),
@@ -212,6 +214,7 @@ pub enum TXPWrapper {
     WalletTransaction(),
 }
 
+/// This type can be obtained from payload of HTTP request. (work in progress)
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WalletTransactionPattern {
     user: Option<String>,
@@ -896,7 +899,7 @@ impl TxHash {
     }
 }
 
-// Client API Types
+/// Client API Types. It can be obtained from payload of HTTP request.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OneShotMintPayload {
     tokennames: Vec<String>,

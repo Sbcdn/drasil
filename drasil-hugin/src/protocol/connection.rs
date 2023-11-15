@@ -58,9 +58,6 @@ impl Connection {
     }
 
     /// Send data (`Frame`) to the counterpart of the given TCP connection. 
-    /// Example: Odin server sending a response to a Heimdallr client 
-    ///     (which represents the user who requested e.g. a standard 
-    ///     transaction to be built)
     pub async fn write_frame(&mut self, frame: &Frame) -> io::Result<()> {
         match frame {
             Frame::Array(val) => {

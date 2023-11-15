@@ -7,11 +7,13 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 
-/// The parsed data attached to the incoming command that requests a multisig transaction to be built. 
+/// Command data for building a multisig transaction.
+/// 
+/// This can be used as a source of building blocks from which to assemble a multisig transaction.
 #[derive(Debug, Clone)]
 pub struct BuildMultiSig {
     customer_id: u64,
-    /// This is the type of multisig transaction that the user wants to build
+    /// The type of multisig transaction that the user wants to build
     mtype: MultiSigType,
     /// Specification of the basic attributes of this transaction (i.e. the aspects held in 
     /// common with all other transactions). This is chosen by the user in their HTTP request. 

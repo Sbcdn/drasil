@@ -11,9 +11,9 @@ use std::str::FromStr;
 #[derive(Debug, Clone)]
 pub struct FinalizeStdTx {
     customer_id: u64,
-    /// The is the type of standard transaction that the user wants to finalize.
+    /// The type of standard transaction that the user wants to finalize.
     txtype: StdTxType,
-    /// This is the specific built standard transaction that the user wants to finalize.
+    /// The specific built standard transaction that the user wants to finalize.
     tx_id: String,
     /// Signature from the sender's private key to confirm that the owner of 
     /// the input UTxOs approves this standard transaction
@@ -60,14 +60,18 @@ impl FinalizeStdTx {
         self.customer_id
     }
 
+    /// Obtains the type of standard transaction that the user wants to finalize. 
     pub fn get_contract_type(&self) -> StdTxType {
         self.txtype.clone()
     }
 
+    /// Obtains the specific built standard transaction that the user wants to finalize.
     pub fn get_tx_id(&self) -> String {
         self.tx_id.clone()
     }
 
+    /// Obtains the signature from the sender's private key that confirms that the owner of 
+    /// the input UTxOs approves this transaction.
     pub fn get_signature(&self) -> String {
         self.signature.clone()
     }

@@ -34,7 +34,7 @@ pub trait IntoFrame {
     fn into_frame(self) -> Frame;
 }
 
-/// Instruction types that the user can give to Drasil.
+/// One of several instruction types that the user can give to Drasil.
 #[derive(Debug)]
 pub enum Command {
     BuildContract(BuildContract),

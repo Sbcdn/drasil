@@ -11,9 +11,9 @@ use std::str::FromStr;
 #[derive(Debug, Clone)]
 pub struct FinalizeContract {
     customer_id: u64,
-    /// This is the type of smart contract that the user wants to finalize.
+    /// The type of smart contract that the user wants to finalize.
     ctype: ContractType,
-    /// This is the specific built smart-contract transaction that the user wants to finalize.
+    /// The specific built smart-contract transaction that the user wants to finalize.
     tx_id: String,
     /// Signature from the sender's private key to confirm that the owner of 
     /// the input UTxOs approves this smart-contract transaction
@@ -60,15 +60,19 @@ impl FinalizeContract {
         self.customer_id
     }
 
+    /// Obtains the type of smart contract that the user wants to include in the transaction
+    /// that the user wants to finalize
     pub fn get_contract_type(&self) -> ContractType {
         self.ctype.clone()
     }
 
-    /// Get the specific built smart-contract transaction that the user wants to finalize.
+    /// Obtains the specific built smart-contract transaction that the user wants to finalize.
     pub fn get_tx_id(&self) -> String {
         self.tx_id.clone()
     }
 
+    /// Obtains the signature from the sender's private key that confirms that the owner of 
+    /// the input UTxOs approves this transaction.
     pub fn get_signature(&self) -> String {
         self.signature.clone()
     }

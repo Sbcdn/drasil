@@ -10,14 +10,15 @@ use bytes::Bytes;
 use drasil_murin::cardano::MIN_ADA;
 use std::str::FromStr;
 
-/// The parsed data attached to the incoming command that requests a smart-contract 
-/// transaction to be built. 
+/// Command data for building a smart-contract transaction.
+/// 
+/// This can be used as a source of building blocks from which to assemble a smart-contract transaction.
 #[derive(Debug, Clone)]
 pub struct BuildContract {
     customer_id: u64,
-    /// This is the type of smart contract that the user wants to build.
+    /// The type of smart contract that the user wants to build.
     ctype: ContractType,
-    /// This is the behavior/action that the user wants the smart contract to perform.
+    /// The behavior/action that the user wants the smart contract to perform.
     action: ContractAction,
     /// Specification of the basic attributes of this transaction (i.e. the aspects held in 
     /// common with all other transactions)
@@ -25,6 +26,7 @@ pub struct BuildContract {
 }
 
 impl BuildContract {
+    /// Create a new build contract.
     pub fn new(
         customer_id: u64,
         ctype: ContractType,
