@@ -7,6 +7,8 @@ use drasil_murin::wallet::address_from_string_non_async;
 use drasil_murin::PerformTxb;
 use drasil_murin::TransactionUnspentOutputs;
 
+/// The behavior/actions to be executed when the user wants to build a standard transaction that 
+/// deregisters the given stake address.
 pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Result<String> {
     match bst
         .transaction_pattern()

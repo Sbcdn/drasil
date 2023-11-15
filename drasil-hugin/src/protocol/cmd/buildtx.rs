@@ -7,10 +7,14 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 
+/// The parsed data attached to the incoming command that requests a standard transaction to be built. 
 #[derive(Debug, Clone)]
 pub struct BuildStdTx {
     customer_id: u64,
+    /// This is the type of standard transaction that the user wants to build.
     txtype: StdTxType,
+    /// Specification of the basic attributes of this transaction (i.e. the aspects held in 
+    /// common with all other transactions)
     txpattern: TransactionPattern,
 }
 
@@ -31,10 +35,14 @@ impl BuildStdTx {
         self.txtype.clone()
     }
 
+    /// Get the specification of the basic attributes of this transaction (i.e. the aspects
+    /// held in common with all other transactions)
     pub fn transaction_pattern(&self) -> TransactionPattern {
         self.txpattern.clone()
     }
 
+    /// Parse the command parts (parts of a transaction request) into suitable types 
+    /// and collect them into a single place in preparation for building a standard transaction. 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildStdTx> {
         let customer_id = parse.next_int()?;
         let txtype = parse.next_bytes()?;
@@ -52,6 +60,10 @@ impl BuildStdTx {
         })
     }
 
+    /// Build a standard transaction. `BuildStdTx` (`self`) contains the building blocks used in this method.
+    /// `dst` is the connection to the Heimdallr client (and thus indirectly to the user) who requested this transaction 
+    /// to be built. This method sends a response back to this Heimdallr client (and thus back to the user who requested 
+    /// this transaction to be built). 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         /*
         ToDo: Include Addresses Only Format to the check
@@ -63,6 +75,8 @@ impl BuildStdTx {
             return Err(Box::new(CmdError::InvalidData));
         }
         */
+
+        // execute behavior/actions specific to the given type of standard transaction
         let ret = match self.tx_type() {
             StdTxType::DelegateStake => stdtx::handle_stake_delegation(&self).await
                 .unwrap_or_else(|err| err.to_string()),
@@ -74,6 +88,8 @@ impl BuildStdTx {
                 .unwrap_or_else(|err| err.to_string()),
         };
         log::debug!("Return String before parsing into BC:\n{:?}", ret);
+
+        // Send HTTP response to user who requested the standard transaction to be built.
         let response = Frame::Bulk(Bytes::from(
             bc::DefaultOptions::new()
                 .with_varint_encoding()

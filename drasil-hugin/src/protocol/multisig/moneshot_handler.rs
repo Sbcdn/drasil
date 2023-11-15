@@ -6,6 +6,8 @@ use crate::drasildb::TBContracts;
 use crate::BuildMultiSig;
 use crate::CmdError;
 
+/// The behaviors/actions to execute when the user wants to build a multisig transaction with
+/// multisig type `ClAPIOneShotMint`
 pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     log::debug!("Entered Oneshot Minter...");
     let minttxd = bms

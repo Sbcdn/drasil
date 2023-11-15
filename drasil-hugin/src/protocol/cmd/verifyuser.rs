@@ -5,9 +5,12 @@ use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 
+/// The parsed data attached to the incoming command that requests a user to be verified. 
 #[derive(Debug, Clone)]
 pub struct VerifyUser {
+    /// The target user to be verified in this command
     user_id: u64,
+    /// JWT Bearer token by which the target user can be verified.
     bearer_token: String,
 }
 
@@ -27,6 +30,8 @@ impl VerifyUser {
         self.bearer_token.clone()
     }
 
+    /// Parse the command parts (parts of a transaction request) into suitable types 
+    /// and collect them into a single place in preparation for verifying a user. 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<VerifyUser> {
         let customer_id = parse.next_int()?;
         let btoken = parse.next_bytes()?;
@@ -39,7 +44,10 @@ impl VerifyUser {
         })
     }
 
-    /// Apply verify user
+    /// Verify the target user. `VerifyUser` (`self`) contains the building blocks used in this method.
+    /// `dst` is the connection to the Heimdallr client (and thus indirectly to the requesting user) who 
+    /// requested a verification of the target user. This method sends a response back to this Heimdallr 
+    /// client (and thus back to the user who requested a verification of the target user). 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let user = crate::database::TBDrasilUser::get_user_by_user_id(&(self.user_id as i64))?;
 

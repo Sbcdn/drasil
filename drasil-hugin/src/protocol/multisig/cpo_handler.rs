@@ -9,6 +9,8 @@ use crate::TBCaPaymentHash;
 use crate::TBContracts;
 use crate::TBDrasilUser;
 
+/// The behaviors/actions to execute when the user wants to build a multisig transaction with
+/// multisig type `CustomerPayout`
 pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result<String> {
     let poid = bms
         .transaction_pattern()

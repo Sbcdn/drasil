@@ -1,13 +1,19 @@
+/// The machinery that parses a full command (transaction request) into its constituent parts and assigning 
+/// appropriate data types to those parts. 
+
 use crate::Frame;
 
 use bytes::Bytes;
+
 use std::{fmt, str, vec};
 
+/// The entire transaction request in array format. 
 #[derive(Debug)]
 pub(crate) struct Parse {
     parts: vec::IntoIter<Frame>,
 }
 
+/// Failed to parse the command (transaction request)
 #[derive(Debug)]
 pub(crate) enum CmdParseError {
     EndOfStream,
@@ -15,6 +21,7 @@ pub(crate) enum CmdParseError {
 }
 
 impl Parse {
+    /// Parse the full transaction request (or a part thereof) as an array. 
     pub(crate) fn new(frame: Frame) -> Result<Parse, CmdParseError> {
         let array = match frame {
             Frame::Array(array) => array,
@@ -28,10 +35,12 @@ impl Parse {
         })
     }
 
+    /// Pick next part of the transaction request
     fn next(&mut self) -> Result<Frame, CmdParseError> {
         self.parts.next().ok_or(CmdParseError::EndOfStream)
     }
 
+    /// Pick the next part of the transaction request, and parse it into string.
     pub(crate) fn next_string(&mut self) -> Result<String, CmdParseError> {
         match self.next()? {
             Frame::Simple(s) => Ok(s),
@@ -45,6 +54,7 @@ impl Parse {
         }
     }
 
+    /// Pick the next part of the transaction request, and parse it into bytes.
     pub(crate) fn next_bytes(&mut self) -> Result<Bytes, CmdParseError> {
         match self.next()? {
             Frame::Simple(s) => Ok(Bytes::from(s.into_bytes())),
@@ -56,6 +66,7 @@ impl Parse {
         }
     }
 
+    /// Pick the next part of the transaction request, and parse it into an integer. 
     pub(crate) fn next_int(&mut self) -> Result<u64, CmdParseError> {
         use atoi::atoi;
 
@@ -63,7 +74,7 @@ impl Parse {
 
         match self.next()? {
             Frame::Integer(v) => Ok(v),
-            Frame::Simple(data) => atoi::<u64>(data.as_bytes()).ok_or_else(|| MSG.into()),
+            Frame::Simple(s) => atoi::<u64>(s.as_bytes()).ok_or_else(|| MSG.into()),
             Frame::Bulk(data) => atoi::<u64>(&data).ok_or_else(|| MSG.into()),
             frame => Err(format!("protocol error; expected int frame but got {frame:?}").into()),
         }

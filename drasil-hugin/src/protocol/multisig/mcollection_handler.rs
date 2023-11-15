@@ -12,6 +12,8 @@ use crate::protocol::create_response;
 use crate::{discount, BuildMultiSig, TBContracts};
 use crate::{CmdError, TBMultiSigLoc};
 
+/// The behaviors/actions to execute when the user wants to build a multisig transaction with
+/// multisig types `Mint` and `NftCollectionMinter`
 pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     match bms
         .transaction_pattern()

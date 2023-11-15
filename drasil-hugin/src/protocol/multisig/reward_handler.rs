@@ -6,6 +6,8 @@ use drasil_murin::modules::transfer::models::*;
 use drasil_murin::{wallet, PerformTxb};
 //use drasil_gungnir::schema::whitelist;
 
+/// The behaviors/actions to execute when the user wants to build a multisig transaction with
+/// multisig type `SpoRewardClaim`
 pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<String> {
     info!("verify transaction data...");
     match bms

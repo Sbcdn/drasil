@@ -11,7 +11,9 @@ use drasil_murin::stdtx::build_wallet_asset_transfer::{AtSATBuilder, AtSATParams
 
 use drasil_murin::{wallet, PerformTxb};
 
-// Handler for ordinary token transfers
+/// Handler for ordinary token transfers.
+/// The behavior/actions to be executed when the user wants to build a standard transaction 
+/// that just transfers Ada to one or more stake addresses.
 pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
     match bss
         .transaction_pattern()

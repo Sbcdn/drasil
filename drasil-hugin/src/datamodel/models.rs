@@ -14,6 +14,8 @@ use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumString, EnumVariantNames, EnumIs};
 
+/// This is the type of smart contract that the user wants to include in the transaction that
+/// they are requesting to build/finalize
 #[derive(
     Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
 )]
@@ -36,6 +38,7 @@ pub enum MarketplaceActions {
     Update,
 }
 
+/// Which type of multisig transaction does the user want to build/finalize?
 #[derive(
     Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumVariantNames, Display, EnumString,
 )]
@@ -67,6 +70,7 @@ impl FromStr for Utxopti {
     }
 }
 
+/// This is the type of standard transaction that the user wants to build/finalize.
 #[derive(Serialize, Deserialize, Debug, Clone, Display, EnumString, EnumVariantNames)]
 pub enum StdTxType {
     DelegateStake,
@@ -86,6 +90,7 @@ impl Signature {
     }
 }
 
+/// This is the action/behavior that the user wants the smart contract to perform
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ContractAction {
     MarketplaceActions(MarketplaceActions),
@@ -246,6 +251,11 @@ impl WalletTransactionPattern {
     }
 }
 
+/// The detailed specification for what transaction to build. This struct is used only in 
+/// transaction building (but not transaction finalization). This struct is the primary 
+/// source of input info to be used when defining the exact action/behavior to execute in 
+/// response to the user's request to build a transaction. The contents of this struct are 
+/// chosen by the user in their HTTP request. 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionPattern {
     user: Option<String>,
@@ -256,6 +266,7 @@ pub struct TransactionPattern {
     unused_addresses: Option<Vec<String>>,
     #[serde(alias = "sending_stake_addr")]
     stake_address: Option<String>,
+    /// Which stake address will receive the change (i.e. remainder of UTxO after the required amount was spent)?
     change_address: Option<String>,
     #[serde(alias = "inputs")]
     utxos: Option<Vec<String>>,
@@ -263,6 +274,7 @@ pub struct TransactionPattern {
     collateral: Option<Vec<String>>,
     #[serde(alias = "script")]
     operation: Operation,
+    /// Is this transaction performed on mainnet or testnet?
     network: u64,
 }
 

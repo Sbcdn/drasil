@@ -3,6 +3,8 @@ use drasil_murin::{RawTx, PerformTxb};
 
 use crate::{create_response, BuildStdTx, Operation, CmdError};
 
+/// The behavior/actions to be executed when the user wants to build a standard transaction 
+/// that withdraws Ada rewards
 pub(crate) async fn handle_reward_withdrawal(bst: &BuildStdTx) -> crate::Result<String> {
     let op = bst
         .transaction_pattern()

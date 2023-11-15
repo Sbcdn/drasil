@@ -51,38 +51,38 @@ pub enum Command {
 
 impl Command {
     /// Parse compressed data from a network connection into human-readable form.
-    /// Example: if Heimdallr (client) sends a transaction to Odin (server) via 
-    ///     network connection, then Odin can use this function to convert the
-    ///     parse the data into human-readable form.  
+    /// Example: if Heimdallr (client) sends a transaction request (command) to Odin 
+    ///     (server) via network connection, then Odin can use this function to parse
+    ///     the data into a more convenient (human-readable) form.  
     pub fn from_frame(frame: Frame) -> crate::Result<Command> {
         let mut parse = Parse::new(frame)?;
         log::debug!("FromFrame: {:?}", &parse);
         let command_name = parse.next_string()?.to_lowercase();
 
         let command: Command = match &command_name[..] {
-            //Build Contract
+            // Build Contract
             "bct" => Command::BuildContract(BuildContract::parse_frames(&mut parse)?),
-            //Build MultiSig
+            // Build MultiSig
             "bms" => Command::BuildMultiSig(BuildMultiSig::parse_frames(&mut parse)?),
-            //Finalize Contract
+            // Build StdTx
             "stx" => Command::BuildStdTx(BuildStdTx::parse_frames(&mut parse)?),
-            //Finalize Contract
+            // Finalize Contract
             "fct" => Command::FinalizeContract(FinalizeContract::parse_frames(&mut parse)?),
-            //Finalize MultiSig
+            // Finalize MultiSig
             "fms" => Command::FinalizeMultiSig(FinalizeMultiSig::parse_frames(&mut parse)?),
-            //Finalize MultiSig
+            // Finalize StdTx
             "ftx" => Command::FinalizeStdTx(FinalizeStdTx::parse_frames(&mut parse)?),
-            //GetPubKey
+            // GetPubKey
             "vus" => Command::VerifyUser(VerifyUser::parse_frames(&mut parse)?),
-            //GetStakeKey
+            // GetStakeKey
             "hyd" => {
                 Command::Unknown(Unknown::new(command_name))
-                //Command::GetStakeKey(GetStakeKey::parse_frames(&mut parse)?)
+                // Command::GetStakeKey(GetStakeKey::parse_frames(&mut parse)?)
             }
-            //VerifyData
+            // VerifyData
             "vd" => {
                 Command::Unknown(Unknown::new(command_name))
-                //Command::VerifyData(VerifyData::parse_frames(&mut parse)?)
+                // Command::VerifyData(VerifyData::parse_frames(&mut parse)?)
             }
             _ => Command::Unknown(Unknown::new(command_name)),
         };
@@ -92,6 +92,8 @@ impl Command {
         Ok(command)
     }
 
+    /// Execute the given command. The command contains parsed data in convenient format, ready 
+    /// to be used as inputs for execution.
     pub async fn apply(self, dst: &mut Connection, _shutdown: &mut Shutdown) -> crate::Result<()> {
         match self {
             Command::BuildContract(cmd) => cmd.apply(dst).await?,
@@ -129,6 +131,8 @@ impl Command {
     }
 }
 
+/// Check whether the transaction pattern (tx data) is valid. If tx pattern is valid, this function returns `Ok()`.
+/// Otherwise, this function returns `Err()`.
 async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     let empty_vec = Vec::<String>::new();
     // Check if user is valid

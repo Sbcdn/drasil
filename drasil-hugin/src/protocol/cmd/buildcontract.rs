@@ -10,11 +10,17 @@ use bytes::Bytes;
 use drasil_murin::cardano::MIN_ADA;
 use std::str::FromStr;
 
+/// The parsed data attached to the incoming command that requests a smart-contract 
+/// transaction to be built. 
 #[derive(Debug, Clone)]
 pub struct BuildContract {
     customer_id: u64,
+    /// This is the type of smart contract that the user wants to build.
     ctype: ContractType,
+    /// This is the behavior/action that the user wants the smart contract to perform.
     action: ContractAction,
+    /// Specification of the basic attributes of this transaction (i.e. the aspects held in 
+    /// common with all other transactions)
     txpattern: TransactionPattern,
 }
 
@@ -37,18 +43,25 @@ impl BuildContract {
         self.customer_id
     }
 
+    /// Find out what type of smart contract the user wants to build
     pub fn contract_type(&self) -> ContractType {
         self.ctype.clone()
     }
 
+    /// Find out what type of behavior/action the user wants the smart contract to perform
     pub fn action(&self) -> ContractAction {
         self.action.clone()
     }
 
+    /// Get the specification of the basic attributes of this transaction (i.e. the aspects
+    /// held in common with all other transactions)
     pub fn transaction_pattern(&self) -> TransactionPattern {
         self.txpattern.clone()
     }
 
+    /// Parse the command parts (parts of a transaction request) into suitable types 
+    /// and collect them into a single place in preparation for building a smart-contract
+    /// transaction. 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildContract> {
         let customer_id = parse.next_int()?;
 
@@ -73,9 +86,14 @@ impl BuildContract {
         })
     }
 
+    /// Build a smart-contract transaction. `BuildContract` (`self`) contains the building blocks used in this method.
+    /// `dst` is the connection to the Heimdallr client (and thus indirectly to the user) who requested this transaction 
+    /// to be built. This method sends a response back to this Heimdallr client (and thus back to the user who requested 
+    /// this transaction to be built). 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response = Frame::Simple("OK".to_string());
 
+        // Make sure that the transaction pattern is valid, or else send error message as HTTP response to user
         if let Err(e) = super::check_txpattern(&self.transaction_pattern()).await {
             log::debug!("{:?}", response);
             response = Frame::Simple(e.to_string());
@@ -83,6 +101,7 @@ impl BuildContract {
             return Err(Box::new(CmdError::InvalidData));
         }
 
+        // Execute behavior/actions specific to the given contract type
         let mut ret = String::new();
         match self.ctype {
             ContractType::MarketPlace => {
@@ -106,6 +125,8 @@ impl BuildContract {
             }
         }
 
+        // This is what the user will see in the HTTP response, in response to the HTTP request 
+        // they made that led to this smart contract being executed in the first place.
         response = Frame::Bulk(Bytes::from(
             bc::DefaultOptions::new()
                 .with_varint_encoding()
@@ -116,6 +137,8 @@ impl BuildContract {
         Ok(())
     }
 
+    /// The behavior/actions to execute if the smart-contract transaction that the user wants to 
+    /// build belongs to the category (contract type) `MarketPlace`
     async fn handle_marketplace(&self) -> crate::Result<String> {
         match self
             .transaction_pattern()

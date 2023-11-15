@@ -7,11 +7,16 @@ use bincode as bc;
 use bytes::Bytes;
 use std::str::FromStr;
 
+/// The parsed data attached to the incoming command that requests a smart-contract transaction to be finalized. 
 #[derive(Debug, Clone)]
 pub struct FinalizeContract {
     customer_id: u64,
+    /// This is the type of smart contract that the user wants to finalize.
     ctype: ContractType,
+    /// This is the specific built smart-contract transaction that the user wants to finalize.
     tx_id: String,
+    /// Signature from the sender's private key to confirm that the owner of 
+    /// the input UTxOs approves this smart-contract transaction
     signature: String,
 }
 
@@ -59,6 +64,7 @@ impl FinalizeContract {
         self.ctype.clone()
     }
 
+    /// Get the specific built smart-contract transaction that the user wants to finalize.
     pub fn get_tx_id(&self) -> String {
         self.tx_id.clone()
     }
@@ -67,6 +73,9 @@ impl FinalizeContract {
         self.signature.clone()
     }
 
+    /// Parse the command parts (parts of a transaction request) into suitable types 
+    /// and collect them into a single place in preparation for finalizing a smart-contract
+    /// transaction. 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<FinalizeContract> {
         let customer_id = parse.next_int()?;
 
@@ -89,6 +98,10 @@ impl FinalizeContract {
         })
     }
 
+    /// Finalize a smart-contract transaction. `FinalizeContract` (`self`) contains the building blocks used in this method.
+    /// `dst` is the connection to the Heimdallr client (and thus indirectly to the user) who requested the given transaction 
+    /// to be finalized. This method sends a response back to this Heimdallr client (and thus back to the user who requested 
+    /// the given transaction to be finalized). 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response = Frame::Simple("Error: something went wrong".to_string());
         let raw_tx = drasil_murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;

@@ -10,11 +10,16 @@ use drasil_murin::cardano;
 use drasil_murin::minter::models::{CMintHandle, ColMinterTxData};
 use std::str::FromStr;
 
+/// The parsed data attached to the incoming command that requests a multisig transaction to be finalized. 
 #[derive(Debug, Clone)]
 pub struct FinalizeMultiSig {
     customer_id: u64,
+    /// This is the type of multisig transaction that the user wants to finalize
     mtype: MultiSigType,
+    /// This is the specific built multisig transaction that the user wants to finalize
     tx_id: String,
+    /// Signature from the sender's private key to confirm that the owner of 
+    /// the input UTxOs approves this multisig transaction
     signature: String,
 }
 
@@ -70,6 +75,9 @@ impl FinalizeMultiSig {
         self.signature.clone()
     }
 
+    /// Parse the command parts (parts of a transaction request) into suitable types 
+    /// and collect them into a single place in preparation for finalizing a multisig 
+    /// transaction. 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<FinalizeMultiSig> {
         let customer_id = parse.next_int()?;
 
@@ -92,6 +100,10 @@ impl FinalizeMultiSig {
         })
     }
 
+    /// Finalize a multisig transaction. `FinalizeMultisig` (`self`) contains the building blocks used in this method.
+    /// `dst` is the connection to the Heimdallr client (and thus indirectly to the user) who requested the given transaction 
+    /// to be finalized. This method sends a response back to this Heimdallr client (and thus back to the user who requested 
+    /// the given transaction to be finalized). 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
         let mut response = Frame::Simple("Error: something went wrong".to_string());
         let raw_tx = drasil_murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;

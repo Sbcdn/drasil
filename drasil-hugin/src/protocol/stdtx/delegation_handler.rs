@@ -7,6 +7,7 @@ use drasil_murin::wallet;
 use drasil_murin::PerformTxb;
 use drasil_murin::TransactionUnspentOutputs;
 
+/// The behavior/actions to be executed when the user wants to build a standard transaction that delegates stake 
 pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<String> {
     match bst
         .transaction_pattern()
