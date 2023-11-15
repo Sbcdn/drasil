@@ -25,5 +25,5 @@ data:
 
     [sink]
     type = "Redis"
-    redis_server = "redis://34.118.225.230:6379/0"
+    redis_server = "redis://drasil-redis-service.default.svc.cluster.local:6379/0"
     stream_strategy = "ByEventType"

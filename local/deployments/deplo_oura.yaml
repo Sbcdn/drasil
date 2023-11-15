@@ -33,3 +33,16 @@ spec:
       - name: config
         configMap:
           name: oura-config
+---
+# Oura Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-oura-service
+spec:
+  selector:
+    app: drasil-oura
+  type: ClusterIP
+  ports:
+    - port: 4007  
+      targetPort: 4007

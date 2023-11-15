@@ -322,8 +322,10 @@ impl TBDrasilUser {
             password_hash::{PasswordHash, PasswordVerifier},
             Argon2,
         };
-        let user = TBDrasilUser::get_user_by_mail(email)?;
-        Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
+        let user = TBDrasilUser::get_user_by_mail(email);
+        info!("user: {:?}", user);
+        let user = user?;
+        Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd).unwrap()).unwrap();
         Ok(user)
     }
 
@@ -332,8 +334,10 @@ impl TBDrasilUser {
             password_hash::{PasswordHash, PasswordVerifier},
             Argon2,
         };
-        let user = TBDrasilUser::get_user_by_user_id(user_id)?;
-        Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
+        let user = TBDrasilUser::get_user_by_user_id(user_id).unwrap();
+        let pw = Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?);
+        info!("pw: {:?}", pw);
+        let pw = pw?;
         Ok(user)
     }
 
