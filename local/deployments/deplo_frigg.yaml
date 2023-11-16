@@ -24,6 +24,12 @@ spec:
       - name: frigg
         image: k3d-drasil-registry.localhost:12345/frigg:v1.3
         imagePullPolicy: IfNotPresent
+        env: 
+          - name: VROLE_ID
+            valueFrom:
+              secretKeyRef:
+                name: app-vault
+                key: role-id
         envFrom:
           - configMapRef:
               name: drasil-config
@@ -35,6 +41,17 @@ spec:
       - name: dvltath
         image: k3d-drasil-registry.localhost:12345/dvltath:v1.3
         imagePullPolicy: IfNotPresent
+        env: 
+          - name: VROLE_ID
+            valueFrom:
+                secretKeyRef:
+                  name: dvltath-vault
+                  key: role-id
+          - name: VSECRET_ID
+            valueFrom:
+                secretKeyRef:
+                  name: dvltath-vault
+                  key: role-id
         envFrom:
           - configMapRef:
               name: drasil-config

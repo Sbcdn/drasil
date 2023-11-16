@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use log::info;
 use std::env::{set_var, var};
 use std::io::{Read, Write};
 use vaultrs::api::auth::approle::responses::GenerateNewSecretIDResponse;
@@ -128,25 +129,27 @@ async fn request_secret(
 
     let mut response = client.get(url);
 
-    match tokio::time::timeout(std::time::Duration::from_secs(1), &mut response).await {
-        Err(_) => {
-            log::error!("secret request timeout");
+    match tokio::time::timeout(std::time::Duration::from_secs(3), &mut response).await {
+        Err(e) => {
+            log::error!("secret request timeout: {:?}", e);
         }
-        Ok(no_timeout) => match no_timeout {
-            Ok(resp) => {
-                log::debug!("Response: {:?}", resp);
-                let r_status = resp.status();
-                //let resp_text = resp.text().await.unwrap();
-                if r_status != http::StatusCode::ACCEPTED {
-                    log::error!("secret request not accepted");
-                } else {
-                    return Ok(read_wrapped_secret(vclient, path).await);
+        Ok(no_timeout) => {
+            info!("no timeout: {:?}", no_timeout); 
+            match no_timeout {   
+                Ok(resp) => {
+                    log::debug!("Response: {:?}", resp);
+                    let r_status = resp.status();
+                    //let resp_text = resp.text().await.unwrap();
+                    if r_status != http::StatusCode::ACCEPTED {
+                        log::error!("secret request not accepted");
+                    } else {
+                        return Ok(read_wrapped_secret(vclient, path).await);
+                    }
                 }
-            }
-            Err(_) => {
-                log::error!("error on secret request");
-            }
-        },
+                Err(e) => {
+                    log::error!("error on secret request {:?}",e);
+                }
+            }}
     }
     Err(crate::error::Error::StdError)
 }
