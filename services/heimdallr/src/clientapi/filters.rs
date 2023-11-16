@@ -121,7 +121,7 @@ fn exec_finalize_stdtx() -> impl Filter<Extract = impl warp::Reply, Error = warp
 }
 
 fn auth() -> impl Filter<Extract = ((u64, TXPWrapper),), Error = warp::Rejection> + Clone {
-    use super::auth::authorize;
+    use drasil_hugin::authentication::auth::authorize;
     use warp::{
         filters::body::bytes,
         filters::header::headers_cloned,

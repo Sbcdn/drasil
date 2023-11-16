@@ -16,8 +16,8 @@ const DEFAULT_PORT: &str = "4101";
 
 #[tokio::main]
 async fn main() {
-    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
-    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
+    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
+    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
 
     if env::var_os("RUST_LOG").is_none() {
         env::set_var("RUST_LOG", "vidar=info");
@@ -101,15 +101,15 @@ mod auth {
                 let user_id = decoded.claims.sub.parse::<u64>().map_err(|_| {
                     reject::custom(VError::Custom("Could not parse customer id".to_string()))
                 })?;
-                let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
+                let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.map_err(|_| reject::custom(VError::OdinConError))?;
                 let cmd = VerifyUser::new(user_id, jwt);
                 log::info!("try to verify user ...");
                 match client.build_cmd::<VerifyUser>(cmd).await {
                     Ok(_) => {}
                     Err(_) => {
-                        return Err(reject::custom(VError::JWTTokenError));
+                        return Err(reject::custom(VError::UserDoesNotExists));
                     }
-                };
+                }
                 Ok(user_id)
             }
             Err(e) => Err(reject::custom(e)),

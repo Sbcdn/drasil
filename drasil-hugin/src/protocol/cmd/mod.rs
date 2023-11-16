@@ -21,7 +21,7 @@ pub use verifydata::VerifyData;
 pub use verifyuser::VerifyUser;
 
 use drasil_murin::address::BaseAddress;
-use drasil_murin::{cardano, wallet};
+use drasil_murin::{cardano, wallet, MurinError};
 
 use crate::error::SystemDBError;
 use crate::{Connection, Frame, Parse, Shutdown, TransactionPattern};
@@ -47,9 +47,9 @@ pub enum Command {
 
 impl Command {
     pub fn from_frame(frame: Frame) -> crate::Result<Command> {
-        let mut parse = Parse::new(frame)?;
+        let mut parse = Parse::new(frame).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         log::debug!("FromFrame: {:?}", &parse);
-        let command_name = parse.next_string()?.to_lowercase();
+        let command_name = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         let command: Command = match &command_name[..] {
             //Build Contract
@@ -79,7 +79,7 @@ impl Command {
             _ => Command::Unknown(Unknown::new(command_name)),
         };
 
-        parse.finish()?;
+        parse.finish().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         Ok(command)
     }
@@ -133,17 +133,12 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     if txp.collateral().is_some()
         && (hex::decode(txp.collateral().unwrap()).is_err() || txp.collateral().unwrap() == "")
     {
-        return Err(CmdError::Custom {
-            str: "ERROR no collateral provided".to_string(),
-        }
+        return Err("ERROR no collateral provided"
         .into());
     }
 
     if txp.used_addresses().is_empty() {
-        return Err(CmdError::Custom {
-            str: "ERROR no wallet address provided".to_string(),
-        }
-        .into());
+        return Err("ERROR no wallet address provided".into());
     }
 
     if txp.stake_addr().is_some() {
@@ -154,7 +149,7 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
             if BaseAddress::from_address(&address).is_some() {
                 let raddr = wallet::reward_address_from_address(&address)?;
                 if raddr != rewardaddr {
-                    return Err(CmdError::Custom{str:"ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string()}.into());
+                    return Err("ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string().into());
                 }
                 rewardaddr = raddr
             }

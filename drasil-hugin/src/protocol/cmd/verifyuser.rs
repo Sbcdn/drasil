@@ -1,9 +1,10 @@
-use crate::{CmdError, Parse};
+use crate::Parse;
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
+use drasil_murin::MurinError;
 
 #[derive(Debug, Clone)]
 pub struct VerifyUser {
@@ -28,8 +29,8 @@ impl VerifyUser {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<VerifyUser> {
-        let customer_id = parse.next_int()?;
-        let btoken = parse.next_bytes()?;
+        let customer_id = parse.next_int().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let btoken = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let btoken: String = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&btoken)?;
@@ -41,7 +42,7 @@ impl VerifyUser {
 
     /// Apply verify user
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        let user = crate::database::TBDrasilUser::get_user_by_user_id(&(self.user_id as i64))?;
+        let user = crate::database::TBDrasilUser::get_user_by_user_id(&(self.user_id as i64)).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         if let Some(token) = user.api_pubkey {
             if token == self.bearer_token {
@@ -52,10 +53,7 @@ impl VerifyUser {
                 ));
                 dst.write_frame(&response).await?;
             } else {
-                return Err(CmdError::Custom {
-                    str: "ERROR not authenticated".to_string(),
-                }
-                .into());
+                return Err("ERROR token not valid".to_string().into());
             }
         }
         Ok(())

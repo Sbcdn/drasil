@@ -1,6 +1,7 @@
-use super::frame::{self, Frame};
+use super::frame::Frame;
 use async_recursion::async_recursion;
 use bytes::{Buf, BytesMut};
+use drasil_murin::MurinError;
 use std::io::Cursor;
 use tokio::io::BufWriter;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
@@ -36,7 +37,6 @@ impl Connection {
     }
 
     async fn parse_frame(&mut self) -> crate::Result<Option<Frame>> {
-        use frame::Error::Incomplete;
         let mut buf = Cursor::new(&self.buffer[..]);
 
         match Frame::check(&mut buf) {
@@ -44,13 +44,12 @@ impl Connection {
                 let len = buf.position() as usize;
                 buf.set_position(0);
 
-                let frame = Frame::parse(&mut buf)?;
+                let frame = Frame::parse(&mut buf).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
                 self.buffer.advance(len);
                 Ok(Some(frame))
             }
-            Err(Incomplete) => Ok(None),
-            Err(e) => Err(e.into()),
+            Err(e) => Err(e.to_string().into()),
         }
     }
 

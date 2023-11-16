@@ -14,7 +14,7 @@ data:
 # Vault KV-storage path
   VAULT_PATH: "drasil/"
 # Vault Address
-  VAULT_ADDRESSESS: http://vault.default.svc.cluster.local:8200
+  VAULT_ADDRESS: http://vault.default.svc.cluster.local:8200
 # General Pod Host IP
   POD_HOST: "0.0.0.0"
 # Rust Log Level

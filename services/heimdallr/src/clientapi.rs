@@ -1,4 +1,3 @@
-mod auth;
 mod filters;
 mod handlers;
 

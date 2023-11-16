@@ -1,7 +1,7 @@
 use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::BuildStdTx;
-use crate::CmdError;
+use drasil_murin::MurinError;
 use drasil_murin::clib;
 use drasil_murin::wallet::address_from_string_non_async;
 use drasil_murin::PerformTxb;
@@ -15,10 +15,7 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
     {
         Operation::StakeDeregistration { .. } => (),
         _ => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()),
-            }
-            .into());
+            return Err(format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()).into());
         }
     }
     let op = &bst.transaction_pattern().operation().unwrap();
@@ -28,10 +25,7 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
             (op.into_stake_deregistration().await?, payment_addresses)
         }
         _ => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()),
-            }
-            .into())
+            return Err(format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()).into())
         }
     };
     // intotxdata only works with the transaction pattern, we also need to make the address pattern acceptable
@@ -80,13 +74,10 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
     let mut dbsync = match drasil_mimir::establish_connection() {
         Ok(conn) => conn,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()),
-            }
-            .into());
+            return Err(format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()).into());
         }
     };
-    let current_slot = drasil_mimir::get_slot(&mut dbsync)?;
+    let current_slot = drasil_mimir::get_slot(&mut dbsync).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     gtxd.set_current_slot(current_slot as u64);
 
     deregtxd.set_registered(Some(false)); // the whole point

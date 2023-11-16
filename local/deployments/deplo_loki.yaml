@@ -43,4 +43,4 @@ spec:
     - port: 4002
       nodePort: 30002
       protocol: TCP
-      targetPort: 4002
+      targetPort: 6144

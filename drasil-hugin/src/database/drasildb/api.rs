@@ -452,8 +452,14 @@ impl TBDrasilUser {
     }
 
     pub async fn approve(&self, pw: &String, msg: &str) -> Result<String, SystemDBError> {
-        let pk = PublicKey::from_bech32(&self.drslpubkey)?;
-        let pkh = hex::encode(PublicKey::from_bech32(&self.drslpubkey)?.hash().to_bytes());
+        let pk_s = if let Some(pk_t) = self.drslpubkey.as_ref() {
+            pk_t
+        }else{
+            return Err(SystemDBError::Custom("No public key defined".to_string()));
+        };
+        let pk = PublicKey::from_bech32(&pk_s)?;
+        
+        let pkh = hex::encode(PublicKey::from_bech32(&pk_s)?.hash().to_bytes());
         let privkey = vault_get(&pkh).await;
         let privkey = PrivateKey::from_bech32(&decrypt(privkey.get("prvkey").unwrap(), pw)?)?;
 
@@ -464,7 +470,12 @@ impl TBDrasilUser {
     }
 
     pub fn verify_approval(&self, msg: &str, sign: &str) -> Result<bool, SystemDBError> {
-        let pk = PublicKey::from_bech32(&self.drslpubkey)?;
+        let pk_s = if let Some(pk_t) = self.drslpubkey.as_ref() {
+            pk_t
+        }else{
+            return Err(SystemDBError::Custom("No public key defined".to_string()));
+        };
+        let pk = PublicKey::from_bech32(&pk_s)?;
         let sign = Ed25519Signature::from_hex(sign)?;
         if !pk.verify(msg.as_bytes(), &sign) {
             return Err(SystemDBError::Custom("Error: US0010".to_string()));

@@ -18,6 +18,10 @@ pub enum VError {
     JWTError(#[from] jsonwebtoken::errors::Error),
     #[error(transparent)]
     ParseIntError(#[from] core::num::ParseIntError),
+    #[error("Odin connection error" )]
+    OdinConError,
+    #[error("API token unknown" )]
+    UserDoesNotExists,
 }
 
 impl From<std::string::String> for VError {
