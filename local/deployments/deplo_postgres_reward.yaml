@@ -64,4 +64,4 @@ spec:
     - port: 5433
       nodePort: 30009
       protocol: TCP
-      targetPort: 5433
+      targetPort: 5432

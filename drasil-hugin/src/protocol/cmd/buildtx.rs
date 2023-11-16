@@ -6,6 +6,7 @@ use crate::{Connection, Frame, IntoFrame};
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
+use drasil_murin::MurinError;
 
 #[derive(Debug, Clone)]
 pub struct BuildStdTx {
@@ -36,12 +37,12 @@ impl BuildStdTx {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildStdTx> {
-        let customer_id = parse.next_int()?;
-        let txtype = parse.next_bytes()?;
+        let customer_id = parse.next_int().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let txtype = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let txtype: StdTxType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&txtype)?;
-        let txpattern = parse.next_bytes()?;
+        let txpattern = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let txpattern: TransactionPattern = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&txpattern)?;

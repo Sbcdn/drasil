@@ -11,7 +11,7 @@ pub(crate) struct Parse {
 #[derive(Debug)]
 pub(crate) enum CmdParseError {
     EndOfStream,
-    Other(crate::Error),
+    Other(String),
 }
 
 impl Parse {

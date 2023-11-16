@@ -35,4 +35,4 @@ spec:
     - port: 4001
       nodePort: 30001
       protocol: TCP
-      targetPort: 4001
+      targetPort: 4101
