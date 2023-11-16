@@ -4,9 +4,9 @@ metadata:
   name: drasil-config
 data:
 # Vault Unix Socket Path to communicate with Odin / Frigg
-  DVLTATH_DVLTATH_VSOCKET_PATH: /cache/req.sock
+  DVLTATH_VSOCKET_PATH: /cache/req.sock
 # Vault Unix Secret Path to store the temporary secret
-  DVLTATH_DVLTATH_SPATH: /cache/sec
+  DVLTATH_SPATH: /cache/sec
 # Vault KV Store
   VAULT_MOUNT: secret
 # Vault Namespace

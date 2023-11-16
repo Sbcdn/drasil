@@ -168,7 +168,7 @@ push-all-testnet:
 # Docker must be installed already
 setup-dependencies:
 	sudo apt-get update
-	sudo apt install -y curl
+	sudo apt install -y curl make jq
 	curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 	curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 	sudo apt-get install -y apt-transport-https ca-certificates curl
@@ -187,7 +187,11 @@ create-local-cluster:
 	@echo "Creating new cluster..."
 	@k3d cluster create --config ./local/local.yaml --api-port 6550 --registry-create k3d-drasil-registry.localhost:12345 --volume ${HOME}/k3dvol:${HOME}/k3dvol -p "30000-30010:30000-30010@server:0" --agents 2
 
-build-all-loc:
+build-drasil:
+	@make build-drasil-builder
+	@make build-all-local
+
+build-all-local:
 # docker image delete drasil/builder:latest
 # make build-drasil-builder
 	@echo "Building local drasil images..."
@@ -204,7 +208,7 @@ build-all-loc:
 	@docker build --progress=plain -t $(LOC_PROJECT)/dvltath:$(VERSION) -f Dockerfile --target=dvltath .
 
 
-push-all-loc:
+push-all-local:
 	@echo "Pushing to local registry..."
 	@echo "Pushing vidar..."
 	@docker push $(LOC_PROJECT)/vidar:$(VERSION)
@@ -273,22 +277,27 @@ start-local-cluster:
 	@echo "Starting New Cluster..."
 	@-pkill -9 -f 'kubectl proxy' || true
 	@make create-local-cluster
-	@make push-all-loc
+	@make push-all-local
 	@make local-deploy
 	@nohup kubectl proxy &
+	@echo "\nSetup databases..."
+	@chmod +x ./local/scripts/setup_database.sh
+	@./local/scripts/setup_database.sh
 	kubectl get pods
 	@kubectl apply -f ./local/accounts/kubeadmin.yaml
 	@echo "\nKubeadmin Token:\n"
 	@kubectl get secret admin-user -n kubernetes-dashboard -o jsonpath={".data.token"} | base64 -d
 	@echo "\n\nKubernetes Dashboard at:\nhttp://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/"
-	@echo "\nSetup databases..."
-	@chmod +x ./local/scripts/setup_database.sh
-	@./local/scripts/setup_database.sh
-	
+	@echo "\nDatabase tables and admin user created; User: dadmin, Password: drasil123; you can login now via admin service"
 
 delete-cluster:
 	k3d cluster delete --all
-	
+
+stop-local-cluster:
+	k3d cluster stop drasil	
+
+restart-local-cluster:
+	k3d cluster start drasil
 
 first-setup: 
 	make setup-dependencies

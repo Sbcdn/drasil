@@ -3,13 +3,12 @@ kind: ConfigMap
 metadata:
   name: drasil-odin-config
 data:
-  ODIN_PORT: "6142"
+  PORT: "6142"
   # Oding Configuration File Path on Cotainer
-  ODIN_CONFIG_PATH: /usr/bin/config.toml
+  CONFIG_PATH: /usr/bin/config.toml
   # For future use
   POW: ""
   # Login Information to retrieve vault login information via dvltath for Odin
-  ODIN_VAULT_TOKEN: "w4tsefsxds4"
-  ODIN_VROLE_ID: 129243c1-8b6a-5fbb-8d4f-221e01cb089d
-  ODIN_VSECRET_ID: "dummy"
-  ODIN_VROLE_NAME: drslapp
+  VAULT_TOKEN: "root"
+  VSECRET_ID: "dummy"
+  VROLE_NAME: drslapp

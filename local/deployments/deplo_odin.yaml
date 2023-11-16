@@ -22,6 +22,17 @@ spec:
         runAsGroup: 0
       containers:
         - name: dvltath
+          env: 
+            - name: VROLE_ID
+              valueFrom:
+                  secretKeyRef:
+                    name: dvltath-vault
+                    key: role-id
+            - name: VSECRET_ID
+              valueFrom:
+                  secretKeyRef:
+                    name: dvltath-vault
+                    key: secret-id
           envFrom:
           - configMapRef:
               name: drasil-config
@@ -52,6 +63,12 @@ spec:
             requests:
                 cpu: 25m
                 memory: 10Mi
+          env: 
+            - name: VROLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-vault
+                  key: role-id
           envFrom:
           - configMapRef:
               name: drasil-config
