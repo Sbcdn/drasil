@@ -48,7 +48,6 @@ pub enum Command {
 impl Command {
     pub fn from_frame(frame: Frame) -> crate::Result<Command> {
         let mut parse = Parse::new(frame).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
-        log::debug!("FromFrame: {:?}", &parse);
         let command_name = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         let command: Command = match &command_name[..] {

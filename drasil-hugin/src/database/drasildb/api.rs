@@ -143,9 +143,9 @@ impl TBContracts {
         let result = contracts::table
             .filter(contracts::user_id.eq(&user_id_in))
             .filter(contracts::contract_id.eq(&contract_id_in))
-            .load::<TBContracts>(&mut establish_connection()?);
+            .first::<TBContracts>(&mut establish_connection()?);
         log::debug!("input data: u:{},c:{} ", user_id_in, contract_id_in);
-        Ok(result?[0].clone())
+        Ok(result?.clone())
     }
 
     pub fn get_next_contract_id(user_id_in: &i64) -> Result<i64, SystemDBError> {

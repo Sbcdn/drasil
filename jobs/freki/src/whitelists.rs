@@ -23,13 +23,13 @@ pub(crate) async fn handle_whitelist_address(
     }
 
     match twd.mode {
-        drasil_gungnir::Calculationmode::AirDrop => {
+        drasil_gungnir::calculationmode::AirDrop => {
             todo!();
             //This is a reoccuring airdrop, add new rewards
             //let param: ReoccuringAirdrop =
             //            serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
         }
-        drasil_gungnir::Calculationmode::Custom => {
+        drasil_gungnir::calculationmode::Custom => {
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::FixedAmountPerEpoch => {
                     log::debug!("Whitelist calcualte with: FixedAmountPerEpoch");

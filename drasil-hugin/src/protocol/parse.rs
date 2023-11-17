@@ -11,11 +11,12 @@ pub(crate) struct Parse {
 #[derive(Debug)]
 pub(crate) enum CmdParseError {
     EndOfStream,
-    Other(String),
+    Other(crate::Error),
 }
 
 impl Parse {
     pub(crate) fn new(frame: Frame) -> Result<Parse, CmdParseError> {
+        log::trace!("Parse::new, frame: {:?}", frame);
         let array = match frame {
             Frame::Array(array) => array,
             frame => {

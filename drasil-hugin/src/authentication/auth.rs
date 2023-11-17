@@ -34,8 +34,6 @@ pub async fn authorize(
     } else {
         TXPWrapper::OneShotMinter(serde_json::from_str::<OneShotMintPayload>(str_slice).unwrap())
     };
-
-    log::debug!("\n\nBody: {b:?}\n\n");
     let publ = publ.into_bytes();
     match jwt_from_header(&headers) {
         Ok(jwt) => {

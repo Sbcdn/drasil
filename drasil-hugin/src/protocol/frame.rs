@@ -1,9 +1,9 @@
 use bytes::{Buf, Bytes};
-use drasil_murin::MurinError;
 use std::convert::TryInto;
 use std::fmt;
 use std::io::Cursor;
 use std::num::TryFromIntError;
+use std::string::FromUtf8Error;
 
 #[derive(Clone, Debug)]
 pub enum Frame {
@@ -16,12 +16,12 @@ pub enum Frame {
 }
 
 #[derive(Debug)]
-pub enum MError {
+pub enum Error {
     Incomplete,
     InvalidAuth,
     InvalidHeader,
     NotAFrame,
-    Other(String),
+    Other(crate::Error),
 }
 
 impl Frame {
@@ -46,12 +46,9 @@ impl Frame {
         }
     }
 
-    pub fn check(src: &mut Cursor<&[u8]>) -> Result<(), MurinError> {
+    pub fn check(src: &mut Cursor<&[u8]>) -> Result<(), Error> {
+        log::debug!("Checking frame, cursor: {:?}", src);
         match get_u8(src)? {
-            b'?' => {
-                let len: usize = get_decimal(src)?.try_into().map_err(|e:TryFromIntError| MurinError::Custom(e.to_string()))?;
-                skip(src, len + 2)
-            }
             b'+' => {
                 get_line(src)?;
                 Ok(())
@@ -68,7 +65,7 @@ impl Frame {
                 if b'-' == peek_u8(src)? {
                     skip(src, 4)
                 } else {
-                    let len: usize = get_decimal(src)?.try_into().map_err(|e:TryFromIntError| MurinError::Custom(e.to_string()))?;
+                    let len: usize = get_decimal(src)?.try_into()?;
                     skip(src, len + 2)
                 }
             }
@@ -83,7 +80,8 @@ impl Frame {
         }
     }
 
-    pub fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, MurinError> {
+    pub fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, Error> {
+        log::debug!("parse frame, src: {:?}", src);
         match get_u8(src)? {
             b'+' => {
                 let line = get_line(src)?.to_vec();
@@ -108,10 +106,10 @@ impl Frame {
                     }
                     Ok(Frame::Null)
                 } else {
-                    let len = get_decimal(src)?.try_into().map_err(|e : TryFromIntError| MurinError::ProtocolCommandError(e.to_string()))?;
+                    let len = get_decimal(src)?.try_into()?;
                     let n = len + 2;
                     if src.remaining() < n {
-                        return Err("FrameError::Incomplete".into());
+                        return Err(Error::Incomplete);
                     }
                     let data = Bytes::copy_from_slice(&src.chunk()[..len]);
                     skip(src, n)?;
@@ -120,7 +118,7 @@ impl Frame {
                 }
             }
             b'*' => {
-                let len = get_decimal(src)?.try_into().map_err(|e : TryFromIntError| MurinError::ProtocolCommandError(e.to_string()))?;
+                let len = get_decimal(src)?.try_into()?;
                 let mut out = Vec::with_capacity(len);
                 for _ in 0..len {
                     out.push(Frame::parse(src)?);
@@ -131,7 +129,7 @@ impl Frame {
         }
     }
 
-    pub(crate) fn to_error(&self) -> MurinError {
+    pub(crate) fn to_error(&self) -> crate::Error {
         format!("unexpected frame: {self}").into()
     }
 }
@@ -173,67 +171,32 @@ impl fmt::Display for Frame {
     }
 }
 
-fn _parse_header(src: &mut Bytes) -> Result<(String, String, u64, String, String), MurinError> {
-    let mut buf = Cursor::new(src.clone());
-
-    let mut a = Vec::<String>::new();
-    let mut temp = Vec::<u8>::new();
-    for _ in 0..src.len() {
-        match buf.get_u8() {
-            b'/' => {
-                temp.reverse();
-                match std::str::from_utf8(&temp) {
-                    Ok(v) => a.push(v.to_string()),
-                    Err(_) => return Err("FrameError::InvalidHeader".into()),
-                }
-                temp.clear();
-            }
-            b => {
-                temp.push(b);
-            }
-        }
-    }
-    a.reverse();
-    let version = match a[2].parse::<u64>() {
-        Ok(val) => val,
-        Err(_) => return Err("FrameError::InvalidHeader".into()),
-    };
-
-    Ok((
-        a[0].clone(),
-        a[1].clone(),
-        version,
-        a[3].clone(),
-        a[4].clone(),
-    ))
-}
-
-fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, MurinError> {
+fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     if !src.has_remaining() {
-        return Err("FrameError::Incomplete".into());
+        return Err(Error::Incomplete);
     }
 
     Ok(src.chunk()[0])
 }
 
-fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, MurinError> {
+fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     if !src.has_remaining() {
-        return Err("FrameError::Incomplete".into());
+        return Err(Error::Incomplete);
     }
 
     Ok(src.get_u8())
 }
 
-fn skip(src: &mut Cursor<&[u8]>, n: usize) -> Result<(), MurinError> {
+fn skip(src: &mut Cursor<&[u8]>, n: usize) -> Result<(), Error> {
     if src.remaining() < n {
-        return Err("FrameError::Incomplete".into());
+        return Err(Error::Incomplete);
     }
 
     src.advance(n);
     Ok(())
 }
 
-fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, MurinError> {
+fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, Error> {
     use atoi::atoi;
 
     let line = get_line(src)?;
@@ -241,7 +204,7 @@ fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, MurinError> {
     atoi::<u64>(line).ok_or_else(|| "protocol error; invalid frame format".into())
 }
 
-fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], MurinError> {
+fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error> {
     let start = src.position() as usize;
     let end = src.get_ref().len() - 1;
 
@@ -252,7 +215,43 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], MurinError> {
         }
     }
 
-    Err("FrameError::Incomplete".into())
+    Err(Error::Incomplete)
 }
 
+impl From<String> for Error {
+    fn from(src: String) -> Error {
+        Error::Other(src.into())
+    }
+}
 
+impl From<&str> for Error {
+    fn from(src: &str) -> Error {
+        src.to_string().into()
+    }
+}
+
+impl From<FromUtf8Error> for Error {
+    fn from(_src: FromUtf8Error) -> Error {
+        "protocol error; invalid frame format".into()
+    }
+}
+
+impl From<TryFromIntError> for Error {
+    fn from(_src: TryFromIntError) -> Error {
+        "protocol error; invalid frame format".into()
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::Incomplete => "stream ended early".fmt(fmt),
+            Error::InvalidHeader => "header format not matched".fmt(fmt),
+            Error::InvalidAuth => "invalid auth token".fmt(fmt),
+            Error::NotAFrame => "data is not an array".fmt(fmt),
+            Error::Other(err) => err.fmt(fmt),
+        }
+    }
+}

@@ -14,7 +14,7 @@ pub(crate) async fn handle_stake(
         return Ok(());
     }
     match twd.mode {
-        drasil_gungnir::Calculationmode::RelationalToADAStake => {
+        drasil_gungnir::calculationmode::RelationalToADAStake => {
             log::debug!("Calcualte with: RelationalToAdaStake");
             let mut token_earned = stake.amount * BigDecimal::from_str(&twd.equation)?;
 
@@ -27,7 +27,7 @@ pub(crate) async fn handle_stake(
             handle_rewards(&stake.stake_addr, twd, &token_earned, table, false)?;
         }
 
-        drasil_gungnir::Calculationmode::FixedEndEpoch => {
+        drasil_gungnir::calculationmode::FixedEndEpoch => {
             log::debug!("Calcualte with: FixedEndEpoch");
             let x = if let Some(s) = twd.modificator_equ.clone() {
                 BigDecimal::from_str(&s)?
@@ -41,7 +41,7 @@ pub(crate) async fn handle_stake(
             handle_rewards(&stake.stake_addr, twd, &token_earned, table, false)?;
         }
 
-        drasil_gungnir::Calculationmode::Custom => {
+        drasil_gungnir::calculationmode::Custom => {
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::Freeloaderz => {
                     log::debug!("Calculating Freeloaderz");
