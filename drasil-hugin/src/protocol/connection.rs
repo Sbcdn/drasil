@@ -22,7 +22,7 @@ impl Connection {
         }
     }
 
-    /// Reads frame from TCP connection.
+    /// Reads frame from the peer in the TCP connection.
     pub async fn read_frame(&mut self) -> crate::Result<Option<Frame>> {
         loop {
             if let Some(frame) = self.parse_frame().await? {
@@ -38,6 +38,7 @@ impl Connection {
         }
     }
 
+    /// Tries to convert the TCP connection's internal buffer into a frame.
     async fn parse_frame(&mut self) -> crate::Result<Option<Frame>> {
         use frame::Error::Incomplete;
         let mut buf = Cursor::new(&self.buffer[..]);
@@ -57,7 +58,7 @@ impl Connection {
         }
     }
 
-    /// Send data (`Frame`) to the counterpart of the given TCP connection. 
+    /// Writes frame to the TCP connection.
     pub async fn write_frame(&mut self, frame: &Frame) -> io::Result<()> {
         match frame {
             Frame::Array(val) => {
@@ -72,6 +73,15 @@ impl Connection {
         self.stream.flush().await
     }
 
+    /// Writes an array `val` of frames to the TCP connection.
+    /// 
+    /// It writes the following:
+    /// 1) `*` character 
+    /// 2) array length
+    /// 3) the array contents
+    /// 
+    /// To write the array contents, this method will loop through each array 
+    /// element, calling `write_value(...)` each time. 
     #[async_recursion]
     async fn write_array(&mut self, val: &Vec<Frame>) -> io::Result<()> {
         self.stream.write_u8(b'*').await?;
@@ -82,6 +92,32 @@ impl Connection {
         Ok(())
     }
 
+    /// Writes the inner value of a frame to the TCP connection. 
+    /// 
+    /// It handles the frame differently depending on the frame variant:
+    /// * `Simple`: 
+    ///     1) write `+` character
+    ///     2) write the inner value of frame
+    ///     3) write `\r\n` (which starts a new line)
+    /// * `Error`:
+    ///     1) write `-` character
+    ///     2) write the inner value of the frame
+    ///     3) write `\r\n` (which starts a new line)
+    /// * `Integer`:
+    ///     1) write `:` character
+    ///     2) write the inner value of the frame
+    ///     3) write `\r\n` (which starts a new line)
+    /// * `Null`:
+    ///     1) write `$-1\r\n`
+    /// * `Bulk`:
+    ///     1) write `$`
+    ///     2) write the number of bytes taken by frame's inner value
+    ///     3) write the frame's inner value
+    ///     4) write `\r\n` (which starts a new line)
+    /// * `Array`:
+    ///     1) write `*`
+    ///     2) write array length
+    ///     3) write inner content of array (recursively calling `write_value`)
     async fn write_value(&mut self, frame: &Frame) -> io::Result<()> {
         match frame {
             Frame::Simple(val) => {
@@ -115,6 +151,7 @@ impl Connection {
         Ok(())
     }
 
+    /// Writes an integer `val` into the TCP connection, and starts a new line. 
     async fn write_decimal(&mut self, val: u64) -> io::Result<()> {
         use std::io::Write;
 

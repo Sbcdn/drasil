@@ -134,9 +134,17 @@ impl TxBuilder {
     }
 }
 
+/// Native asset. 
+/// 
+/// (Policy ID, Asset Name, Amount)
 pub type TokenAsset = (clib::PolicyID, clib::AssetName, cutils::BigNum);
+
 pub type MintTokenAsset = (Option<clib::PolicyID>, clib::AssetName, cutils::BigNum);
 
+/// Specificies the basic constraints within which the transaction can be performed. 
+/// 
+/// This corresponds to `TransactionPattern` in Hugin when building transaction,
+/// and corresponds to `RawTx` in Murin when finalizing transaction.
 #[derive(Debug, Clone)]
 pub struct TxData {
     user_id: Option<i64>,
@@ -147,6 +155,7 @@ pub struct TxData {
     inputs: TransactionUnspentOutputs,
     excludes: Option<TransactionUnspentOutputs>,
     collateral: Option<TransactionUnspentOutput>,
+    /// Testnet or mainnet.
     network: clib::NetworkIdKind,
     current_slot: u64,
 }
@@ -209,10 +218,12 @@ impl TxData {
         self.excludes = Some(excludes);
     }
 
+    /// The collateral paid by the sender in case the smart contract fails the phase-2 validation.
     pub fn set_collateral(&mut self, collateral: TransactionUnspentOutput) {
         self.collateral = Some(collateral);
     }
 
+    /// Makes the transaction say that `current_slot` is the latest slot number. 
     pub fn set_current_slot(&mut self, current_slot: u64) {
         self.current_slot = current_slot;
     }
@@ -225,6 +236,7 @@ impl TxData {
         self.contract_id.clone()
     }
 
+    /// Returns the payment addresses used by the sender in this transaction.
     pub fn get_senders_addresses(&self) -> Vec<caddr::Address> {
         self.senders_addresses.clone()
     }
@@ -249,10 +261,12 @@ impl TxData {
         self.senders_stake_addr.clone()
     }
 
+    /// Gets the output UTxO:s of this transaction.
     pub fn get_outputs(&self) -> Option<TransactionUnspentOutputs> {
         self.outputs.clone()
     }
 
+    /// Gets the input UTxO:s of this transaction.
     pub fn get_inputs(&self) -> TransactionUnspentOutputs {
         self.inputs.clone()
     }
@@ -261,14 +275,17 @@ impl TxData {
         self.excludes.clone()
     }
 
+    /// The collateral paid by the sender in case the smart contract fails the phase-2 validation.
     pub fn get_collateral(&self) -> Option<TransactionUnspentOutput> {
         self.collateral.clone()
     }
 
+    /// Reveals whether the transaction is performed in testnet or mainnet. 
     pub fn get_network(&self) -> NetworkIdKind {
         self.network
     }
 
+    /// Gets the slot number that the transaction claims to be the latest. 
     pub fn get_current_slot(&self) -> u64 {
         self.current_slot
     }
@@ -494,6 +511,15 @@ impl CPO {
     }
 }
 
+/// Identifies which UTxOs contain any of the given tokens.
+/// 
+/// It takes a set of UTxOs and a set of tokens, and it filters out the UTxO:s
+/// that contain none of the tokens. If an UTxO contains at least one of the
+/// tokens, then that UTxO is included in the set of UTxOs returned. 
+/// 
+/// If an UTxO contains a larger quantity of the token than what is needed, then that
+/// UTxO will be ignored. An UTxO will be included only if it contains exactly the 
+/// amount needed or less. (this might be a design mistake)
 pub async fn find_token_utxos(
     inputs: TransactionUnspentOutputs,
     assets: Vec<TokenAsset>,
@@ -528,7 +554,7 @@ pub async fn find_token_utxos(
         }
     } else {
         return Err(MurinError::new(
-            "cannot find token utxos , one of the provided inputs is empty",
+            "cannot find token utxos, one of the provided inputs is empty",
         ));
     }
     Ok(out)
@@ -1372,6 +1398,14 @@ pub fn find_assets_in_value(
     (flag, new_val, rest_val)
 }
 
+/// Calculates the minimal amount of lovelace required to spend an UTxO that contains `value` amount of Ada and tokens.
+/// 
+/// The more Ada and tokens an UTxO contains, the more bytes must be processed in order to process
+/// the given UTxO. And the more bytes must be processed, the more the user must pay in transaction fees
+/// to compensate the validators for the extra computations. 
+/// 
+/// This function has a misleading name since it's lovelace rather than Ada being calculated. 
+/// 1 Ada = 1 000 000 lovelace.
 pub fn calc_min_ada_for_utxo(
     value: &cutils::Value,
     dh: Option<ccrypto::DataHash>,
@@ -1457,6 +1491,7 @@ pub fn min_ada_for_utxo(output_: &TransactionOutput) -> Result<TransactionOutput
     min_ada_for_utxo(&output)
 }
 
+/// Gives the number of bytes needed to represent `value` amount of Ada and tokens. 
 pub fn bundle_size(value: &cutils::Value, osc: &models::OutputSizeConstants) -> usize {
     match &value.multiasset() {
         Some(assets) => {

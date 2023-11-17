@@ -28,6 +28,7 @@ pub enum ContractType {
     Other,
 }
 
+/// All the smart-contract actions used on the marketplace.
 #[derive(
     Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumVariantNames, Display, EnumString,
 )]
@@ -91,7 +92,7 @@ impl Signature {
     }
 }
 
-/// This is the action/behavior that the user wants the smart contract to perform
+/// The category of smart-contract actions that the user wants the smart contract to perform.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ContractAction {
     MarketplaceActions(MarketplaceActions),
@@ -156,6 +157,7 @@ impl MinterToken {
     }
 }
 
+/// Native asset. 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Token {
     tokenname: String,
@@ -165,6 +167,7 @@ pub struct Token {
 }
 
 impl Token {
+    /// Converts `Token` into Murin's equivalent tuple with meaningful type names.
     pub fn into_asset(
         &self,
     ) -> Result<drasil_murin::txbuilder::TokenAsset, drasil_murin::MurinError> {
@@ -174,6 +177,7 @@ impl Token {
         Ok((cs, tn, amt))
     }
 
+    /// Converts each `Token` element in a vector into Murin's equivalent tuple with meaningful type names.
     pub fn for_all_into_asset(
         ut: &Vec<Token>,
     ) -> Result<Vec<drasil_murin::txbuilder::TokenAsset>, drasil_murin::MurinError> {
@@ -254,27 +258,38 @@ impl WalletTransactionPattern {
     }
 }
 
-/// The detailed specification for what transaction to build. This struct is used only in 
-/// transaction building (but not transaction finalization). This struct is the primary 
-/// source of input info to be used when defining the exact action/behavior to execute in 
-/// response to the user's request to build a transaction. The contents of this struct are 
-/// chosen by the user in their HTTP request. 
+/// The detailed specification for what transaction to build. 
+/// 
+/// This struct is used only in transaction building (but not transaction finalization). 
+/// This struct is the primary source of input info to be used when defining the exact 
+/// action/behavior to execute in response to the user's request to build a transaction. 
+/// The contents of this struct are chosen by the user in their HTTP request. 
+/// 
+/// This struct can be converted to `TxData` in the transaction-building workflow.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionPattern {
     user: Option<String>,
     contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
     wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
+    /// Wallet addresses
     #[serde(alias = "sending_wal_addrs")]
     used_addresses: Vec<String>,
     unused_addresses: Option<Vec<String>>,
     #[serde(alias = "sending_stake_addr")]
     stake_address: Option<String>,
-    /// Which stake address will receive the change (i.e. remainder of UTxO after the required amount was spent)?
+    /// The stake address that will receive the change (i.e. remainder of UTxO after the required amount was spent).
     change_address: Option<String>,
+    /// Input UTxO:s of this transaction.
     #[serde(alias = "inputs")]
     utxos: Option<Vec<String>>,
     excludes: Option<Vec<String>>,
+    /// User pays collateral in smart-contract transactions in case smart-contract later 
+    /// turns out to be invalid in phase-2 validation, which would consume the collateral. 
     collateral: Option<Vec<String>>,
+    /// Parameters specific to the given type of operation. 
+    /// 
+    /// The values inside an operation variant are provided by
+    /// the user in the request body of the HTTP request. 
     #[serde(alias = "script")]
     operation: Operation,
     /// Is this transaction performed on mainnet or testnet?
@@ -332,6 +347,7 @@ impl TransactionPattern {
         self.stake_address.clone()
     }
 
+    /// Input UTxO:s of this transaction.
     pub fn utxos(&self) -> Option<Vec<String>> {
         self.utxos.clone()
     }
@@ -340,6 +356,7 @@ impl TransactionPattern {
         self.excludes.clone()
     }
 
+    /// The collateral paid by the sender in case the smart contract fails the phase-2 validation.
     pub fn collateral(&self) -> Option<String> {
         match &self.collateral {
             Some(col) => {
@@ -357,10 +374,15 @@ impl TransactionPattern {
         self.network
     }
 
+    /// Parameters specific to the given type of operation. 
+    /// 
+    /// The values inside an operation variant are provided by
+    /// the user in the request body of the HTTP request. 
     pub fn operation(&self) -> Option<Operation> {
         Some(self.operation.clone())
     }
 
+    /// Converts Hugin's `TransactionPattern` into Murin's equivalent `TxData`.
     pub async fn into_txdata(
         &self,
     ) -> Result<drasil_murin::txbuilder::TxData, drasil_murin::error::MurinError> {
@@ -411,6 +433,10 @@ impl TransactionPattern {
     }
 }
 
+/// Parameters specific to the given type of operation. 
+/// 
+/// The values inside an operation variant are provided by
+/// the user in the request body of the HTTP request. 
 #[derive(Serialize, Deserialize, Debug, Clone, EnumIs)]
 pub enum Operation {
     SpoRewardClaim {
@@ -479,6 +505,8 @@ pub enum Operation {
 }
 
 impl Operation {
+    /// Converts `Operation::Marketplace` into equivalent type in Murin, but keeping only the UTxO:s
+    /// that contain the relevant tokens. 
     pub async fn into_mp(
         &self,
         avail_inputs: drasil_murin::TransactionUnspentOutputs,
@@ -811,6 +839,7 @@ pub enum WalletType {
     Typhon,
 }
 
+/// Failed to retrieve non-error response from server.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ReturnError {
     pub msg: String,
@@ -824,6 +853,7 @@ impl ReturnError {
     }
 }
 
+/// Pointer to a Transaction that is built and awaiting finalization.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UnsignedTransaction {
     id: String,

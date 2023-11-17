@@ -12,6 +12,8 @@ pub use cancel::*;
 pub use list::*;
 pub use update::*;
 
+/// Marketplace transaction data. This corresponds to `Operation::Marketplace` in Hugin,
+/// except that the UTxO:s are filtered to only include those that contain relevant tokens.
 #[derive(Debug, Clone)]
 pub struct MpTxData {
     tokens: Vec<TokenAsset>,
@@ -159,6 +161,7 @@ impl std::str::FromStr for MpTxData {
 }
 
 impl MpTxData {
+    /// Instantiate marketplace transaction data. 
     pub fn new(
         tokens: Vec<TokenAsset>,
         token_utxos: TransactionUnspentOutputs,

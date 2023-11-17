@@ -19,13 +19,19 @@ macro_rules! pub_struct {
 pub const DUMMY_VKEYWITNESS     : &str = "8258203818ad60f55faef4576ff88e9e7e1148fcb11d602ffa19def6e9c44b420fdaa25840751a9f1c01cf068e8b0becf3122832d13f8fc1dff74a43059b815e949442ad6b60c6a67d4b39e4a3271064665418960731280d0ef7ae5a471a98021cae074001";
 pub const MIN_ADA: u64 = 1000000;
 
+/// Output from the building of smart-contract transaction. 
 pub struct BuildOutput {
+    /// Hex-encoded transaction witness set.
     pub tx_witness: String,
+    /// Hex-encoded auxiliary data (metadata).
     pub metadata: String,
+    /// Hex-encoded transaction body.
     pub tx_body: String,
+    /// Hex-encoded transaction, awaiting finalization.
     pub tx_unsigned: String,
     pub used_utxos: String,
     pub royalties: u64,
+    /// Boolean encoded as string.
     pub internal_transfer: String,
 }
 
@@ -34,6 +40,7 @@ impl BuildOutput {
         self.tx_unsigned.clone()
     }
 
+    /// Gets transaction body. 
     pub fn get_tx_body(&self) -> String {
         self.tx_body.clone()
     }
@@ -173,46 +180,190 @@ impl ARemove for clib::TransactionOutputs {
     }
 }
 
+/// UTxO.
+/// 
+/// Re-exported version of the same type in `cardano_serialization_lib`
 pub type TransactionUnspentOutput = cutils::TransactionUnspentOutput;
 
+/// A set of UTxO:s.
 #[derive(Clone, Debug)]
 pub struct TransactionUnspentOutputs(pub(crate) Vec<TransactionUnspentOutput>);
 
 impl Default for TransactionUnspentOutputs {
+    /// Constructs a new, empty `TransactionUnspentOutputs`.
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl TransactionUnspentOutputs {
+    /// Constructs a new, empty `TransactionUnspentOutputs`.
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
+    /// Returns the number of elements in the UTxO collection `Self`, also referred to as its 'length'.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Returns `true` if UTxO collection `Self` contains no UTxO:s.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Pops the last UTxO in the set of UTxO:s.
     pub fn pop(&mut self) -> Option<cutils::TransactionUnspentOutput> {
         self.0.pop()
     }
 
+    /// Picks the UTxO with the given index from the set of UTxO:s.
+    /// 
+    /// # Examples
+    /// ```
+    /// # use cardano_serialization_lib::utils::Value;
+    /// # use cardano_serialization_lib::utils::BigNum;
+    /// # use cardano_serialization_lib::address::Address;
+    /// # use cardano_serialization_lib::TransactionInput;
+    /// # use cardano_serialization_lib::crypto::TransactionHash;
+    /// # use serde_json::json;
+    /// # 
+    /// # use drasil_murin::TransactionUnspentOutput;
+    /// # use drasil_murin::TransactionUnspentOutputs;
+    /// # use drasil_murin::TransactionOutput;
+    /// # use drasil_murin::error::MurinError;
+    /// #
+    /// # fn main() -> Result<(), MurinError>{
+    ///     let mut utxos = TransactionUnspentOutputs::new();
+    ///     
+    ///     // Create & add first UTxO
+    ///     let tx_hash = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id = TransactionHash::from_bytes(tx_hash)?;
+    ///     let index = 0;
+    ///     let input = TransactionInput::new(&transaction_id, index);
+    ///     let address = Address::from_bech32("addr_test1qqgr75256pxrfa37kzpd5hpsj0cu3fg00hvy6ztd8098fnf6a5kz0tzajafl6py9pepxqgpnlkq42w3z09aqw8ma3ajquda460")?;
+    ///     let coin = BigNum::from_str("99760000")?;
+    ///     let value = Value::new(&coin);
+    ///     let output = TransactionOutput::new(&address, &value);
+    ///     let utxo = TransactionUnspentOutput::new(&input, &output);
+    ///     utxos.add(&utxo);
+    /// 
+    ///     let get = utxos.get(0);
+    ///     assert_eq!(json!(get), json!(utxo));
+    /// #
+    /// #    Ok(())
+    /// # }
+    /// ```
     pub fn get(&self, index: usize) -> cutils::TransactionUnspentOutput {
         self.0[index].clone()
     }
 
+    /// Appends UTxO `elem` at the end of collection of UTxO:s `Self`.
+    /// 
+    /// # Examples
+    /// ```
+    /// # use cardano_serialization_lib::utils::Value;
+    /// # use cardano_serialization_lib::utils::BigNum;
+    /// # use cardano_serialization_lib::address::Address;
+    /// # use cardano_serialization_lib::TransactionInput;
+    /// # use cardano_serialization_lib::crypto::TransactionHash;
+    /// # use serde_json::json;
+    /// # 
+    /// # use drasil_murin::TransactionUnspentOutput;
+    /// # use drasil_murin::TransactionUnspentOutputs;
+    /// # use drasil_murin::TransactionOutput;
+    /// # use drasil_murin::error::MurinError;
+    /// #
+    /// # fn main() -> Result<(), MurinError>{
+    ///     let mut utxos = TransactionUnspentOutputs::new();
+    ///     
+    ///     // Create UTxO
+    ///     let tx_hash0 = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id0 = TransactionHash::from_bytes(tx_hash0)?;
+    ///     let index0 = 0;
+    ///     let input0 = TransactionInput::new(&transaction_id0, index0);
+    ///     let address0 = Address::from_bech32("addr_test1qqgr75256pxrfa37kzpd5hpsj0cu3fg00hvy6ztd8098fnf6a5kz0tzajafl6py9pepxqgpnlkq42w3z09aqw8ma3ajquda460")?;
+    ///     let coin0 = BigNum::from_str("99760000")?;
+    ///     let value0 = Value::new(&coin0);
+    ///     let output0 = TransactionOutput::new(&address0, &value0);
+    ///     let utxo0 = TransactionUnspentOutput::new(&input0, &output0);
+    /// 
+    ///     // Add UTxO & see results
+    ///     assert_eq!(utxos.is_empty(), true);
+    ///     utxos.add(&utxo0);
+    ///     assert_eq!(utxos.is_empty(), false);
+    ///     assert_eq!(
+    ///         json!(utxos.get(0)), 
+    ///         json!({
+    ///             "input": {
+    ///                 "transaction_id": "6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964",
+    ///                 "index": 0,
+    ///             },
+    ///             "output": {
+    ///                 "address": "addr_test1qqgr75256pxrfa37kzpd5hpsj0cu3fg00hvy6ztd8098fnf6a5kz0tzajafl6py9pepxqgpnlkq42w3z09aqw8ma3ajquda460",
+    ///                 "amount": {
+    ///                     "coin": "99760000",
+    ///                     "multiasset": None::<String>,
+    ///                 },
+    ///                 "plutus_data": None::<String>,
+    ///                 "script_ref": None::<String>,
+    ///             }
+    ///         })
+    ///     );
+    /// # 
+    /// #    Ok(())
+    /// # }
+    /// ```
     pub fn add(&mut self, elem: &cutils::TransactionUnspentOutput) {
         self.0.push(elem.clone());
     }
 
+    /// Inserts an UTxO `elem` into position `pos` of the UTxO collection `Self`, shifting all elements after it to the right.
     pub fn insert(&mut self, pos: usize, elem: cutils::TransactionUnspentOutput) {
         self.0.insert(pos, elem);
     }
 
+    /// Identifies the index in `Self` where UTxO `elem` is found. 
+    /// 
+    /// Returns `None` if the UTxO `elem` isn't found in `Self`.
+    /// 
+    /// # Examples
+    /// ```
+    /// # use cardano_serialization_lib::utils::Value;
+    /// # use cardano_serialization_lib::utils::BigNum;
+    /// # use cardano_serialization_lib::address::Address;
+    /// # use cardano_serialization_lib::TransactionInput;
+    /// # use cardano_serialization_lib::crypto::TransactionHash;
+    /// # 
+    /// # use drasil_murin::TransactionUnspentOutput;
+    /// # use drasil_murin::TransactionUnspentOutputs;
+    /// # use drasil_murin::TransactionOutput;
+    /// # use drasil_murin::error::MurinError;
+    /// #
+    /// # fn main() -> Result<(), MurinError>{
+    ///     let mut utxos = TransactionUnspentOutputs::new();
+    ///     
+    ///     // Create & insert first UTxO
+    ///     let tx_hash = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id = TransactionHash::from_bytes(tx_hash)?;
+    ///     let index = 0;
+    ///     let input = TransactionInput::new(&transaction_id, index);
+    ///     let address = Address::from_bech32("addr_test1qqgr75256pxrfa37kzpd5hpsj0cu3fg00hvy6ztd8098fnf6a5kz0tzajafl6py9pepxqgpnlkq42w3z09aqw8ma3ajquda460")?;
+    ///     let coin = BigNum::from_str("99760000")?;
+    ///     let value = Value::new(&coin);
+    ///     let output = TransactionOutput::new(&address, &value);
+    ///     let utxo = TransactionUnspentOutput::new(&input, &output);
+    ///     utxos.add(&utxo);
+    /// 
+    ///     // Retrieve the index of UTxO in the given UTxO collection
+    ///     let index0 = utxos.find_utxo_index(&utxo);
+    /// 
+    ///     // See results
+    ///     assert_eq!(index0, Some(0));
+    /// #
+    /// #    Ok(())
+    /// # }
+    /// ```
     pub fn find_utxo_index(&self, elem: &TransactionUnspentOutput) -> Option<usize> {
         let elem_hash = elem.input().transaction_id();
         let elem_index = elem.input().index();
@@ -232,17 +383,193 @@ impl TransactionUnspentOutputs {
         None
     }
 
+    /// Appends UTxO collection `other` to current UTxO collection `Self`.
+    /// 
+    /// # Examples
+    /// ```
+    /// # use cardano_serialization_lib::utils::Value;
+    /// # use cardano_serialization_lib::utils::BigNum;
+    /// # use cardano_serialization_lib::address::Address;
+    /// # use cardano_serialization_lib::TransactionInput;
+    /// # use cardano_serialization_lib::crypto::TransactionHash;
+    /// # use serde_json::json;
+    /// # 
+    /// # use drasil_murin::TransactionUnspentOutput;
+    /// # use drasil_murin::TransactionUnspentOutputs;
+    /// # use drasil_murin::TransactionOutput;
+    /// # use drasil_murin::error::MurinError;
+    /// #
+    /// # fn main() -> Result<(), MurinError>{
+    ///     let mut utxos0 = TransactionUnspentOutputs::new();
+    ///     let mut utxos1 = TransactionUnspentOutputs::new();
+    ///     
+    ///     // Create UTxO and insert into first UTxO set. 
+    ///     let tx_hash0 = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id0 = TransactionHash::from_bytes(tx_hash0)?;
+    ///     let index0 = 0;
+    ///     let input0 = TransactionInput::new(&transaction_id0, index0);
+    ///     let address0 = Address::from_bech32("addr_test1qqgr75256pxrfa37kzpd5hpsj0cu3fg00hvy6ztd8098fnf6a5kz0tzajafl6py9pepxqgpnlkq42w3z09aqw8ma3ajquda460")?;
+    ///     let coin0 = BigNum::from_str("99760000")?;
+    ///     let value0 = Value::new(&coin0);
+    ///     let output0 = TransactionOutput::new(&address0, &value0);
+    ///     let utxo0 = TransactionUnspentOutput::new(&input0, &output0);
+    ///     utxos0.add(&utxo0);
+    /// 
+    ///     // Create UTxO and insert into second UTxO set.
+    ///     let tx_hash1 = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id1 = TransactionHash::from_bytes(tx_hash1)?;
+    ///     let index1 = 2;
+    ///     let input1 = TransactionInput::new(&transaction_id1, index1);
+    ///     let address1 = Address::from_bech32("addr_test1wqdlfnfuwr8jqlv3f68y2xc3w3yav2znwkstutf93z6w42s82eqmy")?;
+    ///     let coin1 = BigNum::from_str("2000000")?;
+    ///     let value1 = Value::new(&coin1);
+    ///     let output1 = TransactionOutput::new(&address1, &value1);
+    ///     let utxo1 = TransactionUnspentOutput::new(&input1, &output1);
+    ///     utxos1.add(&utxo1);
+    /// 
+    ///     // See results
+    ///     assert_eq!(utxos0.len(), 1);
+    ///     assert_eq!(utxos1.len(), 1);
+    ///     utxos0.merge(utxos1);
+    ///     assert_eq!(utxos0.len(), 2);
+    /// #
+    /// #    Ok(())
+    /// # }
+    /// ```
     pub fn merge(&mut self, other: TransactionUnspentOutputs) {
         for elem in other {
             self.0.push(elem);
         }
     }
 
+    /// Sorts the UTxO collection `Self` by Ada amount.
+    /// 
+    /// # Examples
+    /// ```
+    /// # use cardano_serialization_lib::utils::Value;
+    /// # use cardano_serialization_lib::utils::BigNum;
+    /// # use cardano_serialization_lib::address::Address;
+    /// # use cardano_serialization_lib::TransactionInput;
+    /// # use cardano_serialization_lib::crypto::TransactionHash;
+    /// # 
+    /// # use drasil_murin::TransactionUnspentOutput;
+    /// # use drasil_murin::TransactionUnspentOutputs;
+    /// # use drasil_murin::TransactionOutput;
+    /// # use drasil_murin::error::MurinError;
+    /// #
+    /// # fn main() -> Result<(), MurinError>{
+    ///     let mut utxos = TransactionUnspentOutputs::new();
+    ///     
+    ///     // Create and insert first UTxO
+    ///     let tx_hash0 = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id0 = TransactionHash::from_bytes(tx_hash0)?;
+    ///     let index0 = 0;
+    ///     let input0 = TransactionInput::new(&transaction_id0, index0);
+    ///     let address0 = Address::from_bech32("addr_test1qqgr75256pxrfa37kzpd5hpsj0cu3fg00hvy6ztd8098fnf6a5kz0tzajafl6py9pepxqgpnlkq42w3z09aqw8ma3ajquda460")?;
+    ///     let coin0 = BigNum::from_str("3000000000")?;
+    ///     let value0 = Value::new(&coin0);
+    ///     let output0 = TransactionOutput::new(&address0, &value0);
+    ///     let utxo0 = TransactionUnspentOutput::new(&input0, &output0);
+    ///     utxos.add(&utxo0);
+    /// 
+    ///     // Create and insert second UTxO
+    ///     let tx_hash1 = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id1 = TransactionHash::from_bytes(tx_hash1)?;
+    ///     let index1 = 1;
+    ///     let input1 = TransactionInput::new(&transaction_id1, index1);
+    ///     let address1 = Address::from_bech32("addr_test1wqdlfnfuwr8jqlv3f68y2xc3w3yav2znwkstutf93z6w42s82eqmy")?;
+    ///     let coin1 = BigNum::from_str("2000000000")?;
+    ///     let value1 = Value::new(&coin1);
+    ///     let output1 = TransactionOutput::new(&address1, &value1);
+    ///     let utxo1 = TransactionUnspentOutput::new(&input1, &output1);
+    ///     utxos.add(&utxo1);
+    /// 
+    ///     // Execute the method
+    ///     utxos.sort_by_coin();
+    /// 
+    ///     // See results
+    ///     assert_eq!(utxos.get(0).output().amount().coin(), BigNum::from_str("2000000000")?);
+    ///     assert_eq!(utxos.get(1).output().amount().coin(), BigNum::from_str("3000000000")?);
+    /// #
+    /// #    Ok(())
+    /// # }
+    /// ```
     pub fn sort_by_coin(&mut self) {
         self.0
             .sort_by_cached_key(|k| cutils::from_bignum(&k.output().amount().coin()));
     }
 
+    /// Sorts the UTxO collection `Self` by the total number of all tokens.
+    /// 
+    /// This method sums up (for a given UTxO) the tokens of all policies and all asset names, and treats
+    /// all of them as equal and equivalent regardless of their market value or other qualities. This total
+    /// number of tokens (for a given UTxO) is then used as the sorting key by which to determine the UTxO:s
+    /// position in `Self`. 
+    /// 
+    /// # Examples
+    /// ```
+    /// # use cardano_serialization_lib::utils::Value;
+    /// # use cardano_serialization_lib::utils::BigNum;
+    /// # use cardano_serialization_lib::address::Address;
+    /// # use cardano_serialization_lib::TransactionInput;
+    /// # use cardano_serialization_lib::crypto::TransactionHash;
+    /// # use cardano_serialization_lib::MultiAsset;
+    /// # use cardano_serialization_lib::crypto::ScriptHash;
+    /// # use cardano_serialization_lib::AssetName;
+    /// # use cardano_serialization_lib::Assets;
+    /// # use serde_json::json;
+    /// # 
+    /// # use drasil_murin::TransactionUnspentOutput;
+    /// # use drasil_murin::TransactionUnspentOutputs;
+    /// # use drasil_murin::TransactionOutput;
+    /// # use drasil_murin::error::MurinError;
+    /// # 
+    /// # fn main() -> Result<(), MurinError>{
+    ///     let mut utxos = TransactionUnspentOutputs::new();
+    ///     
+    ///     // Create and insert first UTxO
+    ///     let tx_hash0 = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id0 = TransactionHash::from_bytes(tx_hash0)?;
+    ///     let index0 = 1;
+    ///     let input0 = TransactionInput::new(&transaction_id0, index0);
+    ///     let address0 = Address::from_bech32("addr_test1wqdlfnfuwr8jqlv3f68y2xc3w3yav2znwkstutf93z6w42s82eqmy")?;
+    ///     let mut ma0 = MultiAsset::new();
+    ///     let policy0 = ScriptHash::from_bech32("f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a");
+    ///     let mut assets0 = Assets::new();
+    ///     let mut asset_name0 = AssetName::new(hex::decode("1234567890abcdef")?)?;
+    ///     let quantity0 = BigNum::from_str("5")?;
+    ///     assets0.insert(&asset_name0, &quantity0);
+    ///     let value0 = Value::new_from_assets(&ma0);
+    ///     let output0 = TransactionOutput::new(&address0, &value0);
+    ///     let utxo0 = TransactionUnspentOutput::new(&input0, &output0);
+    ///     utxos.add(&utxo0);
+    /// 
+    ///     // Create and insert second UTxO
+    ///     let tx_hash1 = hex::decode("6ada3e0a5e985df2e01657776c60b518d210517c22c9f4f446f44bf7158d3964")?;
+    ///     let transaction_id1 = TransactionHash::from_bytes(tx_hash1)?;
+    ///     let index1 = 1;
+    ///     let input1 = TransactionInput::new(&transaction_id1, index1);
+    ///     let address1 = Address::from_bech32("addr_test1wqdlfnfuwr8jqlv3f68y2xc3w3yav2znwkstutf93z6w42s82eqmy")?;
+    ///     let mut ma1 = MultiAsset::new();
+    ///     let policy1 = ScriptHash::from_bech32("cedcf34ee6ae0191e2e1608383b0773562088efcf790cf6bc78d9f75");
+    ///     let mut assets1 = Assets::new();
+    ///     let mut asset_name1 = AssetName::new(hex::decode("abcabc123123")?)?;
+    ///     let quantity1 = BigNum::from_str("3")?;
+    ///     assets1.insert(&asset_name1, &quantity1);
+    ///     let value1 = Value::new_from_assets(&ma1);
+    ///     let output1 = TransactionOutput::new(&address1, &value1);
+    ///     let utxo1 = TransactionUnspentOutput::new(&input1, &output1);
+    ///     utxos.add(&utxo1);
+    /// 
+    ///     // Execute the method
+    ///     utxos.sort_by_coin();
+    /// 
+    ///     assert_eq!(json!(utxos.get(0)), json!(utxo1));
+    ///     assert_eq!(json!(utxos.get(1)), json!(utxo0));
+    /// #
+    /// #    Ok(())
+    /// # }
+    /// ```
     pub fn sort_by_multi_amount(&mut self) {
         self.0.sort_by_cached_key(get_amount);
 
@@ -474,6 +801,7 @@ impl TransactionUnspentOutputs {
         self.0.swap_remove(pos)
     }
 
+    /// Checks whether this set of UTxO:s contains a specific UTxO `elem`.
     pub fn contains_tx(&self, elem: &TransactionUnspentOutput) -> bool {
         let elem_hash = elem.input().transaction_id();
         let elem_index = elem.input().index();
@@ -604,13 +932,20 @@ impl TransactionUnspentOutputs {
         Ok(hex::encode(bytes))
     }
 
+    /// Constructs `Self` from a hex-encoded string `str`.
+    /// 
+    /// Assumes that `str`, after hex-decoding, is CBOR-encoded. 
+    /// 
+    /// # Errors
+    /// * `str`, after hex-decoding, can't be encoded to CBOR array. 
+    /// * 
     pub fn from_hex(str: &str) -> Result<TransactionUnspentOutputs, crate::MurinError> {
         use cbor_event::de::*;
         use std::io::Cursor;
         let vec = hex::decode(str)?;
         let mut raw = Deserializer::from(Cursor::new(vec));
 
-        let mut v = TransactionUnspentOutputs::new();
+        let mut v: TransactionUnspentOutputs = TransactionUnspentOutputs::new();
         (|| -> Result<(), crate::MurinError> {
             let len = raw.array()?;
             while match len {
@@ -631,6 +966,7 @@ impl TransactionUnspentOutputs {
         Ok(v)
     }
 
+    /// Returns the total value of all UTxO:s in `Self`.
     pub fn calc_total_value(&self) -> Result<cutils::Value, super::MurinError> {
         let mut tval = cutils::Value::new(&cutils::to_bignum(0u64));
         for i in 0..self.len() {
@@ -639,6 +975,8 @@ impl TransactionUnspentOutputs {
         Ok(tval)
     }
 
+    /// Returns the index of the UTxO in `Self` that has the transaction hash `tx_hash` and 
+    /// index `tx_index` if it exists. Otherwise returns nothing.
     pub fn find_utxo_by_txhash(&self, tx_hash: &String, tx_index: u32) -> Option<usize> {
         for (i, e) in self.0.clone().into_iter().enumerate() {
             if hex::encode(e.input().transaction_id().to_bytes()) == *tx_hash
@@ -650,6 +988,7 @@ impl TransactionUnspentOutputs {
         None
     }
 
+    /// Identifies which UTxO:s in `Self` contain tokens with policy ID `Policy`.
     pub fn find_utxo_containing_policy(
         &self,
         policy: &String,
@@ -668,6 +1007,7 @@ impl TransactionUnspentOutputs {
         Ok(out)
     }
 
+    /// Identifies which UTxO:s in `Self` contain tokens with policy ID `policy` and token name `assetname`.
     pub fn find_utxos_containing_asset(
         &self,
         policy: &ccrypto::ScriptHash,
@@ -686,6 +1026,9 @@ impl TransactionUnspentOutputs {
         Ok(out)
     }
 
+    /// Removes from `Self` the UTxO:s in `used`.
+    /// 
+    /// If an UTxO in `used` isn't found in `Self`, then that UTxO is ignored. 
     pub fn remove_used_utxos(&mut self, used: Vec<crate::utxomngr::usedutxos::UsedUtxo>) {
         for u in used {
             if let Some(i) = self.find_utxo_by_txhash(u.get_txhash(), u.get_index()) {

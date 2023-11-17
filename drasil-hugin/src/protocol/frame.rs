@@ -49,6 +49,18 @@ impl Frame {
         }
     }
 
+    /// Identifies the next frame variant in the buffer.
+    /// 
+    /// It looks at the prefix of the byte-encoded frame to determine
+    /// which variant it is: 
+    /// * `+` means `Frame::Simple`
+    /// * `-` means `Frame::Error`
+    /// * `:` means `Frame::Integer`
+    /// * `$-1` means `Frame::Null`
+    /// * `$` means `Frame::Bulk`
+    /// * `*` means `Frame::Array`
+    ///
+    /// Throws error if frame variant couldn't be identified.
     pub fn check(src: &mut Cursor<&[u8]>) -> Result<(), Error> {
         match get_u8(src)? {
             b'?' => {
@@ -211,6 +223,7 @@ fn _parse_header(src: &mut Bytes) -> Result<(String, String, u64, String, String
     ))
 }
 
+/// Peeks the next byte in the buffer. 
 fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     if !src.has_remaining() {
         return Err(Error::Incomplete);
@@ -219,6 +232,7 @@ fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     Ok(src.chunk()[0])
 }
 
+/// Tries to get unsigned 8 bit integer from buffer.
 fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     if !src.has_remaining() {
         return Err(Error::Incomplete);
@@ -227,6 +241,9 @@ fn get_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {
     Ok(src.get_u8())
 }
 
+/// Advances the cursor `src` by `n` steps.
+/// 
+/// Returns error if there are less than `n` steps remaining in the cursor.  
 fn skip(src: &mut Cursor<&[u8]>, n: usize) -> Result<(), Error> {
     if src.remaining() < n {
         return Err(Error::Incomplete);
@@ -236,6 +253,9 @@ fn skip(src: &mut Cursor<&[u8]>, n: usize) -> Result<(), Error> {
     Ok(())
 }
 
+/// Reads the next integer in the buffer.
+/// 
+/// Assumes that the integer has its own line, separated by `\r\n`.
 fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, Error> {
     use atoi::atoi;
 
@@ -244,6 +264,10 @@ fn get_decimal(src: &mut Cursor<&[u8]>) -> Result<u64, Error> {
     atoi::<u64>(line).ok_or_else(|| "protocol error; invalid frame format".into())
 }
 
+/// Reads the buffer on the current line.
+/// 
+/// The line ends at the position of first occurring `\r\n`. 
+/// Note: this new-line notation is used in Windows, but not in Unix operating systems. 
 fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error> {
     let start = src.position() as usize;
     let end = src.get_ref().len() - 1;

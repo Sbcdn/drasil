@@ -26,7 +26,7 @@ pub struct BuildContract {
 }
 
 impl BuildContract {
-    /// Create a new build contract.
+    /// Creates a new build contract.
     pub fn new(
         customer_id: u64,
         ctype: ContractType,
@@ -45,18 +45,18 @@ impl BuildContract {
         self.customer_id
     }
 
-    /// Find out what type of smart contract the user wants to build
+    /// The type of smart contract the user wants to include in the transaction that's being built.
     pub fn contract_type(&self) -> ContractType {
         self.ctype.clone()
     }
 
-    /// Find out what type of behavior/action the user wants the smart contract to perform
+    /// The type of behavior/action the user wants the smart contract to perform.
     pub fn action(&self) -> ContractAction {
         self.action.clone()
     }
 
-    /// Get the specification of the basic attributes of this transaction (i.e. the aspects
-    /// held in common with all other transactions)
+    /// Specification of the basic attributes of this transaction (i.e. the aspects
+    /// held in common with all other transactions).
     pub fn transaction_pattern(&self) -> TransactionPattern {
         self.txpattern.clone()
     }
@@ -199,7 +199,7 @@ impl BuildContract {
                     MarketplaceActions::List => {
                         use crate::database::drasildb::*;
                         use drasil_murin::txbuilder::marketplace::list::*;
-                        //build a listing and send the repsonse to the sender
+                        // build a listing and send the response to the sender
                         let contract = TBContracts::get_active_contract_for_user(
                             self.customer_id as i64,
                             self.ctype.to_string(),

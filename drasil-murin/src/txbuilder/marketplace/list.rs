@@ -157,9 +157,9 @@ pub fn perform_listing(
         input_txuos
     );
 
-    //let mut token_utxos = artitypes::TransactionUnspentOutputs::new();
-    //token_utxos.add(&script_utxo);
-    //let listing_tokens  = artifn::get_nfts_for_sale(&token_utxos);
+    // let mut token_utxos = artitypes::TransactionUnspentOutputs::new();
+    // token_utxos.add(&script_utxo);
+    // let listing_tokens  = artifn::get_nfts_for_sale(&token_utxos);
 
     let token_input_utxo =
         supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
@@ -169,7 +169,7 @@ pub fn perform_listing(
         None,
         &mut needed_value,
         &input_txuos,
-        None, //gtxd.clone().get_collateral()
+        None, // gtxd.clone().get_collateral()
     );
     let saved_input_txuos = input_txuos.clone();
 
@@ -220,6 +220,7 @@ pub fn perform_listing(
     Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
 }
 
+/// Builds smart-contract transaction in which the smart contract performs a marketplace listing. 
 pub async fn build_mp_listing(
     gtxd: &super::TxData,
     mptxd: &super::MpTxData,

@@ -22,6 +22,9 @@ impl TxMindId {
     }
 }
 
+/// Unsigned transaction, awaiting finalization. 
+/// 
+/// It can be used for all transaction types.
 #[derive(Debug, Clone)]
 pub struct RawTx {
     tx_body: String,

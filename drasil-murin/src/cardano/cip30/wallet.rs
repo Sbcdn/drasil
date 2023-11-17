@@ -8,26 +8,13 @@ use clib::MultiAsset;
 use crate::cardano::models::*;
 use crate::error::MurinError;
 
-/// decode an hex encoded address into an address
+/// Decodes a hex-encoded address.
 pub async fn decode_address_from_bytes(bytes: &String) -> Result<caddr::Address, MurinError> {
-    //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
-    //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
-    //let mut netbyte : u8 = 0b1111;
-    //if *network == clib::NetworkIdKind::Testnet {
-    //     netbyte = 0b1110;
-    //}
     Ok(caddr::Address::from_bytes(hex::decode(bytes)?)?)
-    //Ok(caddr::RewardAddress::new(netbyte,&stake_cred).to_address())
 }
 
-/// decode an hex encoded address into an address
+/// Decodes a hex-encoded address.
 pub async fn address_from_string(str: &String) -> Result<caddr::Address, MurinError> {
-    //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
-    //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
-    //let mut netbyte : u8 = 0b1111;
-    //if *network == clib::NetworkIdKind::Testnet {
-    //     netbyte = 0b1110;
-    //}
     match hex::decode(str) {
         Ok(bytes) => Ok(caddr::Address::from_bytes(bytes)?),
         Err(_) => match caddr::Address::from_bech32(str) {
@@ -37,16 +24,9 @@ pub async fn address_from_string(str: &String) -> Result<caddr::Address, MurinEr
             )),
         },
     }
-    //Ok(caddr::RewardAddress::new(netbyte,&stake_cred).to_address())
 }
 
 pub fn address_from_string_non_async(str: &String) -> Result<caddr::Address, MurinError> {
-    //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
-    //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
-    //let mut netbyte : u8 = 0b1111;
-    //if *network == clib::NetworkIdKind::Testnet {
-    //     netbyte = 0b1110;
-    //}
     match hex::decode(str) {
         Ok(bytes) => Ok(caddr::Address::from_bytes(bytes)?),
         Err(_) => match caddr::Address::from_bech32(str) {

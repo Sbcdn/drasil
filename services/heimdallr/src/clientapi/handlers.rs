@@ -17,7 +17,9 @@ use drasil_hugin::{
 
 use strum::VariantNames;
 
-/// Create a client connected to the given Odin address
+/// Create a client connected to Odin server.
+/// 
+/// The address of the Odin server is specified via environment variable `ODIN_URL`.
 async fn connect_odin() -> Client {
     connect(env::var("ODIN_URL").unwrap()).await.unwrap()
 }

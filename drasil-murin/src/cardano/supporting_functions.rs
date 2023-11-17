@@ -251,6 +251,14 @@ pub fn get_token_amount(v: &cutils::Value) -> usize {
     }
 }
 
+/// Reveals the time to live for the given network.
+/// 
+/// Ttl is the amount of time (expressed as number of slots) within which an 
+/// unsigned transaction must be signed (finalized). When the ttl has expired,
+/// the unsigned transaction can no longer be signed and the user will have to
+/// build another unsigned transaction if they wish to perform the transaction.
+/// 
+/// Mainnet's ttl is 7200 slots, and testnet's ttl is 1800 slots.
 pub fn get_ttl_tx(net: &cardano_serialization_lib::NetworkIdKind) -> u64 {
     if *net == cardano_serialization_lib::NetworkIdKind::Testnet {
         1800
@@ -343,6 +351,14 @@ pub fn get_input_position(
     (index, my_index)
 }
 
+/// Gets the number of validation keys. 
+/// 
+/// Every UTxO has a validation key (payment address). This function will count
+/// the total number of validation keys across all UTxO:s in `txuos` and `col` and 
+/// deduplicate the count. 
+/// 
+/// `txuos` means `Transaction unspent outputs`and is synonomoys with UTxO. 
+/// `col` means collateral. 
 pub fn get_vkey_count(
     txuos: &TransactionUnspentOutputs,
     col: Option<&TransactionUnspentOutput>,
@@ -385,6 +401,7 @@ pub fn make_dummy_vkeywitnesses(vkey_count: usize) -> ccrypto::Vkeywitnesses {
     dummy_vkeywitnesses
 }
 
+/// Misnomer. Gets the private key of the given stake address. 
 pub fn get_stake_address(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
     debug!(
         "Address in get_stake_address: {:?}",
@@ -558,6 +575,9 @@ fn verify_wallet(signed_data : String, address : String, message : String) -> bo
 }
  */
 
+/// Builds unsigned transaction and hex-encodes it along with transaction body and transaction witnesses.
+/// 
+/// The hex-encoded values are then placed in build output. 
 pub fn tx_output_data(
     txbody: clib::TransactionBody,
     txwitness: clib::TransactionWitnessSet,
@@ -770,6 +790,7 @@ pub fn make_script_outputs_txb(
     txuo
 }
 
+/// Returns the total value of all the given UTxO:s `txouts`.
 pub fn sum_output_values(txouts: &clib::TransactionOutputs) -> cutils::Value {
     let mut acc = cutils::Value::new(&cutils::to_bignum(64));
     for i in 0..txouts.len() {
@@ -779,6 +800,10 @@ pub fn sum_output_values(txouts: &clib::TransactionOutputs) -> cutils::Value {
     acc
 }
 
+/// Identifies which UTxO:s `split_txos` must be consumed in order to guarantee the payment of transaction fees 
+/// (with extra margin) when you want to spend `value` amount of Ada and tokens. 
+/// 
+/// `addr` is the stake address representing the owner of the UTxO:s from which transaction fees are paid.
 pub fn splitt_ada_off(
     value: cutils::Value,
     addr: caddr::Address,
@@ -807,6 +832,12 @@ pub fn splitt_ada_off(
     }
 }
 
+/// Identifies which UTxO:s in an UTxO set `split_txos` must be consumed to guarantee the payment of 
+/// transaction fees (with margin) when you want to spend the transaction output `txo`.
+/// 
+/// If the TxO `txo` has sufficiently small number of bytes, then it can pay its own transaction fees.
+/// But if the TxO `txo` has a large number of bytes, then additional UTxO:s may need to be pulled from
+/// the stake address that owns `txo` to cover the transaction fee.
 pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::TransactionOutputs) {
     let input_txo = txo.clone();
     const T_TH: usize = 40;
@@ -835,7 +866,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                     } else {
                         // Check if a split makes sense
 
-                        //Limit max Val size
+                        // Limit max Val size
                         let txo_size = input_txo.to_bytes().len();
                         debug!("Txo Size: {:?}", txo_size);
                         debug!("ValSize:  {:?}", value.to_bytes().len());
@@ -848,7 +879,7 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                             }
                         } else {
                             match multi.keys().len() {
-                                //Split for one Policy ID in Value
+                                // Split for one Policy ID in Value
                                 1 => {
                                     debug!("One policy ID");
                                     let cs = &multi.keys().get(0);
@@ -856,14 +887,14 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
 
                                     match assets.len() {
                                         1..=T_TH => {
-                                            // Is okay all are form one policy so the utxo has a good size
-                                            //Check if we can split away Ada:
+                                            // It's okay, all are from one policy so the utxo has a good size.
+                                            // Check if we can split away Ada:
                                             splitt_ada_off(value, addr, split_txos);
                                         }
 
                                         _ => {
-                                            let mut new_asset = clib::Assets::new();
-                                            let mut rest_asset = clib::Assets::new();
+                                            let mut new_asset = clib::Assets::new(); // Vector of assets, not just one asset.
+                                            let mut rest_asset = clib::Assets::new(); // Vector of assets, not just one asset.
                                             let keys = assets.keys();
                                             for a in 0..assets.len() {
                                                 if a <= T_TH {
@@ -1242,6 +1273,10 @@ pub fn find_asset_utxo(
     None
 }
 
+/// Identifies the UTxO:s that contain the given tokens.
+/// 
+/// It takes a collection of UTxO:s `txuos` and a collection of tokens `listing_tokens`
+/// and returns the indices in `txuos` of the UTxO:s that contain tokens `listing_tokens`.
 pub fn find_asset_utxos_in_txuos(
     txuos: &TransactionUnspentOutputs,
     listing_tokens: &Vec<(ccrypto::ScriptHash, clib::AssetName, cutils::BigNum)>,
@@ -1444,6 +1479,56 @@ pub fn input_selection(
     (txins, selection)
 }
 
+/// Calculates the right amount of change to return back to the sender and selects UTxO:s from which the change
+/// is pulled to guarantee the successful payment of transaction fees.
+/// 
+/// `input_txuos` is the input UTxO:s in the transaction. This function iterates through each UTxO to calculate
+/// the amount of change. 
+/// 
+/// `_tokens` is unimplemented, so the value assigned to it makes no difference. 
+/// 
+/// `txos` is the input TxO:s in the transaction. This functions adds all input TxO:s `txos` into `tbb_values`.
+/// 
+/// `already_paid` is the amount of transaction fees that have already been paid. This function will subtract 
+/// this from `fee` when calculating how much should be paid.
+/// 
+/// `fee` is the transaction fee that must be paid in this transaction. This function adds `fee` into
+/// `tbb_values`.
+/// 
+/// `fee_paid` tells this function whether it has finished taking the transaction fee into consideration
+/// when calculating the output side of the transaction. Users of this function should set `fee_paid` to 
+/// `false`. This function will then set it to `true` internally when it has finished iterating through all 
+/// the UTxO:s `input_txuos`.
+/// 
+/// `first_run` tells `balance_tx` that it's the first iteration in its recursive call to itself. Users
+/// of this function should set this value to `true`. While this value is true in the first iteration, this
+/// function will calculate how many Ada and tokens should be paid in this transaction (i.e. `tbb_values`).
+/// Then this function will set `first_run` to false while iterating through all the input UTxO:s `input_txuos`
+/// to calculate the sum of all Ada and tokens therein (i.e. the total input) and all the other calculations in
+/// the rest of the function.
+/// 
+/// `txos_paid` should be set to `false`. It's used internally as an state value to communicate that the function 
+/// has finished iterating over all the UTxO:s `input_txuos`.
+/// 
+/// `tbb_values` is a misnomer and should have been called `tbp_values`, which stands for "to-be-paid values".
+/// It should be set to zero. The function will internally use this parameter to store the sum of all input TxO:s `txos`,
+/// and transaction fees `fee`, minus fees already paid `fee_paid`.
+/// 
+/// `senders_addr` is the sender's stake address. 
+/// 
+/// `change_address` is the payment address that receives the change (i.e. difference between paid amount and required amount). 
+/// 
+/// `acc_change` should be set to zero. The function uses this internally as a state parameter 
+/// to keep track on how big the change is (i.e. the difference between paid amount and required amount).
+/// 
+/// `sc_addr` is the smart-contract address. Its implementation in `balance_tx` is incomplete.
+/// Set it to `None` until its implementation is complete. 
+/// 
+/// `dummyrun` is a setting for controlling how strict this function should be
+/// in its balancing of the transaction. `dummyrun == false` will cause this function
+/// to throw a panic if it failed to make both sides of the transaction equal. 
+/// `dummyrun == true` may be used for building transactions that one doesn't intend
+/// to finalize, or for testing purposes.  
 #[allow(clippy::too_many_arguments)]
 pub fn balance_tx(
     input_txuos: &mut TransactionUnspentOutputs,
@@ -1548,7 +1633,7 @@ pub fn balance_tx(
                 *fee_paid = true;
                 *txos_paid = true;
                 debug!("------------------------------------------------------------------\n\n");
-                debug!("Acc after clamped sub: \n{:?}", acc_change);
+                debug!("Accumulated after clamped subtraction: \n{:?}", acc_change);
                 debug!("------------------------------------------------------------------\n\n");
             }
             let min_utxo = txbuilder::calc_min_ada_for_utxo(acc_change, None);

@@ -108,6 +108,7 @@ pub fn get_asset_utxos_on_addr(
     Ok(utxos)
 }
 
+/// Gets the latest slot number in DBsync. 
 pub fn get_slot(conn: &mut PgConnection) -> Result<i64, MimirError> {
     let slot = block::table
         .filter(block::block_no.is_not_null())

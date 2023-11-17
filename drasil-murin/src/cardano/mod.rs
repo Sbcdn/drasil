@@ -37,14 +37,17 @@ pub fn blake2b160(data: &[u8]) -> [u8; 20] {
     // result
 }
 
+/// Parses a string into policy ID of a native asset. 
 pub fn string_to_policy(str: &String) -> Result<clib::PolicyID, MurinError> {
     Ok(clib::PolicyID::from_bytes(hex::decode(str)?)?)
 }
 
+/// Parses a string into the name of a native asset. 
 pub fn string_to_assetname(str: &String) -> Result<clib::AssetName, MurinError> {
     Ok(clib::AssetName::new(hex::decode(str)?)?)
 }
 
+/// Removes size limitation from an integer.
 pub fn u64_to_bignum(n: u64) -> cutils::BigNum {
     cutils::to_bignum(n)
 }

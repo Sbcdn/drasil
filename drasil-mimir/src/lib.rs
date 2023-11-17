@@ -19,6 +19,10 @@ use std::env;
 extern crate dotenv;
 extern crate pretty_env_logger;
 
+/// Establishes connection to DBsync.
+/// 
+/// The address to DBsync is specified in the environment variable `DBSYNC_DB_URL`.
+/// DBsync is a Postgres database. 
 pub fn establish_connection() -> Result<PgConnection, error::MimirError> {
     dotenv().ok();
 

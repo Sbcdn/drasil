@@ -13,6 +13,9 @@ use drasil_gungnir::{BigDecimal, FromPrimitive, ToPrimitive};
 use error::SystemDBError;
 use std::env;
 
+/// Establishes connection to Drasil Database (platform database).
+/// 
+/// The address of the Drasil DB is specified in environment variable `PLATFORM_DB_URL`.
 pub fn establish_connection() -> Result<PgConnection, SystemDBError> {
     log::debug!("Establishing Drasil DB connection...");
     let database_url = env::var("PLATFORM_DB_URL")?;
@@ -20,6 +23,9 @@ pub fn establish_connection() -> Result<PgConnection, SystemDBError> {
     Ok(dbcon)
 }
 
+/// A Transaction-build smart contract.
+/// 
+/// `TBContracts` is a misnomer and should have been called `TBContract`.
 #[derive(Queryable, Identifiable, PartialEq, Debug, Clone, serde::Serialize)]
 #[diesel(table_name = contracts)]
 pub struct TBContracts {

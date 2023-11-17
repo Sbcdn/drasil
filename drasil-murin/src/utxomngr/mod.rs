@@ -1,3 +1,5 @@
+//! Helper functions for connecting to Redis database. 
+
 extern crate redis;
 
 pub mod txmind;
@@ -9,6 +11,8 @@ pub use usedutxos::*;
 use crate::MurinError;
 use std::env;
 
+/// Connects to Redis database whose address is given 
+/// by environment variable `REDIS_DB`.
 pub fn redis_txmind_connection() -> Result<
     (
         Option<redis::cluster::ClusterConnection>,
@@ -20,6 +24,8 @@ pub fn redis_txmind_connection() -> Result<
     redis_connection(&redis_db)
 }
 
+/// Connects to Redis database whose address is given 
+/// by environment variable `REDIS_DB_URL_UTXOMIND`.
 pub fn redis_usedutxos_connection() -> Result<
     (
         Option<redis::cluster::ClusterConnection>,
@@ -31,6 +37,8 @@ pub fn redis_usedutxos_connection() -> Result<
     redis_connection(&redis_db)
 }
 
+/// Connects to Redis database whose address is given 
+/// by environment variable `REDIS_DB_URL_REPLICA`.
 pub fn redis_replica_connection() -> Result<
     (
         Option<redis::cluster::ClusterConnection>,
@@ -42,6 +50,13 @@ pub fn redis_replica_connection() -> Result<
     redis_connection(&redis_db)
 }
 
+/// Connects to Redis database. 
+/// 
+/// `redis_db` is the address of the Redis database.
+/// 
+/// Environment variable `REDIS_CLUSTER`: 
+/// * `true` => Establish a Redis cluster connection.
+/// * `false` => Establish a single Redis connection.
 fn redis_connection(
     redis_db: &str,
 ) -> Result<

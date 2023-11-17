@@ -77,6 +77,13 @@ impl TBContracts {
         Err(err)
     }
 
+    /// Picks a transaction-build smart contract from platform DB (Drasil DB). 
+    /// 
+    /// It queries platform DB (Drasil DB) for a vector of TB contracts, and then 
+    /// picks the latest one. The remaining TB contracts are loaded but never used.
+    /// 
+    /// The smart contract is chosen from the subset of all TB contracts that have
+    /// the contract type `ctype`, version `vers` and user ID `uid`.
     pub fn get_active_contract_for_user(
         uid: i64,
         ctype: String,

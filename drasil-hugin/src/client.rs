@@ -4,6 +4,7 @@ use bincode as bc;
 use std::io::{Error, ErrorKind};
 use tokio::net::{TcpStream, ToSocketAddrs};
 
+/// Client connected to a server via TCP connection.
 pub struct Client {
     pub connection: Connection,
 }
@@ -17,6 +18,10 @@ pub async fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<Client> {
 }
 
 impl Client {
+    /// Sends command to server and retrieves response. 
+    /// 
+    /// If the response is serialized, then it will deserialize it first.
+    /// If the server fails to give non-error response, then this method throws an error.
     pub async fn build_cmd<T: IntoFrame>(&mut self, cmd: T) -> crate::Result<String> {
         let frame = cmd.into_frame();
         self.connection.write_frame(&frame).await?;
@@ -30,6 +35,9 @@ impl Client {
         }
     }
 
+    /// Reads frame in TCP connection.
+    /// 
+    /// It throws error if the peer sent an error message or if the peer has reset connection.
     async fn read_response(&mut self) -> crate::Result<Frame> {
         let response = self.connection.read_frame().await?;
 
