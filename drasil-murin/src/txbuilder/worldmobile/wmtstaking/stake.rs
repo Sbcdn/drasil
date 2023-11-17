@@ -7,7 +7,7 @@ use cardano_serialization_lib::utils as cutils;
 use clib::address::{BaseAddress, EnterpriseAddress, StakeCredential};
 use clib::plutus::{self, Redeemer, RedeemerTag, Redeemers};
 use clib::plutus::{ConstrPlutusData, ExUnits, Language, PlutusData, PlutusList, PlutusScripts};
-use clib::utils::{hash_script_data, to_bignum};
+use clib::utils::{hash_script_data, to_bignum, BigInt};
 use clib::{AssetName, Assets, MultiAsset};
 use clib::{TransactionInputs, TransactionOutput, TransactionOutputs};
 
@@ -191,7 +191,7 @@ impl PerformTxb<&StakeTxData> for AtStakingBuilder {
         // we use the input at index 0 because it must exist.
         let tx_input = txins.get(0);
         let exec_token_name = tx_input.transaction_id().to_bytes();
-        let _exec_token_index = tx_input.index();
+        let exec_token_index = tx_input.index();
 
         // Reconstruct the datum with the execution token name and minting value.
         // Create Plutus Datum
@@ -216,7 +216,7 @@ impl PerformTxb<&StakeTxData> for AtStakingBuilder {
         let mut validator_multiasset = validator_multiasset.sub(&multiasset);
 
         // Create new asset name with the execution token name.
-        let asset_name = AssetName::new(exec_token_name)?;
+        let asset_name = AssetName::new(exec_token_name.clone())?;
 
         // The value is one because it's an NFT
         validator_multiasset.set_asset(&execution_proof_policy_id, &asset_name, to_bignum(1));
@@ -323,9 +323,15 @@ impl PerformTxb<&StakeTxData> for AtStakingBuilder {
             &to_bignum(protocol_parameters.execution_unit_prices.priceSteps as u64),
         );
 
+        // Lets create the Minting Policy Redeemer
+        let mut inner = plutus::PlutusList::new();
+        inner.add(&PlutusData::new_integer(&BigInt::from(self.stxd.staking_amount)));
+        inner.add(&PlutusData::new_bytes(exec_token_name));
+        inner.add(&PlutusData::new_integer(&BigInt::from(exec_token_index)));
+
         // Create the redeemer data for the transaction.
         let redeemer_data = plutus::PlutusData::new_constr_plutus_data(
-            &plutus::ConstrPlutusData::new(&to_bignum(1), &plutus::PlutusList::new()),
+            &plutus::ConstrPlutusData::new(&to_bignum(1), &inner),
         );
         // Add the redeemer data to the redeemer.
         let redeemer = Redeemer::new(

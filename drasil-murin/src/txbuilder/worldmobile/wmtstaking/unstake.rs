@@ -5,9 +5,9 @@
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::utils as cutils;
 use clib::address::{EnterpriseAddress, StakeCredential};
-use clib::plutus::{self, Redeemer, RedeemerTag, Redeemers};
+use clib::plutus::{self, Redeemer, RedeemerTag, Redeemers, PlutusData};
 use clib::plutus::{ExUnits, Language, PlutusScripts};
-use clib::utils::{hash_script_data, to_bignum};
+use clib::utils::{hash_script_data, to_bignum, Int};
 use clib::{AssetName, Assets, MultiAsset};
 use clib::{TransactionInputs, TransactionOutput, TransactionOutputs};
 
@@ -18,7 +18,7 @@ use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
 use crate::pparams::ProtocolParameters;
 use crate::txbuilder::{input_selection, TxBO};
 use crate::worldmobile::configuration::StakingConfig;
-use crate::{min_ada_for_utxo, PerformTxb, TxData};
+use crate::{min_ada_for_utxo, PerformTxb, TxData, get_input_position};
 
 /// This type is a staking transaction builder for WMT.
 #[derive(Debug, Clone)]
@@ -80,15 +80,13 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         // Add Inputs and Outputs
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        // This variable is named "ma" in other places.
-        let mut multiassets = MultiAsset::new();
-        let mut assets = Assets::new();
-
-        // Key is the asset name, should come from configuration data.
-        assets.insert(&self.config.wmt_assetname, &cutils::to_bignum(0));
-        // We create a policy from the policy in configuration data.
-        multiassets.insert(&self.config.wmt_policy_id, &assets);
-
+        
+        // We need to specify our Transaction Outputs (TxO), in this case
+        // our TxO is only one, the one we send from the staking validator smart contract address to the users wallet address.
+        // We know that this must at least be the WMT and Ada on the staking UTxO (staking UtxO is verified by the validator smart contract).
+        // We also know that there is a execution proof NFT on the the staking UTxO, which must be burned in this transaction
+        // and will because of that not be in the TxO anymore.
+        // We construct a 'cutils::Value' only contaning the execution proof NFT and substract it from the 'cutils::Value' of the staking UTxO.
         // Restore PolicyId from Plutus Minting Policy
         let minting_policy_ex_proof = self
             .config
@@ -97,13 +95,38 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
             .ok_or_else(|| MurinError::new("failed to get minting smart contract"))?;
         let execution_proof_policy_id = minting_policy_ex_proof.hash();
 
-        // This value goes to the validator address.
-        let mut validator_value = clib::utils::Value::zero();
-        validator_value.set_multiasset(&multiassets);
+        // We take the TokenName (or AssetName in CSL terms) from the input UTxO (which is our staking UTxO)
+        let execution_token_name_hex = self
+            .unstake_data
+            .transaction_input
+            .input()
+            .transaction_id()
+            .to_hex();
+        let execution_token_name = AssetName::from_hex(&execution_token_name_hex)?;
 
-        let mut validator_output = TransactionOutput::new(&contract_address, &validator_value);
-        let min_utxo_val = min_ada_for_utxo(&validator_output)?.amount().coin();
-        validator_value.set_coin(&min_utxo_val);
+        // We construct new Tokens on our UTxO and we use a multiasset to wrap them
+        let mut multiassets = MultiAsset::new();
+        let mut assets = Assets::new();
+        // We Construct the inner Map from MultiAsset the "assets"
+        assets.insert(&execution_token_name, &cutils::to_bignum(0));
+        // We construct the MultiAsset (Map PolicyId (Map AssesName Amount))
+        multiassets.insert(&execution_proof_policy_id, &assets);
+
+        // This value contains only the exwecution proof NFT which will be burned in this transaction
+        // So we do not want to have it in the outputs
+        let mut burn_value = clib::utils::Value::zero();
+        burn_value.set_multiasset(&multiassets);
+
+        // We can construct the TxO by substracting the burn value from the staking UTxO value
+        // as we know that at least the amount of WMT on the input UTxO must be returned to the wallet, as well as the minUTxO Ada but not the ExProof NFT.
+        let staking_input_value = self.unstake_data.transaction_input.output().amount();
+
+        let mut wallet_value = staking_input_value.checked_sub(&burn_value)?;
+
+        let wallet_output = TransactionOutput::new(self.unstake_data.wallet_addr.as_ref().unwrap(), &wallet_value);
+        let min_utxo_val = min_ada_for_utxo(&wallet_output)?.amount().coin();
+        wallet_value.set_coin(&min_utxo_val);
+        let wallet_output = TransactionOutput::new(self.unstake_data.wallet_addr.as_ref().unwrap(), &wallet_value);
 
         // Get the input UTxOS values
         let mut input_txuos = gtxd.clone().get_inputs();
@@ -120,7 +143,7 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         debug!("\nCollateral Input: {:?}", collateral_input_txuo);
 
         // The required value for the transaction.
-        let mut needed_value = validator_value.clone();
+        let mut needed_value = burn_value.clone();
         needed_value.set_coin(&needed_value.coin().checked_add(&fee.clone())?);
         let security = cutils::to_bignum(
             cutils::from_bignum(&needed_value.coin()) / 100 * 10 + (2 * cardano::MIN_ADA),
@@ -142,7 +165,7 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         info!("Saved Inputs: {:?}", saved_input_txuos);
 
         let mut txouts = TransactionOutputs::new();
-        txouts.add(&validator_output);
+        txouts.add(&wallet_output);
 
         // The number of verification keys. This determine the number of signatures required.
         let vkey_counter = cardano::get_vkey_count(&input_txuos, collateral_input_txuo.as_ref());
@@ -177,19 +200,8 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         // MINT ASSETS
         ////////////////////////////////////////////////////////////////////////////////////////////
 
-        // 1 - From the transaction input get token name
-        //
-
-        let execution_token_name = self
-            .unstake_data
-            .transaction_input
-            .input()
-            .transaction_id()
-            .to_hex();
-        let execution_token_name = AssetName::from_hex(&execution_token_name)?;
-        // This is the TxMintInfo
+        // Create the burn information for this transacion (Look into TxInfo::TxMint for more information)
         let mut mintasset = clib::MintAssets::new();
-
         mintasset.insert(&execution_token_name, cutils::Int::new_i32(-1));
         let mint = clib::Mint::new_from_entry(&execution_proof_policy_id, &mintasset);
 
@@ -200,15 +212,15 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
 
         // Create the transaction body.
         let mut txbody = clib::TransactionBody::new_tx_body(&txins, &txouts_fin, fee);
-        let mut inputs = TransactionInputs::new();
-        let input = self
+        let mut ref_inputs = TransactionInputs::new();
+        let ref_input = self
             .unstake_data
             .registration_reference
             .as_ref()
             .map(|r| r.input())
             .ok_or_else(|| MurinError::new("unable to get registration reference"))?;
-        inputs.add(&input);
-        txbody.set_reference_inputs(&inputs);
+        ref_inputs.add(&ref_input);
+        txbody.set_reference_inputs(&ref_inputs);
         txbody.set_ttl(&slot);
         txbody.set_mint(&mint);
 
@@ -241,19 +253,43 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
             &to_bignum(protocol_parameters.execution_unit_prices.priceSteps as u64),
         );
 
-        // Create the redeemer data for the transaction.
+        // Lets create the Minting Policy Redeemer to burn the Execution Proof NFT
+        let mut inner = plutus::PlutusList::new();
+        inner.add(&PlutusData::new_bytes(execution_token_name.name()));
+
+        // Create the redeemer data for the burning of the execution proof
         let redeemer_data = plutus::PlutusData::new_constr_plutus_data(
-            &plutus::ConstrPlutusData::new(&to_bignum(1), &plutus::PlutusList::new()),
+            &plutus::ConstrPlutusData::new(&to_bignum(1), &inner),
         );
-        // Add the redeemer data to the redeemer.
-        let redeemer = Redeemer::new(
+        // We need to find the right position of our staking UTxO in the transaction inputs and 
+        // pass it into the Redeemer, so the smart contract knows what UTxO is must verify. 
+        let index = get_input_position(txins, self.unstake_data.transaction_input.clone());
+        // Construct the final redeemer for burning the execution proof
+        let redeemer1 = Redeemer::new(
             &RedeemerTag::new_mint(),
-            &to_bignum(0),
+            &to_bignum(index.0 as u64),
             &redeemer_data,
             &exunits,
         );
+
+
+        // Lets create the validator Redeemer to spent the UTxO
+        // Create the redeemer data for spending the staking UTxO
+        let redeemer_data = plutus::PlutusData::new_constr_plutus_data(
+            &plutus::ConstrPlutusData::new(&to_bignum(0), &plutus::PlutusList::new()),
+        );
+        // Construct the final redeemer for spending the staking UTxO
+        let redeemer2 = Redeemer::new(
+            &RedeemerTag::new_spend(),
+            &to_bignum(index.0 as u64),
+            &redeemer_data,
+            &exunits,
+        );
+
+
         let mut redeemers = Redeemers::new();
-        redeemers.add(&redeemer);
+        redeemers.add(&redeemer1);
+        redeemers.add(&redeemer2);
         log::debug!("\nCostModels:\n{:?}\n\n", cstmodls);
 
         let scriptdatahash = hash_script_data(&redeemers, &cstmodls, None);
@@ -267,6 +303,7 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         txwitness.set_redeemers(&redeemers);
         let mut plutus_scripts = PlutusScripts::new();
         plutus_scripts.add(minting_policy_ex_proof);
+        plutus_scripts.add(validator_contract);
         txwitness.set_plutus_scripts(&plutus_scripts);
 
         Ok((txbody, txwitness, None, saved_input_txuos, vkey_counter))
