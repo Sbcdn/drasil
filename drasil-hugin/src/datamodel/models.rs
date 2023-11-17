@@ -463,6 +463,11 @@ pub enum Operation {
         /// The staking amount.
         amount: u64,
     },
+
+    WmtUnStaking {
+        /// The EN to stake to.
+        ennft: String,
+    },
 }
 
 impl Operation {

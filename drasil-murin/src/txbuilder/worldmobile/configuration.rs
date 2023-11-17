@@ -1,9 +1,10 @@
 //! This module defines the configuration data for WorldMobile
 //! smart contracts.
 
+use std::collections::HashMap;
+
 use cardano_serialization_lib::{plutus::PlutusScript, AssetName, PolicyID};
 use serde::Deserialize;
-use std::collections::HashMap;
 
 /// This type defines the staking smart contract configuration.
 #[derive(Debug, Clone, Deserialize)]

@@ -5,6 +5,8 @@ use bincode as bc;
 use bytes::Bytes;
 
 use crate::datamodel::{ContractAction, ContractType, TransactionPattern};
+use crate::protocol::worldmobile::build_wmt_sc;
+use crate::protocol::worldmobile::staking::StakingAction;
 use crate::{CmdError, Parse};
 use crate::{Connection, Frame, IntoFrame};
 
@@ -88,9 +90,19 @@ impl BuildContract {
                     .unwrap_or_else(|err| err.to_string())
             }
             ContractType::WmtStaking => {
-                crate::protocol::worldmobile::build_wmt_sc::handle_wmt_staking(self)
-                    .await
-                    .unwrap_or_else(|err| err.to_string())
+                let action = if let ContractAction::StakingAction(action) = self.action() {
+                    action
+                } else {
+                    return Err(CmdError::InvalidCmd);
+                };
+                match action {
+                    StakingAction::Stake => build_wmt_sc::handle_wmt_staking(self)
+                        .await
+                        .unwrap_or_else(|err| err.to_string()),
+                    StakingAction::UnStake => {
+                        todo!()
+                    }
+                }
             }
             _ => {
                 return Err(CmdError::Custom {

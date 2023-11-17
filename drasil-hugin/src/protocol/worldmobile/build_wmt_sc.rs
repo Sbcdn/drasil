@@ -46,8 +46,8 @@ pub async fn handle_wmt_staking(build_contract: BuildContract) -> crate::Result<
             });
     gtxd.set_inputs(wallet_utxos);
 
-    // Get the first address which is the unique address to identify a wallet.
-    // This is the first address where the staking key was used.
+    // Get the first address which is the unique address identifying a wallet.
+    // This is the first address that used the staking key.
     let first_address = wallet::address_from_string(
         &drasil_mimir::api::select_addr_of_first_transaction(&gtxd.get_stake_address().to_hex())?,
     )
@@ -90,7 +90,7 @@ pub async fn handle_wmt_staking(build_contract: BuildContract) -> crate::Result<
         &mut dbsync,
         &wmt_staking_config.registration_sc_address,
     )?;
-    // We have now all UTxOs containing an asset on the Registration Smart Contract, lets filter the one we want.
+    // Now we have all UTxOs containing an asset on the Registration Smart Contract, lets filter the one we want.
     let registration_utxo = registration_utxo
         .find_utxos_containing_asset(
             &wmt_staking_config.ennft_policy_id,
