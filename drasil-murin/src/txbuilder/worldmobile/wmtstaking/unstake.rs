@@ -4,10 +4,9 @@
 
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::utils as cutils;
-use clib::address::{EnterpriseAddress, StakeCredential};
 use clib::plutus::{self, Redeemer, RedeemerTag, Redeemers, PlutusData};
 use clib::plutus::{ExUnits, Language, PlutusScripts};
-use clib::utils::{hash_script_data, to_bignum, Int};
+use clib::utils::{hash_script_data, to_bignum};
 use clib::{AssetName, Assets, MultiAsset};
 use clib::{TransactionInputs, TransactionOutput, TransactionOutputs};
 
@@ -60,21 +59,11 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
             return Err(MurinError::new("Minting policy or validator are missing"));
         }
 
-        let validator_contract = self
-            .config
-            .smart_contracts
-            .get("validator")
-            .ok_or_else(|| MurinError::new("validator does not exist"))?;
-        let script_hash = validator_contract.hash();
-        let credential = StakeCredential::from_scripthash(&script_hash);
-
         let wallet_addr = self
             .unstake_data
             .wallet_addr
             .as_ref()
             .ok_or_else(|| MurinError::new("unable to get wallet address"))?;
-        let network_id = wallet_addr.network_id()?;
-        let contract_address = EnterpriseAddress::new(network_id, &credential).to_address();
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////
         // Add Inputs and Outputs
@@ -297,6 +286,12 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
             "ScriptDataHash: {:?}\n",
             hex::encode(scriptdatahash.to_bytes())
         );
+
+        let validator_contract = self
+        .config
+        .smart_contracts
+        .get("validator")
+        .ok_or_else(|| MurinError::new("validator does not exist"))?;
 
         // Create the transaction witnesses.
         let mut txwitness = clib::TransactionWitnessSet::new();
