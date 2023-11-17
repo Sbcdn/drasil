@@ -238,15 +238,15 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
 
     //Mode
     log::debug!("Process calculation mode...");
-    match drasil_gungnir::Calculationmode::from_str(&twl.mode)? {
-        drasil_gungnir::Calculationmode::FixedEndEpoch => {
+    match drasil_gungnir::calculationmode::from_str(&twl.mode)? {
+        drasil_gungnir::calculationmode::FixedEndEpoch => {
             twl.equation.parse::<u64>()?;
         }
-        drasil_gungnir::Calculationmode::RelationalToADAStake => {
+        drasil_gungnir::calculationmode::RelationalToADAStake => {
             twl.equation.parse::<f32>()?;
         }
-        drasil_gungnir::Calculationmode::Custom => {}
-        drasil_gungnir::Calculationmode::AirDrop => {}
+        drasil_gungnir::calculationmode::Custom => {}
+        drasil_gungnir::calculationmode::AirDrop => {}
         _ => {
             return Err(SleipnirError::new(&format!(
                 "Calculation Mode is invalid: {:?}",
@@ -286,7 +286,7 @@ pub fn create_token_whitelisting(twl: NewTWL) -> Result<serde_json::Value, Sleip
         &(twl.user_id),
         &vd,
         &spools,
-        &drasil_gungnir::Calculationmode::from_str(&twl.mode)?,
+        &drasil_gungnir::calculationmode::from_str(&twl.mode)?,
         &twl.equation,
         &start_epoch,
         twl.end_epoch.as_ref(),

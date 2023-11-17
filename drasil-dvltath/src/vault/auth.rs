@@ -174,7 +174,9 @@ async fn set_vault_token(client: &mut VaultClient, auth: &AuthInfo) -> String {
 
 async fn vault_auth(client: &VaultClient) -> AuthInfo {
     let secret_id = get_secret_id();
+    info!("secret_id: {:?}", secret_id);
     let role_id = get_role_id();
+    info!("role_id: {:?}", role_id);
     vaultrs::auth::approle::login(client, "approle", &role_id, &secret_id)
         .await
         .unwrap()
@@ -220,8 +222,8 @@ pub async fn vault_connect() -> VaultClient {
 
 async fn get_wrapped_secret_id(client: &VaultClient, role_id: &str) -> String {
     let mut t = api::auth::approle::requests::GenerateNewSecretIDRequest::builder();
-    let endpoint = t.mount("approle").role_name(role_id).build().unwrap(); //mount(&get_gl_mount())
-    let result = endpoint.wrap(client).await.unwrap(); //api::wrap(client, endpoint).await.unwrap();
+    let endpoint = t.mount("approle").role_name(role_id).build().unwrap(); 
+    let result = endpoint.wrap(client).await.unwrap(); 
     log::info!("Got wrapped token: {:?}", result.info);
     result.info.token
 }

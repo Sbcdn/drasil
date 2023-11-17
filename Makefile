@@ -302,5 +302,5 @@ restart-local-cluster:
 first-setup: 
 	make setup-dependencies
 	make build-drasil-builder
-	make build-all-loc
+	make build-all-local
 	make setup-local-all

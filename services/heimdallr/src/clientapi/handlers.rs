@@ -153,10 +153,11 @@ pub async fn stdtx_exec_build(
         TXPWrapper::TransactionPattern(txp) => txp,
         _ => return Ok(badreq),
     };
-    log::debug!("Try to connect to odin...");
-    let mut client = connect_odin().await;
     log::debug!("Create Command...");
     let cmd = BuildStdTx::new(customer_id, tx_type.clone(), *payload.clone());
+    log::debug!("Command: {:?}", cmd);
+    log::debug!("Try to connect to odin...");
+    let mut client = connect_odin().await;
     match client.build_cmd::<BuildStdTx>(cmd).await {
         Ok(ok) => match UnsignedTransaction::from_str(&ok) {
             Ok(resp) => Ok(warp::reply::with_status(
