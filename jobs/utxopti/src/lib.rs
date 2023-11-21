@@ -1,40 +1,32 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 mod error;
 mod models;
 
+use drasil_murin::cardano::supporting_functions;
+use drasil_murin::cardano::{self, Tokens, TransactionUnspentOutputs};
+use drasil_murin::cardano::{calc_txfee, tokens_to_value, value_to_tokens};
+use drasil_murin::{calc_min_ada_for_utxo, find_token_utxos_na, wallet};
 use error::UOError;
-use murin::{
-    calc_min_ada_for_utxo, calc_txfee, find_token_utxos_na, tokens_to_value, value_to_tokens,
-};
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, UOError>;
 
 pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
     log::debug!("Try to connect to dbsync...");
-    let mut dbsconn = mimir::establish_connection()?;
-    let contract_utxos = mimir::get_address_utxos(&mut dbsconn, &addr)?;
+    let contract_utxos = drasil_mimir::get_address_utxos(&addr)?;
     log::debug!("Calculate thresholds...");
     let ada_utxos = contract_utxos.get_coin_only();
     let mut t_utxos = contract_utxos.get_token_only();
     let ada_on_token_utxos = t_utxos.coin_sum();
     let tokens = t_utxos.sum_avail_tokens();
-    let mut tokens_on_contract = murin::Tokens::new();
+    let mut tokens_on_contract = Tokens::new();
     log::debug!("Get token whitelistsings...");
-    let twl = gungnir::TokenWhitelist::get_rwd_contract_tokens(cid, uid)?;
+    let twl = drasil_gungnir::TokenWhitelist::get_rwd_contract_tokens(cid, uid)?;
     log::debug!("Get contracts...");
-    let contract = hugin::TBContracts::get_contract_uid_cid(uid, cid)?;
+    let contract = drasil_hugin::TBContracts::get_contract_uid_cid(uid, cid)?;
     log::debug!("Decode native script...");
-    let ns = &murin::clib::NativeScript::from_bytes(hex::decode(contract.plutus.clone())?)?;
+    let ns = &drasil_murin::clib::NativeScript::from_bytes(hex::decode(contract.plutus.clone())?)?;
     log::debug!("Decode address...");
-    let addr = murin::b_decode_addr_na(&contract.address)?;
+    let addr = wallet::address_from_string_non_async(&contract.address)?;
     log::debug!("Get tokens on contract...");
     for t in tokens {
         let tmp = twl.iter().find(|n| {
@@ -47,15 +39,17 @@ pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
     }
     // ToDo: Check if conditions for reallocation are met or to return without working
     log::debug!("Try to get contract liquidity...");
-    let liquidity = murin::clib::utils::from_bignum(&contract.get_contract_liquidity());
+    let liquidity = drasil_murin::clib::utils::from_bignum(&contract.get_contract_liquidity());
     let difference = liquidity as i64 - ada_on_token_utxos as i64;
 
     log::debug!("Try to reallocate tokens...");
     let transactions = match difference <= 0 {
         true => reallocate_tokens(&mut t_utxos, &tokens_on_contract, &addr, ns, liquidity)?,
         false => {
-            let additional_utxos =
-                ada_utxos.coin_value_subset(murin::clib::utils::to_bignum(difference as u64), None);
+            let additional_utxos = ada_utxos.coin_value_subset(
+                drasil_murin::clib::utils::to_bignum(difference as u64),
+                None,
+            );
             t_utxos.merge(additional_utxos);
             reallocate_tokens(&mut t_utxos, &tokens_on_contract, &addr, ns, liquidity)?
         }
@@ -80,22 +74,22 @@ pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
 }
 
 async fn submit_tx(
-    transaction: murin::clib::Transaction,
-    used_utxos: murin::TransactionUnspentOutputs,
+    transaction: drasil_murin::clib::Transaction,
+    used_utxos: TransactionUnspentOutputs,
     uid: i64,
     cid: i64,
     //version: f32,
 ) -> Result<String> {
-    let bld_tx = murin::hfn::tx_output_data(
+    let bld_tx = supporting_functions::tx_output_data(
         transaction.body(),
         transaction.witness_set(),
-        murin::clib::metadata::AuxiliaryData::new(),
+        None,
         used_utxos.to_hex()?,
         0u64,
         false,
     )?;
 
-    let raw_tx = murin::utxomngr::RawTx::new(
+    let raw_tx = drasil_murin::utxomngr::RawTx::new(
         &bld_tx.get_tx_body(),
         &bld_tx.get_txwitness(),
         &bld_tx.get_tx_unsigned(),
@@ -108,14 +102,14 @@ async fn submit_tx(
         &[cid],
     );
 
-    let resp = hugin::create_response(&bld_tx, &raw_tx, None)?;
+    let resp = drasil_hugin::create_response(&bld_tx, &raw_tx, None)?;
 
-    let mut client = hugin::client::connect(std::env::var("ODIN_URL").unwrap())
+    let mut client = drasil_hugin::client::connect(std::env::var("ODIN_URL").unwrap())
         .await
         .unwrap();
-    let cmd = hugin::FinalizeMultiSig::new(
+    let cmd = drasil_hugin::FinalizeMultiSig::new(
         uid as u64,
-        hugin::MultiSigType::UTxOpti,
+        drasil_hugin::MultiSigType::UTxOpti,
         resp.get_id(),
         String::new(),
     );
@@ -126,13 +120,21 @@ async fn submit_tx(
 }
 
 fn reallocate_tokens(
-    t_utxos: &mut murin::TransactionUnspentOutputs,
-    tokens: &murin::Tokens,
-    addr: &murin::clib::address::Address,
-    script: &murin::clib::NativeScript,
+    t_utxos: &mut drasil_murin::TransactionUnspentOutputs,
+    tokens: &Tokens,
+    addr: &drasil_murin::clib::address::Address,
+    script: &drasil_murin::clib::NativeScript,
     liquidity: u64,
-) -> Result<Vec<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>> {
-    let mut out = Vec::<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>::new();
+) -> Result<
+    Vec<(
+        drasil_murin::clib::Transaction,
+        drasil_murin::TransactionUnspentOutputs,
+    )>,
+> {
+    let mut out = Vec::<(
+        drasil_murin::clib::Transaction,
+        drasil_murin::TransactionUnspentOutputs,
+    )>::new();
     //let ada = t_utxos.coin_sum();
     let (std_value, minutxo, utxo_count) = get_values_and_tamt_per_utxo(tokens, liquidity);
     log::trace!("\n\nTUTXO: BEFORE FILTER: \n{:?}\n\n", t_utxos);
@@ -152,34 +154,41 @@ fn reallocate_tokens(
 }
 
 fn get_values_and_tamt_per_utxo(
-    tokens: &murin::Tokens,
+    tokens: &Tokens,
     ada: u64,
-) -> (murin::clib::utils::Value, murin::clib::utils::BigNum, u64) {
+) -> (
+    drasil_murin::clib::utils::Value,
+    drasil_murin::clib::utils::BigNum,
+    u64,
+) {
     //let max_token =
     let max_token = tokens
         .iter()
         .find(|n| {
-            murin::clib::utils::from_bignum(&n.2)
+            drasil_murin::clib::utils::from_bignum(&n.2)
                 == tokens
                     .iter()
-                    .map(|n| murin::clib::utils::from_bignum(&n.2))
+                    .map(|n| drasil_murin::clib::utils::from_bignum(&n.2))
                     .max()
                     .unwrap()
         })
         .unwrap();
-    let mut v = murin::clib::utils::Value::new(&murin::clib::utils::to_bignum(1000000));
-    let mut ma = murin::clib::MultiAsset::new();
+    let mut v =
+        drasil_murin::clib::utils::Value::new(&drasil_murin::clib::utils::to_bignum(1000000));
+    let mut ma = drasil_murin::clib::MultiAsset::new();
     for t in tokens {
-        let mut assets = murin::clib::Assets::new();
+        let mut assets = drasil_murin::clib::Assets::new();
         assets.insert(&t.1, &max_token.2);
         ma.insert(&t.0, &assets);
     }
     v.set_multiasset(&ma);
     let minutxo = calc_min_ada_for_utxo(&v, None);
-    let utxo_count = ada / murin::clib::utils::from_bignum(&minutxo);
+    let utxo_count = ada / drasil_murin::clib::utils::from_bignum(&minutxo);
     let mut tokens = tokens.clone();
     tokens.iter_mut().for_each(|n| {
-        n.2 = murin::clib::utils::to_bignum(murin::clib::utils::from_bignum(&n.2) / utxo_count);
+        n.2 = drasil_murin::clib::utils::to_bignum(
+            drasil_murin::clib::utils::from_bignum(&n.2) / utxo_count,
+        );
     });
     let mut std_value = tokens_to_value(&tokens);
     std_value.set_coin(&minutxo);
@@ -188,19 +197,22 @@ fn get_values_and_tamt_per_utxo(
 
 /*
 struct TxBuilderOut {
-    utxos: murin::TransactionUnspentOutputs,
-    std_value: murin::clib::utils::Value,
+    utxos: drasil_murin::TransactionUnspentOutputs,
+    std_value: drasil_murin::clib::utils::Value,
     utxo_amt: u64,
-    transactions: Vec<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>,
+    transactions: Vec<(drasil_murin::clib::Transaction, drasil_murin::TransactionUnspentOutputs)>,
 }
 */
 fn txbuilder(
-    utxos: &mut murin::TransactionUnspentOutputs,
-    std_value: &murin::clib::utils::Value,
+    utxos: &mut drasil_murin::TransactionUnspentOutputs,
+    std_value: &drasil_murin::clib::utils::Value,
     utxo_amt: u64,
-    transactions: &mut Vec<(murin::clib::Transaction, murin::TransactionUnspentOutputs)>,
-    addr: &murin::clib::address::Address,
-    script: &murin::clib::NativeScript,
+    transactions: &mut Vec<(
+        drasil_murin::clib::Transaction,
+        drasil_murin::TransactionUnspentOutputs,
+    )>,
+    addr: &drasil_murin::clib::address::Address,
+    script: &drasil_murin::clib::NativeScript,
 ) -> Result<()> {
     let std_tokens = value_to_tokens(std_value)?;
     let r = find_token_utxos_na(utxos, std_tokens, None);
@@ -233,27 +245,27 @@ fn txbuilder(
 }
 
 fn make_new_tx(
-    utxos: &mut murin::TransactionUnspentOutputs,
-    std_value: &murin::clib::utils::Value,
+    utxos: &mut drasil_murin::TransactionUnspentOutputs,
+    std_value: &drasil_murin::clib::utils::Value,
     utxo_amt: &u64,
-    addr: &murin::clib::address::Address,
-    script: &murin::clib::NativeScript,
+    addr: &drasil_murin::clib::address::Address,
+    script: &drasil_murin::clib::NativeScript,
 ) -> Result<(
-    murin::clib::Transaction,
-    murin::TransactionUnspentOutputs,
+    drasil_murin::clib::Transaction,
+    drasil_murin::TransactionUnspentOutputs,
     u64,
 )> {
-    let inputs = murin::clib::TransactionInputs::new();
-    let outputs = murin::clib::TransactionOutputs::new();
+    let inputs = drasil_murin::clib::TransactionInputs::new();
+    let outputs = drasil_murin::clib::TransactionOutputs::new();
 
-    let txb = murin::clib::TransactionBody::new_tx_body(
+    let txb = drasil_murin::clib::TransactionBody::new_tx_body(
         &inputs,
         &outputs,
-        &murin::clib::utils::to_bignum(2000000u64),
+        &drasil_murin::clib::utils::to_bignum(2000000u64),
     );
-    let txw = murin::clib::TransactionWitnessSet::new();
-    let mut tx = murin::clib::Transaction::new(&txb, &txw, None);
-    let mut used_input_utxos = murin::TransactionUnspentOutputs::new();
+    let txw = drasil_murin::clib::TransactionWitnessSet::new();
+    let mut tx = drasil_murin::clib::Transaction::new(&txb, &txw, None);
+    let mut used_input_utxos = drasil_murin::TransactionUnspentOutputs::new();
     let new_tx = add_utxos(
         &mut tx,
         utxos,
@@ -268,20 +280,20 @@ fn make_new_tx(
 }
 
 fn add_utxos(
-    transaction: &mut murin::clib::Transaction,
-    utxos: &mut murin::TransactionUnspentOutputs,
-    used_input_utxos: &mut murin::TransactionUnspentOutputs,
+    transaction: &mut drasil_murin::clib::Transaction,
+    utxos: &mut drasil_murin::TransactionUnspentOutputs,
+    used_input_utxos: &mut drasil_murin::TransactionUnspentOutputs,
     utxo_amt: &u64,
-    std_value: &murin::clib::utils::Value,
-    addr: &murin::clib::address::Address,
-    script: &murin::clib::NativeScript,
+    std_value: &drasil_murin::clib::utils::Value,
+    addr: &drasil_murin::clib::address::Address,
+    script: &drasil_murin::clib::NativeScript,
 ) -> Result<(
-    murin::clib::Transaction,
-    murin::TransactionUnspentOutputs,
-    murin::TransactionUnspentOutputs,
+    drasil_murin::clib::Transaction,
+    drasil_murin::TransactionUnspentOutputs,
+    drasil_murin::TransactionUnspentOutputs,
     u64,
-    murin::clib::utils::Value,
-    murin::clib::address::Address,
+    drasil_murin::clib::utils::Value,
+    drasil_murin::clib::address::Address,
 )> {
     let mut needed_value = std_value.clone();
     needed_value.set_coin(
@@ -290,14 +302,14 @@ fn add_utxos(
             .checked_add(&transaction.body().fee().clone())
             .unwrap(),
     );
-    let security = murin::clib::utils::to_bignum(
-        murin::clib::utils::from_bignum(&needed_value.coin())
-            + (utxo_amt / 2 * murin::htypes::MIN_ADA),
+    let security = drasil_murin::clib::utils::to_bignum(
+        drasil_murin::clib::utils::from_bignum(&needed_value.coin())
+            + (utxo_amt / 2 * cardano::MIN_ADA),
     );
     needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
 
     let (txins, input_txuos) =
-        murin::txbuilders::input_selection(None, &mut needed_value, utxos, None, None)?;
+        drasil_murin::txbuilder::input_selection(None, &mut needed_value, utxos, None, None)?;
     let txb = transaction.body();
     let mut inputs = txb.inputs();
     let mut outputs = txb.outputs();
@@ -306,9 +318,9 @@ fn add_utxos(
     }
     used_input_utxos.merge(input_txuos);
     utxos.delete_set(used_input_utxos);
-    outputs.add(&murin::clib::TransactionOutput::new(addr, std_value));
+    outputs.add(&drasil_murin::clib::TransactionOutput::new(addr, std_value));
 
-    let mut out_value = murin::hfn::sum_output_values(&outputs);
+    let mut out_value = supporting_functions::sum_output_values(&outputs);
     let in_value = used_input_utxos.calc_total_value()?;
     let mut change = in_value.checked_sub(&out_value)?;
 
@@ -320,11 +332,11 @@ fn add_utxos(
             < 0
         && change
             .coin()
-            .compare(&murin::clib::utils::to_bignum(4000000))
+            .compare(&drasil_murin::clib::utils::to_bignum(4000000))
             >= 0
     {
-        outputs.add(&murin::clib::TransactionOutput::new(addr, std_value));
-        out_value = murin::hfn::sum_output_values(&outputs);
+        outputs.add(&drasil_murin::clib::TransactionOutput::new(addr, std_value));
+        out_value = supporting_functions::sum_output_values(&outputs);
         change = in_value.checked_sub(&out_value)?;
         let (stmptx, _) = finalize_tx(
             &inputs,
@@ -365,8 +377,9 @@ fn add_utxos(
         ))
     } else {
         log::debug!("Add more utxos");
-        let txb = murin::clib::TransactionBody::new_tx_body(&inputs, &outputs, &fee);
-        let mut transaction = murin::clib::Transaction::new(&txb, &transaction.witness_set(), None);
+        let txb = drasil_murin::clib::TransactionBody::new_tx_body(&inputs, &outputs, &fee);
+        let mut transaction =
+            drasil_murin::clib::Transaction::new(&txb, &transaction.witness_set(), None);
         add_utxos(
             &mut transaction,
             utxos,
@@ -380,60 +393,63 @@ fn add_utxos(
 }
 
 fn finalize_tx(
-    inputs: &murin::clib::TransactionInputs,
-    outputs: &murin::clib::TransactionOutputs,
-    addr: &murin::clib::address::Address,
-    change: &murin::clib::utils::Value,
-    fee: &murin::clib::utils::BigNum,
-    script: &murin::clib::NativeScript,
-) -> Result<(murin::clib::Transaction, murin::clib::utils::BigNum)> {
-    let mem = murin::clib::utils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
-    let steps = murin::clib::utils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
-    let ex_unit_price: murin::htypes::ExUnitPrice = murin::ExUnitPrice {
+    inputs: &drasil_murin::clib::TransactionInputs,
+    outputs: &drasil_murin::clib::TransactionOutputs,
+    addr: &drasil_murin::clib::address::Address,
+    change: &drasil_murin::clib::utils::Value,
+    fee: &drasil_murin::clib::utils::BigNum,
+    script: &drasil_murin::clib::NativeScript,
+) -> Result<(
+    drasil_murin::clib::Transaction,
+    drasil_murin::clib::utils::BigNum,
+)> {
+    let mem = drasil_murin::clib::utils::to_bignum(7000000u64); //cutils::to_bignum(7000000u64);
+    let steps = drasil_murin::clib::utils::to_bignum(2500000000u64); //cutils::to_bignum(3000000000u64);
+    let ex_unit_price = cardano::models::ExUnitPrice {
         priceSteps: 7.21e-5,
         priceMemory: 5.77e-2,
     };
-    let a = murin::clib::utils::to_bignum(44u64);
-    let b = murin::clib::utils::to_bignum(155381u64);
+    let a = drasil_murin::clib::utils::to_bignum(44u64);
+    let b = drasil_murin::clib::utils::to_bignum(155381u64);
 
-    let slot = mimir::get_slot(&mut mimir::establish_connection()?)? as u64 + 3600;
+    let slot = drasil_mimir::get_slot(&mut drasil_mimir::establish_connection()?)? as u64 + 3600;
     let network = match addr.network_id()? {
-        1 => murin::clib::NetworkId::mainnet(),
-        _ => murin::clib::NetworkId::testnet(),
+        1 => drasil_murin::clib::NetworkId::mainnet(),
+        _ => drasil_murin::clib::NetworkId::testnet(),
     };
-    let change = change.checked_add(&murin::clib::utils::Value::new(
-        &murin::clib::utils::to_bignum(64),
+    let change = change.checked_add(&drasil_murin::clib::utils::Value::new(
+        &drasil_murin::clib::utils::to_bignum(64),
     ))?;
     let mut tmp_outputs = outputs.clone();
-    tmp_outputs.add(&murin::clib::TransactionOutput::new(addr, &change));
+    tmp_outputs.add(&drasil_murin::clib::TransactionOutput::new(addr, &change));
 
-    let mut txw = murin::clib::TransactionWitnessSet::new();
-    let mut native_scripts = murin::clib::NativeScripts::new();
+    let mut txw = drasil_murin::clib::TransactionWitnessSet::new();
+    let mut native_scripts = drasil_murin::clib::NativeScripts::new();
     native_scripts.add(script);
     txw.set_native_scripts(&native_scripts);
-    let vkeys = murin::make_dummy_vkeywitnesses(2);
+    let vkeys = cardano::make_dummy_vkeywitnesses(2);
     txw.set_vkeys(&vkeys);
 
-    let mut tmp_txb = murin::clib::TransactionBody::new_tx_body(inputs, &tmp_outputs, fee);
-    tmp_txb.set_ttl(&murin::clib::utils::to_bignum(slot));
+    let mut tmp_txb = drasil_murin::clib::TransactionBody::new_tx_body(inputs, &tmp_outputs, fee);
+    tmp_txb.set_ttl(&drasil_murin::clib::utils::to_bignum(slot));
     tmp_txb.set_network_id(&network);
-    let tmp_transaction = murin::clib::Transaction::new(&tmp_txb, &txw, None);
+    let tmp_transaction = drasil_murin::clib::Transaction::new(&tmp_txb, &txw, None);
     let fee = calc_txfee(&tmp_transaction, &a, &b, ex_unit_price, &steps, &mem, true);
-    //fee.checked_add(&murin::clib::utils::to_bignum(64))?;
+    //fee.checked_add(&drasil_murin::clib::utils::to_bignum(64))?;
     let mut outputs = outputs.clone();
-    outputs.add(&murin::clib::TransactionOutput::new(
+    outputs.add(&drasil_murin::clib::TransactionOutput::new(
         addr,
-        &change.checked_sub(&murin::clib::utils::Value::new(&fee))?,
+        &change.checked_sub(&drasil_murin::clib::utils::Value::new(&fee))?,
     ));
 
-    let mut txb = murin::clib::TransactionBody::new_tx_body(inputs, &outputs, &fee);
-    txb.set_ttl(&murin::clib::utils::to_bignum(slot));
+    let mut txb = drasil_murin::clib::TransactionBody::new_tx_body(inputs, &outputs, &fee);
+    txb.set_ttl(&drasil_murin::clib::utils::to_bignum(slot));
     txb.set_network_id(&network);
 
-    let mut txw = murin::clib::TransactionWitnessSet::new();
-    let mut native_scripts = murin::clib::NativeScripts::new();
+    let mut txw = drasil_murin::clib::TransactionWitnessSet::new();
+    let mut native_scripts = drasil_murin::clib::NativeScripts::new();
     native_scripts.add(script);
     txw.set_native_scripts(&native_scripts);
 
-    Ok((murin::clib::Transaction::new(&txb, &txw, None), fee))
+    Ok((drasil_murin::clib::Transaction::new(&txb, &txw, None), fee))
 }

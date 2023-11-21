@@ -13,16 +13,15 @@ struct Opt {}
 pub async fn main() -> Result<()> {
     pretty_env_logger::init();
     println!("Start UTxO optimization");
-    let contracts = hugin::TBContracts::get_all_active_rwd_contracts()?;
+    let contracts = drasil_hugin::TBContracts::get_all_active_rwd_contracts()?;
 
     let mut threads = JoinSet::new();
     println!("Checking contracts...");
     'outer: for contract in contracts {
         let _lq = contract.get_contract_liquidity();
-        let utxos =
-            mimir::get_address_utxos(&mut mimir::establish_connection()?, &contract.address)?;
+        let utxos = drasil_mimir::get_address_utxos(&contract.address)?;
 
-        let twl = gungnir::TokenWhitelist::get_whitelist()?;
+        let twl = drasil_gungnir::TokenWhitelist::get_whitelist()?;
 
         if twl.iter().fold(true, |mut acc, n| {
             acc = acc

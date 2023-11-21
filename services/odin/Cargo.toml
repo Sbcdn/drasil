@@ -1,10 +1,3 @@
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-
 [package]
 name = "odin"
 version = "0.1.0"
@@ -30,4 +23,4 @@ atoi = "1.0.0"
 structopt = "0.3.26"
 dotenv = "0.15.0"
 
-hugin = { path = "../../libs/hugin", version = "0.1.0" }
+drasil-hugin = { path = "../../drasil-hugin", version = "0.1.0" }

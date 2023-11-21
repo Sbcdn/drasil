@@ -1,11 +1,3 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 use serde::Serialize;
 use thiserror::Error;
 
@@ -22,8 +14,6 @@ pub enum Error {
     Custom(String),
     #[error("could not create jwt token")]
     JWTTokenCreationError,
-    #[error("not authorized: {:?}", self)]
-    NotAuthorized(String),
 }
 
 #[derive(Serialize, Debug)]

@@ -1,11 +1,4 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
+#![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 
 mod auth;
@@ -81,7 +74,7 @@ async fn main() -> Result<(), error::Error> {
         .max_size(100)
         .build()
         .expect("can't create pool");
-    println!("pool: {:?}", pool);
+    log::info!("pool: {pool:?}");
     let clients: Clients = Arc::new(Mutex::new(HashMap::new()));
 
     //Rate Limitation
@@ -126,12 +119,12 @@ async fn add_msg_handler(
     let payload = serde_json::json!(payload).to_string();
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
-        eprintln!("can't connect to rmq, {}", e);
+        log::error!("can't connect to rmq, {}", e);
         warp::reject::custom(error::Error::RMQPoolError(e))
     })?;
 
     let channel = rmq_con.create_channel().await.map_err(|e| {
-        eprintln!("can't create channel, {}", e);
+        log::error!("can't create channel, {}", e);
         warp::reject::custom(error::Error::RMQError(e))
     })?;
 
@@ -155,12 +148,12 @@ async fn add_msg_handler(
         )
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(error::Error::RMQError(e))
         })?
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(error::Error::RMQError(e))
         })?;
     Ok(serde_json::json!({"status":"successfull","spot":q.message_count()}).to_string())

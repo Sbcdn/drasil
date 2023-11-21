@@ -1,20 +1,5 @@
-/*
-#################################################################################
-# Business Source License           See LICENSE.md for full license information.#
-# Licensor:             Drasil Blockchain Association                           #
-# Licensed Work:        Drasil Application Framework v.0.2. The Licensed Work   #
-#                       is © 2022 Drasil Blockchain Association                 #
-# Additional Use Grant: You may use the Licensed Work when your application     #
-#                       using the Licensed Work is generating less than         #
-#                       $150,000 and the entity operating the application       #
-#                       engaged equal or less than 10 people.                   #
-# Change Date:          Drasil Application Framework v.0.2, change date is two  #
-#                       and a half years from release date.                     #
-# Change License:       Version 2 or later of the GNU General Public License as #
-#                       published by the Free Software Foundation.              #
-#################################################################################
-*/
-
+#![recursion_limit = "256"]
+#![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 
 extern crate log;
@@ -36,7 +21,7 @@ use std::{collections::HashMap, convert::Infallible, sync::Arc};
 use tokio::sync::Mutex;
 use warp::{reject, reply, Filter, Rejection, Reply};
 
-use hugin::drasildb::TBDrasilUser;
+use drasil_hugin::drasildb::TBDrasilUser;
 
 mod auth;
 mod email_verify;
@@ -243,6 +228,15 @@ fn endpoints(
         .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::bytes()))
         .and_then(handler::mint::entrp_create_nfts_from_csv_s);
 
+    // Reactivate a Depricated Reward Contract
+    let enterprise_post_reactivate_reward_contract = enterprise_post
+        .clone()
+        .and(warp::path("ms"))
+        .and(warp::path("act"))
+        .and(warp::path("sprwc"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::rwd::entrp_reactivate_sporwc);
+
     // Create a new mint project
     let enterprise_post_create_mint_project = enterprise_post
         .clone()
@@ -302,6 +296,15 @@ fn endpoints(
         .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
         .and_then(handler::rwd::remove_pools);
 
+    // Create a new reward contract
+    let enterprise_post_create_lqdt_wallet = enterprise_post
+        .clone()
+        .and(warp::path("wal"))
+        .and(warp::path("cr"))
+        .and(warp::path("lqdt"))
+        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
+        .and_then(handler::adm::adm_create_lqdt);
+
     // Create an empty whitelist
     let enterprise_post_create_whitelist = enterprise_post
         .clone()
@@ -323,7 +326,7 @@ fn endpoints(
         .clone()
         .and(warp::path("ws"))
         .and(warp::path("impcsv"))
-        .and(with_rmq(pool.clone()))
+        .and(with_rmq(pool))
         .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
         .and_then(handler::whitelist::import_whitelist_from_csv);
 
@@ -333,6 +336,7 @@ fn endpoints(
         .or(enterprise_post_alloc_nfts_to_mp)
         .or(enterprise_post_import_nfts_csv_meta)
         .or(enterprise_post_import_nfts_csv_meta_2)
+        .or(enterprise_post_reactivate_reward_contract)
         .or(enterprise_post_create_mint_project)
         .or(enterprise_post_create_reward_contract)
         .or(enterprise_post_deprecate_reward_contract)
@@ -340,6 +344,7 @@ fn endpoints(
         .or(enterprise_post_add_token_sporwc)
         .or(enterprise_post_rm_token_sporwc)
         .or(enterprise_post_rm_pools)
+        .or(enterprise_post_create_lqdt_wallet)
         .or(enterprise_post_create_whitelist)
         .or(enterprise_post_delete_whitelist)
         .or(enterprise_post_import_whitelist);
@@ -353,18 +358,7 @@ fn endpoints(
 
     let _retailer_get = retailer_route.clone().and(warp::get());
 
-    let retailer_post = retailer_route.clone().and(warp::post());
-
-    // Reactivate a Depricated Reward Contract
-    let enterprise_post_reactivate_reward_contract = retailer_post
-        .clone()
-        .and(warp::path("ms"))
-        .and(warp::path("act"))
-        .and(warp::path("sprwc"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::rwd::entrp_reactivate_sporwc);
-
-    let _retailer = enterprise_post_reactivate_reward_contract;
+    //let retailer_post = retailer_route.clone().and(warp::post());
 
     // Drasil Admin Routes
 
@@ -394,19 +388,7 @@ fn endpoints(
         .and(warp::path("list"))
         .and_then(handler::adm::adm_list_payouts);
 
-    // Create a new reward contract
-    let adm_post_create_lqdt_wallet = adm_post
-        .clone()
-        .and(warp::path("wal"))
-        .and(warp::path("cr"))
-        .and(warp::path("lqdt"))
-        .and(warp::body::content_length_limit(100 * 1024).and(warp::body::json()))
-        .and_then(handler::adm::adm_create_lqdt);
-
-    let admin = adm_create_payout
-        .or(adm_exec_payout)
-        .or(adm_list_payouts)
-        .or(adm_post_create_lqdt_wallet);
+    let admin = adm_create_payout.or(adm_exec_payout).or(adm_list_payouts);
 
     // Routes
     login_route
@@ -528,7 +510,7 @@ pub async fn register_handler(payload: RegisterRequest) -> WebResult<impl Reply>
     .map_err(|e| error::Error::Custom(format!("Could not create new user: {:?}", e.to_string())))?;
 
     // Send verification Email to [new_user.email]
-    let email_body = hugin::database::TBEmailVerificationTokenMessage::new(
+    let email_body = drasil_hugin::database::TBEmailVerificationTokenMessage::new(
         Some(new_user.uname.clone()),
         &new_user.email,
     );
@@ -543,7 +525,7 @@ pub async fn verify_email(payload: email_verify::RegistrationMessage) -> WebResu
 }
 
 pub async fn user_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello User {}", uid))
+    Ok(format!("Hello User {uid}"))
 }
 
 pub async fn enterprise_post_handler(
@@ -551,17 +533,17 @@ pub async fn enterprise_post_handler(
     _param: String,
     _json: String,
 ) -> WebResult<impl Reply> {
-    Ok(format!("Hello Enterprise {}", uid))
+    Ok(format!("Hello Enterprise {uid}"))
 }
 
 pub async fn enterprise_get_handler(uid: String, param: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello Enterprise {}, p: {}", uid, param))
+    Ok(format!("Hello Enterprise {uid}, p: {param}"))
 }
 
 pub async fn retailer_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello Retailer {}", uid))
+    Ok(format!("Hello Retailer {uid}"))
 }
 
 pub async fn admin_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello Admin {}", uid))
+    Ok(format!("Hello Admin {uid}"))
 }

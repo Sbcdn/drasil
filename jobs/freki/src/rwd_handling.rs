@@ -1,27 +1,22 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
+use std::str::FromStr;
 
 use crate::models::*;
 use crate::stake::handle_pool;
 use crate::whitelists::handle_whitelist;
 use bigdecimal::{BigDecimal, FromPrimitive, ToPrimitive};
-use sleipnir::rewards::models::*;
-use std::str::*;
+use drasil_sleipnir::rewards::models::*;
 
-pub async fn get_token_whitelist(current_epoch: i64) -> Result<Vec<gungnir::TokenWhitelist>> {
-    let whitelist = gungnir::TokenWhitelist::get_epoch_filtered_whitelist(current_epoch)?;
+pub async fn get_token_whitelist(
+    current_epoch: i64,
+) -> Result<Vec<drasil_gungnir::TokenWhitelist>> {
+    let whitelist = drasil_gungnir::TokenWhitelist::get_epoch_filtered_whitelist(current_epoch)?;
 
     Ok(whitelist)
 }
 
-pub(crate) fn check_contract_is_active(twle: &gungnir::TokenWhitelist) -> Result<bool> {
-    let contr = hugin::database::TBContracts::get_contract_uid_cid(twle.user_id, twle.contract_id)?;
+pub(crate) fn check_contract_is_active(twle: &drasil_gungnir::TokenWhitelist) -> Result<bool> {
+    let contr =
+        drasil_hugin::database::TBContracts::get_contract_uid_cid(twle.user_id, twle.contract_id)?;
 
     if !contr.depricated {
         Ok(true)
@@ -37,9 +32,9 @@ pub(crate) fn handle_rewards(
     table: &mut Vec<RewardTable>,
     no_acc: bool,
 ) -> Result<()> {
-    let mut gconn = gungnir::establish_connection()?;
+    let mut gconn = drasil_gungnir::establish_connection()?;
     log::debug!("Try to find rewards...");
-    let rewards = gungnir::Rewards::get_rewards_per_token(
+    let rewards = drasil_gungnir::Rewards::get_rewards_per_token(
         &mut gconn,
         stake_addr,
         twd.contract_id,
@@ -52,7 +47,7 @@ pub(crate) fn handle_rewards(
         1 => {
             if rewards[0].last_calc_epoch < twd.calc_epoch {
                 if no_acc
-                    && gungnir::Rewards::get_available_rewards(
+                    && drasil_gungnir::Rewards::get_available_rewards(
                         &mut gconn,
                         &rewards[0].stake_addr,
                         &rewards[0].payment_addr,
@@ -62,7 +57,7 @@ pub(crate) fn handle_rewards(
                         token_earned.to_i128().unwrap(),
                     )? != -token_earned.to_i128().unwrap()
                 {
-                    gungnir::Rewards::update_rewards(
+                    drasil_gungnir::Rewards::update_rewards(
                         &mut gconn,
                         &rewards[0].stake_addr,
                         &rewards[0].fingerprint,
@@ -75,7 +70,7 @@ pub(crate) fn handle_rewards(
                 }
                 tot_earned = rewards[0].tot_earned.clone() + token_earned.clone();
                 log::debug!("Earned add: {:?}", tot_earned);
-                let stake_rwd = gungnir::Rewards::update_rewards(
+                let stake_rwd = drasil_gungnir::Rewards::update_rewards(
                     &mut gconn,
                     &rewards[0].stake_addr,
                     &rewards[0].fingerprint,
@@ -88,11 +83,11 @@ pub(crate) fn handle_rewards(
             }
         }
         0 => {
-            let payment_addr = mimir::api::select_addr_of_first_transaction(stake_addr)?;
+            let payment_addr = drasil_mimir::api::select_addr_of_first_transaction(stake_addr)?;
 
             tot_earned = token_earned.to_owned();
             log::debug!("Earned new: {:?}", tot_earned);
-            let stake_rwd = gungnir::Rewards::create_rewards(
+            let stake_rwd = drasil_gungnir::Rewards::create_rewards(
                 &mut gconn,
                 stake_addr,
                 &payment_addr,
@@ -107,7 +102,7 @@ pub(crate) fn handle_rewards(
             log::debug!("Stake Rewards New: {:?}", stake_rwd);
         }
         _ => {
-            return Err(murin::MurinError::new(
+            return Err(drasil_murin::MurinError::new(
                 "More than one reward entry found on the same contract for the same token",
             )
             .into());
@@ -127,16 +122,16 @@ pub(crate) fn handle_rewards(
 }
 
 pub(crate) async fn handle_lists(
-    rwd_token: &mut gungnir::TokenWhitelist,
+    rwd_token: &mut drasil_gungnir::TokenWhitelist,
     epoch: i64,
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
     let spools = rwd_token.pools.clone();
-    let mut pools = Vec::<gungnir::GPools>::new();
+    let mut pools = Vec::<drasil_gungnir::GPools>::new();
     pools.extend(
-        spools
-            .iter()
-            .map(|n| gungnir::GPools::from_str(n).expect("Could not convert string to GPools")),
+        spools.iter().map(|n| {
+            drasil_gungnir::GPools::from_str(n).expect("Could not convert string to GPools")
+        }),
     );
     pools.retain(|p| p.first_valid_epoch <= epoch);
 
@@ -147,19 +142,20 @@ pub(crate) async fn handle_lists(
         .iter()
         .for_each(|n| wlists.push(WhitelistLink::from_str(&n.pool_id).unwrap()));
 
-    let mut conn = mimir::establish_connection()?;
+    let mut conn = drasil_mimir::establish_connection()?;
 
     // Get total Ada staked from all participating pools
     match rwd_token.mode.clone() {
-        gungnir::Calculationmode::FixedEndEpoch => {
+        drasil_gungnir::calculationmode::FixedEndEpoch => {
             let mut total_pools_stake = 0;
             for pool in pools.clone() {
                 total_pools_stake +=
-                    mimir::get_pool_total_stake(&mut conn, &pool.pool_id, epoch as i32)? / 1000000
+                    drasil_mimir::get_pool_total_stake(&mut conn, &pool.pool_id, epoch as i32)?
+                        / 1000000
             }
             rwd_token.modificator_equ = Some(total_pools_stake.to_string());
         }
-        gungnir::Calculationmode::AirDrop => {
+        drasil_gungnir::calculationmode::AirDrop => {
             return Ok(());
         }
 

@@ -1,40 +1,35 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
+use std::str::FromStr;
+
 use crate::models::*;
 use crate::rwd_handling::handle_rewards;
 use bigdecimal::{BigDecimal, FromPrimitive};
-use sleipnir::rewards::models::*;
-use std::str::*;
+use drasil_murin::wallet;
+use drasil_sleipnir::rewards::models::*;
 
 pub(crate) async fn handle_whitelist_address(
     addr: &String,
     twd: &TwlData,
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
-    let stake_addr = murin::get_reward_address(&murin::b_decode_addr(addr).await?)?
-        .to_bech32(None)
-        .unwrap_or_else(|_| addr.clone());
+    let stake_addr =
+        wallet::reward_address_from_address(&wallet::address_from_string(addr).await?)?
+            .to_bech32(None)
+            .unwrap_or_else(|_| addr.clone());
     let script_reward = *addr == stake_addr;
     if script_reward {
-        return Err(Box::new(murin::MurinError::new(
+        return Err(Box::new(drasil_murin::MurinError::new(
             "Script Rewards not implemented yet",
         )));
     }
 
     match twd.mode {
-        gungnir::Calculationmode::AirDrop => {
+        drasil_gungnir::calculationmode::AirDrop => {
             todo!();
             //This is a reoccuring airdrop, add new rewards
             //let param: ReoccuringAirdrop =
             //            serde_json::from_str(&twd.modificator_equ.clone().unwrap())?;
         }
-        gungnir::Calculationmode::Custom => {
+        drasil_gungnir::calculationmode::Custom => {
             match CustomCalculationTypes::from_str(&twd.equation).unwrap() {
                 CustomCalculationTypes::FixedAmountPerEpoch => {
                     log::debug!("Whitelist calcualte with: FixedAmountPerEpoch");
@@ -80,7 +75,7 @@ pub(crate) async fn handle_whitelist(
     table: &mut Vec<RewardTable>,
 ) -> Result<()> {
     log::debug!("Handle whitelist: {:?}", wl_link);
-    let addr_list = gungnir::WlAlloc::get_whitelist(&wl_link.id)?;
+    let addr_list = drasil_gungnir::WlAlloc::get_whitelist(&wl_link.id)?;
     for addr in addr_list {
         handle_whitelist_address(&addr, twd, table).await?;
     }

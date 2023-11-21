@@ -1,11 +1,3 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 use serde::Serialize;
 use std::convert::Infallible;
 use thiserror::Error;
@@ -26,6 +18,10 @@ pub enum VError {
     JWTError(#[from] jsonwebtoken::errors::Error),
     #[error(transparent)]
     ParseIntError(#[from] core::num::ParseIntError),
+    #[error("Odin connection error" )]
+    OdinConError,
+    #[error("API token unknown" )]
+    UserDoesNotExists,
 }
 
 impl From<std::string::String> for VError {
@@ -56,7 +52,7 @@ pub async fn _handle_rejection(err: Rejection) -> std::result::Result<impl Reply
             "Method Not Allowed".to_string(),
         )
     } else {
-        eprintln!("unhandled error: {:?}", err);
+        eprintln!("unhandled error: {err:?}");
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal Server Error".to_string(),

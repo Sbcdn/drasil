@@ -1,13 +1,9 @@
 # Vidar
 
 ## Summary
-Vidar is the Gateway to retrieve data from the reward and distribution system. 
-It needs API key authentication from a registered user which has the permission to use the
-reward and distribution system and its information. 
+'Vidar' is the gateway to retrieve data from the reward and distribution system.  It needs API key authentication from a registered user who has the permission to use the reward and distribution system and its information. 
 
 * [Documentation](https://docs.drasil.io/reward-and-distribution/drasil-rewards-api/reward-information)
-
-* [License]( https://www.drasil.io/licenses/LICENSE-1.0)
 
 ## Mythology
 In Norse mythology, Vidar is one of the Aesir and Odin's son. He belongs to the circle of gods whose function and meaning are somewhat problematic to circle. Even the god's name has given rise to completely different interpretations. According to one interpretation, the name means "the wide ruler", according to another "he of the forest", "the warrior of the forest" or the like. Vidar is also called "the silent ace" or "the silent god".
@@ -86,4 +82,3 @@ Public Key for JWT Certificate:
 For log output activate RUST_LOG by settign the trace level, default is error. 
 
 `RUST_LOG=info`
-

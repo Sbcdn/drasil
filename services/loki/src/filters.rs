@@ -1,11 +1,3 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 use super::error::Error;
 use super::handlers;
 use super::models::{Clients, ErrorResult};
@@ -28,7 +20,7 @@ pub fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Re
     warp::options()
         .and(warp::header("origin"))
         .map(|origin: String| {
-            Ok(warp::http::Response::builder()
+            warp::http::Response::builder()
                 .status(warp::http::StatusCode::OK)
                 .header("access-control-allow-methods", "HEAD, GET, POST, OPTION")
                 .header("access-control-allow-headers", "authorization")
@@ -36,7 +28,7 @@ pub fn resp_option() -> impl Filter<Extract = impl warp::Reply, Error = warp::Re
                 .header("access-control-max-age", "300")
                 .header("access-control-allow-origin", origin)
                 .header("vary", "origin")
-                .body(""))
+                .body("")
         })
 }
 

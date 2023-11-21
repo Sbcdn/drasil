@@ -1,12 +1,3 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
-
 use crate::models::{Client, Clients, WSCom};
 use deadpool_lapin::Pool;
 use futures::{FutureExt, StreamExt};
@@ -26,7 +17,7 @@ pub async fn main_worker(clients: Clients) {
             println!("No clients connected, skip sending data");
             continue;
         }
-        println!("{} connected client(s)", connected_client_count);
+        println!("{connected_client_count} connected client(s)");
 
         clients.lock().await.iter().for_each(|(_, client)| {
             if let Some(sender) = &client.sender {
@@ -60,14 +51,14 @@ async fn client_connection(
     pool: Pool,
     rate_limiter: DirectRateLimiter<LeakyBucket>,
 ) {
-    println!("establishing client connection... {:?}", ws);
+    println!("establishing client connection... {ws:?}");
 
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
     let client_rcv = UnboundedReceiverStream::new(client_rcv);
     tokio::task::spawn(client_rcv.forward(client_ws_sender).map(|result| {
         if let Err(e) = result {
-            println!("error sending websocket msg: {}", e);
+            println!("error sending websocket msg: {e}");
         }
     }));
 
@@ -99,7 +90,7 @@ async fn client_connection(
         .await;
     }
     clients.lock().await.remove(&uuid);
-    println!("{} disconnected", uuid);
+    println!("{uuid} disconnected");
 }
 
 async fn client_msg(
@@ -110,7 +101,7 @@ async fn client_msg(
     pool: Pool,
     rate_limiter: &mut DirectRateLimiter<LeakyBucket>,
 ) {
-    println!("received message from {}: {:?}", client_id, msg);
+    println!("received message from {client_id}: {msg:?}");
     let message = match msg.to_str() {
         Ok(v) => v,
         Err(_) => return,

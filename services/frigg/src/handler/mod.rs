@@ -1,20 +1,3 @@
-/*
-#################################################################################
-# Business Source License           See LICENSE.md for full license information.#
-# Licensor:             Drasil Blockchain Association                           #
-# Licensed Work:        Drasil Application Framework v.0.2. The Licensed Work   #
-#                       is © 2022 Drasil Blockchain Association                 #
-# Additional Use Grant: You may use the Licensed Work when your application     #
-#                       using the Licensed Work is generating less than         #
-#                       $150,000 and the entity operating the application       #
-#                       engaged equal or less than 10 people.                   #
-# Change Date:          Drasil Application Framework v.0.2, change date is two  #
-#                       and a half years from release date.                     #
-# Change License:       Version 2 or later of the GNU General Public License as #
-#                       published by the Free Software Foundation.              #
-#################################################################################
-*/
-
 pub mod adm;
 pub mod dapi;
 pub mod discounts;
@@ -34,8 +17,8 @@ use lazy_static::lazy_static;
 lazy_static! {
     pub static ref AMQP_ADDR: String =
         std::env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://rmq:rmq@127.0.0.1:5672/%2f".into());
-    pub static ref QUEUE_NAME: String =
-        std::env::var("QUEUE_NAME").unwrap_or_else(|_| "mint_response".to_string());
+    pub static ref JOB_QUEUE_NAME: String =
+        std::env::var("JOB_QUEUE_NAME").unwrap_or_else(|_| "mint_response".to_string());
     pub static ref CONSUMER_NAME: String =
         std::env::var("CONSUMER_NAME").unwrap_or_else(|_| "work_loki_0".to_string());
 }

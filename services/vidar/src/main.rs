@@ -1,16 +1,11 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
+#![allow(opaque_hidden_inferred_bound)]
 extern crate pretty_env_logger;
 mod error;
+mod models;
 
 use std::env;
 use std::str;
+
 use warp::Filter;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -21,8 +16,8 @@ const DEFAULT_PORT: &str = "4101";
 
 #[tokio::main]
 async fn main() {
-    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string()); //cli.host.as_deref().unwrap_or(DEFAULT_HOST);
-    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string()); //cli.port.as_deref().unwrap_or(DEFAULT_PORT);
+    let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
+    let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
 
     if env::var_os("RUST_LOG").is_none() {
         env::set_var("RUST_LOG", "vidar=info");
@@ -72,16 +67,14 @@ async fn main() {
 }
 
 mod auth {
-    use crate::error::{self, VError};
+    use drasil_hugin::client::connect;
+    use drasil_hugin::VerifyUser;
     use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
     use serde::{Deserialize, Serialize};
-    use warp::{
-        http::header::{HeaderMap, HeaderValue, AUTHORIZATION},
-        reject, Rejection,
-    };
+    use warp::http::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+    use warp::{reject, Rejection};
 
-    use hugin::client::connect;
-    use hugin::VerifyUser;
+    use crate::error::{self, VError};
 
     const BEARER: &str = "Bearer ";
 
@@ -108,15 +101,15 @@ mod auth {
                 let user_id = decoded.claims.sub.parse::<u64>().map_err(|_| {
                     reject::custom(VError::Custom("Could not parse customer id".to_string()))
                 })?;
-                let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.unwrap();
+                let mut client = connect(std::env::var("ODIN_URL").unwrap()).await.map_err(|_| reject::custom(VError::OdinConError))?;
                 let cmd = VerifyUser::new(user_id, jwt);
                 log::info!("try to verify user ...");
                 match client.build_cmd::<VerifyUser>(cmd).await {
                     Ok(_) => {}
                     Err(_) => {
-                        return Err(reject::custom(VError::JWTTokenError));
+                        return Err(reject::custom(VError::UserDoesNotExists));
                     }
-                };
+                }
                 Ok(user_id)
             }
             Err(e) => Err(reject::custom(e)),
@@ -141,6 +134,8 @@ mod auth {
 
 ///Filters
 mod filters {
+    use crate::models::{QAddresses, QStakeAddress};
+
     use super::handlers;
     use warp::Filter;
 
@@ -153,6 +148,11 @@ mod filters {
             .or(get_token_info())
             .or(get_user_tokens())
             .or(get_avail_mintrewards())
+            .or(get_cl_rewards_for_stake_addr())
+            .or(post_assethandles())
+            .or(get_assethandles())
+            .or(get_assethandles_stakeaddress())
+            .or(get_avail_mintrewards_user())
             .or(resp_option())
         // .or(warp::get().and(warp::any().map(warp::reply)))
     }
@@ -162,7 +162,7 @@ mod filters {
         warp::options()
             .and(warp::header("origin"))
             .map(|origin: String| {
-                Ok(warp::http::Response::builder()
+                warp::http::Response::builder()
                     .status(warp::http::StatusCode::OK)
                     .header("access-control-allow-methods", "HEAD, GET, POST, OPTION")
                     .header("access-control-allow-headers", "authorization")
@@ -170,7 +170,7 @@ mod filters {
                     .header("access-control-max-age", "300")
                     .header("access-control-allow-origin", origin)
                     .header("vary", "origin")
-                    .body(""))
+                    .body("")
             })
     }
     /// Get all available rewards for a stake address
@@ -182,6 +182,17 @@ mod filters {
             .and(auth())
             .and(warp::path::param::<String>())
             .and_then(handlers::handle_all_rewards_for_stake_addr)
+    }
+
+    /// Get all available rewards for a client a stake address
+    pub fn get_cl_rewards_for_stake_addr(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("rwd")
+            .and(warp::path("cl"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::path::param::<String>())
+            .and_then(handlers::handle_rewards_for_client_stake_addr)
     }
 
     /// Get rewards for a stake address for a specific contract
@@ -256,6 +267,49 @@ mod filters {
             .and_then(handlers::handle_all_mint_rewards_for_stake_addr)
     }
 
+    pub fn get_avail_mintrewards_user(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("mird")
+            .and(warp::path("cl"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::path::param::<String>())
+            .and_then(handlers::handle_cl_mint_rewards_for_stake_addr)
+    }
+
+    pub fn post_assethandles(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("wallet")
+            .and(warp::path("assets"))
+            .and(warp::path("addresses"))
+            .and(warp::post())
+            .and(auth())
+            .and(warp::body::content_length_limit(10000 * 1024).and(warp::body::json()))
+            .and_then(handlers::handle_post_asset_for_addresses)
+    }
+
+    pub fn get_assethandles(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("wallet")
+            .and(warp::path("assets"))
+            .and(warp::path("addresses"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::query::<QAddresses>())
+            .and_then(handlers::handle_get_asset_for_addresses)
+    }
+
+    pub fn get_assethandles_stakeaddress(
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        warp::path("wallet")
+            .and(warp::path("assets"))
+            .and(warp::path("stake_address"))
+            .and(warp::get())
+            .and(auth())
+            .and(warp::query::<QStakeAddress>())
+            .and_then(handlers::handle_asset_for_stake_address)
+    }
+
     fn auth() -> impl Filter<Extract = (u64,), Error = warp::Rejection> + Clone {
         use super::auth::authorize;
         use warp::{
@@ -270,13 +324,17 @@ mod filters {
 
 ///Handlers
 mod handlers {
-    use cardano_serialization_lib::address::Address;
-    use gungnir::models::{MintProject, MintReward};
-    use hugin::{
-        datamodel::{ClaimedHandle, RewardHandle},
-        MintProjectHandle, MintRewardHandle,
+    use std::{convert::Infallible, str::from_utf8};
+
+    use cardano_serialization_lib::{address::Address, utils::from_bignum};
+    use drasil_gungnir::minting::models::{MintProject, MintReward};
+    use drasil_hugin::{
+        datamodel::{ClaimedHandle, MintProjectHandle, RewardHandle},
+        MintRewardHandle,
     };
-    use std::convert::Infallible;
+    use drasil_murin::{cardano, wallet};
+
+    use crate::models::{QAddresses, QStakeAddress};
 
     #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
     pub struct ReturnError {
@@ -301,15 +359,18 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let rewards = gungnir::Rewards::get_rewards_stake_addr(&mut gconn, bech32addr);
-        println!("Rewards: {:?}", rewards);
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let rewards = drasil_gungnir::Rewards::get_rewards_stake_addr(&mut gconn, bech32addr);
+        log::debug!("Rewards: {rewards:?}");
         let response = match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<RewardHandle>::new();
                 for rwd in rwds {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &rwd.fingerprint,
+                    ) {
                         Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
                         Err(_) => {
                             log::info!(
@@ -345,9 +406,9 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let rewards = gungnir::Rewards::get_rewards(
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let rewards = drasil_gungnir::Rewards::get_rewards(
             &mut gconn,
             bech32addr,
             contract_id as i64,
@@ -358,7 +419,57 @@ mod handlers {
             Ok(rwds) => {
                 let mut ret = Vec::<RewardHandle>::new();
                 for rwd in rwds {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &rwd.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &rwd.fingerprint,
+                    ) {
+                        Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
+                        Err(_) => {
+                            log::info!(
+                                "Error: coudl not find token info for {:?}",
+                                rwd.fingerprint
+                            );
+                        }
+                    }
+                }
+                warp::reply::json(&ret)
+            }
+            Err(otherwise) => {
+                log::info!("{:?}", otherwise);
+                warp::reply::json(&ReturnError::new(&otherwise.to_string()))
+            }
+        };
+
+        Ok(warp::reply::with_status(
+            response,
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    /// execute build multisig for <multisig_type> for customer <customer_id> with <payload>
+    pub async fn handle_rewards_for_client_stake_addr(
+        customer_id: u64,
+        stake_addr: String,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let bech32addr = match get_bech32_from_bytes(stake_addr) {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e);
+            }
+        };
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let rewards =
+            drasil_gungnir::Rewards::get_client_rewards(&mut gconn, bech32addr, customer_id as i64);
+
+        let response = match rewards {
+            Ok(rwds) => {
+                let mut ret = Vec::<RewardHandle>::new();
+                for rwd in rwds {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &rwd.fingerprint,
+                    ) {
                         Ok(ti) => ret.push(RewardHandle::new(&ti, &rwd)),
                         Err(_) => {
                             log::info!(
@@ -394,9 +505,9 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let claims = gungnir::Claimed::get_claims(
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let claims = drasil_gungnir::Claimed::get_claims(
             &mut gconn,
             &bech32addr,
             contract_id as i64,
@@ -406,7 +517,10 @@ mod handlers {
             Ok(clms) => {
                 let mut ret = Vec::<ClaimedHandle>::new();
                 for clm in clms {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &clm.fingerprint,
+                    ) {
                         Ok(cl) => ret.push(ClaimedHandle::new(
                             clm.stake_addr,
                             clm.payment_addr,
@@ -460,15 +574,18 @@ mod handlers {
                 return make_error(e);
             }
         };
-        let mut gconn =
-            gungnir::establish_connection().expect("Error: Could not connect to Reward Database");
-        let claims = gungnir::Claimed::get_all_claims(&mut gconn, &bech32addr);
+        let mut gconn = drasil_gungnir::establish_connection()
+            .expect("Error: Could not connect to Reward Database");
+        let claims = drasil_gungnir::Claimed::get_all_claims(&mut gconn, &bech32addr);
 
         let response = match claims {
             Ok(clms) => {
                 let mut ret = Vec::<ClaimedHandle>::new();
                 for clm in clms {
-                    match gungnir::TokenWhitelist::get_token_info_ft(&mut gconn, &clm.fingerprint) {
+                    match drasil_gungnir::TokenWhitelist::get_token_info_ft(
+                        &mut gconn,
+                        &clm.fingerprint,
+                    ) {
                         Ok(cl) => ret.push(ClaimedHandle::new(
                             clm.stake_addr,
                             clm.payment_addr,
@@ -515,7 +632,7 @@ mod handlers {
         _: u64,
         fingerprint: String,
     ) -> Result<impl warp::Reply, Infallible> {
-        let response = match mimir::get_mint_metadata(&fingerprint) {
+        let response = match drasil_mimir::get_mint_metadata(&fingerprint) {
             Ok(t) => t,
             Err(e) => {
                 log::info!(
@@ -537,7 +654,7 @@ mod handlers {
     }
 
     pub async fn handle_tokens(user_id: u64) -> Result<impl warp::Reply, Infallible> {
-        let response = match gungnir::TokenWhitelist::get_user_tokens(&user_id) {
+        let response = match drasil_gungnir::TokenWhitelist::get_user_tokens(&user_id) {
             Ok(t) => t,
             Err(e) => {
                 log::info!("Error: could not find any tokens");
@@ -555,7 +672,7 @@ mod handlers {
     }
 
     pub async fn handle_total_rewards(user_id: u64) -> Result<impl warp::Reply, Infallible> {
-        match gungnir::Rewards::get_total_rewards_token(user_id as i64) {
+        match drasil_gungnir::Rewards::get_total_rewards_token(user_id as i64) {
             Ok(t) => Ok(warp::reply::with_status(
                 warp::reply::json(&serde_json::json!(t)),
                 warp::http::StatusCode::OK,
@@ -602,7 +719,7 @@ mod handlers {
             }
         };
 
-        let payaddr = match mimir::select_addr_of_first_transaction(&bech32addr) {
+        let payaddr = match drasil_mimir::select_addr_of_first_transaction(&bech32addr) {
             Ok(a) => a,
             Err(e) => {
                 return Ok(warp::reply::with_status(
@@ -613,15 +730,87 @@ mod handlers {
         };
 
         let rewards = MintReward::get_avail_mintrewards_by_addr(&payaddr);
-        println!("Rewards: {:?}", rewards);
+        log::debug!("Rewards: {rewards:?}");
         match rewards {
             Ok(rwds) => {
                 let mut ret = Vec::<MintRewardHandle>::new();
                 for rwd in rwds {
+                    let mut v = vec![];
+                    for n in rwd.nft_ids {
+                        v.push(from_utf8(&n).unwrap().to_string());
+                    }
+
                     match MintProject::get_mintproject_by_id_active(rwd.project_id) {
                         Ok(p) => ret.push(MintRewardHandle {
                             id: rwd.id,
                             addr: rwd.pay_addr,
+                            nfts: Some(v),
+                            project: MintProjectHandle {
+                                project_name: p.project_name,
+                                collection_name: p.collection_name,
+                                author: p.author,
+                                image: None,
+                            },
+                        }),
+                        Err(e) => {
+                            log::info!("Error: could not find active mint project: {e:?}");
+                            continue;
+                        }
+                    }
+                }
+
+                Ok(warp::reply::with_status(
+                    warp::reply::json(&ret),
+                    warp::http::StatusCode::OK,
+                ))
+            }
+            Err(otherwise) => {
+                log::info!("{:?}", otherwise);
+
+                Ok(warp::reply::with_status(
+                    warp::reply::json(&ReturnError::new(&otherwise.to_string())),
+                    warp::http::StatusCode::NO_CONTENT,
+                ))
+            }
+        }
+    }
+
+    pub async fn handle_cl_mint_rewards_for_stake_addr(
+        user_id: u64,
+        stake_addr: String,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let bech32addr = match get_bech32_from_bytes(stake_addr) {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e);
+            }
+        };
+
+        let payaddr = match drasil_mimir::select_addr_of_first_transaction(&bech32addr) {
+            Ok(a) => a,
+            Err(e) => {
+                return Ok(warp::reply::with_status(
+                    warp::reply::json(&e.to_string()),
+                    warp::http::StatusCode::NO_CONTENT,
+                ))
+            }
+        };
+
+        let rewards = MintReward::get_avail_mintrewards_cl_by_addr(user_id as i64, &payaddr);
+        log::debug!("Rewards: {rewards:?}");
+        match rewards {
+            Ok(rwds) => {
+                let mut ret = Vec::<MintRewardHandle>::new();
+                for rwd in rwds {
+                    let mut v = vec![];
+                    for n in rwd.nft_ids {
+                        v.push(from_utf8(&n).unwrap().to_string());
+                    }
+                    match MintProject::get_mintproject_by_id_active(rwd.project_id) {
+                        Ok(p) => ret.push(MintRewardHandle {
+                            id: rwd.id,
+                            addr: rwd.pay_addr,
+                            nfts: Some(v),
                             project: MintProjectHandle {
                                 project_name: p.project_name,
                                 collection_name: p.collection_name,
@@ -653,5 +842,311 @@ mod handlers {
                 ))
             }
         }
+    }
+
+    pub async fn handle_post_asset_for_addresses(
+        _: u64,
+        addresses: Vec<String>,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let mut utxos = drasil_murin::TransactionUnspentOutputs::new();
+
+        for a in &addresses {
+            let us = drasil_mimir::get_address_utxos(a).unwrap();
+            utxos.merge(us);
+        }
+
+        let mut handles = Vec::<drasil_hugin::AssetHandle>::new();
+        for u in utxos {
+            let v = u.output().amount();
+            let ada = v.coin();
+            handles.push(drasil_hugin::AssetHandle {
+                fingerprint: None,
+                policy: None,
+                tokenname: None,
+                amount: from_bignum(&ada),
+                metadata: None,
+            });
+            if let Some(multis) = v.multiasset() {
+                let policies = multis.keys();
+                for p in 0..policies.len() {
+                    let policy = policies.get(p);
+                    if let Some(assets) = multis.get(&policy) {
+                        let k = assets.keys();
+                        for a in 0..k.len() {
+                            let asset = k.get(a);
+                            let amt = assets.get(&asset).unwrap();
+                            let fingerprint = cardano::make_fingerprint(
+                                &policy.to_hex(),
+                                &hex::encode(asset.name()),
+                            )
+                            .unwrap();
+                            let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
+                            handles.push(drasil_hugin::AssetHandle {
+                                fingerprint: Some(fingerprint),
+                                policy: Some(policy.to_hex()),
+                                tokenname: Some(
+                                    from_utf8(&asset.name())
+                                        .unwrap_or(
+                                            &hex::encode(asset.name())
+                                        ).to_owned()
+                                ),
+                                amount: from_bignum(&amt),
+                                metadata: metadata.json,
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        log::debug!("Handles: {:?}", handles);
+        let mut handles_summed = Vec::<drasil_hugin::AssetHandle>::new();
+
+        for h in &handles {
+            if handles_summed
+                .iter()
+                .filter(|n| h.same_asset(n))
+                .collect::<Vec<&drasil_hugin::AssetHandle>>()
+                .is_empty()
+            {
+                let sum =
+                    handles
+                        .iter()
+                        .fold(drasil_hugin::AssetHandle::new_empty(), |mut acc, f| {
+                            if h.same_asset(f) {
+                                acc.amount = acc.amount.checked_add(f.amount).unwrap();
+
+                                if acc.metadata.is_none() && f.metadata.is_some() {
+                                    acc.metadata = h.metadata.clone()
+                                }
+                                if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                    acc.fingerprint = h.fingerprint.clone()
+                                }
+                                if acc.policy.is_none() && f.policy.is_some() {
+                                    acc.policy = h.policy.clone()
+                                }
+                                if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                    acc.tokenname = h.tokenname.clone()
+                                }
+                            }
+                            acc
+                        });
+                handles_summed.push(sum)
+            }
+        }
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&handles_summed),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    pub async fn handle_get_asset_for_addresses(
+        _: u64,
+        addresses: QAddresses,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let addresses = match serde_json::from_str::<Vec<String>>(&addresses.addresses) {
+            Ok(u) => u,
+            Err(e) => {
+                return make_error(e.to_string());
+            }
+        };
+
+        let mut utxos = drasil_murin::TransactionUnspentOutputs::new();
+
+        for a in &addresses {
+            let us = drasil_mimir::get_address_utxos(a).unwrap();
+            utxos.merge(us);
+        }
+
+        let mut handles = Vec::<drasil_hugin::AssetHandle>::new();
+        for u in utxos {
+            let v = u.output().amount();
+            let ada = v.coin();
+            handles.push(drasil_hugin::AssetHandle {
+                fingerprint: None,
+                policy: None,
+                tokenname: None,
+                amount: from_bignum(&ada),
+                metadata: None,
+            });
+            if let Some(multis) = v.multiasset() {
+                let policies = multis.keys();
+                for p in 0..policies.len() {
+                    let policy = policies.get(p);
+                    if let Some(assets) = multis.get(&policy) {
+                        let k = assets.keys();
+                        for a in 0..k.len() {
+                            let asset = k.get(a);
+                            let amt = assets.get(&asset).unwrap();
+                            let fingerprint = cardano::make_fingerprint(
+                                &policy.to_hex(),
+                                &hex::encode(asset.name()),
+                            )
+                            .unwrap();
+                            let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
+                            handles.push(drasil_hugin::AssetHandle {
+                                fingerprint: Some(fingerprint),
+                                policy: Some(policy.to_hex()),
+                                tokenname: Some(from_utf8(&asset.name()).unwrap_or(
+                                    &hex::encode(&asset.name())
+                                ).to_owned()),
+                                amount: from_bignum(&amt),
+                                metadata: metadata.json,
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        log::debug!("Handles: {:?}", handles);
+        let mut handles_summed = Vec::<drasil_hugin::AssetHandle>::new();
+
+        for h in &handles {
+            if handles_summed
+                .iter()
+                .filter(|n| h.same_asset(n))
+                .collect::<Vec<&drasil_hugin::AssetHandle>>()
+                .is_empty()
+            {
+                let sum =
+                    handles
+                        .iter()
+                        .fold(drasil_hugin::AssetHandle::new_empty(), |mut acc, f| {
+                            if h.same_asset(f) {
+                                acc.amount = acc.amount.checked_add(f.amount).unwrap();
+
+                                if acc.metadata.is_none() && f.metadata.is_some() {
+                                    acc.metadata = h.metadata.clone()
+                                }
+                                if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                    acc.fingerprint = h.fingerprint.clone()
+                                }
+                                if acc.policy.is_none() && f.policy.is_some() {
+                                    acc.policy = h.policy.clone()
+                                }
+                                if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                    acc.tokenname = h.tokenname.clone()
+                                }
+                            }
+                            acc
+                        });
+                handles_summed.push(sum)
+            }
+        }
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&handles_summed),
+            warp::http::StatusCode::OK,
+        ))
+    }
+
+    pub async fn handle_asset_for_stake_address(
+        _: u64,
+        stake_address: QStakeAddress,
+    ) -> Result<impl warp::Reply, Infallible> {
+        let stake_address = stake_address.stake_address;
+        let bstake_addr = match wallet::address_from_string(&stake_address).await {
+            Ok(s) => s,
+            Err(e) => {
+                return make_error(e.to_string());
+            }
+        };
+        let reward_address = match wallet::reward_address_from_address(&bstake_addr) {
+            Ok(r) => r,
+            Err(e) => {
+                return make_error(e.to_string());
+            }
+        };
+
+        let utxos = match drasil_mimir::get_stake_address_utxos(
+            &mut drasil_mimir::establish_connection().unwrap(),
+            &reward_address.to_bech32(None).unwrap(),
+        ) {
+            Ok(u) => u,
+            Err(e) => {
+                return make_error(e.to_string());
+            }
+        };
+
+        let mut handles = Vec::<drasil_hugin::AssetHandle>::new();
+        for u in utxos {
+            let v = u.output().amount();
+            let ada = v.coin();
+            handles.push(drasil_hugin::AssetHandle {
+                fingerprint: None,
+                policy: None,
+                tokenname: None,
+                amount: from_bignum(&ada),
+                metadata: None,
+            });
+            if let Some(multis) = v.multiasset() {
+                let policies = multis.keys();
+                for p in 0..policies.len() {
+                    let policy = policies.get(p);
+                    if let Some(assets) = multis.get(&policy) {
+                        let k = assets.keys();
+                        for a in 0..k.len() {
+                            let asset = k.get(a);
+                            let amt = assets.get(&asset).unwrap();
+                            let fingerprint = cardano::make_fingerprint(
+                                &policy.to_hex(),
+                                &hex::encode(asset.name()),
+                            )
+                            .unwrap();
+                            let metadata = drasil_mimir::get_mint_metadata(&fingerprint).unwrap();
+                            handles.push(drasil_hugin::AssetHandle {
+                                fingerprint: Some(fingerprint),
+                                policy: Some(policy.to_hex()),
+                                tokenname: Some(from_utf8(&asset.name()).unwrap_or(
+                                    &hex::encode(&asset.name())
+                                ).to_owned()),
+                                amount: from_bignum(&amt),
+                                metadata: metadata.json,
+                            })
+                        }
+                    }
+                }
+            }
+        }
+        log::debug!("Handles: {:?}", handles);
+        let mut handles_summed = Vec::<drasil_hugin::AssetHandle>::new();
+
+        for h in &handles {
+            if handles_summed
+                .iter()
+                .filter(|n| h.same_asset(n))
+                .collect::<Vec<&drasil_hugin::AssetHandle>>()
+                .is_empty()
+            {
+                let sum =
+                    handles
+                        .iter()
+                        .fold(drasil_hugin::AssetHandle::new_empty(), |mut acc, f| {
+                            if h.same_asset(f) {
+                                acc.amount = acc.amount.checked_add(f.amount).unwrap();
+
+                                if acc.metadata.is_none() && f.metadata.is_some() {
+                                    acc.metadata = h.metadata.clone()
+                                }
+                                if acc.fingerprint.is_none() && f.fingerprint.is_some() {
+                                    acc.fingerprint = h.fingerprint.clone()
+                                }
+                                if acc.policy.is_none() && f.policy.is_some() {
+                                    acc.policy = h.policy.clone()
+                                }
+                                if acc.tokenname.is_none() && f.tokenname.is_some() {
+                                    acc.tokenname = h.tokenname.clone()
+                                }
+                            }
+                            acc
+                        });
+                handles_summed.push(sum)
+            }
+        }
+
+        Ok(warp::reply::with_status(
+            warp::reply::json(&handles_summed),
+            warp::http::StatusCode::OK,
+        ))
     }
 }

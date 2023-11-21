@@ -1,0 +1,52 @@
+[package]
+name = "drasil-murin"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - Cardano Blockchain Library"
+repository = "https://github.com/Sbcdn/murin.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = ["Torben Poguntke <torben@drasil.io>"]
+
+[dependencies]
+tokio = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true }
+cardano-serialization-lib = "11.5.0"
+pretty_env_logger = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+serde = { workspace = true }
+hex = { workspace = true }
+ed25519-bip32 = "0.4.1"
+encoding_rs = "0.8.30"
+num = "0.4.0"
+redis = { version = "0.21.5", features = ["tokio-comp", "cluster"] }
+sha2 = { workspace = true }
+http = "0.2.6"
+cbor_event = "2.1.3"
+octavo-digest = "0.1.2"
+bech32 = "0.4.0"
+futures = "0.3.21"
+argon2 = { workspace = true }
+itertools = { workspace = true }
+thiserror = { workspace = true }
+bigdecimal = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+bip39 = "1.0.1"
+unwrap_or = "1.0.0"
+lazy_static = "1.4.0"
+bincode = "1.3.3"
+
+[dependencies.reqwest]
+version = "0.11"
+default-features = false
+features = ["json", "rustls-tls"]
+
+[dependencies.cryptoxide]
+git = "https://github.com/typed-io/cryptoxide.git"
+branch = "master"
+features = ["blake2"]

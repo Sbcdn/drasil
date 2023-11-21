@@ -1,31 +1,23 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
-
-use chrono::{DateTime, Utc};
+use std::fmt;
 
 use bigdecimal::BigDecimal;
-use sleipnir::rewards::models::WhitelistLink;
-use std::fmt;
+use chrono::{DateTime, Utc};
+use drasil_gungnir::calculationmode;
+use drasil_sleipnir::rewards::models::WhitelistLink;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub(crate) enum AddrSrc {
-    GPools(gungnir::GPools),
+    GPools(drasil_gungnir::GPools),
     Whitelist(WhitelistLink),
 }
 impl fmt::Display for AddrSrc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::GPools(p) => {
-                write!(f, "{},", p)
+                write!(f, "{p},")
             }
             Self::Whitelist(w) => {
-                write!(f, "{},", w)
+                write!(f, "{w},")
             }
         }
     }
@@ -40,7 +32,7 @@ pub(crate) struct TwlData {
     pub user_id: i64,
     pub vesting_period: DateTime<Utc>,
     pub addr_src: AddrSrc,
-    pub mode: gungnir::Calculationmode,
+    pub mode: calculationmode,
     pub equation: String,
     pub start_epoch: i64,
     pub end_epoch: Option<i64>,
@@ -58,7 +50,7 @@ impl TwlData {
         user_id: i64,
         vesting_period: DateTime<Utc>,
         addr_src: AddrSrc,
-        mode: gungnir::Calculationmode,
+        mode: calculationmode,
         equation: String,
         start_epoch: i64,
         end_epoch: Option<i64>,

@@ -1,6 +1,6 @@
 extern crate pretty_env_logger;
-use hugin::protocol::{connection::Connection, Shutdown};
-use hugin::Command;
+use drasil_hugin::protocol::{connection::Connection, Shutdown};
+use drasil_hugin::Command;
 
 use std::future::Future;
 use std::sync::Arc;
@@ -117,15 +117,22 @@ impl Handler {
         log::debug!("started new handler");
         while !self.shutdown.is_shutdown() {
             let maybe_frame = tokio::select! {
-                res = self.connection.read_frame() => res?,
+                res = self.connection.read_frame() => {
+                    log::debug!("odin received something, res: {:?}", &res);
+                    res?
+                },
                 _ = self.shutdown.recv() => {
                     return Ok(());
                 }
             };
             let frame = match maybe_frame {
-                Some(frame) => frame,
+                Some(frame) => {
+                    log::debug!("odin received frame: {:?}", frame);
+                    frame
+                },
                 None => return Ok(()),
             };
+            log::debug!("try to parse from frame");
             let cmd = Command::from_frame(frame);
             log::debug!("CMD: {:?}", cmd);
             cmd?.apply(&mut self.connection, &mut self.shutdown).await?;
@@ -147,7 +154,7 @@ pub async fn main() -> crate::Result<()> {
     pretty_env_logger::init();
     let host: String = env::var("POD_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_string());
     let port = env::var("POD_PORT").unwrap_or_else(|_| DEFAULT_PORT.to_string());
-    let listener = TcpListener::bind(&format!("{}:{}", host, port)).await?;
+    let listener = TcpListener::bind(&format!("{host}:{port}")).await?;
 
     run(listener, signal::ctrl_c()).await
 }

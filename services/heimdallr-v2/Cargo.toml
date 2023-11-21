@@ -1,0 +1,40 @@
+[package]
+name = "heimdallr-v2"
+version = "0.1.0"
+edition = "2021"
+description = "Drasil Blockchain Application Framework - Application Gateway"
+repository = "https://github.com/Sbcdn/heimdallr-v2.git"
+homepage = "https://www.drasil.io"
+documentation = "https://docs.drasil.io"
+license = "LICENSE.md"
+readme = "README.md"
+authors = [
+    "Torben Poguntke <torben@drasil.io>",
+    "<Styvane Soukossi <4968379+styvane@users.noreply.github.com>",
+]
+
+
+[dependencies]
+config = { version = "0.13", default-features = false, features = ["toml"] }
+tokio = { version = "1", features = ["full"] }
+thiserror = "1.0"
+anyhow = "1.0"
+axum = { version = "0.6.20", features = ["headers"] }
+axum-server = "0.5.1"
+serde = { version = "1.0", features = ["derive"] }
+serde-aux = "4.2.0"
+serde_json = "1.0.79"
+jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }
+secrecy = { version = "0.8.0", features = ["serde"] }
+strum = "0.25"
+strum_macros = "0.25"
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.1"
+drasil-hugin = { path = "../../drasil-hugin", version = "0.1.0" }
+
+[dev-dependencies.reqwest]
+version = "0.11"
+default-features = false
+features = ["json"]

@@ -1,28 +1,12 @@
-/*
-#################################################################################
-# Business Source License           See LICENSE.md for full license information.#
-# Licensor:             Drasil LTD                                              #
-# Licensed Work:        Drasil Application Framework v.0.2. The Licensed Work   #
-#                       is © 2022 Drasil LTD                                    #
-# Additional Use Grant: You may use the Licensed Work when the entity           #
-#                       using or operating the Licensed Work is generating      #
-#                       less than $150,000 yearly turnover and the entity       #
-#                       operating the application engaged less than 10 people.  #
-# Change Date:          Drasil Application Framework v.0.2, change date is two  #
-#                       and a half years from release date.                     #
-# Change License:       Version 2 or later of the GNU General Public License as #
-#                       published by the Free Software Foundation.              #
-#################################################################################
-*/
 use super::get_user_from_string;
 use crate::{
     error,
-    handler::{get_rmq_con, QUEUE_NAME},
+    handler::{get_rmq_con, JOB_QUEUE_NAME},
     WebResult,
 };
 use deadpool_lapin::Pool;
+use drasil_sleipnir::models::{CreateMintProj, ImportNFTsfromCSV};
 use serde_json::json;
-use sleipnir::models::{CreateMintProj, ImportNFTsfromCSV};
 use warp::Reply;
 
 pub async fn entrp_create_mint_proj(uid: String, param: CreateMintProj) -> WebResult<impl Reply> {
@@ -30,7 +14,7 @@ pub async fn entrp_create_mint_proj(uid: String, param: CreateMintProj) -> WebRe
     let mut param = param.clone();
     param.user_id = Some(user);
 
-    let contract_id = sleipnir::minting::api::create_mintproject(&param).await?;
+    let contract_id = drasil_sleipnir::minting::api::create_mintproject(&param).await?;
     Ok(warp::reply::with_status(
         warp::reply::json(&json!({ "contract_id": contract_id })),
         warp::http::StatusCode::CREATED,
@@ -59,27 +43,27 @@ pub async fn entrp_create_nfts_from_csv(
     ////////////////////
     // let payload = serde_json::json!(payload).to_string();
 
-    let job = sleipnir::jobs::Job {
+    let job = drasil_sleipnir::jobs::Job {
         drasil_user_id: user,
         session_id: None,
         data: serde_json::json!(params),
     };
 
-    let job = sleipnir::jobs::JobTypes::ImportNFTsFromCsv(job);
+    let job = drasil_sleipnir::jobs::JobTypes::ImportNFTsFromCsv(job);
 
     let rmq_con = get_rmq_con(pool.clone()).await.map_err(|e| {
-        eprintln!("can't connect to rmq, {}", e);
+        log::error!("can't connect to rmq, {}", e);
         warp::reject::custom(error::Error::RMQPoolError(e))
     })?;
 
     let channel = rmq_con.create_channel().await.map_err(|e| {
-        eprintln!("can't create channel, {}", e);
+        log::error!("can't create channel, {}", e);
         warp::reject::custom(error::Error::RMQError(e))
     })?;
 
     let q = channel
         .queue_declare(
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::QueueDeclareOptions::default(),
             lapin::types::FieldTable::default(),
         )
@@ -90,7 +74,7 @@ pub async fn entrp_create_nfts_from_csv(
     channel
         .basic_publish(
             "",
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::BasicPublishOptions::default(),
             serde_json::to_string(&job)
                 .map_err(|_| crate::error::Error::Custom("serde serialization failed".to_owned()))?
@@ -99,12 +83,12 @@ pub async fn entrp_create_nfts_from_csv(
         )
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(error::Error::RMQError(e))
         })?
         .await
         .map_err(|e| {
-            eprintln!("can't publish: {}", e);
+            log::error!("can't publish: {}", e);
             warp::reject::custom(error::Error::RMQError(e))
         })?;
     Ok(
@@ -152,7 +136,8 @@ pub async fn entrp_create_nfts_from_csv_s(
     //file.read_to_end(&mut buffer).expect("buffer overflow");
 
     log::debug!("Request buffer: {:?}", &body);
-    let i = sleipnir::minting::api::import_nfts_from_csv_metadata(body.as_ref(), user, mid).await?;
+    let i = drasil_sleipnir::minting::api::import_nfts_from_csv_metadata(body.as_ref(), user, mid)
+        .await?;
     log::debug!("Debug: {:?}", &i);
 
     Ok(warp::reply::with_status(

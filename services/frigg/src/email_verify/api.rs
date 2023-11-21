@@ -1,23 +1,6 @@
-/*
-#################################################################################
-# Business Source License           See LICENSE.md for full license information.#
-# Licensor:             Drasil Blockchain Association                           #
-# Licensed Work:        Drasil Application Framework v.0.2. The Licensed Work   #
-#                       is © 2022 Drasil Blockchain Association                 #
-# Additional Use Grant: You may use the Licensed Work when your application     #
-#                       using the Licensed Work is generating less than         #
-#                       $150,000 and the entity operating the application       #
-#                       engaged equal or less than 10 people.                   #
-# Change Date:          Drasil Application Framework v.0.2, change date is two  #
-#                       and a half years from release date.                     #
-# Change License:       Version 2 or later of the GNU General Public License as #
-#                       published by the Free Software Foundation.              #
-#################################################################################
-*/
-
 pub use crate::email_verify::*;
 pub use crate::error::Error;
-pub use hugin::database::{TBEmailVerificationToken, TBEmailVerificationTokenMessage};
+pub use drasil_hugin::database::{TBEmailVerificationToken, TBEmailVerificationTokenMessage};
 
 #[derive(Debug, serde::Serialize)]
 pub struct Msg {
@@ -86,7 +69,7 @@ pub async fn verify(body: RegistrationMessage) -> crate::WebResult<impl warp::Re
         )));
     }
 
-    let _ = match hugin::drasildb::TBDrasilUser::verify_email(&token.email) {
+    let _ = match drasil_hugin::drasildb::TBDrasilUser::verify_email(&token.email) {
         Ok(u) => u,
         Err(_) => {
             return Err(warp::reject::custom(Error::Custom(

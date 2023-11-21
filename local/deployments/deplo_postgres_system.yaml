@@ -1,0 +1,67 @@
+# PostgreSQL StatefulSet ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-db-sys-config
+  labels:
+    app: postgresql-db-sys
+data:
+  POSTGRES_DB: systemdb
+  POSTGRES_USER: drasiluser
+  POSTGRES_PASSWORD: drasiluserpassword
+  PGDATA: /data/pgdata
+---
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql-db-sys
+spec:
+  volumeClaimTemplates:
+      - metadata:
+          name: postgresql-db-sys-disk
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 500Mi
+  serviceName: postgresql-db-sys-service
+  selector:
+    matchLabels:
+      app: postgresql-db-sys
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgresql-db-sys
+    spec:
+      volumes:
+      - name: migrations
+        configMap:
+          name: systemdb-tables-sql
+      containers:
+      - name: postgresql-db-sys
+        image: postgres:latest
+        volumeMounts:
+          - name: postgresql-db-sys-disk
+            mountPath: /data
+          - name: migrations
+            mountPath: /migrations/
+        envFrom:
+          - configMapRef:
+              name: postgres-db-sys-config
+---
+# PostgreSQL StatefulSet Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db-sys-lb
+spec:
+  selector:
+    app: postgresql-db-sys
+  type: LoadBalancer
+  ports:
+    - port: 5432
+      nodePort: 30010
+      protocol: TCP
+      targetPort: 5432
