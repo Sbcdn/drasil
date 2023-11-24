@@ -7,9 +7,11 @@ use chrono::{DateTime, Utc};
 use drasil_gungnir::{Rewards, TokenInfo};
 use drasil_murin::address::Address;
 use drasil_murin::cardano;
+use drasil_murin::error::MurinError;
 use drasil_murin::stdtx::{AssetTransfer, StdAssetHandle};
 use drasil_murin::utils::to_bignum;
 use drasil_murin::wallet;
+use drasil_murin::worldmobile::wmtstaking::{StakeTxData, UnStakeTxData};
 use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIs, EnumString, EnumVariantNames};
@@ -463,11 +465,6 @@ pub enum Operation {
         /// The staking amount.
         amount: u64,
     },
-
-    WmtUnStaking {
-        /// The EN to stake to.
-        ennft: String,
-    },
 }
 
 impl Operation {
@@ -476,7 +473,6 @@ impl Operation {
         avail_inputs: drasil_murin::TransactionUnspentOutputs,
     ) -> Result<drasil_murin::txbuilder::marketplace::MpTxData, drasil_murin::error::MurinError>
     {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::marketplace::MpTxData;
 
         match self {
@@ -519,7 +515,6 @@ impl Operation {
     pub async fn into_rwd(
         &self,
     ) -> Result<drasil_murin::txbuilder::rwdist::RWDTxData, drasil_murin::error::MurinError> {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::rwdist::RWDTxData;
 
         match self {
@@ -545,7 +540,6 @@ impl Operation {
         &self,
     ) -> Result<drasil_murin::txbuilder::stdtx::StandardTxData, drasil_murin::error::MurinError>
     {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::StandardTxData;
 
         match self {
@@ -612,7 +606,6 @@ impl Operation {
         drasil_murin::txbuilder::minter::models::ColMinterTxData,
         drasil_murin::error::MurinError,
     > {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::minter::models::*;
 
         match self {
@@ -646,7 +639,6 @@ impl Operation {
         &self,
     ) -> Result<drasil_murin::txbuilder::minter::MinterTxData, drasil_murin::error::MurinError>
     {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::minter::MinterTxData;
 
         match self {
@@ -728,8 +720,7 @@ impl Operation {
 
     pub async fn into_stake_delegation(
         &self,
-    ) -> Result<drasil_murin::txbuilder::stdtx::DelegTxData, drasil_murin::error::MurinError> {
-        use drasil_murin::error::MurinError;
+    ) -> Result<drasil_murin::txbuilder::stdtx::DelegTxData, MurinError> {
         use drasil_murin::txbuilder::stdtx::DelegTxData;
 
         match self {
@@ -747,7 +738,6 @@ impl Operation {
         &self,
     ) -> Result<drasil_murin::txbuilder::stdtx::WithdrawalTxData, drasil_murin::error::MurinError>
     {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::WithdrawalTxData;
         match self {
             Operation::RewardWithdrawal { withdrawal_amount } => {
@@ -762,7 +752,6 @@ impl Operation {
     pub async fn into_stake_deregistration(
         &self,
     ) -> Result<drasil_murin::txbuilder::stdtx::DeregTxData, drasil_murin::error::MurinError> {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::stdtx::DeregTxData;
         match self {
             Operation::StakeDeregistration { .. } => Ok(DeregTxData::new()?),
@@ -775,7 +764,6 @@ impl Operation {
     pub async fn into_cpo(
         &self,
     ) -> Result<drasil_murin::txbuilder::CPO, drasil_murin::error::MurinError> {
-        use drasil_murin::error::MurinError;
         use drasil_murin::txbuilder::CPO;
 
         match self {
@@ -787,16 +775,22 @@ impl Operation {
         }
     }
 
-    pub async fn into_wmt_staking(
-        &self,
-    ) -> Result<drasil_murin::worldmobile::wmtstaking::StakeTxData, drasil_murin::error::MurinError>
-    {
-        use drasil_murin::error::MurinError;
-        use drasil_murin::worldmobile::wmtstaking::StakeTxData;
-
+    pub async fn into_wmt_staking(&self) -> Result<StakeTxData, MurinError> {
         match self {
             Operation::WmtStaking { amount, ennft } => {
                 Ok(StakeTxData::new(*amount, ennft.to_owned()))
+            }
+            _ => Err(MurinError::new(
+                "provided wrong specfic parameter for wmt staking transaction",
+            )),
+        }
+    }
+
+    pub async fn into_wmt_unstaking(&self) -> Result<UnStakeTxData, MurinError> {
+        match self {
+            Operation::WmtStaking { ennft, amount } => {
+                let unstake_data = UnStakeTxData::new(ennft.to_owned(), *amount);
+                Ok(unstake_data)
             }
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for wmt staking transaction",

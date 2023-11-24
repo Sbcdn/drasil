@@ -10,10 +10,9 @@ use cardano_serialization_lib::address::Address;
 use serde::{Deserialize, Serialize};
 
 use super::enreg::EnRegistrationDatum;
-use crate::{MurinError, TransactionUnspentOutput};
+use crate::{MurinError, TransactionUnspentOutput, TransactionUnspentOutputs};
 
 /// This type represents the staking transaction data.
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StakeTxData {
     /// The staking amount.
@@ -32,7 +31,12 @@ impl fmt::Display for StakeTxData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{},{}", self.staking_amount, self.ennft)?;
         if let Some(wa) = &self.wallet_addr {
-            write!(f, "{}", wa.to_bech32(None).unwrap())?;
+            write!(
+                f,
+                "{}",
+                wa.to_bech32(None)
+                    .unwrap_or_else(|_| String::from("invalid address"))
+            )?;
         } else {
             write!(f, "None")?;
         }
@@ -106,30 +110,54 @@ impl StakeTxData {
     }
 }
 
+/// This type represents the staking datum.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StakeDatum {
+    // This the Earth Node NFT that allows to operate an EN.
+    pub ennft: Vec<u8>,
+    /// This is the owner wallet pub key.
+    pub owner: Vec<u8>,
+    /// This is the current symbol.
+    pub currency_symbol: Vec<u8>,
+    /// This is the token name.
+    pub token_name: Vec<u8>,
+}
+
 /// This type represents the un-staking transaction data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnStakeTxData {
+    /// The earth node NFT.
     pub ennft: String,
+    /// The staking amount.
+    pub staking_amount: u64,
     /// Wallet address.
     pub wallet_addr: Option<Address>,
     /// This is the registration UTxO for reference only(not spent)
     pub registration_reference: Option<TransactionUnspentOutput>,
-    /// Transaction input.
-    pub transaction_input: TransactionUnspentOutput,
+
+    // Smart contract UTxO inputs.
+    pub smart_contract_utxos: Option<TransactionUnspentOutputs>,
 }
 
 impl fmt::Display for UnStakeTxData {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.ennft)?;
-
+        write!(f, "{}", self.staking_amount)?;
         if let Some(wa) = &self.wallet_addr {
             write!(f, "{}", wa.to_bech32(None).unwrap())?;
         } else {
             write!(f, "None")?;
         }
-
-        write!(f, "{}", self.transaction_input.to_hex())?;
-
+        if let Some(wa) = &self.wallet_addr {
+            write!(
+                f,
+                "{}",
+                wa.to_bech32(None)
+                    .unwrap_or_else(|_| String::from("invalid address"))
+            )?;
+        } else {
+            write!(f, "None")?;
+        }
         if let Some(rr) = &self.registration_reference {
             write!(f, "{}", rr.to_hex())
         } else {
@@ -138,52 +166,15 @@ impl fmt::Display for UnStakeTxData {
     }
 }
 
-impl FromStr for UnStakeTxData {
-    type Err = MurinError;
-    fn from_str(src: &str) -> Result<Self, Self::Err> {
-        // Split the stringify stake data into parts.
-        let parts: Vec<&str> = src.split(',').collect();
-        if parts.len() != 4 {
-            return Err(MurinError::new("invalid 'StakeTxData` string parts"));
-        }
-
-        // The first element is the earth node NFT
-        let ennft = parts[0].to_string();
-        // The second element is the wallet address.
-        let wallet_addr = if parts[1] == "None" {
-            None
-        } else {
-            Some(Address::from_bech32(parts[1])?)
-        };
-
-        // The third element is the transaction input UTxO
-
-        let transaction_input = TransactionUnspentOutput::from_hex(parts[3])?;
-
-        // The fourth element is the registration reference.
-        let registration_reference = if parts[2] == "None" {
-            None
-        } else {
-            Some(TransactionUnspentOutput::from_hex(parts[3])?)
-        };
-
-        Ok(Self {
-            ennft,
-            wallet_addr,
-            transaction_input,
-            registration_reference,
-        })
-    }
-}
-
 impl UnStakeTxData {
     /// Creates new stake transaction data of the given amount
     /// and the earth node NFT token.
-    pub fn new(ennft: String, transaction_input: TransactionUnspentOutput) -> Self {
+    pub fn new(ennft: String, staking_amount: u64) -> Self {
         Self {
             ennft,
+            staking_amount,
             wallet_addr: None,
-            transaction_input,
+            smart_contract_utxos: None,
             registration_reference: None,
         }
     }

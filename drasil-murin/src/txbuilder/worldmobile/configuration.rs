@@ -15,7 +15,7 @@ pub struct StakingConfig {
     pub wmt_policy_id: PolicyID,
     /// The earth node NFT policy ID
     pub ennft_policy_id: PolicyID,
-    /// Smart Contract Address of the Staking Smart Contract
+    /// Registration smart contract address.
     pub registration_sc_address: String,
     /// This field contains the minting and validation scripts.
     pub smart_contracts: HashMap<String, PlutusScript>,

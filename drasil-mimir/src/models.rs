@@ -168,12 +168,22 @@ pub struct CostModel {
     pub block_id: i64,
 }
 
+// #[derive(Queryable, Debug)]
+// pub struct Datum {
+//     pub id: i64,
+//     pub hash: Vec<u8>,
+//     pub tx_id: i64,
+//     pub value: Option<Jsonb>,
+//     pub bytes: diesel::sql_types::Binary,
+// }
+
 #[derive(Queryable, Debug)]
 pub struct Datum {
     pub id: i64,
     pub hash: Vec<u8>,
     pub tx_id: i64,
-    pub value: Option<Jsonb>,
+    pub value: Option<serde_json::Value>,
+    pub bytes: Vec<u8>,
 }
 
 #[derive(Queryable, Debug)]

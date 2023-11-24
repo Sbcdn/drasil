@@ -4,7 +4,7 @@
 
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::utils as cutils;
-use clib::plutus::{self, Redeemer, RedeemerTag, Redeemers, PlutusData};
+use clib::plutus::{self, PlutusData, Redeemer, RedeemerTag, Redeemers};
 use clib::plutus::{ExUnits, Language, PlutusScripts};
 use clib::utils::{hash_script_data, to_bignum};
 use clib::{AssetName, Assets, MultiAsset};
@@ -17,7 +17,7 @@ use crate::modules::txtools::utxo_handling::combine_wallet_outputs;
 use crate::pparams::ProtocolParameters;
 use crate::txbuilder::{input_selection, TxBO};
 use crate::worldmobile::configuration::StakingConfig;
-use crate::{min_ada_for_utxo, PerformTxb, TxData, get_input_position};
+use crate::{get_input_position, min_ada_for_utxo, PerformTxb, TxData};
 
 /// This type is a staking transaction builder for WMT.
 #[derive(Debug, Clone)]
@@ -69,7 +69,6 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         // Add Inputs and Outputs
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        
         // We need to specify our Transaction Outputs (TxO), in this case
         // our TxO is only one, the one we send from the staking validator smart contract address to the users wallet address.
         // We know that this must at least be the WMT and Ada on the staking UTxO (staking UtxO is verified by the validator smart contract).
@@ -84,13 +83,18 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
             .ok_or_else(|| MurinError::new("failed to get minting smart contract"))?;
         let execution_proof_policy_id = minting_policy_ex_proof.hash();
 
-        // We take the TokenName (or AssetName in CSL terms) from the input UTxO (which is our staking UTxO)
-        let execution_token_name_hex = self
+        let utxos = self
             .unstake_data
-            .transaction_input
-            .input()
-            .transaction_id()
-            .to_hex();
+            .smart_contract_utxos
+            .as_ref()
+            .ok_or_else(|| MurinError::new("no utxos found"))?;
+
+        // We temporarily consider only the first utxo.
+        // TODO(Styvane): use all UTxOs
+        let transaction_input = utxos.get(0);
+
+        // We take the TokenName (or AssetName in CSL terms) from the input UTxO (which is our staking UTxO)
+        let execution_token_name_hex = transaction_input.input().transaction_id().to_hex();
         let execution_token_name = AssetName::from_hex(&execution_token_name_hex)?;
 
         // We construct new Tokens on our UTxO and we use a multiasset to wrap them
@@ -108,14 +112,20 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
 
         // We can construct the TxO by substracting the burn value from the staking UTxO value
         // as we know that at least the amount of WMT on the input UTxO must be returned to the wallet, as well as the minUTxO Ada but not the ExProof NFT.
-        let staking_input_value = self.unstake_data.transaction_input.output().amount();
+        let staking_input_value = transaction_input.output().amount();
 
         let mut wallet_value = staking_input_value.checked_sub(&burn_value)?;
 
-        let wallet_output = TransactionOutput::new(self.unstake_data.wallet_addr.as_ref().unwrap(), &wallet_value);
+        let wallet_output = TransactionOutput::new(
+            self.unstake_data.wallet_addr.as_ref().unwrap(),
+            &wallet_value,
+        );
         let min_utxo_val = min_ada_for_utxo(&wallet_output)?.amount().coin();
         wallet_value.set_coin(&min_utxo_val);
-        let wallet_output = TransactionOutput::new(self.unstake_data.wallet_addr.as_ref().unwrap(), &wallet_value);
+        let wallet_output = TransactionOutput::new(
+            self.unstake_data.wallet_addr.as_ref().unwrap(),
+            &wallet_value,
+        );
 
         // Get the input UTxOS values
         let mut input_txuos = gtxd.clone().get_inputs();
@@ -250,9 +260,9 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         let redeemer_data = plutus::PlutusData::new_constr_plutus_data(
             &plutus::ConstrPlutusData::new(&to_bignum(1), &inner),
         );
-        // We need to find the right position of our staking UTxO in the transaction inputs and 
-        // pass it into the Redeemer, so the smart contract knows what UTxO is must verify. 
-        let index = get_input_position(txins, self.unstake_data.transaction_input.clone());
+        // We need to find the right position of our staking UTxO in the transaction inputs and
+        // pass it into the Redeemer, so the smart contract knows what UTxO is must verify.
+        let index = get_input_position(txins, transaction_input.clone());
         // Construct the final redeemer for burning the execution proof
         let redeemer1 = Redeemer::new(
             &RedeemerTag::new_mint(),
@@ -260,7 +270,6 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
             &redeemer_data,
             &exunits,
         );
-
 
         // Lets create the validator Redeemer to spent the UTxO
         // Create the redeemer data for spending the staking UTxO
@@ -275,7 +284,6 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
             &exunits,
         );
 
-
         let mut redeemers = Redeemers::new();
         redeemers.add(&redeemer1);
         redeemers.add(&redeemer2);
@@ -288,10 +296,10 @@ impl PerformTxb<&UnStakeTxData> for AtUnStakingBuilder {
         );
 
         let validator_contract = self
-        .config
-        .smart_contracts
-        .get("validator")
-        .ok_or_else(|| MurinError::new("validator does not exist"))?;
+            .config
+            .smart_contracts
+            .get("validator")
+            .ok_or_else(|| MurinError::new("validator does not exist"))?;
 
         // Create the transaction witnesses.
         let mut txwitness = clib::TransactionWitnessSet::new();

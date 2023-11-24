@@ -5,7 +5,7 @@ use bincode as bc;
 use bytes::Bytes;
 
 use crate::datamodel::{ContractAction, ContractType, TransactionPattern};
-use crate::protocol::worldmobile::build_wmt_sc;
+use crate::protocol::worldmobile::staking;
 use crate::protocol::worldmobile::staking::StakingAction;
 use crate::{CmdError, Parse};
 use crate::{Connection, Frame, IntoFrame};
@@ -93,20 +93,22 @@ impl BuildContract {
                 let action = if let ContractAction::StakingAction(action) = self.action() {
                     action
                 } else {
-                    return Err(CmdError::InvalidCmd);
+                    return Err(Box::new(CmdError::Custom {
+                        str: String::from("unexpected staking action"),
+                    }));
                 };
                 match action {
-                    StakingAction::Stake => build_wmt_sc::handle_wmt_staking(self)
+                    StakingAction::Stake => staking::handle_wmt_stake(self)
                         .await
                         .unwrap_or_else(|err| err.to_string()),
-                    StakingAction::UnStake => {
-                        todo!()
-                    }
+                    StakingAction::UnStake => staking::handle_wmt_unstake(self)
+                        .await
+                        .unwrap_or_else(|err| err.to_string()),
                 }
             }
             _ => {
                 return Err(CmdError::Custom {
-                    str: format!("ERROR his ccontract Type does not exists {:?}'", self.ctype),
+                    str: format!("ERROR this contract Type does not exists {:?}'", self.ctype),
                 }
                 .into());
             }

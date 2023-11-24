@@ -96,6 +96,7 @@ table! {
         hash -> Bytea,
         tx_id -> Int8,
         value -> Nullable<Jsonb>,
+        bytes -> Bytea,
     }
 }
 
