@@ -6,7 +6,7 @@ use std::env;
 use heimdallr::clientapi;
 use warp::Filter;
 
-const DEFAULT_HOST: &str = "127.0.0.1";
+const DEFAULT_HOST: &str = "0.0.0.0";
 const DEFAULT_PORT: &str = "4000";
 
 #[tokio::main]

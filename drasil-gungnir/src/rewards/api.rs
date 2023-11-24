@@ -600,9 +600,9 @@ impl TokenWhitelist {
 
         result.retain(|r| {
             if let Some(end) = r.end_epoch {
-                end >= current_epoch && r.mode != Calculationmode::AirDrop
+                end >= current_epoch && r.mode != calculationmode::AirDrop
             } else {
-                r.mode != Calculationmode::AirDrop
+                r.mode != calculationmode::AirDrop
             }
         });
 
@@ -707,7 +707,7 @@ impl TokenWhitelist {
             .filter(user_id.eq(&user_id_in))
             .load::<TokenWhitelist>(&mut conn)?;
 
-        result.retain(|t| t.mode != Calculationmode::AirDrop);
+        result.retain(|t| t.mode != calculationmode::AirDrop);
 
         Ok(result)
     }
@@ -720,7 +720,7 @@ impl TokenWhitelist {
             .filter(user_id.eq(&(*user_id_in as i64)))
             .load::<TokenWhitelist>(&mut conn)?;
 
-        result.retain(|t| t.mode != Calculationmode::AirDrop);
+        result.retain(|t| t.mode != calculationmode::AirDrop);
 
         Ok(result)
     }
@@ -750,7 +750,7 @@ impl TokenWhitelist {
         user_id: &'a i64,
         vesting_period: &'a DateTime<Utc>,
         pools: &'a [GPools],
-        mode: &'a Calculationmode,
+        mode: &'a calculationmode,
         equation: &'a String,
         start_epoch_in: &'a i64,
         end_epoch: Option<&'a i64>,
@@ -786,7 +786,7 @@ impl TokenWhitelist {
         contract_id_in: &'a i64,
         user_id_in: &'a i64,
         vesting_period_in: &'a DateTime<Utc>,
-        mode_in: &'a Calculationmode,
+        mode_in: &'a calculationmode,
         equation_in: &'a String,
         start_epoch_in: &'a i64,
         end_epoch_in: Option<&'a i64>,

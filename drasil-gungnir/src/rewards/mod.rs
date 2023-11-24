@@ -28,7 +28,7 @@ pub fn establish_connection() -> Result<PgConnection, RWDError> {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::Calculationmode"]
-pub enum Calculationmode {
+pub enum calculationmode {
     #[db_rename = "custom"]
     Custom,
     #[db_rename = "modifactorandequation"]
@@ -43,7 +43,7 @@ pub enum Calculationmode {
     AirDrop,
 }
 
-impl ToString for Calculationmode {
+impl ToString for calculationmode {
     fn to_string(&self) -> String {
         match self {
             Self::Custom => "custom".to_string(),
@@ -56,16 +56,16 @@ impl ToString for Calculationmode {
     }
 }
 
-impl std::str::FromStr for Calculationmode {
+impl std::str::FromStr for calculationmode {
     type Err = RWDError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         match src {
-            "custom" => Ok(Calculationmode::Custom),
-            "modifactorandequation" => Ok(Calculationmode::ModifactorAndEquation),
-            "simpleequation" => Ok(Calculationmode::SimpleEquation),
-            "fixedendepoch" => Ok(Calculationmode::FixedEndEpoch),
-            "relationaltoadastake" => Ok(Calculationmode::RelationalToADAStake),
-            "airdrop" => Ok(Calculationmode::AirDrop),
+            "custom" => Ok(calculationmode::Custom),
+            "modifactorandequation" => Ok(calculationmode::ModifactorAndEquation),
+            "simpleequation" => Ok(calculationmode::SimpleEquation),
+            "fixedendepoch" => Ok(calculationmode::FixedEndEpoch),
+            "relationaltoadastake" => Ok(calculationmode::RelationalToADAStake),
+            "airdrop" => Ok(calculationmode::AirDrop),
             _ => Err(RWDError::new(&format!(
                 "Calculationmode {src} does not exist"
             ))),
@@ -181,7 +181,7 @@ pub struct TokenWhitelist {
     pub user_id: i64,
     pub vesting_period: DateTime<Utc>,
     pub pools: Vec<String>,
-    pub mode: Calculationmode,
+    pub mode: calculationmode,
     pub equation: String,
     pub start_epoch: i64,
     pub end_epoch: Option<i64>,
@@ -200,7 +200,7 @@ pub struct TokenWhitelistNew<'a> {
     pub user_id: &'a i64,
     pub vesting_period: &'a DateTime<Utc>,
     pub pools: &'a Vec<String>,
-    pub mode: &'a Calculationmode,
+    pub mode: &'a calculationmode,
     pub equation: &'a String,
     pub start_epoch: &'a i64,
     pub end_epoch: Option<&'a i64>,

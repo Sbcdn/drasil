@@ -14,6 +14,7 @@ pub mod encryption;
 
 pub mod database;
 pub use database::*;
+use drasil_murin::MurinError;
 
 pub mod datamodel;
 pub use crate::datamodel::models::*;
@@ -28,5 +29,5 @@ extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
 
-pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
+pub type Error = MurinError;

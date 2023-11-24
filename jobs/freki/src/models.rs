@@ -2,7 +2,7 @@ use std::fmt;
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use drasil_gungnir::Calculationmode;
+use drasil_gungnir::calculationmode;
 use drasil_sleipnir::rewards::models::WhitelistLink;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
@@ -32,7 +32,7 @@ pub(crate) struct TwlData {
     pub user_id: i64,
     pub vesting_period: DateTime<Utc>,
     pub addr_src: AddrSrc,
-    pub mode: Calculationmode,
+    pub mode: calculationmode,
     pub equation: String,
     pub start_epoch: i64,
     pub end_epoch: Option<i64>,
@@ -50,7 +50,7 @@ impl TwlData {
         user_id: i64,
         vesting_period: DateTime<Utc>,
         addr_src: AddrSrc,
-        mode: Calculationmode,
+        mode: calculationmode,
         equation: String,
         start_epoch: i64,
         end_epoch: Option<i64>,

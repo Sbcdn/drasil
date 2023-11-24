@@ -10,14 +10,14 @@ use drasil_murin::worldmobile::wmtstaking::stake::AtStakingBuilder;
 use drasil_murin::worldmobile::wmtstaking::unstake::AtUnStakingBuilder;
 use drasil_murin::worldmobile::wmtstaking::StakeDatum;
 use drasil_murin::{
-    wallet, AssetName, PerformTxb, TransactionUnspentOutput, TransactionUnspentOutputs,
+    wallet, AssetName, MurinError, PerformTxb, TransactionUnspentOutput, TransactionUnspentOutputs,
 };
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 
 use crate::datamodel::ContractAction;
 use crate::error::SystemDBError as Error;
-use crate::{create_response, BuildContract, CmdError};
+use crate::{create_response, BuildContract};
 
 /// The `Action` type enumerates all the smart contract actions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Display)]
@@ -51,9 +51,7 @@ pub async fn handle_wmt_stake(build_contract: BuildContract) -> crate::Result<St
 
     // Check if contract action is staking
     let ContractAction::StakingAction(StakingAction::Stake) = build_contract.action() else {
-        return Err(Box::new(CmdError::Custom {
-            str: String::from("Unexpected opreation"),
-        }));
+        return Err(String::from("Unexpected opreation").into());
     };
     let mut stxd = operation.into_wmt_staking().await?;
     // Create the general transaction data, the data send us from the requesting wallet
@@ -62,9 +60,7 @@ pub async fn handle_wmt_stake(build_contract: BuildContract) -> crate::Result<St
 
     // We need to have at least addresses otherwise we can't do anything.
     if gtxd.get_senders_addresses().is_empty() {
-        return Err(Box::new(CmdError::Custom {
-            str: String::from("No Addresses provided"),
-        }));
+        return Err(String::from("No Addresses provided").into());
     }
     let senders_addresses = gtxd.get_senders_addresses();
     // Fetch the wallet UTxOs for the given addresses.
@@ -80,7 +76,8 @@ pub async fn handle_wmt_stake(build_contract: BuildContract) -> crate::Result<St
     // Get the first address which is the unique address identifying a wallet.
     // This is the first address that used the staking key.
     let first_address = wallet::address_from_string(
-        &drasil_mimir::api::select_addr_of_first_transaction(&gtxd.get_stake_address().to_hex())?,
+        &drasil_mimir::api::select_addr_of_first_transaction(&gtxd.get_stake_address().to_hex())
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
     )
     .await?;
     // Set the wallet address to be the first address.
@@ -91,8 +88,10 @@ pub async fn handle_wmt_stake(build_contract: BuildContract) -> crate::Result<St
     gtxd.set_user_id(build_contract.customer_id as i64);
 
     // Read and set the current Slot in the general transaction data.
-    let mut dbsync = drasil_mimir::establish_connection()?;
-    let slot = drasil_mimir::get_slot(&mut dbsync)?;
+    let mut dbsync = drasil_mimir::establish_connection()
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let slot = drasil_mimir::get_slot(&mut dbsync)
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     gtxd.set_current_slot(slot as u64);
 
     // Set the transaction collateral data if it doesn't exist.
@@ -102,11 +101,10 @@ pub async fn handle_wmt_stake(build_contract: BuildContract) -> crate::Result<St
             .filter(|i| i.output().amount().coin().compare(&to_bignum(10000000)) == -1)
             .collect();
         if collateral.is_empty() {
-            return Err(Box::new(CmdError::Custom {
-                str: String::from(
-                    "No collateral defined and not possible to select random collateral",
-                ),
-            }));
+            return Err(String::from(
+                "No collateral defined and not possible to select random collateral",
+            )
+            .into());
         }
         gtxd.set_collateral(collateral.get(0));
     }
@@ -120,7 +118,8 @@ pub async fn handle_wmt_stake(build_contract: BuildContract) -> crate::Result<St
     let registration_utxo = drasil_mimir::get_asset_utxos_on_addr(
         &mut dbsync,
         &wmt_staking_config.registration_sc_address,
-    )?;
+    )
+    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     // Now we have all UTxOs containing an asset on the Registration Smart Contract, lets filter the one we want.
     let registration_utxo = registration_utxo
         .find_utxos_containing_asset(
@@ -132,9 +131,7 @@ pub async fn handle_wmt_stake(build_contract: BuildContract) -> crate::Result<St
     let registration_datum = if let Some(d) = registration_utxo.output().plutus_data() {
         restore_wmreg_datum(&d.to_bytes())?
     } else {
-        return Err(Box::new(CmdError::Custom {
-            str: String::from("No correct EN registration found"),
-        }));
+        return Err(String::from("No correct EN registration found").into());
     };
     stxd.registration_reference = Some(registration_utxo);
     stxd.registration_datum = Some(registration_datum);
@@ -179,13 +176,12 @@ pub async fn handle_wmt_unstake(build_contract: BuildContract) -> crate::Result<
 
     // Check if contract action is staking
     let ContractAction::StakingAction(StakingAction::UnStake) = build_contract.action() else {
-        return Err(Box::new(CmdError::Custom {
-            str: String::from("Unexpected opreation"),
-        }));
+        return Err(String::from("Unexpected opreation").into());
     };
 
     let mut unstake_data = operation.into_wmt_unstaking().await?;
-    let mut dbsync = drasil_mimir::establish_connection()?;
+    let mut dbsync = drasil_mimir::establish_connection()
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     // load Staking configuration
     let wmt_staking_config = StakingConfig::load();
 
@@ -193,7 +189,8 @@ pub async fn handle_wmt_unstake(build_contract: BuildContract) -> crate::Result<
     let data = drasil_mimir::get_smart_contract_utxos(
         &wmt_staking_config.registration_sc_address,
         &mut dbsync,
-    )?;
+    )
+    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     let utxos = filter_utxo_by_ennft(unstake_data.ennft.as_bytes(), data);
 
     unstake_data.smart_contract_utxos.replace(utxos);
@@ -203,9 +200,7 @@ pub async fn handle_wmt_unstake(build_contract: BuildContract) -> crate::Result<
 
     // We need to have at least addresses otherwise we can't do anything.
     if gtxd.get_senders_addresses().is_empty() {
-        return Err(Box::new(CmdError::Custom {
-            str: String::from("No Addresses provided"),
-        }));
+        return Err(String::from("No Addresses provided").into());
     }
     let senders_addresses = gtxd.get_senders_addresses();
     // Fetch the wallet UTxOs for the given addresses.
@@ -221,7 +216,8 @@ pub async fn handle_wmt_unstake(build_contract: BuildContract) -> crate::Result<
     // Get the first address which is the unique address identifying a wallet.
     // This is the first address that used the staking key.
     let first_address = wallet::address_from_string(
-        &drasil_mimir::api::select_addr_of_first_transaction(&gtxd.get_stake_address().to_hex())?,
+        &drasil_mimir::api::select_addr_of_first_transaction(&gtxd.get_stake_address().to_hex())
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
     )
     .await?;
     // Set the wallet address to be the first address.
@@ -232,8 +228,10 @@ pub async fn handle_wmt_unstake(build_contract: BuildContract) -> crate::Result<
     gtxd.set_user_id(build_contract.customer_id as i64);
 
     // Read and set the current Slot in the general transaction data.
-    let mut dbsync = drasil_mimir::establish_connection()?;
-    let slot = drasil_mimir::get_slot(&mut dbsync)?;
+    let mut dbsync = drasil_mimir::establish_connection()
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let slot = drasil_mimir::get_slot(&mut dbsync)
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     gtxd.set_current_slot(slot as u64);
 
     // Set the transaction collateral data if it doesn't exist.
@@ -243,11 +241,10 @@ pub async fn handle_wmt_unstake(build_contract: BuildContract) -> crate::Result<
             .filter(|i| i.output().amount().coin().compare(&to_bignum(10000000)) == -1)
             .collect();
         if collateral.is_empty() {
-            return Err(Box::new(CmdError::Custom {
-                str: String::from(
-                    "No collateral defined and not possible to select random collateral",
-                ),
-            }));
+            return Err(String::from(
+                "No collateral defined and not possible to select random collateral",
+            )
+            .into());
         }
         gtxd.set_collateral(collateral.get(0));
     }
@@ -261,7 +258,8 @@ pub async fn handle_wmt_unstake(build_contract: BuildContract) -> crate::Result<
     let registration_utxo = drasil_mimir::get_asset_utxos_on_addr(
         &mut dbsync,
         &wmt_staking_config.registration_sc_address,
-    )?;
+    )
+    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     // Now we have all UTxOs containing an asset on the Registration Smart Contract, lets filter the one we want.
     let registration_utxo = registration_utxo
         .find_utxos_containing_asset(

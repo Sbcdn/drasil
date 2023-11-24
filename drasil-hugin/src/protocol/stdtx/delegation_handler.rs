@@ -1,7 +1,7 @@
 use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::BuildStdTx;
-use crate::CmdError;
+use drasil_murin::MurinError;
 use drasil_murin::clib;
 use drasil_murin::wallet;
 use drasil_murin::PerformTxb;
@@ -15,10 +15,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
     {
         Operation::StakeDelegation { .. } => (),
         _ => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()),
-            }
-            .into());
+            return Err(format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()).into());
         }
     }
     let op = &bst.transaction_pattern().operation().unwrap();
@@ -28,10 +25,7 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
             addresses,
         } => (op.into_stake_delegation().await?, addresses),
         _ => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()),
-            }
-            .into())
+            return Err(format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()).into())
         }
     };
     // intotxdata only works with the transaction pattern, we also need to make the address pattern acceptable
@@ -85,26 +79,20 @@ pub(crate) async fn handle_stake_delegation(bst: &BuildStdTx) -> crate::Result<S
     let mut dbsync = match drasil_mimir::establish_connection() {
         Ok(conn) => conn,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()),
-            }
-            .into());
+            return Err(format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()).into());
         }
     };
-    let slot = drasil_mimir::get_slot(&mut dbsync)?;
+    let slot = drasil_mimir::get_slot(&mut dbsync).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     gtxd.set_current_slot(slot as u64);
 
     let bech32_stake_addr = match gtxd.get_stake_address().to_bech32(None) {
         Ok(ba) => ba,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("Could not convert Stake Address;' {e:?}'"),
-            }
-            .into());
+            return Err(format!("Could not convert Stake Address;' {e:?}'").into());
         }
     };
 
-    let registered = drasil_mimir::check_stakeaddr_registered(&bech32_stake_addr)?;
+    let registered = drasil_mimir::check_stakeaddr_registered(&bech32_stake_addr).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     delegtxd.set_registered(Some(registered));
 
     log::debug!("Try to build transaction...");

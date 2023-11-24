@@ -43,3 +43,7 @@ drasil-murin = { path = "../drasil-murin", version = "0.1.0" }
 drasil-mimir = { path = "../drasil-mimir", version = "0.1.0" }
 drasil-gungnir = { path = "../drasil-gungnir", version = "0.1.0" }
 drasil-dvltath = { path = "../drasil-dvltath", version = "0.1.0" }
+
+trust-dns-resolver = "*"
+jsonwebtoken = {workspace = true }
+warp = { workspace = true }

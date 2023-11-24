@@ -26,6 +26,21 @@ spec:
         envFrom:
           - configMapRef:
               name: drasil-config
-        image: docker.io/minikube/loki:v1.3
-        imagePullPolicy: Never
+        image: k3d-drasil-registry.localhost:12345/loki:v1.3
+        imagePullPolicy: IfNotPresent
         name: loki
+---
+# Loki Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-loki-service
+spec:
+  selector:
+    app: drasil-loki
+  type: LoadBalancer
+  ports:
+    - port: 4002
+      nodePort: 30002
+      protocol: TCP
+      targetPort: 6144

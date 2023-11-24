@@ -3,11 +3,12 @@ use std::str::FromStr;
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
+use drasil_murin::MurinError;
 
 use crate::datamodel::{ContractAction, ContractType, TransactionPattern};
 use crate::protocol::worldmobile::staking;
 use crate::protocol::worldmobile::staking::StakingAction;
-use crate::{CmdError, Parse};
+use crate::Parse;
 use crate::{Connection, Frame, IntoFrame};
 
 #[derive(Debug, Clone)]
@@ -50,17 +51,25 @@ impl BuildContract {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildContract> {
-        let customer_id = parse.next_int()?;
+        let customer_id = parse
+            .next_int()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
-        let ctype = parse.next_bytes()?;
+        let ctype = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let ctype: ContractType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&ctype)?;
 
-        let action = parse.next_string()?;
+        let action = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let action = ContractAction::from_str(&action)?;
 
-        let txpattern = parse.next_bytes()?;
+        let txpattern = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let txpattern: TransactionPattern = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&txpattern)?;
@@ -80,7 +89,7 @@ impl BuildContract {
             log::debug!("{:?}", response);
             response = Frame::Simple(e.to_string());
             dst.write_frame(&response).await?;
-            return Err(Box::new(CmdError::InvalidData));
+            return Err(MurinError::ProtocolCommandErrorInvalidData);
         }
 
         let ret = match self.ctype {
@@ -93,9 +102,7 @@ impl BuildContract {
                 let action = if let ContractAction::StakingAction(action) = self.action() {
                     action
                 } else {
-                    return Err(Box::new(CmdError::Custom {
-                        str: String::from("unexpected staking action"),
-                    }));
+                    return Err(String::from("unexpected staking action").into());
                 };
                 match action {
                     StakingAction::Stake => staking::handle_wmt_stake(self)
@@ -107,10 +114,9 @@ impl BuildContract {
                 }
             }
             _ => {
-                return Err(CmdError::Custom {
-                    str: format!("ERROR this contract Type does not exists {:?}'", self.ctype),
-                }
-                .into());
+                return Err(
+                    format!("ERROR this contract Type does not exists {:?}'", self.ctype).into(),
+                );
             }
         };
 

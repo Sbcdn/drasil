@@ -18,6 +18,21 @@ spec:
       - envFrom:
           - configMapRef:
               name: drasil-config
-        image: docker.io/minikube/vidar:v1.3
-        imagePullPolicy: Never
+        image: k3d-drasil-registry.localhost:12345/vidar:v1.3
+        imagePullPolicy: IfNotPresent
         name: vidar
+---
+# Vidar Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-vidar-service
+spec:
+  selector:
+    app: drasil-vidar
+  type: LoadBalancer
+  ports:
+    - port: 4001
+      nodePort: 30001
+      protocol: TCP
+      targetPort: 4101

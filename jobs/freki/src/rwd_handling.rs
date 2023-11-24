@@ -146,7 +146,7 @@ pub(crate) async fn handle_lists(
 
     // Get total Ada staked from all participating pools
     match rwd_token.mode.clone() {
-        drasil_gungnir::Calculationmode::FixedEndEpoch => {
+        drasil_gungnir::calculationmode::FixedEndEpoch => {
             let mut total_pools_stake = 0;
             for pool in pools.clone() {
                 total_pools_stake +=
@@ -155,7 +155,7 @@ pub(crate) async fn handle_lists(
             }
             rwd_token.modificator_equ = Some(total_pools_stake.to_string());
         }
-        drasil_gungnir::Calculationmode::AirDrop => {
+        drasil_gungnir::calculationmode::AirDrop => {
             return Ok(());
         }
 
