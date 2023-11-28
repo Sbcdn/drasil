@@ -47,8 +47,11 @@ pub enum Command {
 
 impl Command {
     pub fn from_frame(frame: Frame) -> crate::Result<Command> {
-        let mut parse = Parse::new(frame).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
-        let command_name = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let mut parse =
+            Parse::new(frame).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let command_name = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         let command: Command = match &command_name[..] {
             //Build Contract
@@ -78,7 +81,9 @@ impl Command {
             _ => Command::Unknown(Unknown::new(command_name)),
         };
 
-        parse.finish().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        parse
+            .finish()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         Ok(command)
     }
@@ -132,12 +137,93 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     if txp.collateral().is_some()
         && (hex::decode(txp.collateral().unwrap()).is_err() || txp.collateral().unwrap() == "")
     {
-        return Err("ERROR no collateral provided"
-        .into());
+        return Err("ERROR no collateral provided".into());
     }
 
     if txp.used_addresses().is_empty() {
-        return Err("ERROR no wallet address provided".into());
+        match txp.operation() {
+            Some(o) => match o {
+                crate::Operation::SpoRewardClaim {
+                    rewards: _,
+                    recipient_stake_addr: _,
+                    recipient_payment_addr: _,
+                } => todo!(),
+                crate::Operation::NftVendor {} => todo!(),
+                crate::Operation::Marketplace {
+                    tokens: _,
+                    metadata: _,
+                    royalties_addr: _,
+                    royalties_rate: _,
+                    selling_price: _,
+                } => todo!(),
+                crate::Operation::NftShop {
+                    tokens: _,
+                    metadata: _,
+                    selling_price: _,
+                } => todo!(),
+                crate::Operation::Minter {
+                    mint_tokens: _,
+                    receiver_stake_addr: _,
+                    receiver_payment_addr: _,
+                    mint_metadata: _,
+                    auto_mint: _,
+                    contract_id: _,
+                } => todo!(),
+                crate::Operation::NftCollectionMinter { mint_handles: _ } => todo!(),
+                crate::Operation::TokenMinter {} => todo!(),
+                crate::Operation::NftOffer {
+                    token: _,
+                    token_owner_addr: _,
+                    metadata: _,
+                    royalties_addr: _,
+                    royalties_rate: _,
+                    offer_price: _,
+                } => todo!(),
+                crate::Operation::Auction {} => todo!(),
+                crate::Operation::StakeDelegation {
+                    poolhash: _,
+                    addresses: _,
+                } => todo!(),
+                crate::Operation::StakeDeregistration {
+                    payment_addresses: _,
+                } => todo!(),
+                crate::Operation::RewardWithdrawal {
+                    withdrawal_amount: _,
+                } => todo!(),
+                crate::Operation::StdTx {
+                    transfers: _,
+                    wallet_addresses: wa,
+                    //Todo: Remove unwrap
+                } => {
+                    if wa.unwrap().is_empty() {
+                        return Err("ERROR no wallet addresses provided".into());
+                    }
+                }
+                crate::Operation::WmtStaking {
+                    ennft: _,
+                    amount: _,
+                } => {
+                    todo!()
+                }
+                crate::Operation::WmEnRegistration {
+                    datum: _,
+                    wallet_addresses: wa,
+                    stake_address: _,
+                } => {
+                    if wa.is_empty() {
+                        return Err("ERROR no wallet addresses provided".into());
+                    }
+                }
+                crate::Operation::CPO { po_id: _, pw: _ } => {}
+                crate::Operation::ClApiOneShotMint {
+                    tokennames: _,
+                    amounts: _,
+                    metadata: _,
+                    receiver: _,
+                } => {}
+            },
+            None => return Err("ERROR no wallet address provided".into()),
+        }
     }
 
     if txp.stake_addr().is_some() {

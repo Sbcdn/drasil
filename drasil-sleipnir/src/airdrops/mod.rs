@@ -323,7 +323,7 @@ pub async fn create_airdrop(
         &user_id,
         &vd,
         &apools,
-        &drasil_gungnir::calculationmode::AirDrop,
+        &drasil_gungnir::Calculationmode::AirDrop,
         &adparam.id.to_string(),
         &start_epoch,
         end_epoch.as_ref(),

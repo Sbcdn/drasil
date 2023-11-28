@@ -10,6 +10,7 @@ use drasil_murin::cardano;
 use drasil_murin::stdtx::{AssetTransfer, StdAssetHandle};
 use drasil_murin::utils::to_bignum;
 use drasil_murin::wallet;
+use drasil_murin::worldmobile::enreg::RegistrationRedeemer;
 use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIs, EnumString, EnumVariantNames};
@@ -22,6 +23,7 @@ use crate::protocol::worldmobile::staking::StakingAction;
 pub enum ContractType {
     MarketPlace,
     WmtStaking,
+    WmEnRegistration,
     DrasilAPILiquidity,
 }
 
@@ -86,6 +88,7 @@ impl Signature {
 pub enum ContractAction {
     MarketplaceActions(MarketplaceActions),
     StakingAction(StakingAction),
+    WmRegistration(RegistrationRedeemer),
 }
 
 impl ContractAction {}
@@ -100,6 +103,10 @@ impl FromStr for ContractAction {
             "update" => ContractAction::MarketplaceActions(MarketplaceActions::Update),
             "stake" => ContractAction::StakingAction(StakingAction::Stake),
             "unstake" => ContractAction::StakingAction(StakingAction::UnStake),
+            "register" => ContractAction::WmRegistration(RegistrationRedeemer::Register),
+            "unregister" => ContractAction::WmRegistration(RegistrationRedeemer::Unregister),
+            "Register" => ContractAction::WmRegistration(RegistrationRedeemer::Register),
+            "Unregister" => ContractAction::WmRegistration(RegistrationRedeemer::Unregister),
             _ => {
                 return Err(Error::new(
                     std::io::ErrorKind::InvalidData,
@@ -116,6 +123,7 @@ impl ToString for ContractAction {
         match &self {
             ContractAction::MarketplaceActions(action) => action.to_string().to_lowercase(),
             ContractAction::StakingAction(action) => action.to_string().to_lowercase(),
+            ContractAction::WmRegistration(action) => action.to_string().to_lowercase(),
         }
     }
 }
@@ -393,6 +401,7 @@ impl TransactionPattern {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, EnumIs)]
+//#[serde(tag = "type")]
 pub enum Operation {
     SpoRewardClaim {
         rewards: Vec<drasil_murin::RewardHandle>,
@@ -463,6 +472,11 @@ pub enum Operation {
         /// The staking amount.
         amount: u64,
     },
+    WmEnRegistration {
+        datum: drasil_murin::worldmobile::enreg::RegistrationDatum,
+        wallet_addresses: Vec<String>,
+        stake_address: String,
+    },
 }
 
 impl Operation {
@@ -483,8 +497,11 @@ impl Operation {
                 selling_price,
             } => {
                 let assets = Token::for_all_into_asset(tokens)?;
-                let token_utxos =
-                    drasil_murin::txbuilder::find_token_utxos_na(&avail_inputs, assets.clone(),None)?;
+                let token_utxos = drasil_murin::txbuilder::find_token_utxos_na(
+                    &avail_inputs,
+                    assets.clone(),
+                    None,
+                )?;
 
                 let mut mptx = MpTxData::new(assets, token_utxos, *selling_price);
 
@@ -781,12 +798,15 @@ impl Operation {
 
     pub async fn into_wmt_staking(
         &self,
-    ) -> Result<drasil_murin::worldmobile::wmtstaking::StakeTxData, drasil_murin::error::MurinError> {
+    ) -> Result<drasil_murin::worldmobile::wmtstaking::StakeTxData, drasil_murin::error::MurinError>
+    {
         use drasil_murin::error::MurinError;
         use drasil_murin::worldmobile::wmtstaking::StakeTxData;
 
         match self {
-            Operation::WmtStaking { amount,ennft } => Ok(StakeTxData::new(*amount, ennft.to_owned())),
+            Operation::WmtStaking { amount, ennft } => {
+                Ok(StakeTxData::new(*amount, ennft.to_owned()))
+            }
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for wmt staking transaction",
             )),
