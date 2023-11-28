@@ -71,9 +71,9 @@ impl<'param> PerformTxb<AtEnRegParams<'param>> for AtEnRegBuilder {
             debug!("--------------------------------------------------------------------------------------------------------\n");
         }
 
-        let protocol_parameters = ProtocolParameters::read_protocol_parameter(
-            &std::env::var("PPPATH")
-                .unwrap_or_else(|_| "protocol_parameters_preview.json".to_owned()),
+        let protocol_parameters: ProtocolParameters = ProtocolParameters::read_protocol_parameter(
+            &std::env::var("CARDANO_PROTOCOL_PARAMETER_PATH")
+                .unwrap_or_else(|_| "/odin/protocol_parameters_babbage.json".to_owned()),
         )
         .unwrap();
 

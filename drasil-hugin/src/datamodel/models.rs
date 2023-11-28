@@ -353,6 +353,15 @@ impl TransactionPattern {
     pub async fn into_txdata(
         &self,
     ) -> Result<drasil_murin::txbuilder::TxData, drasil_murin::error::MurinError> {
+        let op = match self.operation() {
+            Some(op) => op,
+            None => {
+                return Err(drasil_murin::error::MurinError::Custom(
+                    "No operation set".to_string(),
+                ))
+            }
+        };
+
         let inputs = match self.utxos() {
             None => {
                 return Err(drasil_murin::error::MurinError::new(
@@ -363,17 +372,63 @@ impl TransactionPattern {
         };
 
         let saddr = match self.stake_addr() {
-            Some(sa) => wallet::decode_address_from_bytes(&sa).await.ok(),
-            None => None,
+            Some(sa) => wallet::address_from_string(&sa).await.ok(),
+            None => match &op {
+                Operation::WmtStaking {
+                    ennft: _,
+                    amount: _,
+                } => todo!(),
+                Operation::WmEnRegistration {
+                    datum: _,
+                    wallet_addresses: _,
+                    stake_address,
+                } => wallet::address_from_string(&stake_address).await.ok(),
+                _ => None,
+            },
         };
+        debug!("saddr: {:?}", saddr);
 
         let contract_id = match self.contract_id() {
             Some(n) => n as i64,
             None => -1,
         };
+
+        let addresses = if self.used_addresses().is_empty() {
+            match &op {
+                Operation::StdTx {
+                    transfers: _,
+                    wallet_addresses,
+                } => {
+                    if let Some(wa) = wallet_addresses {
+                        wa.clone()
+                    } else {
+                        return Err(drasil_murin::MurinError::Custom(
+                            "no addresses provided".to_string(),
+                        ));
+                    }
+                }
+                Operation::WmtStaking {
+                    ennft: _,
+                    amount: _,
+                } => todo!(),
+                Operation::WmEnRegistration {
+                    datum: _,
+                    wallet_addresses,
+                    stake_address: _,
+                } => wallet_addresses.clone(),
+                _ => {
+                    return Err(drasil_murin::MurinError::Custom(
+                        "no addresses provided".to_string(),
+                    ));
+                }
+            }
+        } else {
+            self.used_addresses().clone()
+        };
+        debug!("addresses: {:?}", addresses);
         let mut txd = TxData::new(
             Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
-            wallet::addresses_from_string(&self.used_addresses()).await?,
+            wallet::addresses_from_string(&addresses).await?,
             saddr,
             wallet::transaction_unspent_outputs_from_string_vec(
                 inputs.as_ref(),

@@ -165,6 +165,7 @@ pub async fn handle_en_registration(bc: BuildContract) -> crate::Result<String> 
     }
 
     // search input utxo
+    debug!("Specifying ENNFT Input UTxO...");
     let input_utxo: Vec<_> = ennft_utxo
         .filter(|n| {
             n.output()
@@ -200,6 +201,7 @@ pub async fn handle_en_registration(bc: BuildContract) -> crate::Result<String> 
         &drasil_murin::txbuilder::worldmobile::enreg::EnRegistrationTxData {
             first_addr_sender_wallet: Some(first_address),
             ennft_utxo: Some(input_utxo),
+            enopnft_utxo: None,
             registration_datum: datum,
         };
     let register = AtEnRegBuilder::new(txb_param);

@@ -77,15 +77,15 @@ pub struct EnRegistrationDatum {
 impl EnRegistrationDatum {
     pub fn from_str_datum(datum: &RegistrationDatum) -> Result<Self, MurinError> {
         Ok(EnRegistrationDatum {
-            en_operator_address: hex::decode(&datum.en_operator_address)?,
-            en_consensus_pubkey: hex::decode(&datum.en_consensus_pubkey)?,
-            en_merkle_tree_root: hex::decode(&datum.en_merkle_tree_root)?,
-            en_cce_address: hex::decode(&datum.en_cce_address)?,
-            en_used_nft_tn: AssetName::from_hex(&datum.en_used_nft_tn)?,
-            en_rwd_wallet: Ed25519KeyHash::from_hex(&datum.en_rwd_wallet)?,
+            en_operator_address: datum.en_operator_address.as_bytes().to_vec(),
+            en_consensus_pubkey: datum.en_consensus_pubkey.as_bytes().to_vec(),
+            en_merkle_tree_root: datum.en_merkle_tree_root.as_bytes().to_vec(),
+            en_cce_address: datum.en_cce_address.as_bytes().to_vec(),
+            en_used_nft_tn: AssetName::new(hex::decode(&datum.en_used_nft_tn)?)?,
+            en_rwd_wallet: Ed25519KeyHash::from_bytes(hex::decode(&datum.en_rwd_wallet)?)?,
             en_commission: datum.en_commission as u8,
-            en_op_nft_cs: PolicyID::from_hex(&datum.en_op_nft_cs)?,
-            en_signature: hex::decode(&datum.en_signature)?,
+            en_op_nft_cs: PolicyID::from_bytes(hex::decode(&datum.en_op_nft_cs)?)?,
+            en_signature: datum.en_signature.as_bytes().to_vec(),
         })
     }
 }
@@ -260,6 +260,8 @@ pub struct EnRegistrationTxData {
     pub first_addr_sender_wallet: Option<Address>,
     // UTxO Containing the ENNFT
     pub ennft_utxo: Option<TransactionUnspentOutput>,
+    // UTxO Containing the ENOPNFT
+    pub enopnft_utxo: Option<TransactionUnspentOutput>,
     /// The registration Datum
     pub registration_datum: EnRegistrationDatum,
 }
@@ -289,12 +291,17 @@ impl std::str::FromStr for EnRegistrationTxData {
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let split: Vec<&str> = src.split(',').collect();
         Ok(EnRegistrationTxData {
-            first_addr_sender_wallet: if split[1] != "None" {
-                Some(Address::from_bech32(split[1])?)
+            first_addr_sender_wallet: if split[0] != "None" {
+                Some(Address::from_bech32(split[0])?)
             } else {
                 None
             },
-            ennft_utxo: if split[2] != "None" {
+            ennft_utxo: if split[1] != "None" {
+                Some(TransactionUnspentOutput::from_hex(split[1])?)
+            } else {
+                None
+            },
+            enopnft_utxo: if split[2] != "None" {
                 Some(TransactionUnspentOutput::from_hex(split[2])?)
             } else {
                 None
