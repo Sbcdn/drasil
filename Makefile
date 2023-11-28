@@ -192,8 +192,6 @@ build-drasil:
 	@make build-all-local
 
 build-all-local:
-# docker image delete drasil/builder:latest
-# make build-drasil-builder
 	@echo "Building local drasil images..."
 	@docker build --progress=plain -t $(LOC_PROJECT)/vidar:$(VERSION) -f Dockerfile --target=vidar .
 	@docker build --progress=plain -t $(LOC_PROJECT)/heimdallr:$(VERSION) -f Dockerfile --target=heimdallr .

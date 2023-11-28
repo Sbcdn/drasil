@@ -166,7 +166,6 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             input_txuos
         );
 
-        // ToDo:
         let mut mint_val_zero_coin = mint_val.clone();
         mint_val_zero_coin.set_coin(&cutils::to_bignum(0u64));
 
@@ -187,6 +186,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             &fcrun,
         )?;
         let txouts_fin = combine_wallet_outputs(&txouts_fin);
+
         ////////////////////////////////////////////////////////////////////////////////////////////
         //
         // MINT ASSETS

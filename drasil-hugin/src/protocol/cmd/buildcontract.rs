@@ -49,17 +49,25 @@ impl BuildContract {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildContract> {
-        let customer_id = parse.next_int().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let customer_id = parse
+            .next_int()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
-        let ctype = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let ctype = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let ctype: ContractType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&ctype)?;
 
-        let action = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let action = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let action = ContractAction::from_str(&action)?;
 
-        let txpattern = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let txpattern = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let txpattern: TransactionPattern = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&txpattern)?;
@@ -82,10 +90,10 @@ impl BuildContract {
             return Err(MurinError::ProtocolCommandErrorInvalidData);
         }
 
-        let ret : String;
+        let ret: String;
         match self.ctype {
             ContractType::MarketPlace => {
-                ret =crate::protocol::smartcontract::nft_marketplace::handle_marketplace(self)
+                ret = crate::protocol::smartcontract::nft_marketplace::handle_marketplace(self)
                     .await
                     .unwrap_or_else(|err| err.to_string());
             }
@@ -94,8 +102,15 @@ impl BuildContract {
                     .await
                     .unwrap_or_else(|err| err.to_string());
             }
+            ContractType::WmEnRegistration => {
+                ret = crate::protocol::worldmobile::enreg::register::handle_en_registration(self)
+                    .await
+                    .unwrap_or_else(|err| err.to_string());
+            }
             _ => {
-                return Err(format!("ERROR this contract Type does not exists {:?}'", self.ctype).into());
+                return Err(
+                    format!("ERROR this contract Type does not exists {:?}'", self.ctype).into(),
+                );
             }
         }
 
