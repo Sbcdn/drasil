@@ -50,7 +50,8 @@ pub async fn handle_job(job_type: &JobTypes) -> Result<(), Error> {
             )
             .await?;
         }
+        JobTypes::CalculateReoccuringRewards(_) => todo!(),
+        JobTypes::OptimizeRewardUTxOs(_) => todo!(),
     }
-
     Ok(())
 }

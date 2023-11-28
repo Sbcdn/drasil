@@ -1,190 +1,230 @@
-/*
-use super::RegistrationDatum;
-use crate::{
-    models::{
-        BuilderResult, EarthNodeConfig, RegisterEarthNode, TransactionSchema, UnsignedTransaction,
-    },
-    modules::txprocessor::{
-        error::TransactionBuildingError, transactions::smartcontract::enregistration::ENREGCONTRACT,
-    },
-};
-use cardano_serialization_lib::{
-    address::{Address, EnterpriseAddress, StakeCredential},
+use drasil_mimir::select_addr_of_first_transaction;
+use drasil_murin::{
+    address::Address,
     crypto::ScriptHash,
-    fees::LinearFee,
-    plutus::{self, ExUnitPrices, PlutusData, PlutusScript},
-    tx_builder::{
-        tx_inputs_builder::TxInputsBuilder, CoinSelectionStrategyCIP2, TransactionBuilder,
-        TransactionBuilderConfigBuilder,
-    },
-    utils::{hash_plutus_data, min_ada_for_output, to_bignum, Value},
-    AssetName, Assets, MultiAsset, TransactionOutput, UnitInterval,
+    utils::to_bignum,
+    wallet::{self, extract_assets},
+    MultiAsset, MurinError, PerformTxb, TokenAsset, TransactionUnspentOutput,
+    TransactionUnspentOutputs,
 };
-use cdp::provider::CardanoDataProvider;
-use dcslc::{
-    calc_min_ada_for_utxo, decode_transaction_unspent_outputs, extract_assets, get_pubkeyhash,
-    get_stakeaddr_from_addr, make_fingerprint, Token, TransactionUnspentOutput,
-};
+
+use drasil_murin::worldmobile::configuration::EnRegistrationConfig;
+use drasil_murin::worldmobile::enreg::register::{AtEnRegBuilder, AtEnRegParams};
+use drasil_murin::worldmobile::enreg::EnRegistrationDatum;
+
 use log::debug;
-use serde::{Deserialize, Serialize};
-use sha2::Digest;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct ENRegMetadata {
-    operator_address: String,
-    validator_address: String,
-    moniker: String,
-    ennft: String,
-}
+use crate::{create_response, BuildContract};
 
+pub async fn handle_en_registration(bc: BuildContract) -> crate::Result<String> {
+    let (datum, wallet_addresses, stake_address) = match bc.txpattern.operation() {
+        Some(d) => match d {
+            crate::Operation::WmEnRegistration {
+                datum,
+                wallet_addresses,
+                stake_address,
+            } => (datum, wallet_addresses, stake_address),
+            _ => return Err("".into()),
+        },
+        None => return Err("".into()),
+    };
+    let en_reg_config = EnRegistrationConfig::load();
+    let policy = en_reg_config.ennft_policy_id.clone();
+    let mut gtxd = bc.txpattern.into_txdata().await?;
+    // check against dataprovider
+    let stake_address = &Address::from_bech32(&stake_address)?;
 
-pub(crate) async fn handle_register_earth_node(
-    tx_schema: TransactionSchema,
-) -> Result<BuilderResult, TransactionBuildingError> {
-let op_data = match tx_schema.operation {
-    Some(d) => serde_json::from_value::<RegisterEarthNode>(d)?,
-    None => return Err(TransactionBuildingError::StandardTransactionBuildingError),
-};
+    /*
+        let mut txouts = Vec::new();
+        if utxos.is_empty() {
+            let mut conn = drasil_mimir::establish_connection().map_err(|e| e.to_string())?;
+            let utxos_dp = get_stake_address_utxos(&mut conn, &stake_address.to_bech32(None)?)
+                .map_err(|e| e.to_string())?;
+        }
+    */
 
-let policy =
-    std::env::var("ENNFT_POLICY").expect("No ENNFT policyID set for this tx-building service");
+    let mut dbsync = match drasil_mimir::establish_connection() {
+        Ok(conn) => conn,
+        Err(e) => {
+            return Err(MurinError::new(&format!(
+                "ERROR could not connect to dbsync: '{:?}'",
+                e.to_string()
+            )));
+        }
+    };
 
-let smartcontract = PlutusScript::from_bytes_v2(hex::decode(ENREGCONTRACT.as_str())?)?;
-let scripthash = smartcontract.hash();
-let cred = StakeCredential::from_scripthash(&scripthash);
+    let wallet_addresses = wallet_addresses
+        .iter()
+        .fold(Vec::<Address>::new(), |mut acc, n| {
+            acc.push(Address::from_bech32(&n).unwrap());
+            acc
+        });
 
-// check against wallet
-let utxos = decode_transaction_unspent_outputs(
-    &tx_schema.utxos.unwrap(),
-    tx_schema.collateral.as_ref(),
-    tx_schema.excludes.as_ref(),
-)?;
+    if !wallet_addresses.is_empty() {
+        let wallet_utxos =
+            wallet_addresses
+                .iter()
+                .fold(TransactionUnspentOutputs::new(), |mut acc, n| {
+                    acc.merge(
+                        drasil_mimir::get_address_utxos(&n.to_bech32(None).unwrap()).unwrap(),
+                    );
+                    acc
+                });
+        gtxd.set_inputs(wallet_utxos);
 
-let ennft_utxos = utxos.find_utxo_containing_policy(&policy)?;
-
-let mut assets = Vec::<(MultiAsset, TransactionUnspentOutput)>::new();
-for utxo in ennft_utxos {
-    let multiassets = extract_assets(&utxo, &policy)?;
-    assets.push((multiassets, utxo));
-}
-
-debug!("Assets:\n{:?}", assets);
-
-let mut ennfts_cip30 = Vec::<(Address, Token)>::new();
-
-for asset in assets {
-    let sh = ScriptHash::from_bytes(hex::decode(&policy)?)?;
-    let assets = asset.0.get(&sh).unwrap();
-    let asset_names = assets.keys();
-    for i in 0..assets.len() {
-        let an = asset_names.get(i);
-        let amt = assets.get(&an).unwrap();
-        ennfts_cip30.push((asset.1.output().address(), (sh.clone(), an, amt)));
+        // ToDo: go through all addresses and check all stake keys are equal
+        let sa = wallet::reward_address_from_address(&wallet_addresses[0])?;
+        gtxd.set_stake_address(sa);
+        gtxd.set_senders_addresses(wallet_addresses.clone());
     }
-}
+    let utxos = gtxd.get_inputs();
+    let ennft_utxos = utxos.find_utxo_containing_policy(&policy.to_hex())?;
 
-// check against dataprovider
-let dp = cdp::DataProvider::new(cdp::DBSyncProvider::new(cdp::Config {
-    db_path: std::env::var("DBSYNC_URL").unwrap(),
-}));
-
-let stake_address = if let Some(stake_addr) = tx_schema.stake_address {
-    dcslc::addr_from_str(&stake_addr[0].clone())?
-        .to_bech32(None)
-        .unwrap()
-} else {
-    return Err(TransactionBuildingError::RewardAddressNotFound);
-};
-debug!("Stake Address: {}", stake_address);
-let utxos_dp = dp.wallet_utxos(&stake_address).await.unwrap();
-debug!("\n\nWallet UTxOs empty: {:?}\n", &utxos_dp);
-let first_address = dp.first_transaction_from_stake_addr(&stake_address).await?;
-let script_address = EnterpriseAddress::new(first_address.network_id()?, &cred).to_address();
-log::debug!("\nScript Address: {}\n", script_address.to_bech32(None)?);
-
-let pubkeyhash = get_pubkeyhash(&first_address)?;
-
-let ennft_utxo = utxos_dp.find_utxo_containing_policy(&policy)?;
-
-if ennft_utxo.is_empty() {
-    return Err(TransactionBuildingError::Custom(
-        "wallet does not contain any ENNFTs, registration not possible without ENNFT"
-            .to_owned(),
-    ));
-}
-
-let mut ennfts = Vec::<(Address, Token)>::new();
-
-for utxo in ennft_utxo.clone() {
-    let ma = utxo.output().amount().multiasset().unwrap();
-    let sh = ScriptHash::from_bytes(hex::decode(&policy)?)?;
-    let assets = ma.get(&sh).unwrap();
-    let asset_names = assets.keys();
-    for i in 0..assets.len() {
-        let an = asset_names.get(i);
-        let amt = assets.get(&an).unwrap();
-        ennfts.push((utxo.output().address(), (sh.clone(), an, amt)));
+    let mut assets = Vec::<(MultiAsset, TransactionUnspentOutput)>::new();
+    for utxo in ennft_utxos {
+        let multiassets = extract_assets(&utxo, &policy.to_hex())?;
+        assets.push((multiassets, utxo));
     }
+
+    debug!("Assets:\n{:?}", assets);
+
+    let mut ennfts_cip30 = Vec::<(Address, TokenAsset)>::new();
+
+    for asset in assets {
+        let assets = asset.0.get(&policy).unwrap();
+        let asset_names = assets.keys();
+        for i in 0..assets.len() {
+            let an = asset_names.get(i);
+            let amt = assets.get(&an).unwrap();
+            ennfts_cip30.push((asset.1.output().address(), (policy.clone(), an, amt)));
+        }
+    }
+
+    let ennft_utxos = utxos.find_utxo_containing_policy(&policy.to_hex())?;
+
+    let mut assets = Vec::<(MultiAsset, TransactionUnspentOutput)>::new();
+    for utxo in ennft_utxos {
+        let multiassets = extract_assets(&utxo, &policy.to_hex())?;
+        assets.push((multiassets, utxo));
+    }
+
+    debug!("Assets:\n{:?}", assets);
+
+    for asset in assets {
+        let assets = asset.0.get(&policy).unwrap();
+        let asset_names = assets.keys();
+        for i in 0..assets.len() {
+            let an = asset_names.get(i);
+            let amt = assets.get(&an).unwrap();
+            ennfts_cip30.push((asset.1.output().address(), (policy.clone(), an, amt)));
+        }
+    }
+
+    let first_address = Address::from_bech32(
+        &select_addr_of_first_transaction(&stake_address.to_bech32(None)?)
+            .map_err(|e| e.to_string())?,
+    )?;
+
+    let ennft_utxo = utxos.find_utxo_containing_policy(&policy.to_hex())?;
+
+    if ennft_utxo.is_empty() {
+        return Err(MurinError::Custom(
+            "wallet does not contain any ENNFTs, registration not possible without ENNFT"
+                .to_owned(),
+        ));
+    }
+
+    let mut ennfts = Vec::<(Address, TokenAsset)>::new();
+
+    for utxo in ennft_utxo.clone() {
+        let ma = utxo.output().amount().multiasset().unwrap();
+        let sh = ScriptHash::from_bytes(hex::decode(&policy.to_hex())?)?;
+        let assets = ma.get(&sh).unwrap();
+        let asset_names = assets.keys();
+        for i in 0..assets.len() {
+            let an = asset_names.get(i);
+            let amt = assets.get(&an).unwrap();
+            ennfts.push((utxo.output().address(), (sh.clone(), an, amt)));
+        }
+    }
+    debug!("ENNFTS:\n{:?}", &ennfts);
+    let datum = EnRegistrationDatum::from_str_datum(&datum)?;
+    let mut valid_ennfts = ennfts.clone();
+    valid_ennfts = valid_ennfts
+        .iter()
+        .filter(|n| n.1 .1 == datum.en_used_nft_tn)
+        .map(|n| n.to_owned())
+        .collect();
+
+    if valid_ennfts.is_empty() {
+        return Err(MurinError::Custom(
+            "wallet does not contain valid ENNFTs, please speicfy which ENNFT to use if you have several".to_owned(),
+        ));
+    }
+
+    // search input utxo
+    let input_utxo: Vec<_> = ennft_utxo
+        .filter(|n| {
+            n.output()
+                .amount()
+                .multiasset()
+                .unwrap()
+                .get_asset(&valid_ennfts[0].1 .0, &valid_ennfts[0].1 .1)
+                .compare(&to_bignum(1))
+                == 0
+        })
+        .collect();
+
+    if input_utxo.len() != 1 {
+        return Err(MurinError::Custom("could not select input".to_owned()));
+    }
+    let input_utxo = input_utxo[0].clone();
+
+    log::debug!("Try to determine slot...");
+
+    let slot = match drasil_mimir::get_slot(&mut dbsync) {
+        Ok(s) => s,
+        Err(e) => {
+            return Err(MurinError::new(&format!(
+                "ERROR could not determine current slot: '{:?}'",
+                e.to_string()
+            )))
+        }
+    };
+    gtxd.set_current_slot(slot as u64);
+
+    info!("build transaction...");
+    let txb_param: AtEnRegParams =
+        &drasil_murin::txbuilder::worldmobile::enreg::EnRegistrationTxData {
+            first_addr_sender_wallet: Some(first_address),
+            ennft_utxo: Some(input_utxo),
+            registration_datum: datum,
+        };
+    let register = AtEnRegBuilder::new(txb_param);
+    let builder = drasil_murin::TxBuilder::new(&gtxd, &vec![]);
+    let bld_tx = builder.build(&register).await?;
+
+    info!("post processing transaction...");
+    let tx = drasil_murin::utxomngr::RawTx::new(
+        &bld_tx.get_tx_body(),
+        &bld_tx.get_txwitness(),
+        &bld_tx.get_tx_unsigned(),
+        &bld_tx.get_metadata(),
+        &gtxd.to_string(),
+        &txb_param.to_string(),
+        &bld_tx.get_used_utxos(),
+        &hex::encode(gtxd.get_stake_address().to_bytes()),
+        &(bc.customer_id()),
+        &gtxd.get_contract_id().unwrap(),
+    );
+    trace!("RAWTX data: {:?}", tx);
+
+    info!("create response...");
+    let ret = create_response(
+        &bld_tx,
+        &tx,
+        bc.transaction_pattern().wallet_type().as_ref(),
+    )?;
+
+    Ok(ret.to_string())
 }
-debug!("ENNFTS:\n{:?}", &ennfts);
-//ToDo: assert_eq fails sometimes due to ordering, build a test function which checks on equal content
-//assert_eq!(ennfts, ennfts_cip30);
-
-let token_info = dp.token_info(&op_data.ennft_assetname).await?;
-assert_eq!(token_info.policy, policy);
-
-let mut valid_ennfts = ennfts.clone();
-valid_ennfts = valid_ennfts
-    .iter()
-    .filter(|n| n.1 .1 == AssetName::new(hex::decode(&token_info.tokenname).unwrap()).unwrap())
-    .map(|n| n.to_owned())
-    .collect();
-
-if valid_ennfts.is_empty() {
-    return Err(TransactionBuildingError::Custom(
-        "wallet does not contain valid ENNFTs, please speicfy which ENNFT to use if you have several".to_owned(),
-    ));
-}
-
-// search input utxo
-let input_utxo: Vec<_> = ennft_utxo
-    .filter(|n| {
-        n.output()
-            .amount()
-            .multiasset()
-            .unwrap()
-            .get_asset(&valid_ennfts[0].1 .0, &valid_ennfts[0].1 .1)
-            .compare(&to_bignum(1))
-            == 0
-    })
-    .collect();
-
-if input_utxo.len() != 1 {
-    return Err(TransactionBuildingError::Custom(
-        "could not select input".to_owned(),
-    ));
-}
-let input_utxo = input_utxo[0].clone();
-
-// Create specific config hash
-let ennft_fingerprint = make_fingerprint(
-    &valid_ennfts[0].1 .0.to_hex(),
-    &hex::encode(valid_ennfts[0].1 .1.name()),
-)?;
-
-//let stake_address = get_stakeaddr_from_addr(&valid_ennfts[0].0)?;
-
-// Registration Datum
-let regdat = RegistrationDatum {
-    enOperatorAddress: op_data.config.operator_address.as_bytes().to_vec(),
-    enConsensusPubkey: op_data.config.consensus_pub_key.as_bytes().to_vec(),
-    enMerkleTreeRoot: op_data.config.merkle_tree_root.as_bytes().to_vec(),
-    enCceAddress: op_data.config.cce_address.as_bytes().to_vec(),
-    enUsedNftTn: valid_ennfts[0].1 .1.clone(),
-    enOwner: pubkeyhash.clone(),
-};
-
-Err(())
-
-}
- */

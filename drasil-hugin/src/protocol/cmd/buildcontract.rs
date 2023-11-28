@@ -6,6 +6,7 @@ use bytes::Bytes;
 use drasil_murin::MurinError;
 
 use crate::datamodel::{ContractAction, ContractType, TransactionPattern};
+use crate::protocol::worldmobile::enreg::register;
 use crate::protocol::worldmobile::staking;
 use crate::protocol::worldmobile::staking::StakingAction;
 use crate::Parse;
@@ -113,6 +114,9 @@ impl BuildContract {
                         .unwrap_or_else(|err| err.to_string()),
                 }
             }
+            ContractType::WmEnRegistration => register::handle_en_registration(self)
+                .await
+                .unwrap_or_else(|err| err.to_string()),
             _ => {
                 return Err(
                     format!("ERROR this contract Type does not exists {:?}'", self.ctype).into(),
