@@ -329,14 +329,10 @@ pub fn create_bip0039_wallet(
             acc
         });
 
-    let root_key: clib::crypto::Bip32PrivateKey =
-        clib::crypto::Bip32PrivateKey::from_bip39_entropy(&seed, {
-            if password.is_some() {
-                password.as_ref().unwrap().as_bytes()
-            } else {
-                "".as_bytes()
-            }
-        });
+    let root_key: clib::crypto::Bip32PrivateKey = clib::crypto::Bip32PrivateKey::from_bip39_entropy(
+        &seed,
+        password.unwrap_or_default().as_bytes(),
+    );
 
     /*
        let account_key1 = root_key
@@ -378,14 +374,10 @@ pub fn restore_bip0039_wallet(
         mnemonic.to_seed_normalized("")
     };
 
-    let root_key: clib::crypto::Bip32PrivateKey =
-        clib::crypto::Bip32PrivateKey::from_bip39_entropy(&seed, {
-            if password.is_some() {
-                password.as_ref().unwrap().as_bytes()
-            } else {
-                "".as_bytes()
-            }
-        });
+    let root_key: clib::crypto::Bip32PrivateKey = clib::crypto::Bip32PrivateKey::from_bip39_entropy(
+        &seed,
+        password.unwrap_or_default().as_bytes(),
+    );
 
     /*
        let account_key1 = root_key

@@ -1,8 +1,5 @@
-use argon2::{Argon2, password_hash::SaltString, PasswordHasher};
-use drasil_hugin::{
-    drasildb::{TBContracts, TBDrasilUser},
-    error::SystemDBError,
-};
+use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
+use drasil_hugin::error::SystemDBError;
 use rand::rngs::OsRng;
 use structopt::StructOpt;
 
@@ -27,8 +24,8 @@ async fn main() -> Result<(), SystemDBError> {
     //println!("Established Connection Test: {t:?}");
 
     let password_hash = Argon2::default()
-            .hash_password(&opt.password.as_bytes(), &SaltString::generate(&mut OsRng))?
-            .to_string();
+        .hash_password(&opt.password.as_bytes(), &SaltString::generate(&mut OsRng))?
+        .to_string();
 
     /*
     let user = TBDrasilUser::create_user(

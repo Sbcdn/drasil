@@ -57,6 +57,7 @@ pub fn perform_listing(
     }
 
     // ToDo:
+    let (policy_id, token_name, _) = &mptxd.get_tokens()[0];
     let datumpair = supporting_functions::make_datum_mp(
         &mptxd.selling_price.to_string(),
         &gtxd.clone().get_senders_addresses()[0]
@@ -64,8 +65,8 @@ pub fn perform_listing(
             .to_bech32(None)
             .unwrap(),
         &roy_rate.to_string(),
-        &hex::encode(&mptxd.get_tokens()[0].0.to_bytes()),
-        &hex::encode(&mptxd.get_tokens()[0].1.to_bytes()),
+        &hex::encode(policy_id.to_bytes()),
+        &hex::encode(token_name.to_bytes()),
         &roy_pkey,
         sc_version,
     );
@@ -161,12 +162,8 @@ pub fn perform_listing(
         supporting_functions::find_asset_utxos_in_txuos(&input_txuos, mptxd.get_tokens());
     debug!("Token Input Utxos: {:?}", token_input_utxo);
 
-    let (txins, mut input_txuos) = supporting_functions::input_selection(
-        None,
-        &mut needed_value,
-        &input_txuos,
-        None,
-    );
+    let (txins, mut input_txuos) =
+        supporting_functions::input_selection(None, &mut needed_value, &input_txuos, None);
     let saved_input_txuos = input_txuos.clone();
 
     let vkey_counter =
