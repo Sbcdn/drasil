@@ -3,7 +3,6 @@ use std::str::FromStr;
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
-use drasil_murin::worldmobile::enreg::RegistrationRedeemer;
 use drasil_murin::MurinError;
 
 use crate::datamodel::{ContractAction, ContractType, TransactionPattern};
@@ -98,30 +97,6 @@ impl BuildContract {
                     .await
                     .unwrap_or_else(|err| err.to_string());
             }
-            ContractType::WmtStaking => {
-                ret = crate::protocol::worldmobile::build_wmt_sc::handle_wmt_staking(self)
-                    .await
-                    .unwrap_or_else(|err| err.to_string());
-            }
-            ContractType::WmEnRegistration => match self.action {
-                ContractAction::WmRegistration(RegistrationRedeemer::Register) => {
-                    ret =
-                        crate::protocol::worldmobile::enreg::register::handle_en_registration(self)
-                            .await
-                            .unwrap_or_else(|err| err.to_string());
-                }
-                ContractAction::WmRegistration(RegistrationRedeemer::Unregister) => {
-                    ret =
-                        crate::protocol::worldmobile::enreg::unregister::handle_en_unregistration(
-                            self,
-                        )
-                        .await
-                        .unwrap_or_else(|err| err.to_string());
-                }
-                _ => {
-                    return Err(MurinError::ProtocolCommandErrorInvalidData);
-                }
-            },
             _ => {
                 return Err(
                     format!("ERROR this contract Type does not exists {:?}'", self.ctype).into(),

@@ -20,8 +20,10 @@ lazy_static! {
         var("VAULT_ADDRESS").unwrap_or_else(|_| "dummy_address".to_string());
     static ref VAULT_NAMESPACE: String =
         var("VAULT_NAMESPACE").unwrap_or_else(|_| "dummy_ns".to_string());
-    static ref VAULT_MOUNT: String = var("VAULT_MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
-    static ref DVLTATH_SPATH: String = var("DVLTATH_SPATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref VAULT_MOUNT: String =
+        var("VAULT_MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
+    static ref DVLTATH_SPATH: String =
+        var("DVLTATH_SPATH").unwrap_or_else(|_| "dummy_path".to_string());
     static ref DVLTATH_VSOCKET_PATH: String =
         var("DVLTATH_VSOCKET_PATH").unwrap_or_else(|_| "dummy_path".to_string());
     static ref VAULT_PATH: String = var("VAULT_PATH").unwrap_or_else(|_| "dummy_path".to_string());
@@ -39,7 +41,7 @@ fn get_secret_id() -> String {
     VSECRET_ID.to_string()
 }
 
-fn get_VAULT_ADDRESSess() -> String {
+fn get_vault_address() -> String {
     VAULT_ADDRESS.to_string()
 }
 
@@ -134,8 +136,8 @@ async fn request_secret(
             log::error!("secret request timeout: {:?}", e);
         }
         Ok(no_timeout) => {
-            info!("no timeout: {:?}", no_timeout); 
-            match no_timeout {   
+            info!("no timeout: {:?}", no_timeout);
+            match no_timeout {
                 Ok(resp) => {
                     log::debug!("Response: {:?}", resp);
                     let r_status = resp.status();
@@ -147,9 +149,10 @@ async fn request_secret(
                     }
                 }
                 Err(e) => {
-                    log::error!("error on secret request {:?}",e);
+                    log::error!("error on secret request {:?}", e);
                 }
-            }}
+            }
+        }
     }
     Err(crate::error::Error::StdError)
 }
@@ -183,7 +186,7 @@ async fn vault_auth(client: &VaultClient) -> AuthInfo {
 }
 
 pub async fn vault_connect_sdc() -> VaultClient {
-    let address = get_VAULT_ADDRESSess();
+    let address = get_vault_address();
     let namespace = get_namespace();
     let mut client = VaultClient::new(
         VaultClientSettingsBuilder::default()
@@ -203,7 +206,7 @@ pub async fn vault_connect_sdc() -> VaultClient {
 }
 
 pub async fn vault_connect() -> VaultClient {
-    let address = get_VAULT_ADDRESSess();
+    let address = get_vault_address();
     let namespace = get_namespace();
     let mut client = VaultClient::new(
         VaultClientSettingsBuilder::default()
@@ -222,8 +225,8 @@ pub async fn vault_connect() -> VaultClient {
 
 async fn get_wrapped_secret_id(client: &VaultClient, role_id: &str) -> String {
     let mut t = api::auth::approle::requests::GenerateNewSecretIDRequest::builder();
-    let endpoint = t.mount("approle").role_name(role_id).build().unwrap(); 
-    let result = endpoint.wrap(client).await.unwrap(); 
+    let endpoint = t.mount("approle").role_name(role_id).build().unwrap();
+    let result = endpoint.wrap(client).await.unwrap();
     log::info!("Got wrapped token: {:?}", result.info);
     result.info.token
 }

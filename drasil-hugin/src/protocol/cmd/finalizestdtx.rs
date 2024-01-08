@@ -69,13 +69,21 @@ impl FinalizeStdTx {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<FinalizeStdTx> {
-        let customer_id = parse.next_int().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
-        let txtype = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let customer_id = parse
+            .next_int()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let txtype = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let txtype: StdTxType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&txtype)?;
-        let tx_id = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
-        let signature = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let tx_id = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let signature = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         Ok(FinalizeStdTx {
             customer_id,
@@ -94,18 +102,33 @@ impl FinalizeStdTx {
                 if let Err(e) =
                     drasil_murin::stdtx::DelegTxData::from_str(raw_tx.get_tx_specific_rawdata())
                 {
-                    return Err(format!("ERROR Invalid Transaction Data, this is not a delegation transaction, {:?}",e.to_string()).into());
-                };
-                self.finalize_std_tx(raw_tx.clone()).await?
+                    format!("ERROR Invalid Transaction Data, this is not a delegation transaction, {:?}",e.to_string()).into()
+                } else {
+                    match self.finalize_std_tx(raw_tx.clone()).await {
+                        Ok(response) => response,
+                        Err(e) => {
+                            format!("ERROR in assemble step: {:?}", e.to_string())
+                        }
+                    }
+                }
             }
             StdTxType::DeregisterStake => self.finalize_std_tx(raw_tx.clone()).await?,
             StdTxType::StandardTx => {
                 if let Err(e) =
                     drasil_murin::stdtx::StandardTxData::from_str(raw_tx.get_tx_specific_rawdata())
                 {
-                    return Err(format!("ERROR Invalid Transaction Data, this is not a standard transaction, {:?}",e.to_string()).into());
-                };
-                self.finalize_std_tx(raw_tx.clone()).await?
+                    format!(
+                        "ERROR Invalid Transaction Data, this is not a standard transaction, {:?}",
+                        e.to_string()
+                    )
+                } else {
+                    match self.finalize_std_tx(raw_tx.clone()).await {
+                        Ok(response) => response,
+                        Err(e) => {
+                            format!("ERROR in assemble step: {:?}", e.to_string())
+                        }
+                    }
+                }
             }
             StdTxType::RewardWithdrawal => self.finalize_std_tx(raw_tx.clone()).await?,
         };

@@ -215,6 +215,7 @@ impl<'a> PerformTxb<AtSATParams<'a>> for AtSATBuilder {
             option_aux_data,
             saved_input_txuos,
             vkey_counter,
+            false,
         ))
     }
 }

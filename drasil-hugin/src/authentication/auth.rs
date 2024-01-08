@@ -34,7 +34,7 @@ pub async fn authorize(
         TXPWrapper::Signature(s)
     } else if let Ok(wal) = serde_json::from_str::<WalletTransactionPattern>(str_slice) {
         TXPWrapper::TransactionPattern(Box::new(wal.into_txp()))
-    } else if let Ok(wal) = serde_json::from_str::<OneShotMintPayload>(str_slice) {
+    } else if let Ok(_wal) = serde_json::from_str::<OneShotMintPayload>(str_slice) {
         TXPWrapper::OneShotMinter(serde_json::from_str::<OneShotMintPayload>(str_slice).unwrap())
     } else {
         log::debug!(

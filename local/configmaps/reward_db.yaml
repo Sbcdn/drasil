@@ -12,7 +12,7 @@ data:
     END;
     $$ LANGUAGE plpgsql;
 
-    CREATE TYPE public.calculationmode AS ENUM (
+    CREATE TYPE public.Calculationmode AS ENUM (
         'custom',
         'modifactorandequation',
         'simpleequation',
@@ -65,7 +65,7 @@ data:
         user_id BIGINT NOT NULL,
         vesting_period TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- All new entries are valid on creation, vesting has to be set explicitly
         pools  TEXT[] NOT NULL,
-        mode calculationmode NOT NULL,
+        mode Calculationmode NOT NULL,
         equation TEXT NOT NULL,
         start_epoch BIGINT NOT NULL,
         end_epoch BIGINT,
@@ -74,7 +74,7 @@ data:
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
-    ALTER TYPE public.calculationmode ADD VALUE  IF NOT EXISTS 'custom' BEFORE 'fixedamountperepoch';
+    ALTER TYPE public.Calculationmode ADD VALUE  IF NOT EXISTS 'custom' BEFORE 'fixedamountperepoch';
 
     CREATE TABLE airdrop_whitelist (
         id BIGSERIAL PRIMARY KEY,
@@ -256,3 +256,5 @@ data:
     ALTER TABLE rewards ADD CONSTRAINT unique_stake_per_contract UNIQUE(stake_addr, fingerprint, contract_id,user_id);
     ALTER TABLE claimed ADD CONSTRAINT unique_txhash UNIQUE(txhash,fingerprint);
     ALTER TABLE token_whitelist ADD CONSTRAINT unique_token_per_contract_and_user UNIQUE(user_id,contract_id,policy_id,fingerprint);
+
+    ALTER TYPE public."calculationmode" RENAME TO "Calculationmode";

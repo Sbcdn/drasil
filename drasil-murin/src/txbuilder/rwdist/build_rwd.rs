@@ -264,6 +264,7 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
             Some(aux_data),
             saved_input_txuos,
             vkey_counter,
+            false,
         ))
     }
 }

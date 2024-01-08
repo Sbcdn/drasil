@@ -12,7 +12,6 @@ members = [
     "services/odin",
     "services/vidar",
     "services/heimdallr",
-    "services/heimdallr-v2",
     "services/frigg",
     "services/loki",
     "worker/geri",
@@ -45,5 +44,5 @@ dotenv = "0.15.0"
 zeroize = "1.4"
 warp = { version = "0.3", features = ["tls"] }
 vaultrs = { git = "https://github.com/Sbcdn/vaultrs.git", branch = "master" } #"0.6.2"
-diesel = { version = "2.1.4", features = ["postgres", "chrono","postgres_backend"] }
+diesel = { version = "2.1.0", features = ["postgres", "chrono","postgres_backend"] }
 jsonwebtoken = { version = "8.1.0", features = ["use_pem"] }

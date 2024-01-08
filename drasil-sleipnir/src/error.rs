@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fmt;
 
+use drasil_murin::MurinError;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SleipnirError {
     details: String,
@@ -11,6 +13,12 @@ impl SleipnirError {
         SleipnirError {
             details: msg.to_string(),
         }
+    }
+}
+
+impl Into<MurinError> for SleipnirError {
+    fn into(self) -> MurinError {
+        MurinError::Custom(self.to_string())
     }
 }
 

@@ -151,14 +151,17 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
                 crate::Operation::NftVendor {} => todo!(),
                 crate::Operation::Marketplace {
                     tokens: _,
-                    metadata: _,
                     royalties_addr: _,
                     royalties_rate: _,
                     selling_price: _,
-                } => todo!(),
+                    wallet_addresses: wa,
+                } => {
+                    if wa.unwrap().is_empty() {
+                        return Err("ERROR no wallet addresses provided".into());
+                    }
+                }
                 crate::Operation::NftShop {
                     tokens: _,
-                    metadata: _,
                     selling_price: _,
                 } => todo!(),
                 crate::Operation::Minter {
@@ -196,21 +199,6 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
                     //Todo: Remove unwrap
                 } => {
                     if wa.unwrap().is_empty() {
-                        return Err("ERROR no wallet addresses provided".into());
-                    }
-                }
-                crate::Operation::WmtStaking {
-                    ennft: _,
-                    amount: _,
-                } => {
-                    todo!()
-                }
-                crate::Operation::WmEnRegistration {
-                    datum: _,
-                    wallet_addresses: wa,
-                    stake_address: _,
-                } => {
-                    if wa.is_empty() {
                         return Err("ERROR no wallet addresses provided".into());
                     }
                 }

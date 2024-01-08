@@ -3,8 +3,8 @@ use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cu
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::wallet;
 use crate::txbuilder;
+use crate::wallet;
 use crate::MurinError;
 
 macro_rules! pub_struct {
@@ -157,25 +157,9 @@ pub_struct!(TxHash {
 
 // Traits
 
-pub trait ARemove {
-    fn aremove(&mut self, index: usize) -> clib::TransactionOutputs;
-}
-
-impl ARemove for clib::TransactionOutputs {
-    fn aremove(&mut self, index: usize) -> clib::TransactionOutputs {
-        let mut res = clib::TransactionOutputs::new();
-        for tx in 0..self.len() {
-            if tx != index {
-                res.add(&self.get(tx));
-            }
-        }
-        res
-    }
-}
-
 pub type TransactionUnspentOutput = cutils::TransactionUnspentOutput;
 
-#[derive(Clone, Debug,Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TransactionUnspentOutputs(pub(crate) Vec<TransactionUnspentOutput>);
 
 impl Default for TransactionUnspentOutputs {
@@ -183,7 +167,6 @@ impl Default for TransactionUnspentOutputs {
         Self::new()
     }
 }
-
 
 impl TransactionUnspentOutputs {
     pub fn new() -> Self {

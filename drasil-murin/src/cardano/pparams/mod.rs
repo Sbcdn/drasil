@@ -1,9 +1,11 @@
 #![allow(non_snake_case)]
+pub(crate) mod binary;
+pub(crate) mod hash;
+pub(crate) mod mp_plutus;
+
+use crate::pparams::mp_plutus::{CostModel as ClibCostModel, Costmdls, Language};
 use crate::MurinError;
-use cardano_serialization_lib::{
-    plutus::{CostModel as ClibCostModel, Costmdls, Language},
-    utils,
-};
+use cardano_serialization_lib::utils;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CostModels {
@@ -108,8 +110,8 @@ impl ProtocolParameters {
     pub fn get_CostMdls(&self) -> Result<Costmdls, MurinError> {
         let mut cstmdls = Costmdls::new();
 
-        let mut v1 = ClibCostModel::new();
-        let mut v2 = ClibCostModel::new();
+        let mut v1 = ClibCostModel::empty_model(&Language::new_plutus_v1());
+        let mut v2 = ClibCostModel::empty_model(&Language::new_plutus_v2());
         if self.cost_models.plutus_v1.0.is_object() {
             for (i, (_key, value)) in self
                 .cost_models
@@ -125,7 +127,7 @@ impl ProtocolParameters {
                     &utils::Int::from_str(&value.as_u64().unwrap().to_string())?,
                 )?;
             }
-            cstmdls.insert(&Language::new_plutus_v1(), &v1);
+            cstmdls.insert(&v1);
         }
 
         if self.cost_models.plutus_v2.0.is_object() {
@@ -143,26 +145,9 @@ impl ProtocolParameters {
                     &utils::Int::from_str(&value.as_u64().unwrap().to_string())?,
                 )?;
             }
-            cstmdls.insert(&Language::new_plutus_v2(), &v2);
+            cstmdls.insert(&v2);
         }
 
         Ok(cstmdls)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_import() {
-        let pp = ProtocolParameters::read_protocol_parameter(
-            &"/home/tp/Documents/protocol_parameters_babbage.json".to_owned(),
-        )
-        .unwrap();
-
-        let a = pp.get_CostMdls().unwrap();
-
-        println!("{:?}", a.to_hex());
     }
 }
