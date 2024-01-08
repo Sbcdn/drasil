@@ -8,7 +8,6 @@ members = [
     "drasil-dvltath",
     "jobs/freki",
     "jobs/utxopti",
-    "services/wsauth",
     "services/odin",
     "services/vidar",
     "services/heimdallr",
