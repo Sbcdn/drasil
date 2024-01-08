@@ -7,7 +7,6 @@ Drasil is an opinionated implementation of a software suite to run applications 
 Drasil system and concept was created by Torben and Zak, but it also utilises several tools developed by the Cardano community, to whom we are grateful and hope to continue to repay with our own small contributions.  Because of the way in which the various tools interact, more is required to actually run a fully integrated and working "Drasil System" than just the applications and libraries found in this repository! (Redis, RabbitMQ, Cardano-Node, Dbsync, Oura, Postgres)
 
 Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. 
-You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
 
 * [API Documentation Local Cluster](https://documenter.getpostman.com/view/23201834/2s9YXpUHwG)
 * [License](https://github.com/Sbcdn/drasil/blob/tk22/LICENSE.md)
@@ -15,6 +14,8 @@ You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
 The web interface for the administration via frigg's REST Api is in development. 
 
 If you have questions or need support, please [contact us](mailto:info@drasil.io) us. 
+
+You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
 
 ## Supported Applications 
 - NFT Collection Minter
@@ -37,8 +38,8 @@ It using a local Kubernetes setup utilizing k3d and docker. The deployment confi
 The connection string to dbsync must be amended in  'local/configmaps/drasil_configmap.yaml' before starting a local cluster or via envrionment variable 'DBSYNC_DB_URL' on the container in kubernetes. 
 The local setup will NOT spin up a cardano node and dbsync, this has to be done seperatly or connect to an existing one. 
 
-### Oura
-Oura must be configured to fill a redis stream for transactions. You can find a detailed description how to setup redis streams with oura [here](https://github.com/txpipe/oura)
+#### Oura
+Oura must be configured to fill a redis stream for transactions. You can find a detailed description how to setup redis streams with oura [here](https://github.com/txpipe/oura). In the local cluster this is already handled for you.
 
 ## Quick Overview about the libraries and services
 - libraries
