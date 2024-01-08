@@ -1,13 +1,13 @@
 use crate::datamodel::MultiSigType;
-use crate::{Parse, TBContracts};
 use crate::{Connection, Frame, IntoFrame};
+use crate::{Parse, TBContracts};
 
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
 use drasil_gungnir::minting::models::{MintProject, MintReward, Nft};
-use drasil_murin::{cardano, MurinError};
 use drasil_murin::minter::models::{CMintHandle, ColMinterTxData};
+use drasil_murin::{cardano, MurinError};
 use std::str::FromStr;
 
 #[derive(Debug, Clone)]
@@ -71,15 +71,23 @@ impl FinalizeMultiSig {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<FinalizeMultiSig> {
-        let customer_id = parse.next_int().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let customer_id = parse
+            .next_int()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
-        let mtype = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let mtype = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let mtype: MultiSigType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&mtype)?;
 
-        let tx_id = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
-        let signature = parse.next_string().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let tx_id = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let signature = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         Ok(FinalizeMultiSig {
             customer_id,
@@ -90,7 +98,7 @@ impl FinalizeMultiSig {
     }
 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        let mut response = Frame::Simple("Error: something went wrong".to_string());
+        let response: Frame;
         let raw_tx = drasil_murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;
 
         let mut ret = String::new();
@@ -106,7 +114,8 @@ impl FinalizeMultiSig {
                 let tx_data = drasil_murin::TxData::from_str(raw_tx.get_txrawdata())?;
                 let rwd_data = drasil_murin::RWDTxData::from_str(raw_tx.get_tx_specific_rawdata())?;
 
-                let mut gcon = drasil_gungnir::establish_connection().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                let mut gcon = drasil_gungnir::establish_connection()
+                    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
                 for handle in rwd_data.get_rewards() {
                     let fingerprint = cardano::make_fingerprint(
@@ -130,7 +139,8 @@ impl FinalizeMultiSig {
                         &ret.clone(),
                         None,
                         None,
-                    ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                    )
+                    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
                     drasil_gungnir::Rewards::update_claimed(
                         &mut gcon,
                         &tx_data.get_stake_address().to_bech32(None).unwrap(),
@@ -138,7 +148,8 @@ impl FinalizeMultiSig {
                         &handle.get_contract_id(),
                         &raw_tx.get_user_id()?,
                         &drasil_murin::clib::utils::from_bignum(&handle.get_amount()?),
-                    ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                    )
+                    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
                 }
             }
             MultiSigType::NftCollectionMinter => {
@@ -153,13 +164,17 @@ impl FinalizeMultiSig {
 
                 let mut handles = Vec::<(CMintHandle, MintReward, MintProject, TBContracts)>::new();
                 for m in &mint_data.mint_handles {
-                    let mrwd = MintReward::get_mintreward_by_id(m.id).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
-                    let p = MintProject::get_mintproject_by_id(m.project_id).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                    let mrwd = MintReward::get_mintreward_by_id(m.id)
+                        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                    let p = MintProject::get_mintproject_by_id(m.project_id)
+                        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
                     log::debug!("Mintproject found....");
-                    let c = TBContracts::get_contract_uid_cid(p.user_id, p.mint_contract_id).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                    let c = TBContracts::get_contract_uid_cid(p.user_id, p.mint_contract_id)
+                        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
                     log::debug!("Mintcontract found....");
                     for a in mrwd.nft_ids.clone() {
-                        let nft = Nft::get_nft_by_assetnameb(p.id, &p.nft_table_name, &a).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                        let nft = Nft::get_nft_by_assetnameb(p.id, &p.nft_table_name, &a)
+                            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
                         if nft.minted || mrwd.processed || mrwd.minted {
                             return Err(format!("ERROR mint already processed, {nft:?}").into());
                         }
@@ -171,7 +186,8 @@ impl FinalizeMultiSig {
 
                 //Todo: processed must happen before finalize rwd
                 for h in &handles {
-                    MintReward::process_mintreward(h.1.id, h.1.project_id, &h.1.pay_addr).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                    MintReward::process_mintreward(h.1.id, h.1.project_id, &h.1.pay_addr)
+                        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
                     for a in h.1.nft_ids.clone() {
                         let fingerprint = cardano::make_fingerprint(
                             h.3.policy_id.as_ref().unwrap(),
@@ -180,7 +196,8 @@ impl FinalizeMultiSig {
                         .unwrap();
                         log::debug!("Fingerprint: {:?}", fingerprint);
                         Nft::set_nft_minted(&h.2.id, &h.2.nft_table_name, &fingerprint, &ret)
-                            .await.map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                            .await
+                            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
                     }
                 }
             }
@@ -188,7 +205,10 @@ impl FinalizeMultiSig {
             MultiSigType::UTxOpti => {
                 if let Err(e) = crate::Utxopti::from_str(raw_tx.get_tx_specific_rawdata()) {
                     return Err(format!(
-                            "ERROR Invalid Transaction Data, this is not UTxOpti transaction, {:?}", e.to_string()).into());
+                        "ERROR Invalid Transaction Data, this is not UTxOpti transaction, {:?}",
+                        e.to_string()
+                    )
+                    .into());
                 };
                 ret = self.finalize_utxopti(raw_tx.clone()).await?;
             }
@@ -197,14 +217,20 @@ impl FinalizeMultiSig {
                 if let Err(e) =
                     drasil_murin::minter::MinterTxData::from_str(raw_tx.get_tx_specific_rawdata())
                 {
-                    return Err(format!("ERROR Invalid Transaction Data, this is not mint transaction, {:?}", e.to_string()).into());
+                    return Err(format!(
+                        "ERROR Invalid Transaction Data, this is not mint transaction, {:?}",
+                        e.to_string()
+                    )
+                    .into());
                 };
                 ret = self.finalize_mint(raw_tx.clone()).await?;
             }
 
             _ => {
-                log::debug!("{:?}", response);
-                dst.write_frame(&response).await?;
+                dst.write_frame(&Frame::Error(
+                    "Not a  valid multisig transaction type".to_string(),
+                ))
+                .await?;
                 return Ok(());
             }
         }
@@ -213,10 +239,6 @@ impl FinalizeMultiSig {
             &ret,
             &drasil_murin::TransactionUnspentOutputs::from_hex(&used_utxos)?,
         )?;
-
-        // ToDO:
-        // store tx into permanent storage (drasildb)
-        // delete build_tx from redis
 
         response = Frame::Bulk(Bytes::from(
             bc::DefaultOptions::new()
@@ -237,13 +259,15 @@ impl FinalizeMultiSig {
         for cid in tx_data.get_contract_id().as_ref().unwrap() {
             log::debug!("Contract Ids:{:?}", tx_data.get_contract_id());
             let contract =
-                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)
+                    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
             let keyloc = TBMultiSigLoc::get_multisig_keyloc(
                 cid,
                 &(self.customer_id as i64),
                 &contract.version,
-            ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+            )
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
             let ident = crate::encryption::mident(
                 &contract.user_id,
@@ -269,13 +293,15 @@ impl FinalizeMultiSig {
 
         for cid in tx_data.get_contract_id().as_ref().unwrap() {
             let contract =
-                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)
+                    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
             let keyloc = TBMultiSigLoc::get_multisig_keyloc(
                 cid,
                 &(self.customer_id as i64),
                 &contract.version,
-            ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+            )
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
             let ident = crate::encryption::mident(
                 &contract.user_id,
@@ -300,13 +326,15 @@ impl FinalizeMultiSig {
 
         for cid in &contract_ids {
             let contract =
-                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                crate::drasildb::TBContracts::get_contract_uid_cid(self.customer_id as i64, *cid)
+                    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
             let keyloc = TBMultiSigLoc::get_multisig_keyloc(
                 cid,
                 &(self.customer_id as i64),
                 &contract.version,
-            ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+            )
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
             let ident = crate::encryption::mident(
                 &contract.user_id,

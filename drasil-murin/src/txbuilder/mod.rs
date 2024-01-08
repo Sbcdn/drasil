@@ -4,10 +4,14 @@ pub mod minter;
 pub mod modules;
 pub mod rwdist;
 pub mod stdtx;
-pub mod worldmobile;
 pub use marketplace::*;
 pub use rwdist::*;
 
+use crate::cardano::{models, supporting_functions, BuildOutput};
+use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
+use crate::error::MurinError;
+use crate::pparams::ProtocolParameters;
+use crate::wallet;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use clib::address::Address;
@@ -15,12 +19,8 @@ use clib::utils::{to_bignum, BigNum};
 use clib::{NetworkIdKind, TransactionOutput};
 use serde::{Deserialize, Serialize};
 use std::ops::{Div, Rem, Sub};
-use crate::cardano::{models, supporting_functions, BuildOutput};
-use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
-use crate::error::MurinError;
-use crate::wallet;
 
-/// TxBO = TransactionBuiltOutput; is the tuble emitted by the specific perform transaction building  function. 
+/// TxBO = TransactionBuiltOutput; is the tuble emitted by the specific perform transaction building  function.
 /// It contains the transaction body, the  transaction witness set, Metadata, used UTxO set and the number of expected signing keys.
 type TxBO = (
     clib::TransactionBody,
@@ -28,6 +28,7 @@ type TxBO = (
     Option<clib::metadata::AuxiliaryData>,
     TransactionUnspentOutputs,
     usize,
+    bool, // is smart contract transaction
 );
 
 /// The PerfromTxb (Perfrom Transaction Building) is the trait that is used to perform the specific transactions building function.
@@ -63,19 +64,25 @@ impl TxBuilder {
         &self,
         app_type: &A,
     ) -> Result<BuildOutput, MurinError> {
-        let ppp = crate::pparams::ProtocolParameters::read_protocol_parameter(&std::env::var("CARDANO_PROTOCOL_PARAMETER_PATH")?)?;
+        let protocol_parameters = ProtocolParameters::read_protocol_parameter(
+            &std::env::var("CARDANO_PROTOCOL_PARAMETER_PATH")
+                .unwrap_or_else(|_| "/odin/protocol_parameters_babbage.json".to_owned()),
+        )
+        .unwrap();
         // We define a standard budget which will fit most of the caseses.
         // We should use AIKEN here to calculate the needed budget for the particular transaction after the dummy build step and feed the calculated values into
         // the second transaction building step.
-        let mem = cutils::to_bignum(7000000u64);
-        let steps = cutils::to_bignum(2500000000u64);
+
+        let mem = cutils::to_bignum(protocol_parameters.max_tx_execution_units.memory as u64 - 2);
+        let steps = cutils::to_bignum(protocol_parameters.max_tx_execution_units.steps as u64 - 2);
 
         let ex_unit_price = models::ExUnitPrice {
-            priceSteps: ppp.execution_unit_prices.priceSteps,
-            priceMemory: ppp.execution_unit_prices.priceMemory,
+            priceSteps: protocol_parameters.execution_unit_prices.priceSteps,
+            priceMemory: protocol_parameters.execution_unit_prices.priceMemory,
         };
-        let a = cutils::to_bignum(ppp.tx_fee_per_byte);
-        let b = cutils::to_bignum(ppp.tx_fee_fixed);
+
+        let a = cutils::to_bignum(protocol_parameters.tx_fee_per_byte);
+        let b = cutils::to_bignum(protocol_parameters.tx_fee_fixed);
 
         //Create first Transaction for fee calculation with a fixed fee of 2 Ada
         let mut tx_ =
@@ -98,7 +105,7 @@ impl TxBuilder {
         );
         // Perform another transaction building with the calculated fee
         let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
-        
+
         // Assemble the second transaction
         let transaction2 = clib::Transaction::new(&tx.0, &tx_.1, tx.2.clone());
 
@@ -146,7 +153,7 @@ pub type MintTokenAsset = (Option<clib::PolicyID>, clib::AssetName, cutils::BigN
 
 /// TxData is the struct that contains all the information, which all transaction have in common, needed to build a transaction.
 /// Each transaction also needs transaction specific data, which are defined in the specific transactions building files.
-/// Do not ammend this struct if you want to pass data to the specific transaction building function, it can break functionallity for other functions. 
+/// Do not ammend this struct if you want to pass data to the specific transaction building function, it can break functionallity for other functions.
 /// Add it to the transaction specific type instead.
 #[derive(Debug, Clone)]
 pub struct TxData {
@@ -486,7 +493,7 @@ pub struct CBORTransaction {
     cbor_hex: String,
 }
 
-/// Defines a Customer Payout type 
+/// Defines a Customer Payout type
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CPO {
     po_id: i64,
@@ -568,19 +575,18 @@ pub fn find_token_utxos_na(
     Ok(out)
 }
 
-
 /// The input selection function is used to select the needed input UTxOs for a transaction.
 /// It offers the following options:
 /// 'token_utxos' - Can be used to directly add some UTxOs to the InputSet, for example helpful if a UTxO is known ahead of time
-///   and we want to include it manually. 
-/// 
-/// 'collateral' - Can be used to exclude UTxOs which are used as collateral UTxOs from the input set. 
-///   Useful for example if we want to avoid spending the Collateral-UTxOs of users defined in a wallet even though they would fit your selection criteria. 
-/// 
-/// 'on_addr' - If we pass in UTxOs which belong to several addresses or even wallets we can limit the selection to a specific address. 
-/// 
-/// 'needed_value' - Specifies the Cardano-Value to be looked up, the function will select UTxOs until it can cover the 'needed_value'. 
-/// 'txins' - The UTxO set we select UTxOs from. 
+///   and we want to include it manually.
+///
+/// 'collateral' - Can be used to exclude UTxOs which are used as collateral UTxOs from the input set.
+///   Useful for example if we want to avoid spending the Collateral-UTxOs of users defined in a wallet even though they would fit your selection criteria.
+///
+/// 'on_addr' - If we pass in UTxOs which belong to several addresses or even wallets we can limit the selection to a specific address.
+///
+/// 'needed_value' - Specifies the Cardano-Value to be looked up, the function will select UTxOs until it can cover the 'needed_value'.
+/// 'txins' - The UTxO set we select UTxOs from.
 pub fn input_selection(
     token_utxos: Option<&TransactionUnspentOutputs>,
     needed_value: &mut cutils::Value,
@@ -692,22 +698,22 @@ pub fn input_selection(
         }
     }
 
-    // We sort the UTxOs by ADA value. 
+    // We sort the UTxOs by ADA value.
     multiassets.sort_by_coin();
     purecoinassets.sort_by_coin();
 
     debug!("\nMULTIASSET_UTxOs: {:?}\n\n", multiassets);
     debug!("\n\nPURECOIN_UTxOs: {:?}\n\n", purecoinassets);
     // This is the maximum number of UTxOs we have, if we looped over all of them without finding enough UTxOs we cannot cover the needed value.
-    // We use it as hard cap to abort the loop. 
+    // We use it as hard cap to abort the loop.
     let utxo_count = multiassets.len() + purecoinassets.len();
     let mut max_run = 0;
     while nv.coin().compare(&acc.coin()) > 0 && max_run < utxo_count {
         nv = nv.checked_sub(&acc).unwrap();
 
         if purecoinassets.is_empty() {
-            // If there are not UTxOs containing only Ada we will start looking for UTxOs which contain tokens. 
-            // We prefer Ada only UTxOs over UTxOs which contain tokens due to transaction fees. 
+            // If there are not UTxOs containing only Ada we will start looking for UTxOs which contain tokens.
+            // We prefer Ada only UTxOs over UTxOs which contain tokens due to transaction fees.
             let ret = crate::cardano::supporting_functions::find_suitable_coins(
                 &mut nv,
                 &mut multiassets,
@@ -756,7 +762,6 @@ pub fn input_selection(
     debug!("\n\nSelection: {:?}\n\n", selection);
     Ok((txins, selection))
 }
-
 
 /// Helper function for selecting coins
 /// Recursive caluclation of the minutxo ADA value until enough Ada is available
@@ -947,7 +952,6 @@ pub fn calc_min_ada_for_utxo(
     value: &cutils::Value,
     dh: Option<ccrypto::DataHash>,
 ) -> cutils::BigNum {
-
     let dhsize: u64 = match dh {
         Some(_) => 10u64, //(datumhash.to_bytes().len())  as u64
         None => 0u64,
@@ -1029,7 +1033,6 @@ pub fn min_ada_for_utxo(output_: &TransactionOutput) -> Result<TransactionOutput
     min_ada_for_utxo(&output)
 }
 
-
 /// Used for the Leagcy minUtxOValue calculation in CSL, original CSL function was very unprecise why we reimplemented the function.
 pub fn bundle_size(value: &cutils::Value, osc: &models::OutputSizeConstants) -> usize {
     match &value.multiasset() {
@@ -1085,7 +1088,7 @@ pub async fn create_and_submit_cbor_tx(tx: String, tx_hash: String) -> Result<St
     Ok(node_tx_hash)
 }
 
-/// Submit a Cardano transaction to a specific submit-api-endpoint. 
+/// Submit a Cardano transaction to a specific submit-api-endpoint.
 pub async fn submit_endpoint(
     tx: &[u8],
     endpoint: String,
@@ -1136,9 +1139,8 @@ pub async fn submit_endpoint(
     }
 }
 
-
 /// Submits a CBOR Transaction to the Cardano Network, it is possible to send the transaction to three endpoints simultaneously.
-/// TODO: Make it generic for an arbitrary amount of submit endpoints. 
+/// TODO: Make it generic for an arbitrary amount of submit endpoints.
 pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<String, MurinError> {
     let submit1 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT1")?;
     let submit2 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT2")?;
@@ -1184,7 +1186,7 @@ pub fn harden(num: u32) -> u32 {
     0x80000000 + num
 }
 
-/// Determines the index of a given transaction input (txhash#index) in a UTxO set to find the corrosponding full UTxO. 
+/// Determines the index of a given transaction input (txhash#index) in a UTxO set to find the corrosponding full UTxO.
 pub fn get_input_position(
     inputs: clib::TransactionInputs,
     elem: TransactionUnspentOutput,
@@ -1220,7 +1222,7 @@ pub fn get_input_position(
     (index, my_index)
 }
 
-/// Splits a value into its non-Ada Tokens and creates a Cardano-Value for each token with the needed minUTxO value. 
+/// Splits a value into its non-Ada Tokens and creates a Cardano-Value for each token with the needed minUTxO value.
 pub fn split_value(
     value: cutils::Value,
 ) -> Result<(Vec<cutils::Value>, Option<cutils::BigNum>), MurinError> {
@@ -1281,10 +1283,9 @@ pub fn minimize_coins_on_values(
     Ok(out)
 }
 
-
-/// A type to specify fees for a application. 
-/// Those fees are added to the transactions on behalf of the operator. 
-/// It is possible to realize for example API fees with this type. 
+/// A type to specify fees for a application.
+/// Those fees are added to the transactions on behalf of the operator.
+/// It is possible to realize for example API fees with this type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceFees {
     pub fee: BigNum,

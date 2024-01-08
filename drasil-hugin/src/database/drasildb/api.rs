@@ -325,7 +325,9 @@ impl TBDrasilUser {
         let user = TBDrasilUser::get_user_by_mail(email);
         info!("user: {:?}", user);
         let user = user?;
-        Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd).unwrap()).unwrap();
+        Argon2::default()
+            .verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd).unwrap())
+            .unwrap();
         Ok(user)
     }
 
@@ -335,9 +337,7 @@ impl TBDrasilUser {
             Argon2,
         };
         let user = TBDrasilUser::get_user_by_user_id(user_id).unwrap();
-        let pw = Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?);
-        info!("pw: {:?}", pw);
-        let pw = pw?;
+        Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
         Ok(user)
     }
 
@@ -454,11 +454,11 @@ impl TBDrasilUser {
     pub async fn approve(&self, pw: &String, msg: &str) -> Result<String, SystemDBError> {
         let pk_s = if let Some(pk_t) = self.drslpubkey.as_ref() {
             pk_t
-        }else{
+        } else {
             return Err(SystemDBError::Custom("No public key defined".to_string()));
         };
         let pk = PublicKey::from_bech32(&pk_s)?;
-        
+
         let pkh = hex::encode(PublicKey::from_bech32(&pk_s)?.hash().to_bytes());
         let privkey = vault_get(&pkh).await;
         let privkey = PrivateKey::from_bech32(&decrypt(privkey.get("prvkey").unwrap(), pw)?)?;
@@ -472,7 +472,7 @@ impl TBDrasilUser {
     pub fn verify_approval(&self, msg: &str, sign: &str) -> Result<bool, SystemDBError> {
         let pk_s = if let Some(pk_t) = self.drslpubkey.as_ref() {
             pk_t
-        }else{
+        } else {
             return Err(SystemDBError::Custom("No public key defined".to_string()));
         };
         let pk = PublicKey::from_bech32(&pk_s)?;

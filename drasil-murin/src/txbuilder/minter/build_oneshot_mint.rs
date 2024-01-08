@@ -240,6 +240,7 @@ impl<'a> super::PerformTxb<AtOSMParams<'a>> for AtOSMBuilder {
             Some(aux_data),
             saved_input_txuos,
             vkey_counter,
+            false,
         ))
     }
 }

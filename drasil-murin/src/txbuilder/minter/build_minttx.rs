@@ -253,6 +253,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             Some(aux_data),
             saved_input_txuos,
             vkey_counter,
+            false,
         ))
     }
 }

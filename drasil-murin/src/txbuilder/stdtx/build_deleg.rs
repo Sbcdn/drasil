@@ -157,13 +157,22 @@ impl<'a> PerformTxb<AtDelegParams<'a>> for AtDelegBuilder {
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
         debug!("--------------------Iteration Ended------------------------------");
         debug!("Vkey Counter at End: {:?}", vkey_counter);
-        Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+        Ok((
+            txbody,
+            txwitness,
+            aux_data,
+            saved_input_txuos,
+            vkey_counter,
+            false,
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use cardano_serialization_lib::crypto::Ed25519KeyHash;
+    use clib::address::StakeCredential;
+    use clib::utils::BigNum;
     use clib::Certificate;
     use clib::Certificates;
     use clib::StakeDelegation;
@@ -172,8 +181,6 @@ mod tests {
     use clib::TransactionInputs;
     use clib::TransactionOutputs;
     use clib::TransactionWitnessSet;
-    use clib::address::StakeCredential;
-    use clib::utils::BigNum;
     use std::env::set_var;
 
     use crate::PerformTxb;
@@ -192,76 +199,65 @@ mod tests {
         let at_deleg_builder = super::AtDelegBuilder::new(&at_deleg_params);
 
         assert_eq!(at_deleg_builder.stxd.poolhash, poolhash);
-        assert_eq!(at_deleg_builder.stxd.poolkeyhash, Ed25519KeyHash::from_bech32(poolhash).unwrap());
+        assert_eq!(
+            at_deleg_builder.stxd.poolkeyhash,
+            Ed25519KeyHash::from_bech32(poolhash).unwrap()
+        );
         assert!(at_deleg_builder.stxd.registered.is_none());
 
         // perform_txb
-        let perform_txb = at_deleg_builder.perform_txb(
-            &clib::utils::BigNum::from_str("1").unwrap(), 
-            &TxData::new(
-                None, 
-                vec![
-                    super::caddr::Address::from_bech32(base_address).unwrap()
-                ], 
-                None, 
-                crate::TransactionUnspentOutputs::new(), 
-                clib::NetworkIdKind::Testnet, 
-                10
-            ).unwrap(), 
-            &["".to_string()], 
-            true
-        ).unwrap();
+        let perform_txb = at_deleg_builder
+            .perform_txb(
+                &clib::utils::BigNum::from_str("1").unwrap(),
+                &TxData::new(
+                    None,
+                    vec![super::caddr::Address::from_bech32(base_address).unwrap()],
+                    None,
+                    crate::TransactionUnspentOutputs::new(),
+                    clib::NetworkIdKind::Testnet,
+                    10,
+                )
+                .unwrap(),
+                &["".to_string()],
+                true,
+            )
+            .unwrap();
 
         // check that the perform_txb output can be used for creating transaction
-        let tx: Transaction = Transaction::new(
-            &perform_txb.0, 
-            &perform_txb.1, 
-            perform_txb.2
-        );
+        let tx: Transaction = Transaction::new(&perform_txb.0, &perform_txb.1, perform_txb.2);
 
         // take function output as it is, check that it isn't unintentionally changed by future PR:s (doesn't check against real data)
-        assert_eq!(
-            tx.body().inputs(), 
-            TransactionInputs::new()
-        );
-        assert_eq!(
-            tx.body().outputs(), 
-            TransactionOutputs::new()
-        );
+        assert_eq!(tx.body().inputs(), TransactionInputs::new());
+        assert_eq!(tx.body().outputs(), TransactionOutputs::new());
         assert_eq!(
             tx.body().fee(),
             BigNum::from_str("1").unwrap() // This value doesn't make sense to me (I think 2000000 lovelace makes more sense). Maybe something's wrong with perform_txb(), but this investigation is for a future task
         );
         assert_eq!(
-            tx.body().ttl_bignum().unwrap(), 
+            tx.body().ttl_bignum().unwrap(),
             BigNum::from_str("1810").unwrap()
         );
         let mut certs = Certificates::new();
         certs.add(&Certificate::new_stake_registration(
-            &StakeRegistration::new(
-                &StakeCredential::from_keyhash(
-                    &Ed25519KeyHash::from_bytes(
-                        vec![38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141, 101, 83, 13, 66, 2, 3, 168, 86, 11, 113]
-                    ).unwrap()
-                )
-            )
+            &StakeRegistration::new(&StakeCredential::from_keyhash(
+                &Ed25519KeyHash::from_bytes(vec![
+                    38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141,
+                    101, 83, 13, 66, 2, 3, 168, 86, 11, 113,
+                ])
+                .unwrap(),
+            )),
         ));
-        certs.add(&Certificate::new_stake_delegation(
-            &StakeDelegation::new(
-                &StakeCredential::from_keyhash(
-                    &Ed25519KeyHash::from_bytes(
-                        vec![38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141, 101, 83, 13, 66, 2, 3, 168, 86, 11, 113]
-                    ).unwrap()
-                ),
-                &Ed25519KeyHash::from_bech32(poolhash).unwrap()
-            )
-        ));
-        assert_eq!(
-            tx.body().certs(), 
-            Some(
-                certs
-            )
-        );
+        certs.add(&Certificate::new_stake_delegation(&StakeDelegation::new(
+            &StakeCredential::from_keyhash(
+                &Ed25519KeyHash::from_bytes(vec![
+                    38, 151, 115, 70, 248, 194, 90, 18, 246, 16, 30, 10, 6, 56, 90, 186, 209, 141,
+                    101, 83, 13, 66, 2, 3, 168, 86, 11, 113,
+                ])
+                .unwrap(),
+            ),
+            &Ed25519KeyHash::from_bech32(poolhash).unwrap(),
+        )));
+        assert_eq!(tx.body().certs(), Some(certs));
         assert!(tx.body().withdrawals().is_none());
         assert!(tx.body().update().is_none());
         assert!(tx.body().auxiliary_data_hash().is_none());
@@ -274,10 +270,7 @@ mod tests {
         assert!(tx.body().collateral_return().is_none());
         assert!(tx.body().total_collateral().is_none());
         assert!(tx.body().reference_inputs().is_none());
-        assert_eq!(
-            tx.witness_set(), 
-            TransactionWitnessSet::new()
-        );
+        assert_eq!(tx.witness_set(), TransactionWitnessSet::new());
         assert!(tx.is_valid());
         assert!(tx.auxiliary_data().is_none());
     }

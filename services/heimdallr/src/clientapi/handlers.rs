@@ -36,11 +36,7 @@ pub async fn contract_exec_build(
         warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
 
     match contract {
-        ContractType::MarketPlace => {
-            if MarketplaceActions::from_str(&action).is_err() {
-                return Ok(badreq);
-            }
-        }
+        ContractType::MarketPlace => {}
         ContractType::WmEnRegistration => {}
         ContractType::WmtStaking => {}
         _ => {

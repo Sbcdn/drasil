@@ -10,12 +10,9 @@ use drasil_murin::cardano;
 use drasil_murin::stdtx::{AssetTransfer, StdAssetHandle};
 use drasil_murin::utils::to_bignum;
 use drasil_murin::wallet;
-use drasil_murin::worldmobile::enreg::RegistrationRedeemer;
 use drasil_murin::{AssetName, PolicyID, TxData};
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIs, EnumString, EnumVariantNames};
-
-use crate::protocol::worldmobile::staking::StakingAction;
 
 #[derive(
     Serialize, Deserialize, Debug, Clone, Eq, PartialEq, EnumVariantNames, Display, EnumString,
@@ -87,8 +84,6 @@ impl Signature {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum ContractAction {
     MarketplaceActions(MarketplaceActions),
-    StakingAction(StakingAction),
-    WmRegistration(RegistrationRedeemer),
 }
 
 impl ContractAction {}
@@ -101,12 +96,6 @@ impl FromStr for ContractAction {
             "buy" => ContractAction::MarketplaceActions(MarketplaceActions::Buy),
             "cancel" => ContractAction::MarketplaceActions(MarketplaceActions::Cancel),
             "update" => ContractAction::MarketplaceActions(MarketplaceActions::Update),
-            "stake" => ContractAction::StakingAction(StakingAction::Stake),
-            "unstake" => ContractAction::StakingAction(StakingAction::UnStake),
-            "register" => ContractAction::WmRegistration(RegistrationRedeemer::Register),
-            "unregister" => ContractAction::WmRegistration(RegistrationRedeemer::Unregister),
-            "Register" => ContractAction::WmRegistration(RegistrationRedeemer::Register),
-            "Unregister" => ContractAction::WmRegistration(RegistrationRedeemer::Unregister),
             _ => {
                 return Err(Error::new(
                     std::io::ErrorKind::InvalidData,
@@ -122,8 +111,6 @@ impl ToString for ContractAction {
     fn to_string(&self) -> String {
         match &self {
             ContractAction::MarketplaceActions(action) => action.to_string().to_lowercase(),
-            ContractAction::StakingAction(action) => action.to_string().to_lowercase(),
-            ContractAction::WmRegistration(action) => action.to_string().to_lowercase(),
         }
     }
 }
@@ -373,18 +360,7 @@ impl TransactionPattern {
 
         let saddr = match self.stake_addr() {
             Some(sa) => wallet::address_from_string(&sa).await.ok(),
-            None => match &op {
-                Operation::WmtStaking {
-                    ennft: _,
-                    amount: _,
-                } => todo!(),
-                Operation::WmEnRegistration {
-                    datum: _,
-                    wallet_addresses: _,
-                    stake_address,
-                } => wallet::address_from_string(&stake_address).await.ok(),
-                _ => None,
-            },
+            None => None,
         };
         debug!("saddr: {:?}", saddr);
 
@@ -407,15 +383,6 @@ impl TransactionPattern {
                         ));
                     }
                 }
-                Operation::WmtStaking {
-                    ennft: _,
-                    amount: _,
-                } => todo!(),
-                Operation::WmEnRegistration {
-                    datum: _,
-                    wallet_addresses,
-                    stake_address: _,
-                } => wallet_addresses.clone(),
                 _ => {
                     return Err(drasil_murin::MurinError::Custom(
                         "no addresses provided".to_string(),
@@ -466,14 +433,13 @@ pub enum Operation {
     NftVendor {},
     Marketplace {
         tokens: Vec<Token>,
-        metadata: Vec<String>,
         royalties_addr: Option<String>,
         royalties_rate: Option<f32>,
         selling_price: u64,
+        wallet_addresses: Option<Vec<String>>,
     },
     NftShop {
         tokens: Vec<Token>,
-        metadata: Vec<String>,
         selling_price: u64,
     },
     Minter {
@@ -521,17 +487,6 @@ pub enum Operation {
         metadata: drasil_murin::minter::Cip25Metadata,
         receiver: String,
     },
-    WmtStaking {
-        /// The EN to stake to.
-        ennft: String,
-        /// The staking amount.
-        amount: u64,
-    },
-    WmEnRegistration {
-        datum: drasil_murin::worldmobile::enreg::RegistrationDatum,
-        wallet_addresses: Vec<String>,
-        stake_address: String,
-    },
 }
 
 impl Operation {
@@ -546,12 +501,16 @@ impl Operation {
         match self {
             Operation::Marketplace {
                 tokens,
-                metadata,
                 royalties_addr,
                 royalties_rate,
                 selling_price,
+                ..
             } => {
-                let assets = Token::for_all_into_asset(tokens)?;
+                let assets: Vec<(
+                    drasil_murin::crypto::ScriptHash,
+                    AssetName,
+                    drasil_murin::utils::BigNum,
+                )> = Token::for_all_into_asset(tokens)?;
                 let token_utxos = drasil_murin::txbuilder::find_token_utxos_na(
                     &avail_inputs,
                     assets.clone(),
@@ -566,10 +525,6 @@ impl Operation {
 
                 if let Some(royrate) = royalties_rate {
                     mptx.set_royalties_rate(*royrate);
-                }
-
-                if !metadata.is_empty() {
-                    mptx.set_metadata(metadata.clone());
                 }
 
                 Ok(mptx)
@@ -847,23 +802,6 @@ impl Operation {
 
             _ => Err(MurinError::new(
                 "provided wrong specfic parameter for this transaction",
-            )),
-        }
-    }
-
-    pub async fn into_wmt_staking(
-        &self,
-    ) -> Result<drasil_murin::worldmobile::wmtstaking::StakeTxData, drasil_murin::error::MurinError>
-    {
-        use drasil_murin::error::MurinError;
-        use drasil_murin::worldmobile::wmtstaking::StakeTxData;
-
-        match self {
-            Operation::WmtStaking { amount, ennft } => {
-                Ok(StakeTxData::new(*amount, ennft.to_owned()))
-            }
-            _ => Err(MurinError::new(
-                "provided wrong specfic parameter for wmt staking transaction",
             )),
         }
     }

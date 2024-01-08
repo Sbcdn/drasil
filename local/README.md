@@ -47,7 +47,7 @@ It will install everything from scratch, start a cluster, build and load all dep
 
 This command will delete a current cluster if existing and setup a new one from scratch, it will not install and also not build the images.  
 Note that it can take a moment until all pods are operational and they might crash until the cluster is fully ready (usually ~1 min).
-You will release this on the "geri" service which expects a certain key exists in the redis database, oura will create those keys automatically but it might take a moment. As soon the keys are existing "geri" is expected to run smoothly.
+You will realise this on the "geri" service which expects the "transactions" stream to exist which needs to be provided by Oura in the redis database, it might take a minute.
 
 ## Build new Docker Images
 
@@ -55,13 +55,13 @@ You will release this on the "geri" service which expects a certain key exists i
 
 Will trigger the rebuild of the docker images. Drasil uses a two step build process. If you made changes to the codebase you will need to run the "drasil-builder" first, which will build all libraries and binaries. The 'build-all-loc' all will just assemble the service images and tag them.
 
-`make build-drasil` will do both sequentially. 
+`make build-drasil` will do the whole sequence for you. 
 
 ## Push Images to Registry
 
 `make push-all-local`
 
-Push all the service images to the local registry.
+Push the latest build service images to the local registry.
 
 ## Deploy Deployments to Cluster
 
@@ -79,23 +79,26 @@ Deletes the local cluster
 ## After starting the cluster
 
 - Take a look at the kubernetes dashboard, the url and login token are written to the terminal at the end of `make start-local-cluster` (deletes existing clusters)
-- Make sure you create an API token for your `dadmin` user via the REST API and use it for requests to the TxBuilder or Information Endpoints
-- To use the admin API you need to login and use the returned bearer token in requests, it expires after 60 minutes.
+- Make sure you create an API token for your `dadmin` user via the REST API (frigg) and use it for authentication in requests to the TxBuilder's (heimdalr, loki,...) or Information Endpoints (vidar,..)
+- To use the admin API you need to login and use the returned bearer token in requests, it expires after 60 minutes. Find the API documentation [here] (https://documenter.getpostman.com/view/23201834/2s9YXpUHwG)
 - `make stop-local-cluster` stop cluster without deleting the local cluster
 - `make restart-local-cluster` restatrs an existing local cluster
 
 ### Default User
 User: `dadmin`
 E-Mail: `dadmin@drasil.io`
-Password: `***REMOVED***password`
+Password: `drasil123`
 
 ### Ports
-- Admin Rest API (frigg): localhost:30003
 - TxBuilding API (heimdallr): localhost:30000
-- Information API (vidar): localhost:30002
+- Information API (vidar): localhost:30001
+- Websocket for NFTs (loki): localhost:30002
+- Admin Rest API (frigg): localhost:30003
 
 API Docs: https://documenter.getpostman.com/view/23201834/2s9YXpUHwG
 
+Use the generated Bearer Token for authentication at heimdallr, vidar and loki.
+
 ### Remarks on performance
-The performance of request is mainly depending on the dbsync connection. As closer and faster the dbsync is as faster is drasil.
+The performance of request is mainly depending on the dbsync connection. As closer and faster the dbsync is, as faster is drasil.
 
