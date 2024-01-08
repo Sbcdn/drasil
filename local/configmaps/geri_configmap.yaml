@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drasil-geri-config
+data:
+  STREAM_TRIMMER: "true"
+  STREAMS: transaction
+  TIMEOUT: "20000"

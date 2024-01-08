@@ -26,9 +26,10 @@ tokio-amqp = "2.0.0"
 deadpool = "0.9.5"
 deadpool-lapin = { version = "0.10.0", features = ["serde"] }
 lazy_static = "1.4.0"
-csv = "1.1"
+csv = "1.1.6"
 hex = "0.4"
 rand = "0.8.5"
+bigdecimal = { version = "0.4.0", features = ["serde"] }
 drasil-hugin = { path = "../../drasil-hugin", version = "0.1.0" }
 drasil-gungnir = { path = "../../drasil-gungnir", version = "0.1.0" }
 drasil-murin = { path = "../../drasil-murin", version = "0.1.0" }

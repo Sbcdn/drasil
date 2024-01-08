@@ -1,10 +1,10 @@
+use drasil_murin::MurinError;
 use drasil_murin::{wallet, PerformTxb};
 use serde_json::json;
 
 use crate::datamodel::OneShotReturn;
 use crate::drasildb::TBContracts;
 use crate::BuildMultiSig;
-use crate::CmdError;
 
 pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     log::debug!("Entered Oneshot Minter...");
@@ -25,23 +25,14 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let mut dbsync = match drasil_mimir::establish_connection() {
         Ok(conn) => conn,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()),
-            }
-            .into());
+            return Err(format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()).into());
         }
     };
     log::debug!("Get Slot...");
     let slot = match drasil_mimir::get_slot(&mut dbsync) {
         Ok(s) => s,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!(
-                    "ERROR could not determine current slot: '{:?}'",
-                    e.to_string()
-                ),
-            }
-            .into());
+            return Err(format!("ERROR could not determine current slot: '{:?}'",e.to_string()).into());
         }
     };
     gtxd.set_current_slot(slot as u64);
@@ -52,13 +43,13 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let oneshotpolicy = drasil_murin::minter::create_onshot_policy(&oneshotwallet.3, slot as u64);
 
     log::debug!("Check contract...");
-    let contract = TBContracts::get_liquidity_wallet(&bms.customer_id())?;
+    let contract = TBContracts::get_liquidity_wallet(&bms.customer_id()).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     log::debug!("Try to determine additional data...");
     let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
         &contract.contract_id,
         &contract.user_id,
         &contract.version,
-    )?;
+    ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     let ident = crate::encryption::mident(
         &contract.user_id,
         &contract.contract_id,
@@ -74,7 +65,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
 
     log::debug!("Set utxos for input...");
-    gtxd.set_inputs(drasil_mimir::get_address_utxos(&contract.address)?);
+    gtxd.set_inputs(drasil_mimir::get_address_utxos(&contract.address).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?);
 
     log::debug!("Try to build transactions...");
     let txb_param: drasil_murin::txbuilder::minter::build_oneshot_mint::AtOSMParams = (
@@ -87,10 +78,7 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let bld_tx = match builder.build(&minter).await {
         Ok(o) => o,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR could not build transaction: '{:?}'", e.to_string()),
-            }
-            .into());
+            return Err(format!("ERROR could not build transaction: '{:?}'", e.to_string()).into());
         }
     };
 

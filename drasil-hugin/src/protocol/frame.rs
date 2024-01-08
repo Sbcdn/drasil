@@ -47,11 +47,8 @@ impl Frame {
     }
 
     pub fn check(src: &mut Cursor<&[u8]>) -> Result<(), Error> {
+        log::debug!("Checking frame, cursor: {:?}", src);
         match get_u8(src)? {
-            b'?' => {
-                let len: usize = get_decimal(src)?.try_into()?;
-                skip(src, len + 2)
-            }
             b'+' => {
                 get_line(src)?;
                 Ok(())
@@ -84,6 +81,7 @@ impl Frame {
     }
 
     pub fn parse(src: &mut Cursor<&[u8]>) -> Result<Frame, Error> {
+        log::debug!("parse frame, src: {:?}", src);
         match get_u8(src)? {
             b'+' => {
                 let line = get_line(src)?.to_vec();
@@ -171,41 +169,6 @@ impl fmt::Display for Frame {
             }
         }
     }
-}
-
-fn _parse_header(src: &mut Bytes) -> Result<(String, String, u64, String, String), Error> {
-    let mut buf = Cursor::new(src.clone());
-
-    let mut a = Vec::<String>::new();
-    let mut temp = Vec::<u8>::new();
-    for _ in 0..src.len() {
-        match buf.get_u8() {
-            b'/' => {
-                temp.reverse();
-                match std::str::from_utf8(&temp) {
-                    Ok(v) => a.push(v.to_string()),
-                    Err(_) => return Err(Error::InvalidHeader),
-                }
-                temp.clear();
-            }
-            b => {
-                temp.push(b);
-            }
-        }
-    }
-    a.reverse();
-    let version = match a[2].parse::<u64>() {
-        Ok(val) => val,
-        Err(_) => return Err(Error::InvalidHeader),
-    };
-
-    Ok((
-        a[0].clone(),
-        a[1].clone(),
-        version,
-        a[3].clone(),
-        a[4].clone(),
-    ))
 }
 
 fn peek_u8(src: &mut Cursor<&[u8]>) -> Result<u8, Error> {

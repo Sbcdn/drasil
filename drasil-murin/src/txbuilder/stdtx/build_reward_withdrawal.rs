@@ -1,7 +1,5 @@
 use crate::cardano::models::*;
-use crate::cardano::supporting_functions::{
-    balance_tx, get_ttl_tx, sum_output_values,
-};
+use crate::cardano::supporting_functions::{balance_tx, get_ttl_tx, sum_output_values};
 use crate::error::MurinError;
 use crate::txbuilder::{input_selection, stdtx::WithdrawalTxData, TxBO};
 use crate::PerformTxb;
@@ -10,7 +8,10 @@ use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, utils as cutils};
 use clib::address::RewardAddress;
 use clib::metadata::AuxiliaryData;
-use clib::{ TransactionOutputs, TransactionWitnessSet, Withdrawals, Certificates, Certificate, StakeRegistration};
+use clib::{
+    Certificate, Certificates, StakeRegistration, TransactionOutputs, TransactionWitnessSet,
+    Withdrawals,
+};
 
 // Withdrawal Builder Type
 #[derive(Debug, Clone)]
@@ -63,7 +64,7 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
 
         // Choose inputs for transaction body
         let (txins, mut input_txuos) =
-        input_selection(None, &mut needed_value, &input_txuos, None, None)?;
+            input_selection(None, &mut needed_value, &input_txuos, None, None)?;
         let saved_input_txuos = input_txuos.clone();
 
         // Chooose outputs for transaction body
@@ -89,26 +90,22 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
         let mut withdrawals = Withdrawals::new();
         withdrawals.insert(
             &RewardAddress::from_address(&gtxd.get_stake_address()).unwrap(),
-            &self.stxd.withdrawl.unwrap()
+            &self.stxd.withdrawl.unwrap(),
         );
         txbody.set_withdrawals(&withdrawals);
         txbody.set_ttl(&cutils::to_bignum(
-            gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network())
+            gtxd.clone().get_current_slot() + get_ttl_tx(&gtxd.clone().get_network()),
         ));
 
         // Stake address must be registered
         let mut certs = Certificates::new();
-        certs.add(
-            &Certificate::new_stake_registration(
-                &StakeRegistration::new(
-                    &caddr::RewardAddress::from_address(
-                        &gtxd.get_stake_address()
-                    )
+        certs.add(&Certificate::new_stake_registration(
+            &StakeRegistration::new(
+                &caddr::RewardAddress::from_address(&gtxd.get_stake_address())
                     .unwrap()
-                    .payment_cred()
-                )
-            )
-        );
+                    .payment_cred(),
+            ),
+        ));
 
         txbody.set_certs(&certs);
 
@@ -116,6 +113,13 @@ impl<'a> PerformTxb<AtAWParams<'a>> for AtAWBuilder {
         let aux_data = Some(AuxiliaryData::new());
         let vkey_counter = 0;
 
-        Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+        Ok((
+            txbody,
+            txwitness,
+            aux_data,
+            saved_input_txuos,
+            vkey_counter,
+            false,
+        ))
     }
 }

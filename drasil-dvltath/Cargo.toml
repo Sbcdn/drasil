@@ -3,10 +3,9 @@ name = "drasil-dvltath"
 version = "0.1.0"
 edition = "2021"
 description = "Hashicorp Vault Authorizer Sidecar for Drasil"
-repository = "https://github.com/Sbcdn/dvltath.git"
-homepage = "https://www.drasil.io"
+repository = "https://github.com/Sbcdn/drasil.git"
 documentation = "https://docs.drasil.io"
-license = "LICENSE.md"
+license = "LICENSE_GPL.md"
 readme = "README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
 

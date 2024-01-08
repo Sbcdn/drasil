@@ -12,7 +12,7 @@ pub enum TxToolsError {
     TooManyWalletsForAddress,
     #[error("No payment value set for source")]
     SourceNoPaymentValueSet,
-    #[error("Custom Error")]
+    #[error("Custom Error: {0}")]
     Custom(String),
     #[error(transparent)]
     ParseIntError(#[from] core::num::ParseIntError),

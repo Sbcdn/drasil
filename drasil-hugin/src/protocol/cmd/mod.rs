@@ -7,7 +7,6 @@ mod error;
 mod finalizecontract;
 mod finalizemultisig;
 mod finalizestdtx;
-mod hydra;
 mod unknown;
 mod verifydata;
 mod verifyuser;
@@ -17,13 +16,12 @@ pub mod buildtx;
 pub use buildtx::BuildStdTx;
 pub(crate) use discount::*;
 pub use error::CmdError;
-pub use hydra::HydraOps;
 pub use unknown::Unknown;
 pub use verifydata::VerifyData;
 pub use verifyuser::VerifyUser;
 
 use drasil_murin::address::BaseAddress;
-use drasil_murin::{cardano, wallet};
+use drasil_murin::{cardano, wallet, MurinError};
 
 use crate::error::SystemDBError;
 use crate::{Connection, Frame, Parse, Shutdown, TransactionPattern};
@@ -43,16 +41,17 @@ pub enum Command {
     FinalizeMultiSig(FinalizeMultiSig),
     FinalizeStdTx(FinalizeStdTx),
     VerifyUser(VerifyUser),
-    HydraOperation(HydraOps),
     VerifyData(VerifyData),
     Unknown(Unknown),
 }
 
 impl Command {
     pub fn from_frame(frame: Frame) -> crate::Result<Command> {
-        let mut parse = Parse::new(frame)?;
-        log::debug!("FromFrame: {:?}", &parse);
-        let command_name = parse.next_string()?.to_lowercase();
+        let mut parse =
+            Parse::new(frame).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let command_name = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         let command: Command = match &command_name[..] {
             //Build Contract
@@ -82,7 +81,9 @@ impl Command {
             _ => Command::Unknown(Unknown::new(command_name)),
         };
 
-        parse.finish()?;
+        parse
+            .finish()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         Ok(command)
     }
@@ -117,7 +118,6 @@ impl Command {
             Command::FinalizeMultiSig(_) => "fms",
             Command::FinalizeStdTx(_) => "ftx",
             Command::VerifyUser(_) => "vus",
-            Command::HydraOperation(_) => "hyd",
             Command::VerifyData(_) => "vd",
             Command::Unknown(_) => "unkw",
         }
@@ -137,17 +137,81 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
     if txp.collateral().is_some()
         && (hex::decode(txp.collateral().unwrap()).is_err() || txp.collateral().unwrap() == "")
     {
-        return Err(CmdError::Custom {
-            str: "ERROR no collateral provided".to_string(),
-        }
-        .into());
+        return Err("ERROR no collateral provided".into());
     }
 
     if txp.used_addresses().is_empty() {
-        return Err(CmdError::Custom {
-            str: "ERROR no wallet address provided".to_string(),
+        match txp.operation() {
+            Some(o) => match o {
+                crate::Operation::SpoRewardClaim {
+                    rewards: _,
+                    recipient_stake_addr: _,
+                    recipient_payment_addr: _,
+                } => todo!(),
+                crate::Operation::NftVendor {} => todo!(),
+                crate::Operation::Marketplace {
+                    tokens: _,
+                    royalties_addr: _,
+                    royalties_rate: _,
+                    selling_price: _,
+                    wallet_addresses: wa,
+                } => {
+                    if wa.unwrap().is_empty() {
+                        return Err("ERROR no wallet addresses provided".into());
+                    }
+                }
+                crate::Operation::NftShop {
+                    tokens: _,
+                    selling_price: _,
+                } => todo!(),
+                crate::Operation::Minter {
+                    mint_tokens: _,
+                    receiver_stake_addr: _,
+                    receiver_payment_addr: _,
+                    mint_metadata: _,
+                    auto_mint: _,
+                    contract_id: _,
+                } => todo!(),
+                crate::Operation::NftCollectionMinter { mint_handles: _ } => todo!(),
+                crate::Operation::TokenMinter {} => todo!(),
+                crate::Operation::NftOffer {
+                    token: _,
+                    token_owner_addr: _,
+                    metadata: _,
+                    royalties_addr: _,
+                    royalties_rate: _,
+                    offer_price: _,
+                } => todo!(),
+                crate::Operation::Auction {} => todo!(),
+                crate::Operation::StakeDelegation {
+                    poolhash: _,
+                    addresses: _,
+                } => todo!(),
+                crate::Operation::StakeDeregistration {
+                    payment_addresses: _,
+                } => todo!(),
+                crate::Operation::RewardWithdrawal {
+                    withdrawal_amount: _,
+                } => todo!(),
+                crate::Operation::StdTx {
+                    transfers: _,
+                    wallet_addresses: wa,
+                    //Todo: Remove unwrap
+                } => {
+                    if wa.unwrap().is_empty() {
+                        return Err("ERROR no wallet addresses provided".into());
+                    }
+                }
+                crate::Operation::CPO { po_id: _, pw: _ } => {}
+                crate::Operation::ClApiOneShotMint {
+                    tokennames: _,
+                    amounts: _,
+                    metadata: _,
+                    receiver: _,
+                } => {}
+            },
+            None => return Err("ERROR no wallet address provided".into()),
         }
-        .into());
     }
 
     if txp.stake_addr().is_some() {
@@ -158,7 +222,7 @@ async fn check_txpattern(txp: &TransactionPattern) -> crate::Result<()> {
             if BaseAddress::from_address(&address).is_some() {
                 let raddr = wallet::reward_address_from_address(&address)?;
                 if raddr != rewardaddr {
-                    return Err(CmdError::Custom{str:"ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string()}.into());
+                    return Err("ERROR stake address does not match one of the provided addresses, beware manipulation!".to_string().into());
                 }
                 rewardaddr = raddr
             }

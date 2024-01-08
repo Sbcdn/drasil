@@ -1,43 +1,38 @@
-/*
-#################################################################################
-# See LICENSE.md for full license information.                                  #
-# Software: Drasil Blockchain Application Framework                             #
-# License: Drasil Source Available License v1.0                                 #
-# Licensors: Torben Poguntke (torben@drasil.io) & Zak Bassey (zak@drasil.io)    #
-#################################################################################
-*/
 pub mod finalize;
 pub mod marketplace;
 pub mod minter;
 pub mod modules;
 pub mod rwdist;
 pub mod stdtx;
-
 pub use marketplace::*;
 pub use rwdist::*;
 
-use serde::{Deserialize, Serialize};
-use std::ops::{Div, Rem, Sub};
-
-use crate::cardano::{models, supporting_functions, value_to_tokens, BuildOutput};
+use crate::cardano::{models, supporting_functions, BuildOutput};
+use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
 use crate::error::MurinError;
+use crate::pparams::ProtocolParameters;
 use crate::wallet;
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
 use clib::address::Address;
 use clib::utils::{to_bignum, BigNum};
 use clib::{NetworkIdKind, TransactionOutput};
+use serde::{Deserialize, Serialize};
+use std::ops::{Div, Rem, Sub};
 
-use crate::cardano::{TransactionUnspentOutput, TransactionUnspentOutputs};
-
+/// TxBO = TransactionBuiltOutput; is the tuble emitted by the specific perform transaction building  function.
+/// It contains the transaction body, the  transaction witness set, Metadata, used UTxO set and the number of expected signing keys.
 type TxBO = (
     clib::TransactionBody,
     clib::TransactionWitnessSet,
     Option<clib::metadata::AuxiliaryData>,
     TransactionUnspentOutputs,
     usize,
+    bool, // is smart contract transaction
 );
 
+/// The PerfromTxb (Perfrom Transaction Building) is the trait that is used to perform the specific transactions building function.
+/// It implements the logic how a transaction must be assembeld for a particular use case e.g. a standard wallet to wallet asset transfer.  
 pub trait PerformTxb<T> {
     fn new(t: T) -> Self;
 
@@ -50,6 +45,7 @@ pub trait PerformTxb<T> {
     ) -> std::result::Result<TxBO, MurinError>;
 }
 
+/// TxBuilder is the general transactionbuilder and performs the steps common for all specfic transaction types.
 #[derive(Debug, Clone)]
 pub struct TxBuilder {
     pub gtxd: TxData,
@@ -68,22 +64,36 @@ impl TxBuilder {
         &self,
         app_type: &A,
     ) -> Result<BuildOutput, MurinError> {
-        // Temp until Protocol Parameters fixed
-        let mem = cutils::to_bignum(7000000u64);
-        let steps = cutils::to_bignum(2500000000u64);
+        let protocol_parameters = ProtocolParameters::read_protocol_parameter(
+            &std::env::var("CARDANO_PROTOCOL_PARAMETER_PATH")
+                .unwrap_or_else(|_| "/odin/protocol_parameters_babbage.json".to_owned()),
+        )
+        .unwrap();
+        // We define a standard budget which will fit most of the caseses.
+        // We should use AIKEN here to calculate the needed budget for the particular transaction after the dummy build step and feed the calculated values into
+        // the second transaction building step.
+
+        let mem = cutils::to_bignum(protocol_parameters.max_tx_execution_units.memory as u64 - 2);
+        let steps = cutils::to_bignum(protocol_parameters.max_tx_execution_units.steps as u64 - 2);
+
         let ex_unit_price = models::ExUnitPrice {
-            priceSteps: 7.21e-5,
-            priceMemory: 5.77e-2,
+            priceSteps: protocol_parameters.execution_unit_prices.priceSteps,
+            priceMemory: protocol_parameters.execution_unit_prices.priceMemory,
         };
-        let a = cutils::to_bignum(44u64);
-        let b = cutils::to_bignum(155381u64);
-        //Create first Tx
+
+        let a = cutils::to_bignum(protocol_parameters.tx_fee_per_byte);
+        let b = cutils::to_bignum(protocol_parameters.tx_fee_fixed);
+
+        //Create first Transaction for fee calculation with a fixed fee of 2 Ada
         let mut tx_ =
             app_type.perform_txb(&cutils::to_bignum(2000000), &self.gtxd, &self.pvks, true)?;
         let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(tx_.4);
         tx_.1.set_vkeys(&dummy_vkeywitnesses);
-        // Build and encode dummy transaction
+
+        // Assemble the dummy transaction
         let transaction_ = clib::Transaction::new(&tx_.0, &tx_.1, tx_.2);
+
+        // Calculate the actual fee
         let calculated_fee = supporting_functions::calc_txfee(
             &transaction_,
             &a,
@@ -93,10 +103,13 @@ impl TxBuilder {
             &mem,
             true,
         );
-        // (txbody, txwitness, aux_data, used_utxos, vkey_counter_2)
+        // Perform another transaction building with the calculated fee
         let tx = app_type.perform_txb(&calculated_fee, &self.gtxd, &self.pvks, false)?;
+
+        // Assemble the second transaction
         let transaction2 = clib::Transaction::new(&tx.0, &tx_.1, tx.2.clone());
 
+        // Check if the transaction differ in the amount of needed signatures and if yes perform another transaction building and fee calculation step
         if tx.4 != tx_.4 || transaction2.to_bytes().len() != transaction_.to_bytes().len() {
             let dummy_vkeywitnesses = supporting_functions::make_dummy_vkeywitnesses(tx.4);
             tx_.1.set_vkeys(&dummy_vkeywitnesses);
@@ -134,9 +147,14 @@ impl TxBuilder {
     }
 }
 
+// Helper Types
 pub type TokenAsset = (clib::PolicyID, clib::AssetName, cutils::BigNum);
 pub type MintTokenAsset = (Option<clib::PolicyID>, clib::AssetName, cutils::BigNum);
 
+/// TxData is the struct that contains all the information, which all transaction have in common, needed to build a transaction.
+/// Each transaction also needs transaction specific data, which are defined in the specific transactions building files.
+/// Do not ammend this struct if you want to pass data to the specific transaction building function, it can break functionallity for other functions.
+/// Add it to the transaction specific type instead.
 #[derive(Debug, Clone)]
 pub struct TxData {
     user_id: Option<i64>,
@@ -151,8 +169,8 @@ pub struct TxData {
     current_slot: u64,
 }
 
+// Language Version Plutus V1 in CBOR stored in a constant (Legacy implementation from the early days, we can read this from the protocol parameters now)
 const LV_PLUTUSV1           : &str = "a141005901d59f1a000302590001011a00060bc719026d00011a000249f01903e800011a000249f018201a0025cea81971f70419744d186419744d186419744d186419744d186419744d186419744d18641864186419744d18641a000249f018201a000249f018201a000249f018201a000249f01903e800011a000249f018201a000249f01903e800081a000242201a00067e2318760001011a000249f01903e800081a000249f01a0001b79818f7011a000249f0192710011a0002155e19052e011903e81a000249f01903e8011a000249f018201a000249f018201a000249f0182001011a000249f0011a000249f0041a000194af18f8011a000194af18f8011a0002377c190556011a0002bdea1901f1011a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000242201a00067e23187600010119f04c192bd200011a000249f018201a000242201a00067e2318760001011a000242201a00067e2318760001011a0025cea81971f704001a000141bb041a000249f019138800011a000249f018201a000302590001011a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a000249f018201a00330da70101ff";
-//const LV_PLUTUSV2: &str = "";
 
 impl TxData {
     pub fn new(
@@ -272,9 +290,9 @@ impl TxData {
     pub fn get_current_slot(&self) -> u64 {
         self.current_slot
     }
-
 }
 
+/// Used to store the TxData into redis cache
 impl ToString for TxData {
     fn to_string(&self) -> String {
         let mut s_senders_addresses = String::new();
@@ -372,6 +390,7 @@ impl ToString for TxData {
     }
 }
 
+/// used to restore TxData from redis cache
 impl std::str::FromStr for TxData {
     type Err = MurinError;
     fn from_str(src: &str) -> Result<Self, Self::Err> {
@@ -465,6 +484,7 @@ impl std::str::FromStr for TxData {
     }
 }
 
+/// CBOR transaction is the output type to format a final transaction in the Cardano-CLI format.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CBORTransaction {
     r#type: String,
@@ -473,7 +493,7 @@ pub struct CBORTransaction {
     cbor_hex: String,
 }
 
-// Customer Payout
+/// Defines a Customer Payout type
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CPO {
     po_id: i64,
@@ -494,46 +514,9 @@ impl CPO {
     }
 }
 
-pub async fn find_token_utxos(
-    inputs: TransactionUnspentOutputs,
-    assets: Vec<TokenAsset>,
-) -> Result<TransactionUnspentOutputs, MurinError> {
-    let mut out = TransactionUnspentOutputs::new();
-    if !inputs.is_empty() && !assets.is_empty() {
-        for asset in assets {
-            let mut needed_amt = asset.2;
-            for i in 0..inputs.len() {
-                let unspent_output = inputs.get(i);
-                let value = unspent_output.output().amount();
-                if let Some(multi) = value.multiasset() {
-                    if let Some(toks) = multi.get(&asset.0) {
-                        if let Some(amt) = toks.get(&asset.1) {
-                            // for tok in 0..toks.len()  {
-                            if needed_amt >= asset.2 {
-                                log::debug!(
-                                    "Found a utxo containing {} tokens {}.{}!",
-                                    asset.2.to_str(),
-                                    hex::encode(asset.0.to_bytes()),
-                                    hex::encode(asset.1.to_bytes())
-                                );
-                                if !out.contains_tx(&unspent_output) {
-                                    out.add(&unspent_output);
-                                    needed_amt = needed_amt.clamped_sub(&amt);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        return Err(MurinError::new(
-            "cannot find token utxos , one of the provided inputs is empty",
-        ));
-    }
-    Ok(out)
-}
-
+/// This function is used to lookup in a given set of UTxOs 'inputs' for those containing specific assets 'assets'.
+/// It is possible to only search for UTxOs which are controlled by a specific Address with the parameter 'on_addr'.
+/// This function is not async.
 pub fn find_token_utxos_na(
     inputs: &TransactionUnspentOutputs,
     assets: Vec<TokenAsset>,
@@ -592,6 +575,18 @@ pub fn find_token_utxos_na(
     Ok(out)
 }
 
+/// The input selection function is used to select the needed input UTxOs for a transaction.
+/// It offers the following options:
+/// 'token_utxos' - Can be used to directly add some UTxOs to the InputSet, for example helpful if a UTxO is known ahead of time
+///   and we want to include it manually.
+///
+/// 'collateral' - Can be used to exclude UTxOs which are used as collateral UTxOs from the input set.
+///   Useful for example if we want to avoid spending the Collateral-UTxOs of users defined in a wallet even though they would fit your selection criteria.
+///
+/// 'on_addr' - If we pass in UTxOs which belong to several addresses or even wallets we can limit the selection to a specific address.
+///
+/// 'needed_value' - Specifies the Cardano-Value to be looked up, the function will select UTxOs until it can cover the 'needed_value'.
+/// 'txins' - The UTxO set we select UTxOs from.
 pub fn input_selection(
     token_utxos: Option<&TransactionUnspentOutputs>,
     needed_value: &mut cutils::Value,
@@ -599,8 +594,7 @@ pub fn input_selection(
     collateral: Option<cutils::TransactionUnspentOutput>,
     on_addr: Option<&caddr::Address>,
 ) -> Result<(clib::TransactionInputs, TransactionUnspentOutputs), MurinError> {
-    debug!("\n\nMULTIASSETS: {:?}\n\n", txins);
-
+    // Split the UTxOs we want to select from into UTxOs only containing ADA and those having ADA and MultiAssets (NativeTokens)
     let (mut purecoinassets, mut multiassets) =
         crate::cardano::supporting_functions::splitt_coin_multi(txins);
 
@@ -609,8 +603,10 @@ pub fn input_selection(
     let mut acc = cutils::Value::new(&cutils::to_bignum(0u64));
     let mut txins = clib::TransactionInputs::new();
 
+    // We generally lookup a 50% overhead of what we need to have always enough, as we calucalte a change anyway the overhead will be paid back to the sending wallet.
     let overhead = 50u64;
 
+    // Add UTxOs manually if some exist.
     if let Some(token_utxos) = token_utxos {
         for i in 0..token_utxos.len() {
             selection.add(&token_utxos.get(i));
@@ -632,6 +628,7 @@ pub fn input_selection(
         }
     }
 
+    // Exculde collateral UTxOs from the input set
     if let Some(cutxo) = collateral {
         debug!("Col: {:?}", cutxo);
         let c_index = crate::cardano::supporting_functions::find_collateral_by_txhash_txix(
@@ -659,9 +656,10 @@ pub fn input_selection(
         }
     }
 
-    // lookup tokens from needed value
+    // if there are tokens to be select lookup the UTxOs containing those tokens first (as we need them in any case and they might contain also the needed ADA)
     let mut tokens_to_find = crate::cardano::models::Tokens::new();
     if needed_value.multiasset().is_some() {
+        // Extract the tokens we need to find
         if needed_value.multiasset().unwrap().len() > 0 {
             let pids = needed_value.multiasset().unwrap().keys();
             for i in 0..pids.len() {
@@ -678,8 +676,10 @@ pub fn input_selection(
                 }
             }
         }
+        // The actual selection (na stands for non-asynchronous)
         let token_selection = find_token_utxos_na(&multiassets.clone(), tokens_to_find, on_addr)?;
         if !token_selection.is_empty() {
+            // Add the found UTxOs to the UTxO selection
             for i in 0..token_selection.len() {
                 selection.add(&token_selection.get(i));
                 acc = acc
@@ -698,27 +698,22 @@ pub fn input_selection(
         }
     }
 
+    // We sort the UTxOs by ADA value.
     multiassets.sort_by_coin();
     purecoinassets.sort_by_coin();
 
-    debug!("\n\nMULTIASSETS: {:?}\n\n", multiassets);
-    debug!("\n\npurecoinassets: {:?}\n\n", purecoinassets);
-
+    debug!("\nMULTIASSET_UTxOs: {:?}\n\n", multiassets);
+    debug!("\n\nPURECOIN_UTxOs: {:?}\n\n", purecoinassets);
+    // This is the maximum number of UTxOs we have, if we looped over all of them without finding enough UTxOs we cannot cover the needed value.
+    // We use it as hard cap to abort the loop.
     let utxo_count = multiassets.len() + purecoinassets.len();
     let mut max_run = 0;
-    debug!("\n\nNV: {:?}", nv);
-    debug!("\n\nNV: {:?}", acc);
-    debug!(
-        "\nbefore while! Utxo Count: {:?}, {:?} \n",
-        utxo_count,
-        (nv.coin().compare(&acc.coin()) > 0)
-    );
     while nv.coin().compare(&acc.coin()) > 0 && max_run < utxo_count {
         nv = nv.checked_sub(&acc).unwrap();
 
         if purecoinassets.is_empty() {
-            // Find the tokens we want in the multis
-            debug!("\nWe look for multiassets!\n");
+            // If there are not UTxOs containing only Ada we will start looking for UTxOs which contain tokens.
+            // We prefer Ada only UTxOs over UTxOs which contain tokens due to transaction fees.
             let ret = crate::cardano::supporting_functions::find_suitable_coins(
                 &mut nv,
                 &mut multiassets,
@@ -736,23 +731,20 @@ pub fn input_selection(
                     panic!("ERROR: Not enough input utxos available to balance the transaction");
                 }
             }
-            let _ = multiassets.pop();
+            multiassets.pop();
         } else {
-            // Fine enough Ada to pay the transaction
+            // If there are UTxOs containing only Ada we will use them first.
             let ret = crate::cardano::supporting_functions::find_suitable_coins(
                 &mut nv,
                 &mut purecoinassets,
                 overhead,
             );
-            debug!("Return coinassets: {:?}", ret);
             match ret.0 {
                 Some(utxos) => {
                     for u in utxos {
                         selection.add(&u);
                     }
                     acc.set_coin(&acc.coin().checked_add(&cutils::to_bignum(ret.1)).unwrap());
-                    debug!("\nSelection in coinassets: {:?}", selection);
-                    debug!("\nAcc in coinassets: {:?}", acc);
                 }
                 None => {
                     return Err(MurinError::new(
@@ -760,7 +752,7 @@ pub fn input_selection(
                     ));
                 }
             }
-            let _ = purecoinassets.pop();
+            purecoinassets.pop();
         }
         max_run += 1;
     }
@@ -771,276 +763,8 @@ pub fn input_selection(
     Ok((txins, selection))
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct PaymentValue {
-    payer: caddr::Address,
-    value: cutils::Value,
-}
-
-impl PaymentValue {
-    pub fn new(payer: &caddr::Address, value: &cutils::Value) -> Self {
-        PaymentValue {
-            payer: payer.clone(),
-            value: value.clone(),
-        }
-    }
-
-    pub fn get_payer(&self) -> caddr::Address {
-        self.payer.clone()
-    }
-
-    pub fn get_value(&self) -> cutils::Value {
-        self.value.clone()
-    }
-
-    pub fn set_payer(&mut self, a: &caddr::Address) {
-        self.payer = a.clone();
-    }
-
-    pub fn set_value(&mut self, v: &cutils::Value) {
-        self.value = v.clone();
-    }
-}
-
-#[derive(Clone)]
-pub struct Persona {
-    pub txuo_out: Option<clib::TransactionOutput>,
-    pub own_address: caddr::Address,
-    pub stake_key: ccrypto::Ed25519KeyHash,
-    pub change: cutils::Value,
-    pub receive: Vec<PaymentValue>,
-    pub used_inputs: TransactionUnspentOutputs,
-}
-
-impl PartialEq for Persona {
-    fn eq(&self, other: &Self) -> bool {
-        let txout = if let Some(o_txuo_out) = &other.txuo_out {
-            if let Some(s_txuo_out) = &self.txuo_out {
-                o_txuo_out.to_bytes() == s_txuo_out.to_bytes()
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-
-        txout
-            && self.own_address == other.own_address
-            && self.stake_key == other.stake_key
-            && self.change.to_bytes() == other.change.to_bytes()
-            && self.receive == other.receive
-            && self.used_inputs.to_hex() == other.used_inputs.to_hex()
-    }
-}
-
-impl Persona {
-    pub fn new(own_address: &caddr::Address, receive: &[PaymentValue]) -> Self {
-        Persona {
-            txuo_out: None,
-            own_address: own_address.clone(),
-            stake_key: crate::cardano::get_stake_address(own_address),
-            change: cutils::Value::new(&cutils::to_bignum(0)),
-            receive: receive.to_owned(),
-            used_inputs: TransactionUnspentOutputs::new(),
-        }
-    }
-
-    fn ceq(&self, other: &Self) -> bool {
-        self.stake_key == other.stake_key
-    }
-
-    fn add_left(&mut self, other: &Self) -> Result<(), MurinError> {
-        if let Some(o_txuo_out) = &other.txuo_out {
-            if let Some(s_txuo_out) = &self.txuo_out {
-                let new_val = s_txuo_out.amount().checked_add(&o_txuo_out.amount())?;
-                self.txuo_out = Some(clib::TransactionOutput::new(
-                    &s_txuo_out.address(),
-                    &new_val,
-                ));
-            } else {
-                self.txuo_out = Some(o_txuo_out.clone())
-            }
-        }
-
-        self.change = self.change.checked_add(&other.change)?;
-        self.receive.extend(other.receive.iter().cloned());
-        self.used_inputs.merge(other.used_inputs.to_owned());
-
-        Ok(())
-    }
-
-    pub fn addl(&mut self, other: &Self) -> Result<(), MurinError> {
-        if !self.ceq(other) {
-            return Err(MurinError::new(
-                "Payment Combination Error: The two Persona do not are not the same",
-            ));
-        }
-        self.add_left(other)?;
-        Ok(())
-    }
-
-    // returns Zero-Value if no output is set
-    pub fn get_output_value(&self) -> cutils::Value {
-        if let Some(value) = &self.txuo_out {
-            value.amount()
-        } else {
-            cutils::Value::new(&cutils::to_bignum(0))
-        }
-    }
-
-    // returns 0 if no output is set
-    pub fn get_output_coins(&self) -> cutils::BigNum {
-        if let Some(value) = &self.txuo_out {
-            value.amount().coin()
-        } else {
-            cutils::to_bignum(0)
-        }
-    }
-
-    pub fn get_min_utxo_value(&self) -> cutils::BigNum {
-        if let Some(txo) = &self.txuo_out {
-            calc_min_ada_for_utxo(&self.get_output_value(), txo.data_hash())
-        } else {
-            cutils::to_bignum(0)
-        }
-    }
-
-    pub fn get_change_value(&self) -> cutils::Value {
-        self.change.clone()
-    }
-
-    pub fn get_change_coins(&self) -> cutils::BigNum {
-        self.change.coin()
-    }
-
-    pub fn get_change_min_utxo_value(&self) -> cutils::BigNum {
-        calc_min_ada_for_utxo(&self.get_change_value(), None)
-    }
-
-    pub fn set_output_value(
-        &mut self,
-        v: cutils::Value,
-        hash: Option<ccrypto::DataHash>,
-    ) -> Result<(), MurinError> {
-        let mut new_output = clib::TransactionOutput::new(&self.own_address, &v);
-        if let Some(h) = hash {
-            new_output.set_data_hash(&h);
-        }
-        self.txuo_out = Some(new_output);
-
-        Ok(())
-    }
-
-    pub fn add_to_output_value(&mut self, v: cutils::Value) -> Result<(), MurinError> {
-        let new_val: cutils::Value;
-        if let Some(txo) = &self.txuo_out {
-            new_val = txo.amount().checked_add(&v)?;
-            if let Some(h) = txo.data_hash() {
-                self.set_output_value(new_val, Some(h))?;
-            } else {
-                self.set_output_value(new_val, None)?;
-            }
-        } else {
-            self.set_output_value(v, None)?;
-        }
-        Ok(())
-    }
-
-    pub fn set_output_coins(&mut self, c: cutils::BigNum) -> Result<(), MurinError> {
-        let mut new_val = cutils::Value::new(&c);
-        if let Some(txo) = &self.txuo_out {
-            new_val = txo.amount().checked_add(&new_val)?;
-            if let Some(h) = txo.data_hash() {
-                self.set_output_value(new_val, Some(h))?;
-            } else {
-                self.set_output_value(new_val, None)?;
-            }
-        } else {
-            self.set_output_value(new_val, None)?;
-        }
-        Ok(())
-    }
-
-    pub fn set_min_utxo_value(&mut self) -> Option<cutils::BigNum> {
-        let c_min = self.get_min_utxo_value();
-        if self.get_output_coins().compare(&c_min) == (-1) {
-            self.set_output_coins(c_min)
-                .expect("Could not set coin value in set min utxo value for persona");
-            return Some(c_min);
-        }
-        None
-    }
-
-    pub fn add_change(&mut self, v: &cutils::Value) -> Result<(), MurinError> {
-        self.change = self.change.checked_add(v)?;
-        Ok(())
-    }
-
-    pub fn txo_from_payers(&mut self) -> Result<(), MurinError> {
-        let mut new_val = cutils::Value::new(&cutils::to_bignum(0));
-        for payer in &self.receive {
-            new_val = new_val.checked_add(&payer.value)?;
-        }
-        self.txuo_out = Some(clib::TransactionOutput::new(&self.own_address, &new_val));
-        let min_utxo = self.get_min_utxo_value();
-
-        if new_val.coin().compare(&min_utxo) == -1 {
-            self.set_min_utxo_value();
-            self.receive.push(PaymentValue::new(
-                &self.own_address,
-                &cutils::Value::new(&min_utxo),
-            ))
-        }
-        Ok(())
-    }
-
-    pub fn find_own_inputs(
-        &mut self,
-        avail_input_utxos: &mut TransactionUnspentOutputs,
-        selected_input_utxos: &mut TransactionUnspentOutputs,
-    ) -> Result<(), MurinError> {
-        for payer in &self.receive {
-            let needed = payer.get_value();
-            let mut input_utxos = avail_input_utxos.clone();
-            match needed.multiasset() {
-                Some(_) => {
-                    let assets = value_to_tokens(&needed)?;
-                    let mut utxo_selection = find_token_utxos_na(
-                        avail_input_utxos,
-                        assets,
-                        Some(payer.get_payer()).as_ref(),
-                    )?;
-
-                    input_utxos.delete_set(&utxo_selection);
-
-                    select_coins(
-                        &mut utxo_selection,
-                        &mut input_utxos,
-                        &needed,
-                        &payer.get_payer(),
-                        &self.own_address,
-                    )?;
-                }
-                None => {
-                    let mut utxo_selection = TransactionUnspentOutputs::new();
-                    select_coins(
-                        &mut utxo_selection,
-                        &mut input_utxos,
-                        &needed,
-                        &payer.get_payer(),
-                        &self.own_address,
-                    )?;
-                }
-            }
-            self.used_inputs = input_utxos.clone();
-            selected_input_utxos.merge(input_utxos);
-        }
-        Ok(())
-    }
-}
-
-// Helper function for select coins
-// Recursive apply minutxo until enough Ada is available
+/// Helper function for selecting coins
+/// Recursive caluclation of the minutxo ADA value until enough Ada is available
 fn select_min_utxo_input_coins(
     paying_address: &caddr::Address,
     needed: &cutils::Value,
@@ -1070,6 +794,7 @@ fn select_min_utxo_input_coins(
     Ok(())
 }
 
+/// Mutates 'utxo_selection' by adding more UTxOs from 'input_utxos' until the 'needed' value is covered.
 pub fn select_coins(
     utxo_selection: &mut TransactionUnspentOutputs,
     input_utxos: &mut TransactionUnspentOutputs,
@@ -1098,160 +823,7 @@ pub fn select_coins(
     Ok(())
 }
 
-pub struct Personas {
-    pub p: Vec<Persona>,
-}
-
-impl Personas {
-    pub fn combine(&mut self) -> Result<(), MurinError> {
-        let mut blist = self.p.clone();
-        Personas::combinator(&mut self.p, &mut blist);
-        Ok(())
-    }
-
-    fn combinator<'a>(
-        a: &'a mut Vec<Persona>,
-        b: &'a mut Vec<Persona>,
-    ) -> (&'a Vec<Persona>, &'a Vec<Persona>) {
-        match b[..] {
-            [] => (a, b),
-
-            _ => {
-                b.retain(|n| *n != a[0]);
-                let combinable_bs: Vec<_> = b
-                    .iter_mut()
-                    .filter(|n| a[0].ceq(n))
-                    .map(|n| n.to_owned())
-                    .collect();
-                combinable_bs.iter().for_each(|n| a[0].add_left(n).unwrap());
-                b.retain(|n| !combinable_bs.contains(n));
-                a.retain(|n| !combinable_bs.contains(n));
-                let len = a.len() - 1;
-                a.swap(0, len);
-
-                Personas::combinator(a, b)
-            }
-        }
-    }
-}
-
-pub fn balance_transaction(
-    inputs_txuos: &mut TransactionUnspentOutputs,
-    personas: &mut Personas,
-) -> Result<(clib::TransactionOutputs, clib::TransactionInputs), MurinError> {
-    // Combine Payments if paying_address and txuo_out destination address (stake address without script addresses) are equal
-    personas.combine()?;
-
-    let mut invalid: bool = false;
-    // Set min Utxo for all outputs
-    personas
-        .p
-        .iter_mut()
-        .for_each(|n| match n.txo_from_payers() {
-            Ok(_) => {}
-            Err(_) => invalid = true,
-        });
-
-    if invalid {
-        return Err(MurinError::new("Error in buidling initial txos"));
-    }
-
-    // Select input utxos
-    let mut global_selection_txuos = TransactionUnspentOutputs::new();
-
-    personas.p.iter_mut().for_each(|n| {
-        match n.find_own_inputs(inputs_txuos, &mut global_selection_txuos) {
-            Ok(_) => {}
-            Err(e) => {
-                info!("Error in closure to find inputs: {:?}", e.to_string());
-                invalid = true;
-            }
-        }
-    });
-
-    if invalid {
-        return Err(MurinError::new("Error in finding inputs for payments"));
-    }
-
-    // ToDo:
-    // calcualte change for each persona
-    // Idee:
-    // für jede Persona gehe druch "receive" suche die utxos des payers in "used inputs" bzw. "globaler selection" mittels stake_key
-    // in der globalen selection ziehen wir den "value" aus "receive" von dem value in gloablen utxo ab. Wir suchen das selbe Utxo in
-    // used inputs und ziehen dort den restwert des gloablen Utxos ab, wir sollten den "value" wert aus receive erhalten.
-    // die "globale selection" enthält nun alle übriggebliebenen Werte.
-    // wir gehen durch die "globale selection" und schauen ob es Persona gibt die über den stake_key des utxos identifiziert werden können
-    // ist das der Fall wird der Wert des Utxos dem "change" value der Persona gutgeschrieben. Kann keine Persona zugeordnet werden,
-    // so geht der Restwert des Utxos zurück an die Adresse im Utxo, hierzu wird eine neue Persona hinzugefügt und der Wert change gutgeschrieben.
-    // Kann die minUtxo bedingung nit erfüllt werden, bricht der Transactionbau ab.
-
-    // In einem letzen Schritt addieren wir change und output wert im output,
-    // theoretisch sollte der Wert aufgrund der selektionsbedingungen über dem minUtxo Wert liegen.
-
-    /*
-        personas.p.iter_mut().for_each(|n| {
-            let change : Vec<_> = avail_change.0.iter().filter(|m| m.output().address() == n.txuo_out.output().address()).collect();
-
-            // Add change to the existing output
-            for c in change {
-                match n.add_to_output_value(c.output().amount()){
-                    Ok(_) => {},
-                    Err(e) => {
-                        info!("Error in closure to add change to outputs: {:?}",e.to_string());
-                        invalid = true;
-                    }
-                };
-                let mut del = TransactionUnspentOutputs::new();
-                del.add(c);
-                avail_change.to_owned().delete_set(&del);
-
-            }
-        });
-
-        if invalid {
-            return Err(MurinError::new("Error in closure to add change to outputs"))
-        }
-    */
-
-    // Ab jetzt können wir nurnoch neue Utxos wählen
-    inputs_txuos.delete_set(&global_selection_txuos);
-
-    let mut txouts = clib::TransactionOutputs::new();
-    let mut txins = clib::TransactionInputs::new();
-
-    // Check and handle to big utxos
-    let to_big: Vec<_> = personas
-        .p
-        .iter()
-        .filter(|n| n.txuo_out.clone().unwrap().to_bytes().len() > 5000)
-        .collect();
-
-    if !to_big.is_empty() {
-        // Split the outputs which are to big in half if necessary add another input to get more Ada
-        personas.p.to_owned().retain(|n| !to_big.contains(&n));
-
-        for p in to_big {
-            let splits = half_utxo(&p.txuo_out.clone().unwrap(), inputs_txuos, &p.own_address);
-            for i in 0..splits.0.len() {
-                txouts.add(&splits.0.get(i));
-            }
-            for elem in splits.1 {
-                txins.add(&elem.input());
-            }
-        }
-    }
-
-    // Make TxIns and TxOuts
-    for elem in personas.p.iter().cloned() {
-        txouts.add(&elem.txuo_out.unwrap());
-        for u in elem.used_inputs {
-            txins.add(&u.input());
-        }
-    }
-
-    Ok((txouts, txins))
-}
-
+/// Splitts a UTxO into two UTxOs each containing the half original amount.
 pub fn half_utxo(
     v: &clib::TransactionOutput,
     inputs: &mut TransactionUnspentOutputs,
@@ -1324,6 +896,8 @@ pub fn half_utxo(
     (out, used_inputs)
 }
 
+/// Lookup a specific token in a Cardano-Value
+/// The TokenAsset vector is a flattended Cardano-Value: (clib::PolicyID, clib::AssetName, cutils::BigNum).
 pub fn find_assets_in_value(
     v: &cutils::Value,
     a: &Vec<TokenAsset>,
@@ -1372,12 +946,12 @@ pub fn find_assets_in_value(
     (flag, new_val, rest_val)
 }
 
+/// Legacy minUtxOValue caluclation method using the Value and DatumHash to determine the minimum amount of Ada needed on that UtxO.
+/// This function does not work for PlutusV2+ features
 pub fn calc_min_ada_for_utxo(
     value: &cutils::Value,
     dh: Option<ccrypto::DataHash>,
 ) -> cutils::BigNum {
-    //utxoEntrySize (txout) * coinsPerUTxOWord
-    //utxoEntrySize (txout) = utxoEntrySizeWithoutVal + size (v) + dataHashSize (dh)
     let dhsize: u64 = match dh {
         Some(_) => 10u64, //(datumhash.to_bytes().len())  as u64
         None => 0u64,
@@ -1417,14 +991,16 @@ pub fn calc_min_ada_for_utxo(
     min_ada
 }
 
+/// New calculation method for minUTxOValue using the full UTxO for the caluclation
+/// This method must be prefered for new implementations as it gives better results and is compatible with PlutusV2.
 pub fn min_ada_for_utxo(output_: &TransactionOutput) -> Result<TransactionOutput, MurinError> {
     let mut output: TransactionOutput = output_.clone();
     let pppath = std::env::var("CARDANO_PROTOCOL_PARAMETER_PATH")?;
-    let coins_per_byte = crate::pparams::ProtocolParameters::read_protocol_parameter(&pppath)?;
+    let ppp = crate::pparams::ProtocolParameters::read_protocol_parameter(&pppath)?;
     for _ in 0..3 {
         let required_coin = to_bignum(output.to_bytes().len() as u64)
             .checked_add(&to_bignum(160))?
-            .checked_mul(&to_bignum(coins_per_byte.utxo_cost_per_byte))?;
+            .checked_mul(&to_bignum(ppp.utxo_cost_per_byte))?;
         if output.amount().coin().less_than(&required_coin) {
             let mut v = output.amount().clone();
             v.set_coin(&required_coin);
@@ -1457,6 +1033,7 @@ pub fn min_ada_for_utxo(output_: &TransactionOutput) -> Result<TransactionOutput
     min_ada_for_utxo(&output)
 }
 
+/// Used for the Leagcy minUtxOValue calculation in CSL, original CSL function was very unprecise why we reimplemented the function.
 pub fn bundle_size(value: &cutils::Value, osc: &models::OutputSizeConstants) -> usize {
     match &value.multiasset() {
         Some(assets) => {
@@ -1490,6 +1067,7 @@ pub fn bundle_size(value: &cutils::Value, osc: &models::OutputSizeConstants) -> 
     }
 }
 
+/// Round up a number to the next multiple of 8.
 pub fn quot<T>(a: T, b: T) -> T
 where
     T: Sub<Output = T> + Rem<Output = T> + Div<Output = T> + Copy + Clone + std::fmt::Display,
@@ -1497,6 +1075,7 @@ where
     (a - (a % b)) / b
 }
 
+/// Wrapper function to handle transaction submission.
 pub async fn create_and_submit_cbor_tx(tx: String, tx_hash: String) -> Result<String, MurinError> {
     let cli_tx = CBORTransaction {
         r#type: "Tx BabbageEra".to_string(),
@@ -1509,6 +1088,7 @@ pub async fn create_and_submit_cbor_tx(tx: String, tx_hash: String) -> Result<St
     Ok(node_tx_hash)
 }
 
+/// Submit a Cardano transaction to a specific submit-api-endpoint.
 pub async fn submit_endpoint(
     tx: &[u8],
     endpoint: String,
@@ -1559,10 +1139,12 @@ pub async fn submit_endpoint(
     }
 }
 
+/// Submits a CBOR Transaction to the Cardano Network, it is possible to send the transaction to three endpoints simultaneously.
+/// TODO: Make it generic for an arbitrary amount of submit endpoints.
 pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<String, MurinError> {
-    let submit1 = std::env::var("TX_SUBMIT_ENDPOINT1")?;
-    let submit2 = std::env::var("TX_SUBMIT_ENDPOINT2")?;
-    let submit3 = std::env::var("TX_SUBMIT_ENDPOINT3")?;
+    let submit1 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT1")?;
+    let submit2 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT2")?;
+    let submit3 = std::env::var("CARDANO_TX_SUBMIT_ENDPOINT3")?;
 
     let client = reqwest::Client::new();
     let tx = hex::decode(tx.cbor_hex.clone())?;
@@ -1599,10 +1181,12 @@ pub async fn submit_tx(tx: &CBORTransaction, own_tx_hash: &String) -> Result<Str
     }
 }
 
+/// 'hardens' a private key.
 pub fn harden(num: u32) -> u32 {
     0x80000000 + num
 }
 
+/// Determines the index of a given transaction input (txhash#index) in a UTxO set to find the corrosponding full UTxO.
 pub fn get_input_position(
     inputs: clib::TransactionInputs,
     elem: TransactionUnspentOutput,
@@ -1638,6 +1222,7 @@ pub fn get_input_position(
     (index, my_index)
 }
 
+/// Splits a value into its non-Ada Tokens and creates a Cardano-Value for each token with the needed minUTxO value.
 pub fn split_value(
     value: cutils::Value,
 ) -> Result<(Vec<cutils::Value>, Option<cutils::BigNum>), MurinError> {
@@ -1669,6 +1254,7 @@ pub fn split_value(
     }
 }
 
+/// Will try to minimize the needed amount of Ada on the UTxO
 pub fn minimize_coins_on_values(
     values: Vec<cutils::Value>,
 ) -> Result<Vec<cutils::Value>, MurinError> {
@@ -1697,6 +1283,9 @@ pub fn minimize_coins_on_values(
     Ok(out)
 }
 
+/// A type to specify fees for a application.
+/// Those fees are added to the transactions on behalf of the operator.
+/// It is possible to realize for example API fees with this type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServiceFees {
     pub fee: BigNum,

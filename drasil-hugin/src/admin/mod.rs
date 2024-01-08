@@ -35,8 +35,12 @@ pub async fn verify_approval_drsl(msg: &str, sign: &str) -> Result<bool, SystemD
         .expect("Error: A1202")
         .parse::<i64>()?;
     let user = crate::TBDrasilUser::get_user_by_user_id(&user_id)?;
-
-    let pk = drasil_murin::crypto::PublicKey::from_bech32(&user.drslpubkey)?;
+    let pk_s = if let Some(pk_t) = user.drslpubkey.as_ref() {
+        pk_t
+    }else{
+        return Err(SystemDBError::Custom("No public key defined".to_string()));
+    };
+    let pk = drasil_murin::crypto::PublicKey::from_bech32(&pk_s)?;
     let sign = drasil_murin::crypto::Ed25519Signature::from_hex(sign)?;
     if !pk.verify(msg.as_bytes(), &sign) {
         return Err(SystemDBError::Custom("Error: A0010".to_string()));

@@ -4,13 +4,13 @@ use drasil_gungnir::minting::models::MintProject;
 use drasil_gungnir::Whitelist;
 use drasil_murin::minter::build_minttx::{AtCMBuilder, AtCMParams};
 use drasil_murin::utils::{from_bignum, to_bignum};
-use drasil_murin::wallet;
+use drasil_murin::{wallet, MurinError};
 use drasil_murin::{NativeScript, PerformTxb, ServiceFees};
 
 use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::{discount, BuildMultiSig, TBContracts};
-use crate::{CmdError, TBMultiSigLoc};
+use crate::TBMultiSigLoc;
 
 pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result<String> {
     match bms
@@ -19,13 +19,8 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         .ok_or("ERROR: No specific contract data supplied")?
     {
         Operation::NftCollectionMinter { mint_handles } => {
-            let err = Err(CmdError::Custom {
-                str: format!(
-                    "ERROR wrong data provided for script specific parameters: '{:?}'",
-                    bms.transaction_pattern().operation()
-                ),
-            }
-            .into());
+            let err = Err(format!(
+                    "ERROR wrong data provided for script specific parameters: '{:?}'", bms.transaction_pattern().operation()).into());
             if mint_handles.is_empty() {
                 return err;
             }
@@ -44,10 +39,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             }
         }
         _ => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR wrong data provided for '{:?}'", bms.multisig_type()),
-            }
-            .into());
+            return Err(format!("ERROR wrong data provided for '{:?}'", bms.multisig_type()).into());
         }
     }
     log::debug!("Checks okay...");
@@ -62,7 +54,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     let stake_address = minttxd.mint_handles[0].reward_addr()?.to_bech32(None)?;
 
     let first_address = wallet::address_from_string(
-        &drasil_mimir::api::select_addr_of_first_transaction(&stake_address)?,
+        &drasil_mimir::api::select_addr_of_first_transaction(&stake_address).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
     )
     .await?;
     let mut gtxd = bms.transaction_pattern().into_txdata().await?;
@@ -79,8 +71,8 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     let mut mintprojects = Vec::<(i64, MintProject, TBContracts, Option<TBMultiSigLoc>)>::new();
     let mut contract_ids = Vec::<i64>::new();
     for id in mintproject_ids {
-        let p = MintProject::get_mintproject_by_id(id)?;
-        let c = TBContracts::get_contract_uid_cid(bms.customer_id(), p.mint_contract_id)?;
+        let p = MintProject::get_mintproject_by_id(id).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let c = TBContracts::get_contract_uid_cid(bms.customer_id(), p.mint_contract_id).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         contract_ids.push(p.mint_contract_id);
         mintprojects.push((id, p, c, None));
     }
@@ -98,7 +90,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
             &c.2.contract_id,
             &c.2.user_id,
             &c.2.version,
-        )?;
+        ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         c.3 = Some(kl.clone());
         if let Some(addr) = kl.fee_wallet_addr {
             fees.push(ServiceFees {
@@ -109,7 +101,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
         ns_scripts.push(NativeScript::from_bytes(hex::decode(&c.2.plutus)?)?);
         if let Some(whitelist) = &c.1.whitelists {
             for w in whitelist.iter() {
-                whitelists.push(drasil_gungnir::Whitelist::get_whitelist(&c.2.user_id, w)?);
+                whitelists.push(drasil_gungnir::Whitelist::get_whitelist(&c.2.user_id, w).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?);
             }
         }
     }
@@ -149,10 +141,7 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                     || mr.project_id != m.project_id
                     || mr.pay_addr != first_address.to_bech32(None).unwrap()
                 {
-                    return Err(CmdError::Custom {
-                        str: format!("ERROR invalid mint reward '{mr:?}'"),
-                    }
-                    .into());
+                    return Err(format!("ERROR invalid mint reward '{mr:?}'").into());
                 }
                 let mut tv = drasil_murin::clib::utils::Value::zero();
                 for nft in &mr.v_nfts_b {
@@ -161,18 +150,12 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 }
                 if let Some(x) = m.value()?.compare(&tv) {
                     if x != 0 {
-                        return Err(CmdError::Custom {
-                            str: format!("ERROR claim values dont match '{mr:?}'"),
-                        }
-                        .into());
+                        return Err(format!("ERROR claim values dont match '{mr:?}'").into());
                     }
                 }
             }
             Err(e) => {
-                return Err(CmdError::Custom {
-                    str: format!("ERROR mint reward does not exist: '{e:?}'"),
-                }
-                .into());
+                return Err(format!("ERROR mint reward does not exist: '{e:?}'").into());
             }
         }
     }
@@ -192,12 +175,9 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
                 mh.project_id,
                 &mp[0].1.nft_table_name,
                 &nftb.name(),
-            )?;
+            ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
             if nft.minted {
-                return Err(CmdError::Custom {
-                    str: format!("ERROR Nft already minted: '{mh:?}'"),
-                }
-                .into());
+                return Err(format!("ERROR Nft already minted: '{mh:?}'").into());
             }
             if let Some(metadata) = &nft.metadata {
                 metadataassets.push(serde_json::from_str(metadata)?)
@@ -216,22 +196,16 @@ pub(crate) async fn handle_collection_mint(bms: &BuildMultiSig) -> crate::Result
     let mut dbsync = match drasil_mimir::establish_connection() {
         Ok(conn) => conn,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()),
-            }
-            .into());
+            return Err(format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()).into());
         }
     };
     let slot = match drasil_mimir::get_slot(&mut dbsync) {
         Ok(s) => s,
         Err(e) => {
-            return Err(CmdError::Custom {
-                str: format!(
+            return Err(format!(
                     "ERROR could not determine current slot: '{:?}'",
                     e.to_string()
-                ),
-            }
-            .into());
+                ).into());
         }
     };
     gtxd.set_current_slot(slot as u64);

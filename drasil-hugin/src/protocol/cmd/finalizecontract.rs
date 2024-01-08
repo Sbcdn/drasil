@@ -1,11 +1,11 @@
 use crate::datamodel::ContractType;
-use crate::{CmdError, Parse};
+use crate::Parse;
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
-use std::str::FromStr;
+use drasil_murin::MurinError;
 
 #[derive(Debug, Clone)]
 pub struct FinalizeContract {
@@ -68,18 +68,23 @@ impl FinalizeContract {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<FinalizeContract> {
-        let customer_id = parse.next_int()?;
+        let customer_id = parse
+            .next_int()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
-        let ctype = parse.next_bytes()?;
+        let ctype = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let ctype: ContractType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&ctype)?;
 
-        let tx_id = parse.next_string()?;
-        let tx_id = tx_id;
-
-        let signature = parse.next_string()?;
-        let signature = signature;
+        let tx_id = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let signature = parse
+            .next_string()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
         Ok(FinalizeContract {
             customer_id,
@@ -90,53 +95,52 @@ impl FinalizeContract {
     }
 
     pub async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
-        let mut response = Frame::Simple("Error: something went wrong".to_string());
         let raw_tx = drasil_murin::utxomngr::txmind::read_raw_tx(&self.get_tx_id())?;
 
-        if let Err(e) =
-            drasil_murin::marketplace::MpTxData::from_str(raw_tx.get_tx_specific_rawdata())
-        {
-            return Err(CmdError::Custom {
-                str: format!(
-                    "ERROR Invalid Transaction Data, this is not a marketplace transaction, {:?}",
+        let response = match self.ctype {
+            ContractType::MarketPlace => match self.finalize_marketplace(raw_tx).await {
+                Ok(r) => r,
+                Err(e) => Frame::Error(format!(
+                    "Error: Finalizing Marketplace Transaction failed: {:?}",
                     e.to_string()
-                ),
-            }
-            .into());
+                )),
+            },
+            ContractType::WmEnRegistration => match self.finalize_general(raw_tx).await {
+                Ok(r) => r,
+                Err(e) => Frame::Error(format!(
+                    "Error: Finalizing EarthNode Registration Transaction failed: {:?}",
+                    e.to_string()
+                )),
+            },
+            ContractType::WmtStaking => match self.finalize_general(raw_tx).await {
+                Ok(r) => r,
+                Err(e) => Frame::Error(format!(
+                    "Error: Finalizing WmtStaking Transaction failed: {:?}",
+                    e.to_string()
+                )),
+            },
+            _ => Frame::Error(format!(
+                "This contract Type does not exists {:?}",
+                self.ctype
+            )),
         };
-
-        match self.ctype {
-            ContractType::MarketPlace => {
-                response = self.finalize_marketplace(raw_tx).await?;
-            }
-
-            ContractType::NftShop => {}
-
-            ContractType::NftMinter => {}
-
-            ContractType::TokenMinter => {}
-
-            _ => {
-                return Err(CmdError::Custom {
-                    str: format!("This ccontract Type does not exists {:?}", self.ctype),
-                }
-                .into());
-            }
-        }
-
-        // If successful:
-        // ToDO:
-        // store used Utxos into utxo manager and store txhash for ovserver
-        //
-        // store tx into permanent storage (drasildb)
-        // delete tx from redis
-
         log::debug!("{:?}", response);
         dst.write_frame(&response).await?;
         Ok(())
     }
 
     async fn finalize_marketplace(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<Frame> {
+        use drasil_murin::txbuilder::finalize::finalize;
+        let response = finalize(&self.get_signature(), raw_tx).await?;
+        info!("Response: {}", response);
+        Ok(Frame::Bulk(Bytes::from(
+            bc::DefaultOptions::new()
+                .with_varint_encoding()
+                .serialize(&response)?,
+        )))
+    }
+
+    async fn finalize_general(&self, raw_tx: drasil_murin::RawTx) -> crate::Result<Frame> {
         use drasil_murin::txbuilder::finalize::finalize;
         let response = finalize(&self.get_signature(), raw_tx).await?;
         info!("Response: {}", response);

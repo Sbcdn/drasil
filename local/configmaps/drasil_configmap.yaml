@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drasil-config
+data:
+# Vault Unix Socket Path to communicate with Odin / Frigg
+  DVLTATH_VSOCKET_PATH: /cache/req.sock
+# Vault Unix Secret Path to store the temporary secret
+  DVLTATH_SPATH: /cache/sec
+# Vault KV Store
+  VAULT_MOUNT: secret
+# Vault Namespace
+  VAULT_NAMESPACE: ""
+# Vault KV-storage path
+  VAULT_PATH: "drasil/"
+# Vault Address
+  VAULT_ADDRESS: http://vault.default.svc.cluster.local:8200
+# General Pod Host IP
+  POD_HOST: "0.0.0.0"
+# Rust Log Level
+  RUST_LOG: "debug"
+  RUST_BACKTRACE: "full"
+# Keys for the JWT API tokens
+  JWT_PUB_KEY: '-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+LwS66RkRJ3gYlrXCisZwWaNQo3nkNjRujIVVI9jEGCWYRdECga9lUjrg==-----END PUBLIC KEY-----'
+  JWT_KEY: '-----BEGIN PRIVATE KEY-----MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgoC2z4jAczA6AkVwgoglFOd16hEIwGFAvTxxxssEYvGahRANCAAQwyRqlrWZU1C1R1Y/0HrU6kxy4EebD4vBLrpGREneBiWtcKKxnBZo1CjeeQ2NG6MhVUj2MQYJZhF0QKBr2VSOu-----END PRIVATE KEY-----'
+# Reward Database Connection String
+  REWARDS_DB_URL: postgres://***REMOVED***:password@postgres-db-rwd-lb.default.svc.cluster.local:5433/rewarddb?password=***REMOVED***password
+# System / Plattform Database Connection String
+  PLATFORM_DB_URL: postgres://***REMOVED***:password@postgres-db-sys-lb.default.svc.cluster.local:5432/systemdb?password=***REMOVED***password
+# DBSync Database Connection String
+  DBSYNC_DB_URL: postgres://***REMOVED***:***REMOVED***@***REMOVED***/testnet
+# Keys for Redis Pending Tx Store
+  PENDING_TX_DATASTORE_1: pendingtx1
+  PENDING_TX_DATASTORE_2: pendingtx2
+  PENDING_TX_DATASTORE_3: pendingtx3
+# Keys for Redis Pending UTxO Store
+  USED_UTXO_DATASTORE_1: usedutxos1
+  USED_UTXO_DATASTORE_2: usedutxos2
+  USED_UTXO_DATASTORE_3: usedutxos3
+# URLs to Cardano Submit APII
+  CARDANO_TX_SUBMIT_ENDPOINT1: http://***REMOVED***:8090/api/submit/tx
+  CARDANO_TX_SUBMIT_ENDPOINT2: ""
+  CARDANO_TX_SUBMIT_ENDPOINT3: ""
+# Rabbit MQ 
+  AMQP_ADDR: amqp://rmq:rmq@drasil-rabbitmq-service.default.svc.cluster.local:5672
+  JOB_QUEUE_NAME: drasil_jobs
+# Odin URL
+  ODIN_URL: drasil-odin-service.default.svc.cluster.local:6142
+# For future use 
+  TXGSET: ""
+# Defines the Administrator User's Database Id, the user must exists and have Admin Role to be valid
+# Is a hack for payouts at the moment
+  ADM_USER: "0"
+# Standard Redis DB 
+  REDIS_DB: redis://drasil-redis-service.default.svc.cluster.local:6379/0
+# Redis DB for Pending UTxO Storage
+  REDIS_DB_URL_UTXOMIND: redis://drasil-redis-service.default.svc.cluster.local:6379/0
+# Reserved for future use
+  REDIS_DB_URL_REPLICA: redis://drasil-redis-service.default.svc.cluster.local:6379/1
+# Defines if Redis is running as Cluster or in standalone mode
+  REDIS_CLUSTER: "false"
+  CARDANO_PROTOCOL_PARAMETER_PATH: "/odin/protocol_parameters_babbage.json"
+
+
+
+

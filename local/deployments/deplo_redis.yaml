@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drasil-redis
+  name: drasil-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-redis
+  template:
+    metadata:
+      labels:
+        app: drasil-redis
+    spec:
+      containers:
+      - image: redis:alpine3.16
+        imagePullPolicy: IfNotPresent
+        name: redis-1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-redis-service
+spec:
+  selector:
+    app: drasil-redis
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379

@@ -13,4 +13,6 @@ pub enum JobTypes {
     ImportWhitelist(Job),
     AllocateSpecificAssetsToMintProject(Job),
     RandomAllocateWhitelistToMintProject(Job),
+    CalculateReoccuringRewards(Job),
+    OptimizeRewardUTxOs(Job),
 }

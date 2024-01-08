@@ -41,7 +41,7 @@ table! {
         email_verified -> Bool,
         cardano_wallet -> Nullable<Text>,
         cwallet_verified -> Bool,
-        drslpubkey -> Varchar,
+        drslpubkey -> Nullable<Varchar>,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
     }

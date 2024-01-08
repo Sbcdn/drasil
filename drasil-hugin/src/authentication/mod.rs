@@ -1,3 +1,5 @@
+pub mod auth;
+pub mod error;
 use std::fmt;
 
 #[derive(Clone, PartialEq, Eq, Debug)]

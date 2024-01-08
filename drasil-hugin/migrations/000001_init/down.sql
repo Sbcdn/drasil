@@ -1,0 +1,10 @@
+DROP TABLE contracts;
+DROP TABLE drasil_user;
+DROP TABLE multisigs;
+DROP TABLE email_verification_token;
+DROP TABLE multisig_keyloc;
+DROP TABLE ca_payment_hash;
+DROP TABLE ca_payment;
+ALTER TABLE public.multisig_keyloc DROP CONSTRAINT unique_multisig_keyloc;
+ALTER TABLE public.contracts DROP CONSTRAINT unique_address;
+ALTER TABLE public.contracts DROP CONSTRAINT unique_contract;

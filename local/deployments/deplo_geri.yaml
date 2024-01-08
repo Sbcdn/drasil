@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drasil-geri
+  name: geri
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-geri
+  template:
+    metadata:
+      labels:
+        app: drasil-geri
+    spec:
+      containers:
+      - name: geri 
+        envFrom:
+          - configMapRef:
+              name: drasil-config
+          - configMapRef:
+              name: drasil-geri-config
+        image: k3d-drasil-registry.localhost:12345/geri:v1.3
+        imagePullPolicy: IfNotPresent
+---
+# Geri Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-geri-service
+spec:
+  selector:
+    app: drasil-geri
+  type: ClusterIP
+  ports:
+    - port: 4005
+      targetPort: 4005
+        

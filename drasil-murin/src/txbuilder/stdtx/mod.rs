@@ -16,12 +16,25 @@ use crate::MurinError;
 pub mod build_cpo;
 pub mod build_wallet_asset_transfer;
 
-/// The stdtx model incoperates the Types for Standard Transactions
-/// We consider all Transactions which does not use smart contracts or native scripts as Standard Transactions.
-/// Using the functions created in build_wallet_asset_transfer.rs it is possible to run a Cardano Wallet Backend.  
+/// This module incoperates the Types for Standard Transactions
+/// We consider all Transactions which do not use smart contracts or native scripts as Standard Transactions.
 /// 
+/// These Standard Transactions are implemented: 
+/// - Build Stakepool Delegation Transaction (build_deleg.rs)
 /// 
+/// - Build Stakepool Deregistration (build_dereg.rs)
+/// 
+/// - Build ADA Reward Withdrawal Transaction (build_reward_withdrawal.rs)
+/// 
+/// - Build Customer Pay Out (will payout from a system managed reward multisig contract to the reward contract owner) (build_cpo.rs);
+/// 
+/// - Build Wallet Asset Transfer Transaction (build_wallet_asset_transfer.rs)
+/// 
+ 
 
+/// A StdAssetHandle is a handle to an Asset on the Cardano blockchain.
+/// It's fields contain all the information which can be related to a Asset / Token on the Cardano blockchain.
+/// To specify ADA instead of a native token only the 'amount' field is used and the other fields are 'None'.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StdAssetHandle {
     pub fingerprint: Option<String>,
@@ -31,6 +44,8 @@ pub struct StdAssetHandle {
     pub metadata: Option<serde_json::Value>,
 }
 
+/// An AssetTransfer defines the transfer of an arbitrary amount of asset from a source wallet (the request sending wallet) to a 'reiceiver' wallet
+/// The to be transfered Tokens are specified as (Std)AssetHandles. The metadata field hold the transaction metadata of the minting transaction if present. 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssetTransfer {
     pub receiver: Address,
@@ -38,6 +53,8 @@ pub struct AssetTransfer {
     pub metadata: Option<String>,
 }
 
+/// StandardTxData is the 'Wallet Asset Transfer Transaction' specific type and holds the wallet addresses of the source wallet 
+/// and the AssetTransfers which are intended to be send by this source wallet
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StandardTxData {
     pub wallet_addresses: Vec<Address>,
@@ -57,6 +74,7 @@ impl FromStr for StandardTxData {
     }
 }
 
+/// WithdrawlTxData is the 'ADA Reward Withdrawal Transaction' specific type and holds the amount to be withdrawn
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WithdrawalTxData {
     pub withdrawl: Option<BigNum>,
@@ -70,6 +88,9 @@ impl WithdrawalTxData {
     }
 }
 
+/// DelegTxData is the 'Stakepool Delegation Transaction' specific type and holds:
+/// the poolhash in bech32 (String), the public key of the stake pool generated from the poolhash
+/// and if the delegator (the sending wallet) is already register with its stake address or not.
 #[derive(Debug, Clone)]
 pub struct DelegTxData {
     poolhash: String,
@@ -121,8 +142,10 @@ impl std::str::FromStr for DelegTxData {
     }
 }
 
+/// DeregTxData is the 'Stakepool Deregistration Transaction' specific type
 #[derive(Debug, Clone)]
 pub struct DeregTxData {
+    // Nonesense ...
     registered: Option<bool>,
 }
 

@@ -16,6 +16,7 @@ pub(crate) enum CmdParseError {
 
 impl Parse {
     pub(crate) fn new(frame: Frame) -> Result<Parse, CmdParseError> {
+        log::trace!("Parse::new, frame: {:?}", frame);
         let array = match frame {
             Frame::Array(array) => array,
             frame => {
