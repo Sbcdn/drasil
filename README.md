@@ -9,8 +9,8 @@ Drasil system and concept was created by Torben and Zak, but it also utilises se
 Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. 
 You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
 
-* [API Documentation Local Cluster] (https://documenter.getpostman.com/view/23201834/2s9YXpUHwG)
-* [License] (https://github.com/sbcdn/drasil/License.md)
+* [API Documentation Local Cluster](https://documenter.getpostman.com/view/23201834/2s9YXpUHwG)
+* [License](https://github.com/Sbcdn/drasil/blob/tk22/LICENSE.md)
 
 The web interface for the administration via frigg's REST Api is in development. 
 
@@ -31,7 +31,7 @@ You can use the drasil system to build your own transactions, for that the custo
 
 ## Building and Testing Drasil
 The most convinient way to test and run drasil is via the local cluster. 
-Please find a detailed description in the [local setup](https://github.com/sbcdn/drasil/local/)
+Please find a detailed description in the [local setup](https://github.com/Sbcdn/drasil/tree/tk22/local)
 It using a local Kubernetes setup utilizing k3d and docker. The deployment configuration can be found in 'local', be aware that the local setup is not suitable for production use, additional security measures must be taken. 
 
 The connection string to dbsync must be amended in  'local/configmaps/drasil_configmap.yaml' before starting a local cluster or via envrionment variable 'DBSYNC_DB_URL' on the container in kubernetes. 
