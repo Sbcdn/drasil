@@ -1,27 +1,42 @@
-use std::error::Error;
-use std::fmt::{self};
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MurinError {
-    details: String,
+use serde::Serialize;
+
+
+#[allow(clippy::enum_variant_names)]
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum MurinError {
+    #[error("error: {:?}", self)]
+    Custom(String),
+    #[error("error: {:?}", self)]
+    ProtocolCommandError(String),
+    #[error("Invalid data")]
+    ProtocolCommandErrorInvalidData,
+    #[error("frame check: could not get decimal")]
+    ProtocolCommandErrorCouldNotGetDecimal,
+    //#[error("{:}}",)]
+    //Error(#[from] &str),
+}
+
+#[derive(Serialize, Debug)]
+struct ErrorResponse {
+    message: String,
+    status: String,
+}
+
+impl From<&str> for MurinError {
+    fn from(err: &str) -> Self {
+        MurinError::Custom(err.to_owned())
+    }
+}
+
+impl From<std::string::String> for MurinError {
+    fn from(err: std::string::String) -> Self {
+        MurinError::Custom(err)
+    }
 }
 
 impl MurinError {
     pub fn new(msg: &str) -> MurinError {
-        MurinError {
-            details: msg.to_string(),
-        }
-    }
-}
-
-impl fmt::Display for MurinError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.details)
-    }
-}
-
-impl Error for MurinError {
-    fn description(&self) -> &str {
-        &self.details
+        MurinError::Custom(msg.to_owned())
     }
 }
 
@@ -135,3 +150,12 @@ impl From<bip39::Error> for MurinError {
         MurinError::new(&err.to_string())
     }
 }
+
+impl From<Box<bincode::ErrorKind>> for MurinError {
+    fn from(err: Box<bincode::ErrorKind>) -> Self {
+        MurinError::new(&err.to_string())
+    }
+}
+
+
+

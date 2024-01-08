@@ -157,6 +157,13 @@ impl<'a> PerformTxb<AtCPOParams<'a>> for AtCPOBuilder<'a> {
             vkey_counter = 2;
         }
         debug!("Vkey Counter at End: {:?}", vkey_counter);
-        Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+        Ok((
+            txbody,
+            txwitness,
+            aux_data,
+            saved_input_txuos,
+            vkey_counter,
+            false,
+        ))
     }
 }

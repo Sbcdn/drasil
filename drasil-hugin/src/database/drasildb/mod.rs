@@ -80,7 +80,7 @@ pub struct TBDrasilUser {
     pub email_verified: bool,
     pub cardano_wallet: Option<String>,
     pub cwallet_verified: bool,
-    pub drslpubkey: String,
+    pub drslpubkey: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

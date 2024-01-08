@@ -117,15 +117,22 @@ impl Handler {
         log::debug!("started new handler");
         while !self.shutdown.is_shutdown() {
             let maybe_frame = tokio::select! {
-                res = self.connection.read_frame() => res?,
+                res = self.connection.read_frame() => {
+                    log::debug!("odin received something, res: {:?}", &res);
+                    res?
+                },
                 _ = self.shutdown.recv() => {
                     return Ok(());
                 }
             };
             let frame = match maybe_frame {
-                Some(frame) => frame,
+                Some(frame) => {
+                    log::debug!("odin received frame: {:?}", frame);
+                    frame
+                },
                 None => return Ok(()),
             };
+            log::debug!("try to parse from frame");
             let cmd = Command::from_frame(frame);
             log::debug!("CMD: {:?}", cmd);
             cmd?.apply(&mut self.connection, &mut self.shutdown).await?;

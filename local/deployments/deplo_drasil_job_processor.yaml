@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drasil-drasil-job-processor
+  name: drasil-job-processor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-drasil-job-processor
+  template:
+    metadata:
+      labels:
+        app: drasil-drasil-job-processor
+    spec:
+      containers:
+      - env:
+        - name: CONSUMER_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        envFrom:
+          - configMapRef:
+              name: drasil-config
+        image: k3d-drasil-registry.localhost:12345/drasil-jobs:v1.3
+        imagePullPolicy: IfNotPresent
+        name: drasil-jobs
+---
+# Job Processor Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-drasil-job-processor-service
+spec:
+  selector:
+    app: drasil-drasil-job-processor
+  type: ClusterIP
+  ports:
+    - port: 4006
+      targetPort: 4006

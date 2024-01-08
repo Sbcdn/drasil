@@ -1,7 +1,7 @@
+use drasil_murin::MurinError;
 use drasil_murin::{cardano, PerformTxb, TransactionUnspentOutputs, TxData};
 
 use crate::admin::get_vaddr;
-use crate::error::SystemDBError;
 use crate::BuildMultiSig;
 use crate::CaValue;
 use crate::TBCaPayment;
@@ -16,33 +16,29 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
         .unwrap()
         .into_cpo()
         .await?;
-    let po = TBCaPayment::find(&poid.get_po_id())?;
+    let po = TBCaPayment::find(&poid.get_po_id()).map_err(|e| MurinError::Custom(e.to_string()))?;
 
     if po.stauts_pa == "cancel" || po.stauts_bl.is_some() {
-        return Err(Box::new(SystemDBError::Custom(
-            "ERROR payout is invalid".to_string(),
-        )));
+        return Err("ERROR payout is invalid".into());
     }
 
     log::debug!("Verify password...");
-    TBDrasilUser::verify_pw_userid(&po.user_id, &poid.get_pw())?;
+    TBDrasilUser::verify_pw_userid(&po.user_id, &poid.get_pw()).map_err(|e| MurinError::Custom(e.to_string()))?;
 
     if po.stauts_bl.is_some() {
-        return Err(Box::new(SystemDBError::Custom(
-            "ERROR this payout was processed before".to_string(),
-        )));
+        return Err("ERROR this payout was processed before".into());
     }
 
     log::debug!("Try to connect to drasil db and get user...");
-    let user = TBDrasilUser::get_user_by_user_id(&po.user_id)?;
+    let user = TBDrasilUser::get_user_by_user_id(&po.user_id).map_err(|e| MurinError::Custom(e.to_string()))?;
 
     //Trigger Build and submit payout transaction
-    let contract = TBContracts::get_contract_uid_cid(po.user_id, po.contract_id)?;
+    let contract = TBContracts::get_contract_uid_cid(po.user_id, po.contract_id).map_err(|e| MurinError::Custom(e.to_string()))?;
 
     log::debug!("Generating TxData...");
     let mut gtxd = TxData::new(
         Some(vec![po.contract_id]),
-        vec![drasil_murin::wallet::address_from_string(&get_vaddr(&po.user_id).await?).await?],
+        vec![drasil_murin::wallet::address_from_string(&get_vaddr(&po.user_id).await.map_err(|e| MurinError::Custom(e.to_string()))?).await?],
         None,
         TransactionUnspentOutputs::new(),
         cardano::get_network_from_address(&contract.address)?,
@@ -53,7 +49,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     let verified_addr = gtxd.get_senders_address(None).unwrap();
 
     log::debug!("Make payout values...");
-    let cv = serde_json::from_str::<CaValue>(&po.value)?.into_cvalue()?;
+    let cv = serde_json::from_str::<CaValue>(&po.value)?.into_cvalue().map_err(|e| MurinError::Custom(e.to_string()))?;
     let txo_values = vec![(&verified_addr, &cv, None)];
     log::debug!("Try to build transaction...");
     // ToDo: Check that payout sum cannot spent liquidity
@@ -61,19 +57,17 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     let mut dbsync = match drasil_mimir::establish_connection() {
         Ok(conn) => conn,
         Err(e) => {
-            return Err(Box::new(SystemDBError::Custom(format!(
+            return Err(format!(
                 "ERROR could not connect to dbsync: '{:?}'",
-                e.to_string()
-            ))))
+                e.to_string()).into())
         }
     };
     let slot = match drasil_mimir::get_slot(&mut dbsync) {
         Ok(s) => s,
         Err(e) => {
-            return Err(Box::new(SystemDBError::Custom(format!(
+            return Err(format!(
                 "ERROR could not determine current slot: '{:?}'",
-                e.to_string()
-            ))))
+                e.to_string()).into())
         }
     };
     gtxd.set_current_slot(slot as u64);
@@ -88,7 +82,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
         &contract.contract_id,
         &contract.user_id,
         &contract.version,
-    )?;
+    ).map_err(|e| MurinError::Custom(e.to_string()))?;
 
     let ident = crate::encryption::mident(
         &contract.user_id,
@@ -105,7 +99,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
         drasil_murin::clib::NativeScript::from_bytes(hex::decode(&contract.plutus)?)
             .map_err::<crate::CmdError, _>(|_| crate::CmdError::Custom {
             str: "could not convert string to native script".to_string(),
-        })?,
+        }).map_err(|e| MurinError::Custom(e.to_string()))?,
     );
     let cpo = drasil_murin::txbuilder::stdtx::build_cpo::AtCPOBuilder::new(txb_param);
     let builder = drasil_murin::TxBuilder::new(&gtxd, &pkvs);
@@ -139,7 +133,7 @@ pub(crate) async fn handle_customer_payout(bms: &BuildMultiSig) -> crate::Result
     )?;
 
     // On Success update status
-    let result = po.update_txhash(&txh).await?;
-    TBCaPaymentHash::create(&result).await?;
+    let result = po.update_txhash(&txh).await.map_err(|e| MurinError::Custom(e.to_string()))?;
+    TBCaPaymentHash::create(&result).await.map_err(|e| MurinError::Custom(e.to_string()))?;
     Ok(serde_json::json!(result).to_string())
 }

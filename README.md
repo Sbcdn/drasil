@@ -1,18 +1,68 @@
 # Drasil
 
-The Drasil Application Framework is a collection of microservices which, when used together, form an effective, scalable, comprehensive and powerful framework for running decentralised applications (or "dApps") on the Cardano blockchain. Its architecture, services and libraries are written in Rust.
+Drasil is an opinionated implementation of a software suite to run applications on Cardano, it is a collection of microservices which, when used together, form an effective and scalable framework for running applications on the Cardano blockchain. Its architecture, services and libraries are written in Rust. 
 
-Drasil system and concept was created by Torben and Zak, but it also utilises several tools developed by the Cardano community, to whom we are grateful and hope to continue to repay with our own small contributions.  Because of the complicated way in which the various tools interact, a lot more is required to actually run a fully integrated and working "Drasil System" than just the applications and libraries found in this repository, of course!  We exist to support and advise on how to utilize this framework for particular applications and consult on what it is required to run it effectively.
+# The codebase is still under development and not considered production ready, use on own risk. 
 
-Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. We are constantly developing Drasil with new features, smart contracts and applications. We also maintain a testnet and mainnet version, and it is possible to subscribe to hosted single services or applications directly without the need to run your own Drasil System.  You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
+Drasil system and concept was created by Torben and Zak, but it also utilises several tools developed by the Cardano community, to whom we are grateful and hope to continue to repay with our own small contributions.  Because of the way in which the various tools interact, more is required to actually run a fully integrated and working "Drasil System" than just the applications and libraries found in this repository! (Redis, RabbitMQ, Cardano-Node, Dbsync, Oura, Postgres)
 
-Visit us at [drasil.io](https://www.drasil.io)
+Drasil is made for Orechstration, can run in native or managed Kubernetes, on native Linux or locally in your docker environment. 
+You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
 
-* [Documentation](https://docs.drasil.io/)
+* [API Documentation Local Cluster](https://documenter.getpostman.com/view/23201834/2s9YXpUHwG)
+* [License](https://github.com/Sbcdn/drasil/blob/tk22/LICENSE.md)
 
+The web interface for the administration via frigg's REST Api is in development. 
 
-## Mythology
-The word "Drasil" derives from "Yggdrasil" which described the "world tree" in Norse mythology, although there are several different transalations and interpretations, some of which you can find below. We chose Drasil as we imagine this application framework as providing the branches of a large tree, the "World tree" bearing Cardanos applications.
+If you have questions or need support, please [contact us](mailto:info@drasil.io) us. 
+
+## Supported Applications 
+- NFT Collection Minter
+- Reward System
+- NFT Marketplace
+
+## Additional Features
+- OneShotMinter API
+- Wallet Backend to build Standard Transactions (Asset Transfers)
+- Ada staking
+
+## Custom Transaction Building
+You can use the drasil system to build your own transactions, for that the custom transaction building procedure must be implemented via modules. 
+
+## Building and Testing Drasil
+The most convinient way to test and run drasil is via the local cluster. 
+Please find a detailed description in the [local setup](https://github.com/Sbcdn/drasil/tree/tk22/local)
+It using a local Kubernetes setup utilizing k3d and docker. The deployment configuration can be found in 'local', be aware that the local setup is not suitable for production use, additional security measures must be taken. 
+
+The connection string to dbsync must be amended in  'local/configmaps/drasil_configmap.yaml' before starting a local cluster or via envrionment variable 'DBSYNC_DB_URL' on the container in kubernetes. 
+The local setup will NOT spin up a cardano node and dbsync, this has to be done seperatly or connect to an existing one. 
+
+### Oura
+Oura must be configured to fill a redis stream for transactions. You can find a detailed description how to setup redis streams with oura [here](https://github.com/txpipe/oura)
+
+## Quick Overview about the libraries and services
+- libraries
+   - drasil-dvltath : Library to build a sidecar container to use Hashicorp Vault as Private Key Storage for "odin" and "frigg".
+   - drasil-gugnir : Library to manage the rewards database
+   - drasil-hugin : General protocol library
+   - drasil-mimir : Dbsync interface, will be replaced by the cardano data provider soon
+   - drasil-murin : Cardano Transaction building library working together with hugin
+   - drasil-sleipnir : Administrator functions library, here is all what "frigg" needs to create new wallets or an NFT collection, ...
+
+- services are the microservices runnning in the cluster
+   - frigg: Admin Backend-Server for the admin web interface (web interface is in development...)
+   - heimdallr: Transaction Building Gateway to Odin, web facing endpoint
+   - vidar : REST API to retrieve Reward and Minting information
+   - odin : runs the core library as a service, transaction building, authentication, private key handling etc. the only service allowed to interact with odin is heimdallr.  
+   - loki : Websocket for NFT Minting and other asynchronous user interactions via jobs and queues
+   - geri : Cardano Chain Follower and Clean Up System for redis cache and pending UTxO memory
+   - jobs : general job processor service for example to perform long lasting database operations
+   - work_loki : minting system worker (is its own service so we can run it isolated from the other jobs)
+
+   Additionally it needs a Redis database, two Postgres Databases, RabbitMQ, a Cardano Node and DBsync and an instance of Oura.
+
+### Name and Mythology
+The word "Drasil" derives from "Yggdrasil" which described the "world tree" in Norse mythology, although there are several different transalations and interpretations, some of which you can find below.
 
 Yggdrasil (from Old Norse Yggdrasill [ˈyɡːˌdrɑselː]), in Norse cosmology, is an immense and central sacred tree. Around it exists all else, including the Nine Worlds.
 
@@ -27,60 +77,3 @@ Nevertheless, scholarly opinions regarding the precise meaning of the name Yggdr
 A third interpretation, presented by F. Detter, is that the name Yggdrasill refers to the word yggr ("terror"), yet not in reference to the Odinic name, and so Yggdrasill would then mean "tree of terror, gallows". F. R. Schröder has proposed a fourth etymology according to which yggdrasill means "yew pillar", deriving yggia from *igwja (meaning "yew-tree"), and drasill from *dher- (meaning "support").
 [Wikipedia](https://en.wikipedia.org/wiki/Yggdrasil)
 
-
-##
-
-## Building Drasil
-
-### Cargo
-
-#### Prerequisites
-* [Rust](https://www.rust-lang.org/tools/install/)
-
-#### Build Executable
-
-Navigate into the 'drasil' folder and run `cargo build`. This will build all services at once.
-If you want to build executables for production, you can use (for example): 
-
-`RUSTFLAGS='-C target-feature=-crt-static' cargo build --target x86_64-unknown-linux-gnu --release`
-
-or
-
-`RUSTFLAGS='-C target-feature=+crt-static' cargo build --target x86_64-unknown-linux-musl --release`
-
-
-### Docker
-Follow the Readme files in the single applications' folders
-
-
-### Environment 
-Drasils individual services require the setting of many parameters which are passed via environment variables.  These are described in the Readme file corresponding to the specific service.
-
-## Architecture
-
-...coming soon...
-
-## Quick Guide for James
-
-Folders:
-- jobs : does include all binaries which should run as cron-jobs (is for the Reward system only)
-- libs : includes all libraries, this is the core
-   - dvlth : is a sidecar binary for odin and frigg, dvlth communicates with HashiCorp Vault and exchanges secrets (expire after 3s) via filesystem (temp volume mapping)
-- services : are the main binaries 
-   - frigg: Admin Backend-Server for th eno-code plattform
-   - heimdallr: Transaction Building Gateway to Odin, web facing endpoint
-   - loki : Websocket Bridge For NFT Minting and other asynchronous user interactions via jobs and queues
-   - odin : runs the core library as a service, transaction building, authentication, private key handling etc. the only service allowed to interact with oding it heimdallr, odin is isolated with access to vault / system and reward database, heimdallr has no access to those databases
-   - vidar : REST API to retrieve Reward and Minting information
-   - wsauth : test program oyu can ignore for the moment
-- worker : binaries performing work on redis, the databases or just processing jobs from the job queue
-   - geri : Cardano Chain Follower and Clean Up System for redis cache and pending utxo memory
-   - jobs : job processor for general drasil jobs
-   - work_loki : minting system worker (is isolated from the rest, has some special needs)
-
-   Additionally we need a Redis Database, two Postgres Databases and a DBsync (third postgres database)
-   There is also the Cardano-Data-Provider which abstarcts some stuff from this libraries and take it into its own repository.
-   The CDP hasits own binary (the wallet backend).
-   Then there is the csl-common library which unifies some functions.
-
-For a "simple" start go with odin, heimdallr, cdp, redis and the postgres databases that is the minimal setup.

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drasil-rabbitmq
+  name: rabbitmq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-rabbitmq
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: drasil-rabbitmq
+    spec:
+      containers:
+      - image: rabbitmq:latest
+        imagePullPolicy: IfNotPresent
+        name: rabbitmq
+        env: 
+          - name: RABBITMQ_DEFAULT_USER
+            value: rmq
+          - name: RABBITMQ_DEFAULT_PASS
+            value: rmq
+---
+# RabbitMQ Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-rabbitmq-service
+spec:
+  selector:
+    app: drasil-rabbitmq
+  type: LoadBalancer
+  ports:
+    - port: 5672  
+      targetPort: 5672

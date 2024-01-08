@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use warp::Reply;
 
 use crate::{
-    handler::{get_rmq_con, get_user_from_string, QUEUE_NAME},
+    handler::{get_rmq_con, get_user_from_string, JOB_QUEUE_NAME},
     WebResult,
 };
 #[derive(Serialize, Deserialize, Debug)]
@@ -57,7 +57,7 @@ pub async fn import_whitelist_from_csv(
 
     let q = channel
         .queue_declare(
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::QueueDeclareOptions::default(),
             lapin::types::FieldTable::default(),
         )
@@ -68,7 +68,7 @@ pub async fn import_whitelist_from_csv(
     channel
         .basic_publish(
             "",
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::BasicPublishOptions::default(),
             serde_json::to_string(&job)
                 .map_err(|_| crate::error::Error::Custom("serde serialization failed".to_owned()))?
@@ -117,7 +117,7 @@ pub async fn allocate_whitelist_to_mp(
 
     let q = channel
         .queue_declare(
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::QueueDeclareOptions::default(),
             lapin::types::FieldTable::default(),
         )
@@ -128,7 +128,7 @@ pub async fn allocate_whitelist_to_mp(
     channel
         .basic_publish(
             "",
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::BasicPublishOptions::default(),
             serde_json::to_string(&job)
                 .map_err(|_| crate::error::Error::Custom("serde serialization failed".to_owned()))?
@@ -177,7 +177,7 @@ pub async fn random_allocate_whitelist_to_mp(
 
     let q = channel
         .queue_declare(
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::QueueDeclareOptions::default(),
             lapin::types::FieldTable::default(),
         )
@@ -188,7 +188,7 @@ pub async fn random_allocate_whitelist_to_mp(
     channel
         .basic_publish(
             "",
-            QUEUE_NAME.as_str(),
+            JOB_QUEUE_NAME.as_str(),
             lapin::options::BasicPublishOptions::default(),
             serde_json::to_string(&job)
                 .map_err(|_| crate::error::Error::Custom("serde serialization failed".to_owned()))?

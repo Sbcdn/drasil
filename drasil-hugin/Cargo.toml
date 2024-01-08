@@ -3,10 +3,9 @@ name = "drasil-hugin"
 version = "0.1.0"
 edition = "2021"
 description = "Drasil Blockchain Application Framework - Drasil System Library"
-repository = "https://github.com/Sbcdn/hugin.git"
-homepage = "https://www.drasil.io"
+repository = "https://github.com/Sbcdn/drasil.git"
 documentation = "https://docs.drasil.io"
-license = "LICENSE.md"
+license = "LICENSE_GPL.md"
 readme = "README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
 
@@ -43,3 +42,7 @@ drasil-murin = { path = "../drasil-murin", version = "0.1.0" }
 drasil-mimir = { path = "../drasil-mimir", version = "0.1.0" }
 drasil-gungnir = { path = "../drasil-gungnir", version = "0.1.0" }
 drasil-dvltath = { path = "../drasil-dvltath", version = "0.1.0" }
+
+trust-dns-resolver = "*"
+jsonwebtoken = {workspace = true }
+warp = { workspace = true }

@@ -1,11 +1,13 @@
 use std::fmt;
 
+use drasil_murin::MurinError;
+
 #[derive(Debug)]
 pub enum CmdError {
     InvalidCmd,
     InvalidData,
     Custom { str: String },
-    Other(crate::Error),
+    Other(MurinError),
 }
 
 impl From<String> for CmdError {

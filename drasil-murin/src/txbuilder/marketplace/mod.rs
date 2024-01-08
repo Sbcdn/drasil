@@ -1,10 +1,14 @@
 use cardano_serialization_lib as clib;
 use cardano_serialization_lib::{address as caddr, crypto as ccrypto, utils as cutils};
+use clib::crypto::Ed25519KeyHash;
+use clib::{plutus, AssetName, PolicyID};
 
 pub mod buy;
 pub mod cancel;
 pub mod list;
 pub mod update;
+
+use self::models::TxInput;
 
 pub use super::*;
 pub use buy::*;
@@ -19,7 +23,6 @@ pub struct MpTxData {
     royalties_addr: Option<caddr::Address>,
     royalties_rate: Option<f32>,
     selling_price: u64,
-    metadata: Option<Vec<String>>,
 }
 
 impl ToString for MpTxData {
@@ -57,28 +60,12 @@ impl ToString for MpTxData {
         // prepare selling price
         let s_sprice = self.get_price().to_string();
 
-        //prepare metadata
-        let mut s_metadata = String::new();
-        match self.get_metadata() {
-            Some(m) => {
-                for s in m {
-                    s_metadata.push_str(&(s + "?"))
-                }
-                s_metadata.pop();
-            }
-            None => {
-                s_metadata = "NoData".to_string();
-            }
-        }
-
         let mut ret = String::new();
         ret.push_str(&(s_tokens + "|"));
         ret.push_str(&(s_token_utxos + "|"));
         ret.push_str(&(s_royaddr + "|"));
         ret.push_str(&(s_royrate + "|"));
-        ret.push_str(&(s_sprice + "|"));
-        ret.push_str(&(s_metadata));
-
+        ret.push_str(&(s_sprice));
         ret
     }
 }
@@ -127,26 +114,12 @@ impl std::str::FromStr for MpTxData {
             // restore selling price
             let selling_price = slice[4].parse::<u64>()?;
 
-            // restore metadata
-            let metadata = match slice[4] {
-                "NoData" => None,
-                _ => {
-                    let mut md = Vec::<String>::new();
-                    let meta_slice: Vec<&str> = slice[5].split('?').collect();
-                    for d in meta_slice {
-                        md.push(d.to_string());
-                    }
-                    Some(md)
-                }
-            };
-
             Ok(MpTxData {
                 tokens,
                 token_utxos,
                 royalties_addr: roy_addr,
                 royalties_rate: roy_rate,
                 selling_price,
-                metadata,
             })
         } else {
             Err(MurinError::new(
@@ -170,7 +143,6 @@ impl MpTxData {
             royalties_addr: None,
             royalties_rate: None,
             selling_price,
-            metadata: None,
         }
     }
 
@@ -180,10 +152,6 @@ impl MpTxData {
 
     pub fn set_royalties_rate(&mut self, royrate: f32) {
         self.royalties_rate = Some(royrate);
-    }
-
-    pub fn set_metadata(&mut self, metadata: Vec<String>) {
-        self.metadata = Some(metadata);
     }
 
     pub fn get_tokens(&self) -> &Vec<TokenAsset> {
@@ -204,10 +172,6 @@ impl MpTxData {
 
     pub fn get_price(&self) -> u64 {
         self.selling_price
-    }
-
-    pub fn get_metadata(&self) -> Option<Vec<String>> {
-        self.metadata.clone()
     }
 }
 
@@ -255,4 +219,195 @@ pub fn make_mp_contract_utxo_output(
     } else {
         None
     }
+}
+
+pub struct MarketPlaceDatum {
+    price: u64,
+    seller: Ed25519KeyHash,
+    royalties_rate: u64,
+    royalties_pkh: Option<Ed25519KeyHash>,
+    policy_id: PolicyID,
+    token_name: AssetName,
+}
+
+pub fn encode_mp_datum(mp: MarketPlaceDatum) -> (ccrypto::DataHash, plutus::PlutusData) {
+    let roy_rate: u64;
+    let roy_pkey_hash = if let Some(rpkh) = &mp.royalties_pkh {
+        roy_rate = mp.royalties_rate;
+        rpkh.to_bytes()
+    } else {
+        roy_rate = 0;
+        vec![]
+    };
+
+    let mut fields_inner = plutus::PlutusList::new();
+    // Selling Price
+    fields_inner.add(&plutus::PlutusData::new_integer(
+        &cutils::BigInt::from_str(&mp.price.to_string()).unwrap(),
+    ));
+    // Sellers PubKeyHash
+    fields_inner.add(&plutus::PlutusData::new_bytes(
+        hex::decode(&mp.seller.to_bytes()).unwrap(),
+    ));
+    // royalties rate in promille
+    fields_inner.add(&plutus::PlutusData::new_integer(
+        &cutils::BigInt::from_str(&roy_rate.to_string()).unwrap(),
+    ));
+    // Royalties PubKeyHash
+    fields_inner.add(&plutus::PlutusData::new_bytes(roy_pkey_hash));
+    // PolicyId
+    fields_inner.add(&plutus::PlutusData::new_bytes(
+        hex::decode(&mp.policy_id.to_bytes()).unwrap(),
+    ));
+    // TokenName
+    fields_inner.add(&plutus::PlutusData::new_bytes(
+        hex::decode(&mp.token_name.name()).unwrap(),
+    ));
+
+    debug!("\nFields Inner: \n{:?}\n", fields_inner);
+
+    //Datum
+    let datum = &plutus::PlutusData::new_constr_plutus_data(&plutus::ConstrPlutusData::new(
+        &cutils::to_bignum(0),
+        &fields_inner,
+    ));
+    // Datumhash
+    let datumhash = cutils::hash_plutus_data(datum);
+    let hex_datum = hex::encode(datumhash.to_bytes());
+    info!("DatumHash: {:?}\n", hex_datum);
+
+    (datumhash, datum.clone())
+}
+
+pub fn decode_mp_datum(bytes: &[u8]) -> Result<MarketPlaceDatum, MurinError> {
+    let datum = cardano_serialization_lib::plutus::PlutusData::from_bytes(bytes.to_vec())
+        .expect("Could not deserialize PlutusData");
+    log::debug!("Restored PlutusData: {:?}", datum);
+    let d_str = datum
+        .to_json(cardano_serialization_lib::plutus::PlutusDatumSchema::DetailedSchema)
+        .expect("Could not transform PlutusData to JSON");
+    log::info!("Restored PlutusData Str: {:?}", d_str);
+    let d_svalue = serde_json::from_str::<serde_json::Value>(&d_str)
+        .expect("Could not transform PlutusDataJson to serde_json::Value");
+    log::debug!("Deserialized Datum: \n{:?}", &d_str);
+    let fields = d_svalue.get("fields").unwrap().as_array().unwrap();
+
+    let price = fields[0].as_u64().unwrap();
+
+    let seller = Ed25519KeyHash::from_bytes(
+        hex::decode(
+            fields[1]
+                .as_object()
+                .unwrap()
+                .get("bytes")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let royalties_rate = fields[2].as_u64().unwrap();
+
+    let royalties_pkh = Ed25519KeyHash::from_bytes(
+        hex::decode(
+            fields[3]
+                .as_object()
+                .unwrap()
+                .get("bytes")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let policy_id = PolicyID::from_hex(
+        fields[4]
+            .as_object()
+            .unwrap()
+            .get("bytes")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+
+    let token_name = AssetName::new(
+        hex::decode(
+            fields[5]
+                .as_object()
+                .unwrap()
+                .get("bytes")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    Ok(MarketPlaceDatum {
+        price,
+        seller,
+        royalties_rate,
+        royalties_pkh: Some(royalties_pkh),
+        policy_id,
+        token_name,
+    })
+}
+
+pub fn make_inputs_txb(
+    inputs: &Vec<TxInput>,
+) -> (clib::TransactionInputs, TransactionUnspentOutputs) {
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    //Add wallet inputs for the transaction
+    //  Add the inputs for this transaction
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    let mut txuos = TransactionUnspentOutputs::new(); // Available in 9.2.0 beta not in 9.1.2
+    let mut txins = clib::TransactionInputs::new();
+    for i in inputs {
+        let txuo_in = &clib::TransactionInput::new(
+            &ccrypto::TransactionHash::from_bytes(hex::decode(i.txhash.clone()).unwrap()).unwrap(),
+            i.txinput,
+        );
+
+        let mut value = cutils::Value::new(&cutils::to_bignum(0u64));
+        let mut lovelaces: u64 = 0;
+        let mut multiasset = clib::MultiAsset::new();
+        for v in &i.value {
+            if v.currencySymbol.is_empty() || v.currencySymbol == "lovelace" {
+                for a in &v.assets {
+                    lovelaces += a.amount;
+                }
+            } else {
+                let cs: clib::PolicyID =
+                    clib::PolicyID::from_bytes(hex::decode(&v.currencySymbol).unwrap()).unwrap();
+                let mut assets = clib::Assets::new();
+                for a in &v.assets {
+                    let tn: clib::AssetName =
+                        clib::AssetName::new(hex::decode(&a.tokenName).unwrap()).unwrap();
+                    assets.insert(&tn, &cutils::to_bignum(a.amount));
+                    //info!("{:?}.{:?}",cs,assets);
+                    multiasset.insert(&cs, &assets);
+                }
+            }
+        }
+        value.set_coin(&cutils::to_bignum(lovelaces));
+        value.set_multiasset(&multiasset);
+        let addr = &caddr::Address::from_bech32(&i.address).unwrap();
+        let txuo_out = clib::TransactionOutput::new(addr, &value);
+        let txuo: cutils::TransactionUnspentOutput =
+            cutils::TransactionUnspentOutput::new(txuo_in, &txuo_out);
+        //info!("TXOU: {:?}",txuo);
+        //info!();
+
+        txuos.add(&txuo);
+        txins.add(txuo_in);
+    }
+
+    (txins.clone(), txuos.clone())
 }

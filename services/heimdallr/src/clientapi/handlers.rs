@@ -36,23 +36,9 @@ pub async fn contract_exec_build(
         warp::reply::with_status(warp::reply::json(&()), warp::http::StatusCode::BAD_REQUEST);
 
     match contract {
-        ContractType::MarketPlace => {
-            if MarketplaceActions::from_str(&action).is_err() {
-                return Ok(badreq);
-            }
-        }
-        ContractType::NftShop => {
-            // Not implemented
-            return Ok(badreq);
-        }
-        ContractType::NftMinter => {
-            // Not implemented
-            return Ok(badreq);
-        }
-        ContractType::TokenMinter => {
-            // Not implemented
-            return Ok(badreq);
-        }
+        ContractType::MarketPlace => {}
+        ContractType::WmEnRegistration => {}
+        ContractType::WmtStaking => {}
         _ => {
             // Wrong Parameter
             return Ok(badreq);
@@ -72,16 +58,20 @@ pub async fn contract_exec_build(
                 warp::http::StatusCode::OK,
             )),
 
-            Err(_) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
+            Err(e1) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
                 Ok(resp) => Ok(warp::reply::with_status(
                     warp::reply::json(&resp),
                     warp::http::StatusCode::OK,
                 )),
 
-                Err(e) => {
-                    log::error!("Error could not deserialize Unsigned Transactions: {}", e);
+                Err(e2) => {
+                    let message = format!(
+                        "An error occured during transaction building: {}, {}",
+                        e1, e2
+                    );
+                    log::error!("{}", message);
                     Ok(warp::reply::with_status(
-                        warp::reply::json(&ReturnError::new(&e.to_string())),
+                        warp::reply::json(&ReturnError::new(&message)),
                         warp::http::StatusCode::CONFLICT,
                     ))
                 }
@@ -104,9 +94,6 @@ pub async fn multisig_exec_build(
     match multisig_type {
         MultiSigType::SpoRewardClaim => {}
         MultiSigType::NftCollectionMinter => {}
-        MultiSigType::NftVendor => {
-            return Ok(badreq);
-        }
         MultiSigType::Mint => {}
         MultiSigType::TestRewards => {
             return Ok(badreq);
@@ -129,16 +116,20 @@ pub async fn multisig_exec_build(
                 warp::http::StatusCode::OK,
             )),
 
-            Err(_) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
+            Err(e1) => match serde_json::from_str::<UnsignedTransaction>(&ok) {
                 Ok(resp) => Ok(warp::reply::with_status(
                     warp::reply::json(&resp),
                     warp::http::StatusCode::OK,
                 )),
 
-                Err(e) => {
-                    log::error!("Error could not deserialize Unsigned Transaction: {}", e);
+                Err(e2) => {
+                    let message = format!(
+                        "An error occured during transaction building: {}, {}",
+                        e1, e2
+                    );
+                    log::error!("{}", message);
                     Ok(warp::reply::with_status(
-                        warp::reply::json(&ReturnError::new(&e.to_string())),
+                        warp::reply::json(&ReturnError::new(&message)),
                         warp::http::StatusCode::CONFLICT,
                     ))
                 }
@@ -168,10 +159,11 @@ pub async fn stdtx_exec_build(
         TXPWrapper::TransactionPattern(txp) => txp,
         _ => return Ok(badreq),
     };
-    log::debug!("Try to connect to odin...");
-    let mut client = connect_odin().await;
     log::debug!("Create Command...");
     let cmd = BuildStdTx::new(customer_id, tx_type.clone(), *payload.clone());
+    log::debug!("Command: {:?}", cmd);
+    log::debug!("Try to connect to odin...");
+    let mut client = connect_odin().await;
     match client.build_cmd::<BuildStdTx>(cmd).await {
         Ok(ok) => match UnsignedTransaction::from_str(&ok) {
             Ok(resp) => Ok(warp::reply::with_status(
@@ -185,10 +177,14 @@ pub async fn stdtx_exec_build(
                     warp::http::StatusCode::OK,
                 )),
 
-                Err(e) => {
-                    log::error!("Error could not deserialize Unsigned Transaction: {}", e);
+                Err(e2) => {
+                    let message = format!(
+                        "An error occured during transaction building: {}, {}",
+                        e1, e2
+                    );
+                    log::error!("{}", message);
                     Ok(warp::reply::with_status(
-                        warp::reply::json(&ReturnError::new(&e1.to_string())),
+                        warp::reply::json(&ReturnError::new(&message)),
                         warp::http::StatusCode::CONFLICT,
                     ))
                 }

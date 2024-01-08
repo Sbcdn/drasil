@@ -147,7 +147,7 @@ impl<'a> PerformTxb<AtDeregParams<'a>> for AtDeregBuilder {
         debug!("TxBody: {:?}", hex::encode(txbody.to_bytes()));
         debug!("--------------------Iteration Ended------------------------------");
         debug!("Vkey Counter at End: {:?}", vkey_counter);
-        Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter))
+        Ok((txbody, txwitness, aux_data, saved_input_txuos, vkey_counter,false))
     }
 }
 

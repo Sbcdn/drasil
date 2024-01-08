@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odin
+  labels:
+    app: drasil-odin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-odin
+  template:
+    metadata:
+      labels:
+        app: drasil-odin
+    spec:
+      volumes:
+      - name: cache-volume
+        emptyDir: {}
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      containers:
+        - name: dvltath
+          env: 
+            - name: VROLE_ID
+              valueFrom:
+                  secretKeyRef:
+                    name: dvltath-vault
+                    key: role-id
+            - name: VSECRET_ID
+              valueFrom:
+                  secretKeyRef:
+                    name: dvltath-vault
+                    key: secret-id
+          envFrom:
+          - configMapRef:
+              name: drasil-config
+          - configMapRef:
+              name: drasil-dvltath-config
+          image: k3d-drasil-registry.localhost:12345/dvltath:v1.3
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+                cpu: 50m
+                memory: 100Mi
+            requests:
+                cpu: 25m
+                memory: 10Mi
+          volumeMounts:
+          - mountPath: /cache
+            name: cache-volume
+        - name: odin
+          imagePullPolicy: IfNotPresent
+          image: k3d-drasil-registry.localhost:12345/odin:v1.3
+          volumeMounts:
+            - mountPath: /cache
+              name: cache-volume
+          resources:
+            limits:
+                cpu: 50m
+                memory: 100Mi
+            requests:
+                cpu: 25m
+                memory: 10Mi
+          env: 
+            - name: VROLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-vault
+                  key: role-id
+          envFrom:
+          - configMapRef:
+              name: drasil-config
+          - configMapRef:
+              name: drasil-odin-config
+---
+# Odin Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-odin-service
+spec:
+  selector:
+    app: drasil-odin
+  type: ClusterIP
+  ports:
+    - port: 6142
+      targetPort: 6142

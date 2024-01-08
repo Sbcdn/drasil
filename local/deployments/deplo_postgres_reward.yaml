@@ -1,0 +1,67 @@
+# PostgreSQL StatefulSet ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-db-rwd-config
+  labels:
+    app: postgresql-db-rwd
+data:
+  POSTGRES_DB: rewarddb
+  POSTGRES_USER: drasiluser
+  POSTGRES_PASSWORD: drasiluserpassword
+  PGDATA: /data/pgdata
+---
+# PostgreSQL StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgresql-db-rwd
+spec:
+  volumeClaimTemplates:
+      - metadata:
+          name: postgresql-db-rwd-disk
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 500Mi
+  serviceName: postgresql-db-rwd-service
+  selector:
+    matchLabels:
+      app: postgresql-db-rwd
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgresql-db-rwd
+    spec:
+      volumes:
+      - name: migrations
+        configMap:
+          name: rewarddb-tables-sql
+      containers:
+      - name: postgresql-db-rwd
+        image: postgres:latest
+        volumeMounts:
+          - name: postgresql-db-rwd-disk
+            mountPath: /data
+          - name: migrations
+            mountPath: /migrations/
+        envFrom:
+          - configMapRef:
+              name: postgres-db-rwd-config
+---
+# PostgreSQL StatefulSet Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-db-rwd-lb
+spec:
+  selector:
+    app: postgresql-db-rwd
+  type: LoadBalancer
+  ports:
+    - port: 5433
+      nodePort: 30009
+      protocol: TCP
+      targetPort: 5432

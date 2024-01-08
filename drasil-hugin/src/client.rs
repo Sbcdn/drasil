@@ -18,8 +18,9 @@ pub async fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<Client> {
 impl Client {
     pub async fn build_cmd<T: IntoFrame>(&mut self, cmd: T) -> crate::Result<String> {
         let frame = cmd.into_frame();
+        log::debug!("Send frame: {:?}", frame);
         self.connection.write_frame(&frame).await?;
-
+        log::debug!("Read response ...");
         match self.read_response().await? {
             Frame::Simple(response) => Ok(response),
             Frame::Bulk(data) => Ok(bc::DefaultOptions::new()
@@ -38,7 +39,7 @@ impl Client {
             Some(Frame::Error(msg)) => Err(msg.into()),
             Some(frame) => Ok(frame),
             None => {
-                let err = Error::new(ErrorKind::ConnectionReset, "connection reset by server");
+                let err = Error::new(ErrorKind::ConnectionReset, "connection aborted by server");
 
                 Err(err.into())
             }

@@ -120,6 +120,7 @@ pub async fn depricate_contract(
 struct ViewAdmContracts {
     pub user_id: i64,
     pub contract_id: i64,
+    pub contract_type: String,
     pub description: Option<String>,
     pub address: String,
     pub depricated: bool,
@@ -135,8 +136,7 @@ struct ViewAdmContracts {
 pub async fn get_rwd_contracts_for_user(user_id: i64) -> Result<serde_json::Value, SleipnirError> {
     use chrono::Datelike;
     use chrono::TimeZone;
-    let contracts =
-        drasil_hugin::TBContracts::get_all_contracts_for_user_typed(user_id, "sporwc".to_string())?;
+    let contracts = drasil_hugin::TBContracts::get_all_contracts_for_user(user_id)?;
 
     let current_date = chrono::Utc::now();
     let first: chrono::NaiveDateTime =
@@ -164,6 +164,7 @@ pub async fn get_rwd_contracts_for_user(user_id: i64) -> Result<serde_json::Valu
         ViewAdmContracts {
             user_id: c.user_id,
             contract_id: c.contract_id,
+            contract_type: c.contract_type.to_string(),
             description: c.description.clone(),
             address: c.address.clone(),
             depricated: c.depricated,

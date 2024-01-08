@@ -28,6 +28,7 @@ pub fn establish_connection() -> Result<PgConnection, RWDError> {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, DbEnum)]
 #[ExistingTypePath = "crate::schema::sql_types::Calculationmode"]
+#[db_rename = "calculationmode"]
 pub enum Calculationmode {
     #[db_rename = "custom"]
     Custom,

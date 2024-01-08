@@ -143,9 +143,9 @@ impl TBContracts {
         let result = contracts::table
             .filter(contracts::user_id.eq(&user_id_in))
             .filter(contracts::contract_id.eq(&contract_id_in))
-            .load::<TBContracts>(&mut establish_connection()?);
+            .first::<TBContracts>(&mut establish_connection()?);
         log::debug!("input data: u:{},c:{} ", user_id_in, contract_id_in);
-        Ok(result?[0].clone())
+        Ok(result?.clone())
     }
 
     pub fn get_next_contract_id(user_id_in: &i64) -> Result<i64, SystemDBError> {
@@ -322,8 +322,12 @@ impl TBDrasilUser {
             password_hash::{PasswordHash, PasswordVerifier},
             Argon2,
         };
-        let user = TBDrasilUser::get_user_by_mail(email)?;
-        Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
+        let user = TBDrasilUser::get_user_by_mail(email);
+        info!("user: {:?}", user);
+        let user = user?;
+        Argon2::default()
+            .verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd).unwrap())
+            .unwrap();
         Ok(user)
     }
 
@@ -332,7 +336,7 @@ impl TBDrasilUser {
             password_hash::{PasswordHash, PasswordVerifier},
             Argon2,
         };
-        let user = TBDrasilUser::get_user_by_user_id(user_id)?;
+        let user = TBDrasilUser::get_user_by_user_id(user_id).unwrap();
         Argon2::default().verify_password(pwd.as_bytes(), &PasswordHash::new(&user.pwd)?)?;
         Ok(user)
     }
@@ -448,8 +452,14 @@ impl TBDrasilUser {
     }
 
     pub async fn approve(&self, pw: &String, msg: &str) -> Result<String, SystemDBError> {
-        let pk = PublicKey::from_bech32(&self.drslpubkey)?;
-        let pkh = hex::encode(PublicKey::from_bech32(&self.drslpubkey)?.hash().to_bytes());
+        let pk_s = if let Some(pk_t) = self.drslpubkey.as_ref() {
+            pk_t
+        } else {
+            return Err(SystemDBError::Custom("No public key defined".to_string()));
+        };
+        let pk = PublicKey::from_bech32(&pk_s)?;
+
+        let pkh = hex::encode(PublicKey::from_bech32(&pk_s)?.hash().to_bytes());
         let privkey = vault_get(&pkh).await;
         let privkey = PrivateKey::from_bech32(&decrypt(privkey.get("prvkey").unwrap(), pw)?)?;
 
@@ -460,7 +470,12 @@ impl TBDrasilUser {
     }
 
     pub fn verify_approval(&self, msg: &str, sign: &str) -> Result<bool, SystemDBError> {
-        let pk = PublicKey::from_bech32(&self.drslpubkey)?;
+        let pk_s = if let Some(pk_t) = self.drslpubkey.as_ref() {
+            pk_t
+        } else {
+            return Err(SystemDBError::Custom("No public key defined".to_string()));
+        };
+        let pk = PublicKey::from_bech32(&pk_s)?;
         let sign = Ed25519Signature::from_hex(sign)?;
         if !pk.verify(msg.as_bytes(), &sign) {
             return Err(SystemDBError::Custom("Error: US0010".to_string()));

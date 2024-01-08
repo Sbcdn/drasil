@@ -48,7 +48,7 @@ pub async fn create_lqdt_wallet(
     let _ = TBContracts::create_contract(
         user,
         &ci,
-        "drasilliquidity",
+        "DrasilAPILiquidity",
         Some(&("Liquidity Wallet: ".to_owned() + &user.to_string())),
         &(1.0),
         &wallet_encr,

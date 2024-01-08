@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use log::info;
 use std::env::{set_var, var};
 use std::io::{Read, Write};
 use vaultrs::api::auth::approle::responses::GenerateNewSecretIDResponse;
@@ -15,15 +16,17 @@ lazy_static! {
     static ref VROLE_NAME: String = var("VROLE_NAME").unwrap_or_else(|_| "dummy_role".to_string());
     static ref VSECRET_ID: String =
         var("VSECRET_ID").unwrap_or_else(|_| "dummy_secret".to_string());
-    static ref VAULT_ADDR: String =
-        var("VAULT_ADDR").unwrap_or_else(|_| "dummy_address".to_string());
+    static ref VAULT_ADDRESS: String =
+        var("VAULT_ADDRESS").unwrap_or_else(|_| "dummy_address".to_string());
     static ref VAULT_NAMESPACE: String =
         var("VAULT_NAMESPACE").unwrap_or_else(|_| "dummy_ns".to_string());
-    static ref MOUNT: String = var("MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
-    static ref SPATH: String = var("SPATH").unwrap_or_else(|_| "dummy_path".to_string());
-    static ref VSOCKET_PATH: String =
-        var("VSOCKET_PATH").unwrap_or_else(|_| "dummy_path".to_string());
-    static ref VPATH: String = var("VPATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref VAULT_MOUNT: String =
+        var("VAULT_MOUNT").unwrap_or_else(|_| "dummy_mount".to_string());
+    static ref DVLTATH_SPATH: String =
+        var("DVLTATH_SPATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref DVLTATH_VSOCKET_PATH: String =
+        var("DVLTATH_VSOCKET_PATH").unwrap_or_else(|_| "dummy_path".to_string());
+    static ref VAULT_PATH: String = var("VAULT_PATH").unwrap_or_else(|_| "dummy_path".to_string());
 }
 
 fn get_role_id() -> String {
@@ -39,7 +42,7 @@ fn get_secret_id() -> String {
 }
 
 fn get_vault_address() -> String {
-    VAULT_ADDR.to_string()
+    VAULT_ADDRESS.to_string()
 }
 
 fn get_namespace() -> String {
@@ -47,15 +50,15 @@ fn get_namespace() -> String {
 }
 
 pub(crate) fn get_gl_mount() -> String {
-    MOUNT.to_string()
+    VAULT_MOUNT.to_string()
 }
 
 pub(crate) fn get_v_path() -> String {
-    VPATH.to_string()
+    VAULT_PATH.to_string()
 }
 
 fn get_secret_path() -> String {
-    SPATH.to_string()
+    DVLTATH_SPATH.to_string()
 }
 
 fn get_vtoken() -> String {
@@ -119,7 +122,7 @@ async fn request_secret(
     path: &String,
 ) -> Result<GenerateNewSecretIDResponse, crate::error::Error> {
     let url = Uri::new(
-        VSOCKET_PATH.to_string(),
+        DVLTATH_VSOCKET_PATH.to_string(),
         &("/auth/".to_string() + &get_role_name()),
     )
     .into();
@@ -128,25 +131,28 @@ async fn request_secret(
 
     let mut response = client.get(url);
 
-    match tokio::time::timeout(std::time::Duration::from_secs(1), &mut response).await {
-        Err(_) => {
-            log::error!("secret request timeout");
+    match tokio::time::timeout(std::time::Duration::from_secs(3), &mut response).await {
+        Err(e) => {
+            log::error!("secret request timeout: {:?}", e);
         }
-        Ok(no_timeout) => match no_timeout {
-            Ok(resp) => {
-                log::debug!("Response: {:?}", resp);
-                let r_status = resp.status();
-                //let resp_text = resp.text().await.unwrap();
-                if r_status != http::StatusCode::ACCEPTED {
-                    log::error!("secret request not accepted");
-                } else {
-                    return Ok(read_wrapped_secret(vclient, path).await);
+        Ok(no_timeout) => {
+            info!("no timeout: {:?}", no_timeout);
+            match no_timeout {
+                Ok(resp) => {
+                    log::debug!("Response: {:?}", resp);
+                    let r_status = resp.status();
+                    //let resp_text = resp.text().await.unwrap();
+                    if r_status != http::StatusCode::ACCEPTED {
+                        log::error!("secret request not accepted");
+                    } else {
+                        return Ok(read_wrapped_secret(vclient, path).await);
+                    }
+                }
+                Err(e) => {
+                    log::error!("error on secret request {:?}", e);
                 }
             }
-            Err(_) => {
-                log::error!("error on secret request");
-            }
-        },
+        }
     }
     Err(crate::error::Error::StdError)
 }
@@ -171,7 +177,9 @@ async fn set_vault_token(client: &mut VaultClient, auth: &AuthInfo) -> String {
 
 async fn vault_auth(client: &VaultClient) -> AuthInfo {
     let secret_id = get_secret_id();
+    info!("secret_id: {:?}", secret_id);
     let role_id = get_role_id();
+    info!("role_id: {:?}", role_id);
     vaultrs::auth::approle::login(client, "approle", &role_id, &secret_id)
         .await
         .unwrap()
@@ -217,8 +225,8 @@ pub async fn vault_connect() -> VaultClient {
 
 async fn get_wrapped_secret_id(client: &VaultClient, role_id: &str) -> String {
     let mut t = api::auth::approle::requests::GenerateNewSecretIDRequest::builder();
-    let endpoint = t.mount("approle").role_name(role_id).build().unwrap(); //mount(&get_gl_mount())
-    let result = endpoint.wrap(client).await.unwrap(); //api::wrap(client, endpoint).await.unwrap();
+    let endpoint = t.mount("approle").role_name(role_id).build().unwrap();
+    let result = endpoint.wrap(client).await.unwrap();
     log::info!("Got wrapped token: {:?}", result.info);
     result.info.token
 }

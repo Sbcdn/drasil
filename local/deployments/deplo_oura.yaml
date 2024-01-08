@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drasil-oura
+  name: oura
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: drasil-oura
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: drasil-oura
+    spec:
+      containers:
+      - env:
+        - name: RUST_LOG
+          value: debug
+        args:
+          - "daemon"
+        volumeMounts:
+          - mountPath: /etc/oura
+            name: config
+        image: ghcr.io/txpipe/oura:latest
+        imagePullPolicy: IfNotPresent
+        name: oura
+      volumes:
+      - name: config
+        configMap:
+          name: oura-config
+---
+# Oura Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-oura-service
+spec:
+  selector:
+    app: drasil-oura
+  type: ClusterIP
+  ports:
+    - port: 4007  
+      targetPort: 4007

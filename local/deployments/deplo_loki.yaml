@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: drasil-loki
+  name: loki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drasil-loki
+  template:
+    metadata:
+      labels:
+        app: drasil-loki
+    spec:
+      containers:
+      - env:
+        - name: POD_HOST
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_PORT
+          value: "6144"
+        envFrom:
+          - configMapRef:
+              name: drasil-config
+        image: k3d-drasil-registry.localhost:12345/loki:v1.3
+        imagePullPolicy: IfNotPresent
+        name: loki
+---
+# Loki Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: drasil-loki-service
+spec:
+  selector:
+    app: drasil-loki
+  type: LoadBalancer
+  ports:
+    - port: 4002
+      nodePort: 30002
+      protocol: TCP
+      targetPort: 6144

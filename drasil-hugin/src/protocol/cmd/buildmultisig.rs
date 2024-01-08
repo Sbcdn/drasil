@@ -1,11 +1,12 @@
 use crate::datamodel::{MultiSigType, TransactionPattern};
 use crate::protocol::multisig;
-use crate::{CmdError, Parse};
+use crate::Parse;
 use crate::{Connection, Frame, IntoFrame};
 
 use bc::Options;
 use bincode as bc;
 use bytes::Bytes;
+use drasil_murin::MurinError;
 
 #[derive(Debug, Clone)]
 pub struct BuildMultiSig {
@@ -40,12 +41,12 @@ impl BuildMultiSig {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildMultiSig> {
-        let customer_id = parse.next_int()?;
-        let mtype = parse.next_bytes()?;
+        let customer_id = parse.next_int().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let mtype = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let mtype: MultiSigType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&mtype)?;
-        let txpattern = parse.next_bytes()?;
+        let txpattern = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let txpattern: TransactionPattern = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&txpattern)?;
@@ -66,7 +67,7 @@ impl BuildMultiSig {
                 log::debug!("{:?}", response);
                 response = Frame::Simple(e.to_string());
                 dst.write_frame(&response).await?;
-                return Err(Box::new(CmdError::InvalidData));
+                return Err(drasil_murin::MurinError::ProtocolCommandErrorInvalidData);
             }
             log::debug!("Transaction pattern check okay!");
         }
@@ -79,7 +80,6 @@ impl BuildMultiSig {
                     Err(e) => e.to_string(),
                 };
             }
-            MultiSigType::NftVendor => {}
             MultiSigType::Mint => {
                 ret = match multisig::handle_collection_mint(&self).await {
                     Ok(s) => s,

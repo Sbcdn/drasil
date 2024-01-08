@@ -17,8 +17,8 @@ use lazy_static::lazy_static;
 lazy_static! {
     pub static ref AMQP_ADDR: String =
         std::env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://rmq:rmq@127.0.0.1:5672/%2f".into());
-    pub static ref QUEUE_NAME: String =
-        std::env::var("QUEUE_NAME").unwrap_or_else(|_| "mint_response".to_string());
+    pub static ref JOB_QUEUE_NAME: String =
+        std::env::var("JOB_QUEUE_NAME").unwrap_or_else(|_| "mint_response".to_string());
     pub static ref CONSUMER_NAME: String =
         std::env::var("CONSUMER_NAME").unwrap_or_else(|_| "work_loki_0".to_string());
 }
