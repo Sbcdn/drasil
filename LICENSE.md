@@ -8,7 +8,7 @@ License text copyright (c) 2020 MariaDB Corporation Ab, All Rights Reserved.
 |---|---|
 |Licensor:|Torben Poguntke|
 |Licensed Work:|The Licensed Work is (c) 2024 Drasil - This license is applied to the drasil codebase in this repository.|
-|Additional Use Grant:|The Licensed Work may be used for production purposes, provided that you are a non-profit organization or an early stage startup or project with a valuation below 200.000 €. Production use is given if a stakeholder is served utilizing the licensed work.|
+|Additional Use Grant:|The Licensed Work may be used for production purposes, provided that you are a non-profit organization or an early stage startup or project with a valuation below 200.000 €. Production use is given if any stakeholder is served utilizing the Licensed Work.|
 |Change Date:|Three years from the date the Licensed Work is published|
 |Change License:|Apache 2.0|
 
