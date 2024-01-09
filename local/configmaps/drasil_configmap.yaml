@@ -28,7 +28,7 @@ data:
 # System / Plattform Database Connection String
   PLATFORM_DB_URL: postgres://***REMOVED***:password@postgres-db-sys-lb.default.svc.cluster.local:5432/systemdb?password=***REMOVED***password
 # DBSync Database Connection String
-  DBSYNC_DB_URL: postgres://***REMOVED***:***REMOVED***@***REMOVED***/testnet
+  DBSYNC_DB_URL: postgres://user:password@127.0.0.1/testnet
 # Keys for Redis Pending Tx Store
   PENDING_TX_DATASTORE_1: pendingtx1
   PENDING_TX_DATASTORE_2: pendingtx2
