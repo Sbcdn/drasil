@@ -24,9 +24,9 @@ data:
   JWT_PUB_KEY: '-----BEGIN PUBLIC KEY-----MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEMMkapa1mVNQtUdWP9B61OpMcuBHmw+LwS66RkRJ3gYlrXCisZwWaNQo3nkNjRujIVVI9jEGCWYRdECga9lUjrg==-----END PUBLIC KEY-----'
   JWT_KEY: '-----BEGIN PRIVATE KEY-----MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgoC2z4jAczA6AkVwgoglFOd16hEIwGFAvTxxxssEYvGahRANCAAQwyRqlrWZU1C1R1Y/0HrU6kxy4EebD4vBLrpGREneBiWtcKKxnBZo1CjeeQ2NG6MhVUj2MQYJZhF0QKBr2VSOu-----END PRIVATE KEY-----'
 # Reward Database Connection String
-  REWARDS_DB_URL: postgres://***REMOVED***:password@postgres-db-rwd-lb.default.svc.cluster.local:5433/rewarddb?password=***REMOVED***password
+  REWARDS_DB_URL: postgres://drasiluser:password@postgres-db-rwd-lb.default.svc.cluster.local:5433/rewarddb?password=drasiluserpassword
 # System / Plattform Database Connection String
-  PLATFORM_DB_URL: postgres://***REMOVED***:password@postgres-db-sys-lb.default.svc.cluster.local:5432/systemdb?password=***REMOVED***password
+  PLATFORM_DB_URL: postgres://drasiluser:password@postgres-db-sys-lb.default.svc.cluster.local:5432/systemdb?password=drasiluserpassword
 # DBSync Database Connection String
   DBSYNC_DB_URL: postgres://user:password@127.0.0.1/testnet
 # Keys for Redis Pending Tx Store
