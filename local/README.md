@@ -19,6 +19,9 @@ There is a API documentation made for the local setup and maps to the correct po
 - Install Docker: https://docs.docker.com/engine/install/ and setup permission for your user to use docker. 
 - Install Cardano Node and Cardano DBsync for Testnet or have a possibility to connect to a dbsync
 
+### Cardano Node and Dbsync
+The easiest way to setup a cardano node is using [mithtil](https://mithril.network/doc/manual/getting-started/bootstrap-cardano-node). How to setup a cardano dbsync is described [here](https://github.com/IntersectMBO/cardano-db-sync/blob/master/doc/docker.md).
+
 
 ## Install dependencies
 
