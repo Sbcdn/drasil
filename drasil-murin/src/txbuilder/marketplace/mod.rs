@@ -175,52 +175,6 @@ impl MpTxData {
     }
 }
 
-pub fn make_mp_contract_utxo_output(
-    txos: &mut clib::TransactionOutputs,
-    receiver: caddr::Address,
-    datum: &ccrypto::DataHash,
-    tokens: &Vec<TokenAsset>,
-    //token_utxos : &TransactionUnspentOutputs,
-    set_datum: bool,
-) -> Option<clib::TransactionOutputs> {
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    //Add Script Outputs for Transaction Body
-    //  Add the NFT from the smart contract
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    //let mut txuos = TransactionUnspentOutputs::new();
-    // let mut txuo : Option<cutils::TransactionUnspentOutput> = None;
-
-    if !tokens.is_empty() {
-        let mut value = cutils::Value::new(&cutils::to_bignum(0u64));
-        //let mut lovelaces : u64 = 0;
-        let mut multiasset = clib::MultiAsset::new();
-
-        for token in tokens {
-            let mut assets = clib::Assets::new();
-            assets.insert(&token.1, &token.2);
-            multiasset.insert(&token.0, &assets);
-        }
-        value.set_multiasset(&multiasset);
-
-        // Todo calc min ada needs to go to txbuilders module
-        let min_ada_utxo = crate::calc_min_ada_for_utxo(&value, Some(datum.clone()));
-        value.set_coin(&min_ada_utxo);
-        let mut txout = clib::TransactionOutput::new(&receiver, &value);
-        //let txin  = clib::TransactionInput::new(
-        //    &ccrypto::TransactionHash::from_bytes(hex::decode(o.txhash.clone()).unwrap()).unwrap(),o.txinput);
-
-        if set_datum {
-            txout.set_data_hash(datum)
-        };
-        txos.add(&txout);
-
-        Some(txos.clone())
-    } else {
-        None
-    }
-}
-
 pub struct MarketPlaceDatum {
     price: u64,
     seller: Ed25519KeyHash,
@@ -357,57 +311,4 @@ pub fn decode_mp_datum(bytes: &[u8]) -> Result<MarketPlaceDatum, MurinError> {
         policy_id,
         token_name,
     })
-}
-
-pub fn make_inputs_txb(
-    inputs: &Vec<TxInput>,
-) -> (clib::TransactionInputs, TransactionUnspentOutputs) {
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    //
-    //Add wallet inputs for the transaction
-    //  Add the inputs for this transaction
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    let mut txuos = TransactionUnspentOutputs::new(); // Available in 9.2.0 beta not in 9.1.2
-    let mut txins = clib::TransactionInputs::new();
-    for i in inputs {
-        let txuo_in = &clib::TransactionInput::new(
-            &ccrypto::TransactionHash::from_bytes(hex::decode(i.txhash.clone()).unwrap()).unwrap(),
-            i.txinput,
-        );
-
-        let mut value = cutils::Value::new(&cutils::to_bignum(0u64));
-        let mut lovelaces: u64 = 0;
-        let mut multiasset = clib::MultiAsset::new();
-        for v in &i.value {
-            if v.currencySymbol.is_empty() || v.currencySymbol == "lovelace" {
-                for a in &v.assets {
-                    lovelaces += a.amount;
-                }
-            } else {
-                let cs: clib::PolicyID =
-                    clib::PolicyID::from_bytes(hex::decode(&v.currencySymbol).unwrap()).unwrap();
-                let mut assets = clib::Assets::new();
-                for a in &v.assets {
-                    let tn: clib::AssetName =
-                        clib::AssetName::new(hex::decode(&a.tokenName).unwrap()).unwrap();
-                    assets.insert(&tn, &cutils::to_bignum(a.amount));
-                    //info!("{:?}.{:?}",cs,assets);
-                    multiasset.insert(&cs, &assets);
-                }
-            }
-        }
-        value.set_coin(&cutils::to_bignum(lovelaces));
-        value.set_multiasset(&multiasset);
-        let addr = &caddr::Address::from_bech32(&i.address).unwrap();
-        let txuo_out = clib::TransactionOutput::new(addr, &value);
-        let txuo: cutils::TransactionUnspentOutput =
-            cutils::TransactionUnspentOutput::new(txuo_in, &txuo_out);
-        //info!("TXOU: {:?}",txuo);
-        //info!();
-
-        txuos.add(&txuo);
-        txins.add(txuo_in);
-    }
-
-    (txins.clone(), txuos.clone())
 }

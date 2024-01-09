@@ -10,24 +10,11 @@ use crate::error::MurinError;
 
 /// decode an hex encoded address into an address
 pub async fn decode_address_from_bytes(bytes: &String) -> Result<caddr::Address, MurinError> {
-    //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
-    //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
-    //let mut netbyte : u8 = 0b1111;
-    //if *network == clib::NetworkIdKind::Testnet {
-    //     netbyte = 0b1110;
-    //}
     Ok(caddr::Address::from_bytes(hex::decode(bytes)?)?)
-    //Ok(caddr::RewardAddress::new(netbyte,&stake_cred).to_address())
 }
 
 /// decode an hex encoded address into an address
 pub async fn address_from_string(str: &String) -> Result<caddr::Address, MurinError> {
-    //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
-    //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
-    //let mut netbyte : u8 = 0b1111;
-    //if *network == clib::NetworkIdKind::Testnet {
-    //     netbyte = 0b1110;
-    //}
     match hex::decode(str) {
         Ok(bytes) => Ok(caddr::Address::from_bytes(bytes)?),
         Err(_) => match caddr::Address::from_bech32(str) {
@@ -37,16 +24,10 @@ pub async fn address_from_string(str: &String) -> Result<caddr::Address, MurinEr
             )),
         },
     }
-    //Ok(caddr::RewardAddress::new(netbyte,&stake_cred).to_address())
 }
 
+/// decode an hex encoded address into an address, non async
 pub fn address_from_string_non_async(str: &String) -> Result<caddr::Address, MurinError> {
-    //let stake_cred_key = ccrypto::Ed25519KeyHash::from_bytes(hex::decode(bytes)?)?;
-    //let stake_cred = caddr::StakeCredential::from_keyhash(&stake_cred_key);
-    //let mut netbyte : u8 = 0b1111;
-    //if *network == clib::NetworkIdKind::Testnet {
-    //     netbyte = 0b1110;
-    //}
     match hex::decode(str) {
         Ok(bytes) => Ok(caddr::Address::from_bytes(bytes)?),
         Err(_) => match caddr::Address::from_bech32(str) {
@@ -63,7 +44,6 @@ pub async fn addresses_from_string(
     addresses: &Vec<String>,
 ) -> Result<Vec<caddr::Address>, MurinError> {
     let mut ret = Vec::<caddr::Address>::new();
-    //Ok(caddr::Address::from_bytes(hex::decode(bytes)?)?)
     for addr in addresses {
         ret.push(address_from_string(addr).await?)
     }
@@ -206,7 +186,6 @@ pub fn bech32_stake_address_from_str(str: &str) -> Result<String, MurinError> {
 pub fn payment_keyhash_from_address(
     addr: &caddr::Address,
 ) -> Result<ccrypto::Ed25519KeyHash, MurinError> {
-    //info!("\nAddress in get_payment_address: {:?}",addr);
     let address = caddr::BaseAddress::from_address(addr);
     let err = MurinError::new("ERROR wallet::get_pubkey gut not deserialize pub key from address");
     match address {
@@ -387,22 +366,6 @@ pub fn restore_bip0039_wallet(
             }
         });
 
-    /*
-       let account_key1 = root_key
-           .derive(crate::txbuilders::harden(1852u32))
-           .derive(crate::txbuilders::harden(1815u32))
-           .derive(crate::txbuilders::harden(0u32));
-       let ac1_chaincode = account_key1.chaincode();
-       let ac1_private_key = account_key1.to_raw_key(); // for signatures
-       let ac1_public_key = account_key1.to_raw_key().to_public();
-       let ac1_public_key_hash = account_key1.to_raw_key().to_public().hash(); // for Native Script Input / Verification
-       let vkey1 = "5840".to_string()
-           + &((hex::encode(ac1_public_key.as_bytes())) + &hex::encode(ac1_chaincode.clone())); // .vkey
-       let skey1 = "5880".to_string()
-           + &(hex::encode(ac1_private_key.as_bytes())
-               + &hex::encode(ac1_public_key.as_bytes())
-               + &hex::encode(ac1_chaincode)); // .skey
-    */
     Ok((root_key.to_hex(), root_key))
 }
 

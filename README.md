@@ -2,7 +2,7 @@
 
 Drasil is an opinionated implementation of a software suite to run applications on Cardano, it is a collection of microservices which, when used together, form an effective and scalable framework for running applications on the Cardano blockchain. Its architecture, services and libraries are written in Rust. 
 
-# The codebase is still under development and not considered production ready, use on own risk. 
+## ! The codebase is under development ! 
 
 Drasil system and concept was created by Torben and Zak, but it also utilises several tools developed by the Cardano community, to whom we are grateful and hope to continue to repay with our own small contributions.  Because of the way in which the various tools interact, more is required to actually run a fully integrated and working "Drasil System" than just the applications and libraries found in this repository! (Redis, RabbitMQ, Cardano-Node, Dbsync, Oura, Postgres)
 

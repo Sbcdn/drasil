@@ -1,7 +1,6 @@
 extern crate pretty_env_logger;
 
 mod error;
-mod handlers;
 mod models;
 
 use std::env;

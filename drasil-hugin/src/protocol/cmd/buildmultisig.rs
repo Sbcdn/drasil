@@ -41,12 +41,18 @@ impl BuildMultiSig {
     }
 
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<BuildMultiSig> {
-        let customer_id = parse.next_int().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
-        let mtype = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let customer_id = parse
+            .next_int()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let mtype = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let mtype: MultiSigType = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&mtype)?;
-        let txpattern = parse.next_bytes().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let txpattern = parse
+            .next_bytes()
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let txpattern: TransactionPattern = bc::DefaultOptions::new()
             .with_varint_encoding()
             .deserialize(&txpattern)?;
@@ -100,12 +106,6 @@ impl BuildMultiSig {
                     Err(e) => e.to_string(),
                 };
             }
-            /*  MultiSigType::TestRewards => {
-                ret = match multisig::handle_testrewards(&self).await {
-                    Ok(s) => s,
-                    Err(e) => e.to_string(),
-                };
-            } */
             MultiSigType::CustomerPayout => {
                 ret = match multisig::handle_customer_payout(&self).await {
                     Ok(s) => s,

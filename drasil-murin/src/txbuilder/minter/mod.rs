@@ -181,7 +181,6 @@ impl std::str::FromStr for MinterTxData {
     type Err = MurinError;
     fn from_str(src: &str) -> std::result::Result<Self, Self::Err> {
         let slice: Vec<&str> = src.split('|').collect();
-        //debug!("Slice: {:?}",slice);
         if slice.len() == 8 {
             // restore token vector
             let mut tokens = Vec::<MintTokenAsset>::new();
@@ -272,7 +271,7 @@ pub struct MetadataFile {
     pub name: String,
     #[serde(rename(serialize = "mediaType", deserialize = "mediaType"))]
     pub media_type: String,
-    pub src: serde_json::Value, // Source -> The problem is the deserialization on the Source type as it has on serde side no implementation, need to be doen with serde_json::Value
+    pub src: serde_json::Value,
     pub other: Option<Vec<MetadataOther>>,
 }
 
@@ -340,9 +339,8 @@ impl AssetMetadata {
                         Value::String(s) => match hex::decode(s) {
                             Ok(v) => {
                                 a.tokenname = hex::encode(v.clone());
-                                a.name = Some(String::from_utf8(v.clone()).unwrap_or(
-                                    hex::encode(v)
-                                ));
+                                a.name =
+                                    Some(String::from_utf8(v.clone()).unwrap_or(hex::encode(v)));
                             }
                             Err(_e) => {
                                 a.tokenname = hex::encode(s.as_bytes());
@@ -448,26 +446,7 @@ pub fn make_mint_metadata(
 
     let policy_str = hex::encode(policy_id.to_bytes());
     let mut toplevel_metadata = clib::metadata::GeneralTransactionMetadata::new();
-    //let mut raw_metadata =  Vec::<String>::new();
 
-    //debug!("RawMetadata: {:?}", raw_metadata);
-
-    // Check if all tokens have metadata available
-    /* let mut i = 0;
-       'avail_tok: for token in tokens.clone() {
-           let t_name = str::from_utf8(&token.1.name())?.to_string();
-           debug!("TName: {}", t_name);
-           for asset in raw_metadata.assets.clone() {
-               if asset.tokenname == t_name {
-                   i += 1;
-                   continue 'avail_tok;
-               }
-           }
-       }
-       if tokens.len() != i {
-           return Err(MurinError::new(&format!("Error provided metadata and tokens to mint are not fitting, please provide correct metadata: \n {:?}",raw_metadata)));
-       }
-    */
     let mut metamap = clib::metadata::MetadataMap::new();
     let mut assetmap = MetadataMap::new();
 
@@ -498,19 +477,13 @@ fn chunk_string(metamap: &mut MetadataMap, key: &str, s: &String) -> Result<(), 
         let chunks = s
             .as_bytes()
             .chunks(64)
-            .map(|c|
-                String::from(str::from_utf8(c).unwrap_or(
-                    &hex::encode(c)
-                ))
-            )
+            .map(|c| String::from(str::from_utf8(c).unwrap_or(&hex::encode(c))))
             .collect::<Vec<String>>();
 
         log::debug!("Chunks: {:?}", chunks);
         let mut list = MetadataList::new();
         for s in chunks {
-            list.add(&clib::metadata::TransactionMetadatum::new_text(
-                s,
-            )?)
+            list.add(&clib::metadata::TransactionMetadatum::new_text(s)?)
         }
         metamap.insert_str(key, &clib::metadata::TransactionMetadatum::new_list(&list))?;
     } else {
@@ -671,7 +644,6 @@ pub fn make_mint_metadata_from_json(
 
     let policy_str = hex::encode(policy_id.to_bytes());
     let mut toplevel_metadata = clib::metadata::GeneralTransactionMetadata::new();
-    //let mut raw_metadata =  Vec::<String>::new();
 
     debug!("RawMetadata: {:?}", raw_metadata);
 
