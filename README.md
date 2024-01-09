@@ -26,6 +26,7 @@ You can read the original blackpaper [here](https://bit.ly/3vg9GvI)
 - OneShotMinter API
 - Wallet Backend to build Standard Transactions (Asset Transfers)
 - Ada staking
+- Discounts based on owned Tokens
 
 ## Custom Transaction Building
 You can use the drasil system to build your own transactions, for that the custom transaction building procedure must be implemented via modules. 
