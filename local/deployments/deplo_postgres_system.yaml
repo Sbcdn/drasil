@@ -7,8 +7,8 @@ metadata:
     app: postgresql-db-sys
 data:
   POSTGRES_DB: systemdb
-  POSTGRES_USER: ***REMOVED***
-  POSTGRES_PASSWORD: ***REMOVED***password
+  POSTGRES_USER: drasiluser
+  POSTGRES_PASSWORD: drasiluserpassword
   PGDATA: /data/pgdata
 ---
 # PostgreSQL StatefulSet
