@@ -201,7 +201,7 @@ pub enum TXPWrapper {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WalletTransactionPattern {
     user: Option<String>,
-    contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
+    contract_id: Option<u64>,
     wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
     #[serde(alias = "sending_wal_addrs")]
     used_addresses: Option<Vec<String>>,
@@ -240,7 +240,7 @@ impl WalletTransactionPattern {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TransactionPattern {
     user: Option<String>,
-    contract_id: Option<u64>, // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
+    contract_id: Option<u64>,
     wallet_type: Option<WalletType>, // yoroi, ccvault, gero, flint, ... // or yoroi, cip30, typhon
     #[serde(alias = "sending_wal_addrs")]
     used_addresses: Vec<String>,
@@ -284,7 +284,6 @@ impl TransactionPattern {
     }
 
     pub fn contract_id(&self) -> Option<u64> {
-        // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
         self.contract_id
     }
 
@@ -394,7 +393,7 @@ impl TransactionPattern {
         };
         debug!("addresses: {:?}", addresses);
         let mut txd = TxData::new(
-            Some(vec![contract_id]), // ToDO: Expect a Vector instead of a single contract; needs to be changed on front-end
+            Some(vec![contract_id]),
             wallet::addresses_from_string(&addresses).await?,
             saddr,
             wallet::transaction_unspent_outputs_from_string_vec(
@@ -423,7 +422,6 @@ impl TransactionPattern {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, EnumIs)]
-//#[serde(tag = "type")]
 pub enum Operation {
     SpoRewardClaim {
         rewards: Vec<drasil_murin::RewardHandle>,
@@ -1153,7 +1151,7 @@ mod tests {
         let delegation = op.into_stake_delegation().await.unwrap();
 
         let real_poolkeyhash = Ed25519KeyHash::from_bech32(&poolhash).unwrap();
-        let real_registered = false; // Placeholder value. Unit test can't test this. Needs integration test.
+        let real_registered = false;
         assert_eq!(delegation.get_poolhash(), poolhash);
         assert_eq!(delegation.get_poolkeyhash(), real_poolkeyhash);
         assert_eq!(delegation.get_registered(), real_registered);

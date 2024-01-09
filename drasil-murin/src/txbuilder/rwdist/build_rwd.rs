@@ -173,7 +173,6 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         if let Some(f) = &self.stxd.get_fee() {
             contract_fee += f;
         }
-        //log::debug!("any wallet call.....");
         let any_script_wallet = wallets.get_wallet_cid(rwd_contract_ids[0])?;
 
         let cfee_val = cutils::Value::new(&cutils::to_bignum(contract_fee));
@@ -226,8 +225,6 @@ impl<'a> super::PerformTxb<AtRWDParams<'a>> for AtRWDBuilder {
         let mut native_scripts = clib::NativeScripts::new();
 
         for id in rwd_contract_ids {
-            log::debug!("wallet_id: {:?}", id);
-            //log::debug!("wallets: {:?}", self.wallets);
             let w = builder.wallets.get_wallet_cid(id)?;
             native_scripts.add(&w.script.as_ref().unwrap().script);
 

@@ -32,7 +32,11 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let slot = match drasil_mimir::get_slot(&mut dbsync) {
         Ok(s) => s,
         Err(e) => {
-            return Err(format!("ERROR could not determine current slot: '{:?}'",e.to_string()).into());
+            return Err(format!(
+                "ERROR could not determine current slot: '{:?}'",
+                e.to_string()
+            )
+            .into());
         }
     };
     gtxd.set_current_slot(slot as u64);
@@ -43,13 +47,15 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let oneshotpolicy = drasil_murin::minter::create_onshot_policy(&oneshotwallet.3, slot as u64);
 
     log::debug!("Check contract...");
-    let contract = TBContracts::get_liquidity_wallet(&bms.customer_id()).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let contract = TBContracts::get_liquidity_wallet(&bms.customer_id())
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     log::debug!("Try to determine additional data...");
     let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
         &contract.contract_id,
         &contract.user_id,
         &contract.version,
-    ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    )
+    .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     let ident = crate::encryption::mident(
         &contract.user_id,
         &contract.contract_id,
@@ -59,13 +65,11 @@ pub(crate) async fn handle_onehshot_mint(bms: &BuildMultiSig) -> crate::Result<S
     let pkvs = crate::encryption::decrypt_pkvs(keyloc.pvks, &ident).await?;
     let ns_script = oneshotpolicy.0;
 
-    //ToDO:
-    //
-    // - Function to check and split utxos when for size >5kB (cal_min_ada panics on utxos >5kB)
-    // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
-
     log::debug!("Set utxos for input...");
-    gtxd.set_inputs(drasil_mimir::get_address_utxos(&contract.address).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?);
+    gtxd.set_inputs(
+        drasil_mimir::get_address_utxos(&contract.address)
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
+    );
 
     log::debug!("Try to build transactions...");
     let txb_param: drasil_murin::txbuilder::minter::build_oneshot_mint::AtOSMParams = (

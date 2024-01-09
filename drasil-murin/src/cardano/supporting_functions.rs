@@ -38,8 +38,6 @@ pub fn _ccli_query_utxos_address(
         .arg(addr.to_bech32(Some(net.1.to_string())).unwrap())
         .arg(magic)
         .arg(magic_n)
-        //.stdout(std::process::Stdio::null())
-        //.stderr(std::process::Stdio::piped())
         .output()
         .expect("Get utxos with Cardano-Cli failed");
 
@@ -162,11 +160,6 @@ pub fn _ccli_query_utxos_address(
                 txuos.add(&txuo);
             }
         }
-        //    io::stdin().read_line(&mut line).expect("ERROR: Could not read Tx-Data from stdin");
-        //    info!("Line: {}",line);
-        //let txh = TxHash {tx_hash : tx_hash.clone(), message : "success".to_string()};
-        //serde_json::to_writer(&io::stdout(),&txh).unwrap();
-        //let _r = fs::remove_file(format!("tmp_tx/{}.tx",tx_hash));
         return Some(txuos);
     } else {
         info!("Error: could not read stdin, {:?}", ret.status);
@@ -289,7 +282,6 @@ pub fn get_stake_keyhash(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
 }
 
 pub fn get_payment_keyhash(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
-    //info!("\nAddress in get_payment_address: {:?}",addr);
     let address = caddr::BaseAddress::from_address(addr);
     let payment_cred_key: ccrypto::Ed25519KeyHash;
     match address {
@@ -316,7 +308,6 @@ pub fn get_payment_keyhash(addr: &caddr::Address) -> ccrypto::Ed25519KeyHash {
             }
         }
     }
-    //info!("Payment Addres: {:?}\n",hex::encode(payment_cred_key.to_bytes()));
     payment_cred_key
 }
 /*
@@ -674,9 +665,6 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                                 }
                                             }
                                         }
-                                        //if name.to_bytes() == hex::decode("5436").unwrap() || name.to_bytes() == hex::decode("5435").unwrap() {
-                                        //  info!("Name! {:?}\n",name.to_bytes());
-                                        //}
                                     }
                                     match value.coin().checked_sub(
                                         &new_txo
@@ -692,7 +680,6 @@ pub fn split_output_txo(txo: clib::TransactionOutput, split_txos: &mut clib::Tra
                                             match rest_val.multiasset() {
                                                 None => {
                                                     let added_val = new_txo.amount();
-                                                    //added_val.set_coin(&rest_val.coin().checked_add(&new_txo.amount().coin()).unwrap());
                                                     new_txo = clib::TransactionOutput::new(
                                                         &addr, &added_val,
                                                     );
@@ -780,8 +767,6 @@ pub fn find_suitable_coins(
     inputs: &mut TransactionUnspentOutputs,
     overhead: u64,
 ) -> (Option<TransactionUnspentOutputs>, u64) {
-    //Fee need to be considered in needed value
-
     let coins = cutils::from_bignum(&nv.coin());
     let max_coins = coins + (coins / 100 * overhead); // Coins + Overhead in %
 
@@ -790,33 +775,13 @@ pub fn find_suitable_coins(
     let mut multi_storage = TransactionUnspentOutputs::new();
     let mut coin_storage = TransactionUnspentOutputs::new();
 
-    //debug!("\n\nTXINS in find suitabe coins: {:?}\n\n", inputs);
-
-    //debug!(
-    //    "\nFIND COINS: max_coins {:?}, coins: {:?}\n",
-    //    max_coins, coins
-    //);
     'outer: for tx in inputs.clone() {
-        debug!(
-            "\n-------TXIn : {:?}#{:?}",
-            tx.input().transaction_id().to_hex(),
-            tx.input().index()
-        );
-
         let lc = cutils::from_bignum(&tx.output().amount().coin());
-        //debug!(
-        //    "\n---LC: {:?}----TXIn : {:?}{:?}",
-        //    lc,
-        //    tx.input().transaction_id(),
-        //    tx.input().index()
-        //);
         if lc > coins {
             match tx.output().amount().multiasset() {
                 Some(multi) => match multi.len() {
                     0 => {
-                        //debug!("Multiasset of Len 0: Found Coins: {:?}", lc);
                         if lc < max_coins {
-                            //debug!("No Multiasset: Found Coins: {:?}", lc);
                             selection.add(&tx);
                             debug!("Selection: {:?}", selection);
                             return (Some(selection), lc);
@@ -826,21 +791,16 @@ pub fn find_suitable_coins(
                     }
 
                     1..=21 => {
-                        //debug!("Multiasses with less than 21 NFTs, Found Coins: {:?}", lc);
                         selection.add(&tx);
-                        //debug!("Selection: {:?}", selection);
                         return (Some(selection), lc);
                     }
                     _ => {
-                        //debug!("More than 21 NFTs, Found Coins: {:?}", lc);
-                        //debug!("Trying find better option, store this one");
                         multi_storage.add(&tx);
                     }
                 },
 
                 None => {
                     if lc < max_coins {
-                        //debug!("No Multiasset: Found Coins: {:?}", lc);
                         selection.add(&tx);
                         debug!("Selection: {:?}", selection);
                         return (Some(selection), lc);
@@ -865,7 +825,6 @@ pub fn find_suitable_coins(
     }
     if !coin_storage.is_empty() {
         coin_storage.sort_by_coin();
-        //debug!("Took from coinstorage: {:?}", coin_storage);
 
         let tx = coin_storage.get(0);
         selection.add(&tx);
@@ -873,23 +832,14 @@ pub fn find_suitable_coins(
         return (Some(selection), acc);
     } else {
         for tx in inputs {
-            //debug!(
-            //    "\n-------TXIn in Acc : {:?}{:?}",
-            //    tx.input().transaction_id(),
-            //    tx.input().index()
-            //);
             let lc = cutils::from_bignum(&tx.output().amount().coin());
             acc += lc;
-            //debug!("Acc {:?}, LC: {:?}", acc, lc);
             selection.add(&tx);
             if acc > coins + MIN_ADA {
-                //debug!("Return in Accumulator {:?}", acc);
                 return (Some(selection), acc);
             }
         }
     }
-
-    //debug!("SUITABLE COINS: {:?}", acc);
 
     if selection.is_empty() {
         debug!("Selection length = 0");
@@ -953,8 +903,7 @@ pub fn find_utxos_by_address(
 #[allow(clippy::too_many_arguments)]
 pub fn balance_tx(
     input_txuos: &mut TransactionUnspentOutputs,
-    // script_outputs : Option<&TransactionUnspentOutput>,
-    _tokens: &Tokens, //&Vec<(ccrypto::ScriptHash, clib::AssetName, BigNum)>,
+    _tokens: &Tokens,
     txos: &mut clib::TransactionOutputs,
     already_paid: Option<&cutils::Value>,
     fee: &cutils::BigNum,
@@ -1021,7 +970,6 @@ pub fn balance_tx(
             if matching_addresses {
                 *acc_change = acc_change.checked_add(&value).unwrap();
             } else {
-                // TODO: Make SC ADDR Variable to be able to use different Smart Contracts
                 if let Some(sc) = sc_addr.clone() {
                     if input_address_pkey == get_stake_keyhash(&sc) {
                         *acc_change = acc_change.checked_add(&value)?;

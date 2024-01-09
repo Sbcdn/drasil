@@ -123,8 +123,6 @@ fn run_stream_trimmer(stream: String, maxlen: i32) -> Result<()> {
     }
     Ok(())
 }
-
-//#[tokio::main]
 pub fn main() -> Result<()> {
     use std::{thread, time};
     pretty_env_logger::init();

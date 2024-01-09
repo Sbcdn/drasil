@@ -79,9 +79,9 @@ pub_struct!(Assets {
     amount: u64,
 });
 
-pub_struct!(Value {               // lovelace is empty String or "lovelace" in currency symbol
-    currencySymbol : String, // Hexadecimal ByteString ; what type to make lib::Asset out of it?
-    assets         : Vec<Assets>, // Hexadecimal ByteString ; what type to make lib:Asset out of it ?
+pub_struct!(Value {
+    currencySymbol : String,
+    assets         : Vec<Assets>,
 
 });
 
@@ -104,7 +104,6 @@ pub_struct!(TxInput {
     value   : Vec<Value>,
 });
 
-//#[derive(Serialize,Deserialize, Debug,Clone)]
 pub_struct!(MpTxData {
  script_outputs     : Vec<ScriptOutput>,
  outputs            : Vec<TxOutput>,

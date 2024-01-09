@@ -46,9 +46,7 @@ pub struct ApiClaims {
 pub fn create_jwt(uid: &i64, duration: Option<i64>) -> Result<String, SleipnirError> {
     let user = drasil_hugin::database::TBDrasilUser::get_user_by_user_id(uid)?;
 
-    if !user.email_verified
-    //&& check_identification(u.identification)
-    {
+    if !user.email_verified {
         return Err(SleipnirError::new("invalid user"));
     }
 
