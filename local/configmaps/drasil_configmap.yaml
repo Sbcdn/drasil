@@ -38,7 +38,7 @@ data:
   USED_UTXO_DATASTORE_2: usedutxos2
   USED_UTXO_DATASTORE_3: usedutxos3
 # URLs to Cardano Submit APII
-  CARDANO_TX_SUBMIT_ENDPOINT1: http://***REMOVED***:8090/api/submit/tx
+  CARDANO_TX_SUBMIT_ENDPOINT1: http://127.0.0.1:8090/api/submit/tx
   CARDANO_TX_SUBMIT_ENDPOINT2: ""
   CARDANO_TX_SUBMIT_ENDPOINT3: ""
 # Rabbit MQ 
