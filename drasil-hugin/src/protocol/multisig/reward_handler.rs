@@ -3,8 +3,7 @@ use crate::protocol::{create_response, determine_contracts};
 use crate::{discount, CmdError};
 use crate::{BuildMultiSig, TBMultiSigLoc};
 use drasil_murin::modules::transfer::models::*;
-use drasil_murin::{wallet, PerformTxb, MurinError};
-//use drasil_gungnir::schema::whitelist;
+use drasil_murin::{wallet, MurinError, PerformTxb};
 
 pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<String> {
     info!("verify transaction data...");
@@ -19,9 +18,10 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             recipient_payment_addr,
         } => {
             let err = Err(format!(
-                    "ERROR wrong data provided for script specific parameters: '{:?}'",
-                    bms.transaction_pattern().operation()
-                ).into());
+                "ERROR wrong data provided for script specific parameters: '{:?}'",
+                bms.transaction_pattern().operation()
+            )
+            .into());
             if rewards.is_empty()
                 || wallet::address_from_string(&recipient_stake_addr)
                     .await
@@ -38,7 +38,8 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
                                 .await?
                                 .to_bech32(None)
                                 .unwrap(),
-                        ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
+                        )
+                        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
                     )
                     .await?,
                 )?
@@ -47,7 +48,9 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             }
         }
         _ => {
-            return Err(format!("ERROR wrong data provided for '{:?}'", bms.multisig_type()).into());
+            return Err(
+                format!("ERROR wrong data provided for '{:?}'", bms.multisig_type()).into(),
+            );
         }
     }
 
@@ -59,19 +62,23 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         .into_rwd()
         .await?;
     rwdtxd.set_payment_addr(
-        &wallet::address_from_string(&drasil_mimir::api::select_addr_of_first_transaction(
-            &rwdtxd
-                .get_stake_addr()
-                .to_bech32(None)
-                .expect("ERROR Could not construct bech32 address for stake address"),
-        ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?)
+        &wallet::address_from_string(
+            &drasil_mimir::api::select_addr_of_first_transaction(
+                &rwdtxd
+                    .get_stake_addr()
+                    .to_bech32(None)
+                    .expect("ERROR Could not construct bech32 address for stake address"),
+            )
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
+        )
         .await?,
     );
     let mut gtxd = bms.transaction_pattern().into_txdata().await?;
     gtxd.set_user_id(bms.customer_id());
 
     info!("establish database connections...");
-    let mut gcon = drasil_gungnir::establish_connection().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let mut gcon = drasil_gungnir::establish_connection()
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
 
     info!("check rewards and collect contract ids...");
     let mut contract_ids = Vec::<i64>::new();
@@ -81,9 +88,10 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
                 .unwrap()
         {
             return Err(format!(
-                    "wallet addresses insufficient '{:?}'",
-                    rwd.get_stake_addr_str()
-                ).into());
+                "wallet addresses insufficient '{:?}'",
+                rwd.get_stake_addr_str()
+            )
+            .into());
         }
         if drasil_gungnir::Rewards::get_available_rewards(
             &mut gcon,
@@ -107,7 +115,8 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     gtxd.set_contract_id(contract_ids);
 
     info!("determine contract...");
-    let contract = determine_contracts(gtxd.get_contract_id(), bms.customer_id()).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let contract = determine_contracts(gtxd.get_contract_id(), bms.customer_id())
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     let contract = contract.expect("Error: could not unwrap contracts");
     info!(
         "Contract selected: UID: '{}', CID '{:?}'",
@@ -124,7 +133,8 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
             drasil_gungnir::TokenWhitelist::get_in_vesting_filtered_whitelist(
                 c.contract_id,
                 bms.customer_id(),
-            ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?
+            )
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?
             .iter()
             .map(|n| n.to_owned()),
         );
@@ -145,16 +155,21 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     debug!("Reward Tokens after Vesting filter:\n'{:?}'", rewards);
     rwdtxd.set_reward_tokens(&rewards);
     if rwdtxd.get_rewards().is_empty() {
-        return Err("The requested tokens are all still in a vesting period.".to_string().into());
+        return Err("The requested tokens are all still in a vesting period."
+            .to_string()
+            .into());
     }
     info!("lookup additional data...");
     let mut keylocs = Vec::<TBMultiSigLoc>::new();
     for c in &contract {
-        keylocs.push(crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
-            &c.contract_id,
-            &c.user_id,
-            &c.version,
-        ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?);
+        keylocs.push(
+            crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
+                &c.contract_id,
+                &c.user_id,
+                &c.version,
+            )
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?,
+        );
     }
 
     let mut fees = keylocs.iter().fold(
@@ -190,20 +205,27 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     }
 
     let mut wallets = TransWallets::new();
-    let mut dbsync = drasil_mimir::establish_connection().map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let mut dbsync = drasil_mimir::establish_connection()
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     for c in contract {
         let keyloc = crate::drasildb::TBMultiSigLoc::get_multisig_keyloc(
             &c.contract_id,
             &c.user_id,
             &c.version,
-        ).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        )
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         info!("retrieve blockchain data...");
 
-        let wallet_utxos = drasil_mimir::get_address_utxos(&c.address).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+        let wallet_utxos = drasil_mimir::get_address_utxos(&c.address)
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         if wallet_utxos.is_empty() {
             // ToDO :
             // Send Email to Admin that not enough tokens are available on the script
-            return Err("The contract does not contain utxos, please try again later".to_string().into());
+            return Err(
+                "The contract does not contain utxos, please try again later"
+                    .to_string()
+                    .into(),
+            );
         } else {
             log::info!("UTxO Count for TransWallet: {}", wallet_utxos.len());
         }
@@ -213,8 +235,9 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
         let tw_addr = wallet::address_from_string(&c.address).await?;
         let tw_script = drasil_murin::clib::NativeScript::from_bytes(hex::decode(c.plutus)?)
             .map_err::<CmdError, _>(|_| CmdError::Custom {
-            str: "could not convert string to native script".to_string(),
-        }).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+                str: "could not convert string to native script".to_string(),
+            })
+            .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
         let mut w = TransWallet::new(&tw_addr, &wallet_utxos);
         let s = CardanoNativeScript::new(&tw_addr, &tw_script, c.version, vec![pkvs[0].clone()]);
         w.set_native_script(s);
@@ -225,23 +248,10 @@ pub(crate) async fn handle_rewardclaim(bms: &BuildMultiSig) -> crate::Result<Str
     let uw = TransWallet::new(&rwdtxd.get_payment_addr(), &gtxd.get_inputs());
     wallets.add_wallet(&uw);
     log::debug!("Wallets in reward_handler: {:?}", wallets);
-    let slot = drasil_mimir::get_slot(&mut dbsync).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let slot = drasil_mimir::get_slot(&mut dbsync)
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     gtxd.set_current_slot(slot as u64);
 
-    //rwdtxd.set_reward_utxos(&Some(reward_wallet_utxos.clone()));
-
-    //ToDO:
-    // - Function to check and split utxos when for size >5kB (cal_min_ada panics on utxos >5kB)
-    // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
-    /*
-    let ident = crate::encryption::mident(
-        &contract[0].user_id,
-        &contract[0].contract_id,
-        &contract[0].version,
-        &ns_addr,
-    );
-    let pkvs = crate::encryption::decrypt_pkvs(keylocs[0].pvks.clone(), &ident).await?;
-    */
     info!("build transaction...");
     let txb_param: drasil_murin::txbuilder::rwdist::AtRWDParams = (&rwdtxd, Some(wallets));
     let rwd = drasil_murin::txbuilder::rwdist::AtRWDBuilder::new(txb_param);

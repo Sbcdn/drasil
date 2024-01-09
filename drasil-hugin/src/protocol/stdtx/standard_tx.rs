@@ -83,7 +83,6 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
         );
         gtxd.set_inputs(wallet_utxos);
 
-        // ToDo: go through all addresses and check all stake keys are equal
         let sa = wallet::reward_address_from_address(&std_asset_txd.wallet_addresses[0])?;
         gtxd.set_stake_address(sa);
         gtxd.set_senders_addresses(std_asset_txd.wallet_addresses.clone());
@@ -122,16 +121,8 @@ pub(crate) async fn handle_stx(bss: &BuildStdTx) -> Result<String, MurinError> {
             })?;
     let first_addr = Address::from_bech32(&first_address_str)?;
 
-    // ToDo:
-    // - Add Wallets
-
-    // If addresses are provided check they all belong to the same wallet, if yes
-    // get utxos for the addresses and build TransWallet with that UTxOs
-
     let uw = TransWallet::new(&first_addr, &gtxd.get_inputs());
     wallets.add_wallet(&uw);
-
-    // - Add Endpoint to get AssetHandles From AddressSet
 
     let txb_param: AtSATParams = (&std_asset_txd, &wallets, &first_addr);
     let asset_transfer = AtSATBuilder::new(txb_param);

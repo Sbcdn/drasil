@@ -116,47 +116,18 @@ impl<'a> super::PerformTxb<AtOSMParams<'a>> for AtOSMBuilder {
 
         debug!("Needed Value: {:?}", needed_value);
 
-        //let mut signers_address_utxos = (TransactionUnspentOutputs::new(),TransactionUnspentOutputs::new());
-        //if let Some(signer) = minttxd.get_signer() {
-        //    signers_address_utxos = find_utxos_by_address(signer.clone(), &input_txuos);
-        //}
-
-        //println!("Signer Address UTXOS: {:?}",signers_address_utxos.0);
         let (txins, mut input_txuos) = input_selection(
             None,
             &mut needed_value,
             &input_txuos,
             gtxd.clone().get_collateral(),
-            None, //Some(native_script_address).as_ref(),
+            None,
         )?;
 
-        /*
-        if let Some(signer) = minttxd.get_signer() {
-            if input_txuos.contains_any(&signers_address_utxos.0) {
-                info!("\n\nUtxo Input set contains minimum one utxo from the listing address\n\n");
-            } else {
-                if !signers_address_utxos.0.is_empty() {
-                    // ToDo:
-                    // In this case it would be better to have some larger Ada only Utxo -> Create a function to find one
-                    txins.add(&signers_address_utxos.0.get(0).input());
-                    input_txuos.add(&signers_address_utxos.0.get(0));
-                } else {
-                    return Err(
-                        MurinError::new(
-                            &format!(
-                                "Error: The Address which is needed for signature does not contain ADA, please provide suitable amount of ADA to: {:?}",signer.to_bech32(None)
-                            )
-                        )
-                    )
-                }
-            }
-        }
-         */
         let saved_input_txuos = input_txuos.clone();
 
         let vkey_counter = get_vkey_count(&input_txuos, None) + 1; // +1 due to signature in finalize
 
-        // ToDo:
         let mut mint_val_zero_coin = mint_val.clone();
         mint_val_zero_coin.set_coin(&cutils::to_bignum(0u64));
 
@@ -164,13 +135,13 @@ impl<'a> super::PerformTxb<AtOSMParams<'a>> for AtOSMBuilder {
             &mut input_txuos,
             &minttokens,
             &mut txouts,
-            Some(mint_val_zero_coin).as_ref(), // but not the ADA!!!!
+            Some(mint_val_zero_coin).as_ref(),
             fee,
             &mut fee_paid,
             &mut first_run,
             &mut txos_paid,
             &mut tbb_values,
-            &change_address, //who is sender ?
+            &change_address,
             &change_address,
             &mut acc,
             None,
@@ -210,7 +181,7 @@ impl<'a> super::PerformTxb<AtOSMParams<'a>> for AtOSMBuilder {
         let req_signer = self.script.get_required_signers();
         info!("Len Req SIgner: {:?}", req_signer.len());
         for i in 0..req_signer.len() {
-            info!("Required Signer: {:?}", req_signer.get(i).to_bech32("pkh_")) //req_signer.len()
+            info!("Required Signer: {:?}", req_signer.get(i).to_bech32("pkh_"))
         }
 
         let mut txwitness = clib::TransactionWitnessSet::new();

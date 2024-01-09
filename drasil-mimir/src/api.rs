@@ -25,6 +25,7 @@ pub fn get_utxo_tokens(
     Ok(multi_assets)
 }
 
+/// Select the first seen Base Address of a stake address
 pub fn select_addr_of_first_transaction(stake_address_in: &str) -> Result<String, MimirError> {
     log::debug!(
         "Try to find first address used by this stake address: {}",
@@ -108,6 +109,7 @@ pub fn get_asset_utxos_on_addr(
     Ok(utxos)
 }
 
+/// Get the current slot number
 pub fn get_slot(conn: &mut PgConnection) -> Result<i64, MimirError> {
     let slot = block::table
         .filter(block::block_no.is_not_null())
@@ -123,6 +125,7 @@ pub fn get_slot(conn: &mut PgConnection) -> Result<i64, MimirError> {
     }
 }
 
+/// get total ada staked in an epoch for a stakepool
 pub fn get_tot_stake_per_pool(
     conn: &mut PgConnection,
     pool: &String,
@@ -138,6 +141,7 @@ pub fn get_tot_stake_per_pool(
     Ok(pool_stake)
 }
 
+/// Retrieve delegations for a stakepool
 pub fn get_delegations_per_pool_for_epochs(
     conn: &mut PgConnection,
     pool: &String,
@@ -161,6 +165,7 @@ pub fn get_delegations_per_pool_for_epochs(
     Ok(deleg)
 }
 
+/// get total ada staked for a given epoch
 pub fn get_pool_total_stake(
     conn: &mut PgConnection,
     pool: &String,
@@ -178,6 +183,7 @@ pub fn get_pool_total_stake(
     Ok(tot_stake)
 }
 
+/// get current epoch number
 pub fn get_epoch(conn: &mut PgConnection) -> Result<i32, MimirError> {
     let epoch = epoch_stake::table
         .filter(epoch_stake::epoch_no.is_not_null())
@@ -188,6 +194,7 @@ pub fn get_epoch(conn: &mut PgConnection) -> Result<i32, MimirError> {
     Ok(epoch)
 }
 
+/// Get fingerprint from dbsync for a given token
 pub fn get_fingerprint(
     conn: &mut PgConnection,
     policy: &String,
@@ -416,9 +423,8 @@ pub fn get_mint_metadata(fingerprint_in: &str) -> Result<TokenInfoMint, MimirErr
         )>(&mut crate::establish_connection()?)
         .map_err(|_| MimirError::NotOnChainMetadataFound)?;
 
-        let tokenname = String::from_utf8(metadata.2.clone()).unwrap_or(
-            hex::encode(metadata.2.clone())
-        );
+    let tokenname =
+        String::from_utf8(metadata.2.clone()).unwrap_or(hex::encode(metadata.2.clone()));
     Ok(TokenInfoMint {
         fingerprint: metadata.0,
         policy: hex::encode(metadata.1),
@@ -498,24 +504,18 @@ pub async fn txhash_is_spent(txhash: &String) -> Result<bool, MimirError> {
 }
 
 /// The sum of all rewards ever received by the given stake address.
-pub async fn total_rewards(
-    stake_addr: &str,
-) -> Result<BigDecimal, MimirError> {
-    Ok(
-        reward::table
+pub async fn total_rewards(stake_addr: &str) -> Result<BigDecimal, MimirError> {
+    Ok(reward::table
         .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
         .select(reward::amount)
         .load::<BigDecimal>(&mut establish_connection()?)?
         .iter()
-        .sum()
-    )
+        .sum())
 }
 
 /// The sum of all reward withdrawals ever made by the given stake address.
-pub async fn total_withdrawals(
-    stake_addr: &str,
-) -> Result<BigDecimal, MimirError> {
+pub async fn total_withdrawals(stake_addr: &str) -> Result<BigDecimal, MimirError> {
     let response = withdrawal::table
         .inner_join(stake_address::table.on(stake_address::id.eq(withdrawal::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
@@ -527,10 +527,8 @@ pub async fn total_withdrawals(
 }
 
 /// The sum of all delegations (deposits) ever made by the given stake address.
-pub async fn total_deposits(
-    stake_addr: &str,
-) -> Result<BigDecimal, MimirError> {
-    let response =         delegation::table
+pub async fn total_deposits(stake_addr: &str) -> Result<BigDecimal, MimirError> {
+    let response = delegation::table
         .inner_join(tx::table.on(tx::id.eq(delegation::tx_id)))
         .inner_join(stake_address::table.on(stake_address::id.eq(delegation::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
@@ -542,10 +540,8 @@ pub async fn total_deposits(
 }
 
 /// The total amount of rewards that the given stake address
-/// has earned but not withdrawn. 
-pub async fn withdrawable_rewards(
-    stake_addr: &str,
-) -> Result<BigDecimal, MimirError> {
+/// has earned but not withdrawn.
+pub async fn withdrawable_rewards(stake_addr: &str) -> Result<BigDecimal, MimirError> {
     let response = reward::table
         .inner_join(stake_address::table.on(stake_address::id.eq(reward::addr_id)))
         .filter(stake_address::view.eq(stake_addr.to_string()))
@@ -555,13 +551,13 @@ pub async fn withdrawable_rewards(
         .sum::<BigDecimal>()
         .add(
             withdrawal::table
-            .inner_join(stake_address::table.on(stake_address::id.eq(withdrawal::addr_id)))
-            .filter(stake_address::view.eq(stake_addr.to_string()))
-            .select(withdrawal::amount)
-            .load::<BigDecimal>(&mut establish_connection()?)?
-            .iter()
-            .sum::<BigDecimal>()
-            .neg()
+                .inner_join(stake_address::table.on(stake_address::id.eq(withdrawal::addr_id)))
+                .filter(stake_address::view.eq(stake_addr.to_string()))
+                .select(withdrawal::amount)
+                .load::<BigDecimal>(&mut establish_connection()?)?
+                .iter()
+                .sum::<BigDecimal>()
+                .neg(),
         );
     Ok(response)
 }
@@ -569,12 +565,12 @@ pub async fn withdrawable_rewards(
 #[cfg(test)]
 mod tests {
     use crate::TokenInfoMint;
-    use serde_json::json;
-    use tokio;
     use bigdecimal::BigDecimal;
-    use std::str::FromStr;
     use dotenv::dotenv;
+    use serde_json::json;
     use std::ops::{Add, Neg};
+    use std::str::FromStr;
+    use tokio;
 
     #[test]
     fn stake_registration() {
@@ -587,13 +583,13 @@ mod tests {
             stake_address_view,
             tx_hash,
             stake_registration_cert_index,
-            stake_registration_epoch_no
+            stake_registration_epoch_no,
         ) = func_value[0].clone();
 
         assert_eq!(func_value.len(), 1);
         assert_eq!(stake_address_view, stake_addr_in.to_string());
         assert_eq!(
-            hex::encode(tx_hash.clone()), 
+            hex::encode(tx_hash.clone()),
             "c6a5fb39114863da737a824f355c09f720479a94bff91b3613639e7313128dc7".to_string()
         );
         assert_eq!(stake_registration_cert_index, 0);
@@ -614,11 +610,14 @@ mod tests {
             tx_hash,
             stake_deregistration_cert_index,
             stake_deregistration_epoch_no,
-            stake_deregistration_redeemer_id
+            stake_deregistration_redeemer_id,
         ) = func_value.last().unwrap();
 
         assert_eq!(stake_address_view, stake_addr_in);
-        assert_eq!(hex::encode(tx_hash), "49d55da2db879398172ada91da2f02d902a51daf744b5ff6da8c0c96467c0c2a"); // assumed to be correct
+        assert_eq!(
+            hex::encode(tx_hash),
+            "49d55da2db879398172ada91da2f02d902a51daf744b5ff6da8c0c96467c0c2a"
+        ); // assumed to be correct
         assert_eq!(stake_deregistration_cert_index, &0);
         assert_eq!(stake_deregistration_epoch_no, &8);
         assert_eq!(stake_deregistration_redeemer_id, &None);
@@ -642,9 +641,11 @@ mod tests {
             fingerprint: "asset1t3m9e0gysc4xy392q25qwgj2hwca5qf3nhgcf4".to_string(),
             policy: "f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a".to_string(),
             tokenname: "000643b0766963746f722e656c6261".to_string(),
-            meta_key: 721, 
-            json: Some(json!({"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a": {"000de140766963746f722e656c6261": {"og": 0, "name": "$victor.elba", "image": "ipfs://zb2rhoGr5TMRmSYhupacB5pVSbViLWrt2MyTs1DH8i8ArRQAU", "length": 11, "rarity": "basic", "version": 1, "mediaType": "image/jpeg", "og_number": 0, "characters": "letters,special", "numeric_modifiers": ""}}})), 
-            txhash: "fcc86f8adb7349eca89ec75a79be19091fb3040bf94baf95fdd421a625eaf045".to_string(), 
+            meta_key: 721,
+            json: Some(
+                json!({"f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a": {"000de140766963746f722e656c6261": {"og": 0, "name": "$victor.elba", "image": "ipfs://zb2rhoGr5TMRmSYhupacB5pVSbViLWrt2MyTs1DH8i8ArRQAU", "length": 11, "rarity": "basic", "version": 1, "mediaType": "image/jpeg", "og_number": 0, "characters": "letters,special", "numeric_modifiers": ""}}}),
+            ),
+            txhash: "fcc86f8adb7349eca89ec75a79be19091fb3040bf94baf95fdd421a625eaf045".to_string(),
         };
 
         assert_eq!(func_value.fingerprint, real_value.fingerprint);
@@ -654,7 +655,7 @@ mod tests {
         assert_eq!(func_value.json, real_value.json);
         assert_eq!(func_value.txhash, real_value.txhash);
     }
-    
+
     #[tokio::test]
     async fn total_rewards() {
         dotenv().ok();
@@ -687,12 +688,7 @@ mod tests {
         let manual_value = super::total_rewards(stake_addr)
             .await
             .unwrap()
-            .add(
-                super::total_withdrawals(stake_addr)
-                .await
-                .unwrap()
-                .neg()
-            );
+            .add(super::total_withdrawals(stake_addr).await.unwrap().neg());
         assert_eq!(func_value, manual_value);
     }
 }

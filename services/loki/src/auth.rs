@@ -17,10 +17,7 @@ struct ApiClaims {
     exp: usize,
 }
 
-pub(crate) async fn authorize(
-    headers: HeaderMap<HeaderValue>,
-    //body: bytes::Bytes,
-) -> Result<u64, Rejection> {
+pub(crate) async fn authorize(headers: HeaderMap<HeaderValue>) -> Result<u64, Rejection> {
     let publ = std::env::var("JWT_PUB_KEY")
         .map_err(|_| Error::Custom("env jwt pub not existing".to_string()))?;
     let publ = publ.into_bytes();
@@ -72,23 +69,3 @@ fn jwt_from_header(headers: &HeaderMap<HeaderValue>) -> Result<String, error::Er
     }
     Ok(auth_header.trim_start_matches(BEARER).to_owned())
 }
-
-/*
-pub fn create_jwt(uid: &str) -> Result<String, error::Error> {
-    let expiration = Utc::now()
-        .checked_add_signed(chrono::Duration::seconds(1800))
-        .expect("valid timestamp")
-        .timestamp();
-
-    let claims = ApiClaims {
-        sub: uid.to_owned(),
-        exp: expiration as usize,
-    };
-    let header = Header::new(Algorithm::ES256);
-    let key = std::env::var("JWT_KEY")
-        .map_err(|_| Error::Custom("env jwt key path not existing".to_string()))?;
-    let key = key.into_bytes(); //std::fs::read(key).expect("Could not read jwt key file");
-    encode(&header, &claims, &EncodingKey::from_ec_pem(&key).unwrap())
-        .map_err(|_| Error::JWTTokenCreationError)
-}
-*/

@@ -12,8 +12,6 @@ pub enum Error {
     InvalidAuthHeaderError,
     #[error("internal error: {:?}", self)]
     Custom(String),
-    // #[error("could not create jwt token")]
-    // JWTTokenCreationError,
     #[error("rmq error: {0}")]
     RMQError(#[from] lapin::Error),
     #[error("rmq pool error: {0}")]

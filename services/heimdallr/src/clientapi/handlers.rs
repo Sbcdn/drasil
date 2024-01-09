@@ -4,8 +4,8 @@ use std::str::FromStr;
 
 use drasil_hugin::client::{connect, Client};
 use drasil_hugin::datamodel::models::{
-    ContractAction, ContractType, MarketplaceActions, MultiSigType, OneShotReturn, ReturnError,
-    StdTxType, TransactionPattern, TxHash, UnsignedTransaction,
+    ContractAction, ContractType, MultiSigType, OneShotReturn, ReturnError, StdTxType,
+    TransactionPattern, TxHash, UnsignedTransaction,
 };
 use drasil_hugin::{
     BuildContract, BuildMultiSig, BuildStdTx, FinalizeContract, FinalizeMultiSig, FinalizeStdTx,

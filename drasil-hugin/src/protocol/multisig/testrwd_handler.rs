@@ -139,9 +139,7 @@ pub(crate) async fn handle_testrewards(bms: &BuildMultiSig) -> crate::Result<Str
     };
     gtxd.set_current_slot(slot as u64);
     log::info!("DB Sync Slot: {}", slot);
-    //ToDO:
-    // - Function to check and split utxos when for size >5kB (cal_min_ada panics on utxos >5kB)
-    // - Find a solution for protocal parameters (maybe to database?) at the moment they are hardcoded in list / build_rwd
+
     let policy_script_utxos = mimir::get_address_utxos(&mut dbsync, &contract.address)?;
 
     gtxd.set_inputs(policy_script_utxos);

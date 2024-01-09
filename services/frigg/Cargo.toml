@@ -6,8 +6,8 @@ description = "Drasil Blockchain Application Framework - Client Portal API"
 repository = "https://github.com/Sbcdn/frigg.git"
 homepage = "https://www.drasil.io"
 documentation = "https://docs.drasil.io"
-license = "LICENSE.md"
-readme = "README.md"
+license = "https://github.com/Sbcdn/drasil/blob/main/LICENSE.md"
+readme = "https://github.com/Sbcdn/drasil/blob/main/README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
 
 

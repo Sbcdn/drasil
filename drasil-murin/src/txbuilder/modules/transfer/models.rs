@@ -190,48 +190,21 @@ impl TransBuilder {
             self.replace_transfer((&fee_transfer.0, fee_transfer.1))?;
             log::debug!("\n\n\nAfter FeeSet: \n{:?}\n", self.transfers);
         } else {
-            //ToDo: Do not error out, add fee to sending wallet
             log::debug!(
                 "\n\n\nno transfer for specified fee_addr exists\n{:?}\n",
                 self.transfers
             );
-            /*
-            if self.transfers.len() == 1 {
-                self.transfers[0].source.add_fee(&fee)?;
-            } else {
-                log::debug!(
-                    "\n\n\nno transfer for specified fee_addr exists and more than one transfer in transaction, cannot automatically determine fee payer\n{:?}\n",
-                    self.transfers
-                );
-                return Err(TransferError::Custom(
-                    "no transfer for specified fee_addr exists".to_string(),
-                ));
-            }
-            */
+
             return Err(TransferError::Custom(
                 "no transfer for specified fee_addr exists".to_string(),
             ));
         }
-        // Balance all transfers
-        //let mut handles = Vec::<_>::new();
-        //self.transfers.iter_mut().for_each(|n| {
-        //    log::debug!("Pay Address: {:?}", n.source.pay_addr);
-        //    log::trace!("Wallets: {:?}", self.wallets);
-        //    let r = n.balance(self.wallets.get_wallet(&n.source.pay_addr)?)?;
-        //});
 
         for t in &mut self.transfers {
             log::debug!("Pay Address: {:?}", t.source.pay_addr);
             log::trace!("Wallets: {:?}", self.wallets);
             t.balance(self.wallets.get_wallet(&t.source.pay_addr)?)?;
         }
-
-        //handles.push();
-
-        //let handler = tokio::spawn(async move { t.balance(wallet).await });
-        //handles.push(handler);
-
-        //futures::future::join_all(handles.into_iter()).await;
 
         // Determine total tx inputs
         log::debug!("\n Determine total tx inputs.....");

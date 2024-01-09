@@ -108,7 +108,6 @@ async fn client_msg(
     };
 
     match serde_json::from_str(message).unwrap() {
-        //"alive" | "alive\n"
         WSCom::Alive => {
             let locked = clients.lock().await;
             if let Some(v) = locked.get(&client_id) {
@@ -139,6 +138,6 @@ async fn client_msg(
                     }
                 }
             }
-        } //   _ => (),
+        }
     }
 }
