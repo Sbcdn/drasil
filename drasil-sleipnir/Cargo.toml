@@ -5,8 +5,8 @@ edition = "2021"
 description = "Drasil Blockchain Application Framework - Client Portal Library"
 repository = "https://github.com/Sbcdn/drasil.git"
 documentation = "https://docs.drasil.io"
-license = "LICENSE_GPL.md"
-readme = "README.md"
+license = "https://github.com/Sbcdn/drasil/blob/main/LICENSE.md"
+readme = "https://github.com/Sbcdn/drasil/blob/main/README.md"
 authors = ["Torben Poguntke <torben@drasil.io>"]
 
 [dependencies]
@@ -33,9 +33,3 @@ drasil-gungnir = { path = "../drasil-gungnir", version = "0.1.0" }
 drasil-hugin = { path = "../drasil-hugin", version = "0.1.0" }
 drasil-dvltath = { path = "../drasil-dvltath", version = "0.1.0" }
 
-[features]
-clib = ["structopt"]
-
-[[bin]]
-name = "create_mintpolicy"
-required-features = ["clib"]

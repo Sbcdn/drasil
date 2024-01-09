@@ -27,21 +27,6 @@ pub async fn entrp_create_nfts_from_csv(
     params: ImportNFTsfromCSV,
 ) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-    /*
-        let i = sleipnir::minting::api::import_nfts_from_csv_metadata(
-            &hex::decode(params.csv_hex).unwrap(),
-            user,
-            params.project_id,
-        )
-        .await?;
-
-        //Ok(warp::reply::with_status(
-        //    warp::reply::json(&json!({ "imported": i })),
-        //    warp::http::StatusCode::CREATED,
-        //));
-    */
-    ////////////////////
-    // let payload = serde_json::json!(payload).to_string();
 
     let job = drasil_sleipnir::jobs::Job {
         drasil_user_id: user,
@@ -103,37 +88,6 @@ pub async fn entrp_create_nfts_from_csv_s(
     body: bytes::Bytes,
 ) -> WebResult<impl Reply> {
     let user = get_user_from_string(&uid).await?;
-
-    //let mut request_buf = String::new();
-    //let mut file = File::create("/files/import_tmp").unwrap();
-    //file.write_all(body.as_ref()).unwrap();
-    //file.read_to_string(&mut request_buf).unwrap();
-    /*
-       let mut pinned_stream = Box::pin(body);
-       while pinned_stream.has_remaining() {
-           let r = pinned_stream.remaining();
-           let b = pinned_stream.bytes();
-           let mut i = 0;
-           for (j, e) in b.enumerate() {
-               if let Ok(byte) = e {
-                   request_buf.push(byte)
-               }
-               i = j;
-               log::debug!("{}", i);
-           }
-           if r > 0 {
-               pinned_stream.advance(i);
-           } else {
-               break;
-           }
-           //request_buf.extend::<&[u8]>(body.as_ref());
-       }
-    */
-    //let mut f = File::open(file).expect("no file found");
-    //let metadata = file.metadata().expect("unable to read metadata");
-
-    //let mut buffer = body.bytes();
-    //file.read_to_end(&mut buffer).expect("buffer overflow");
 
     log::debug!("Request buffer: {:?}", &body);
     let i = drasil_sleipnir::minting::api::import_nfts_from_csv_metadata(body.as_ref(), user, mid)

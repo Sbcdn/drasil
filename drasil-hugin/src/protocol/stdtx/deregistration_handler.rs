@@ -1,9 +1,9 @@
 use crate::datamodel::Operation;
 use crate::protocol::create_response;
 use crate::BuildStdTx;
-use drasil_murin::MurinError;
 use drasil_murin::clib;
 use drasil_murin::wallet::address_from_string_non_async;
+use drasil_murin::MurinError;
 use drasil_murin::PerformTxb;
 use drasil_murin::TransactionUnspentOutputs;
 
@@ -15,7 +15,9 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
     {
         Operation::StakeDeregistration { .. } => (),
         _ => {
-            return Err(format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()).into());
+            return Err(
+                format!("ERROR wrong input data provided for '{:?}'", bst.tx_type()).into(),
+            );
         }
     }
     let op = &bst.transaction_pattern().operation().unwrap();
@@ -64,7 +66,6 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
             });
         gtxd.set_inputs(wallet_utxos);
 
-        // ToDo: go through all addresses and check all stake keys are equal
         let sa = drasil_murin::wallet::reward_address_from_address(&wal_addr[0])?;
         gtxd.set_stake_address(sa);
         gtxd.set_senders_addresses(wal_addr.clone());
@@ -77,7 +78,8 @@ pub(crate) async fn handle_stake_deregistration(bst: &BuildStdTx) -> crate::Resu
             return Err(format!("ERROR could not connect to dbsync: '{:?}'", e.to_string()).into());
         }
     };
-    let current_slot = drasil_mimir::get_slot(&mut dbsync).map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
+    let current_slot = drasil_mimir::get_slot(&mut dbsync)
+        .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;
     gtxd.set_current_slot(current_slot as u64);
 
     deregtxd.set_registered(Some(false)); // the whole point
@@ -142,9 +144,5 @@ mod test {
         println!("handle_stake_deregistration func value (changes with time): {func_value}\n");
 
         assert_eq!(func_value.len(), real_value.len());
-
-        // No need to test if deregistration succeeded in this unit test because handle_stake_deregistration
-        // only returns UnsignedTransaction. It first needs to be signed in a later stage before
-        // the deregistration kicks in.
     }
 }

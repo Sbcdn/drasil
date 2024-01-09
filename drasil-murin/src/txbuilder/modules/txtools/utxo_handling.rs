@@ -22,7 +22,6 @@ pub async fn find_token_utxos(
                 if let Some(multi) = value.multiasset() {
                     if let Some(toks) = multi.get(&asset.0) {
                         if let Some(amt) = toks.get(&asset.1) {
-                            // for tok in 0..toks.len()  {
                             if needed_amt >= asset.2 {
                                 log::debug!(
                                     "Found a utxo containing {} tokens {}.{}!",
@@ -199,8 +198,6 @@ pub fn input_selection(
     exclude: Option<TransactionUnspentOutput>,
     on_addr: Option<&Address>,
 ) -> Result<(clib::TransactionInputs, TransactionUnspentOutputs), TxToolsError> {
-    //debug!("\n\nMULTIASSETS: {:?}\n\n", txins);
-
     let (mut purecoinassets, mut multiassets) =
         crate::cardano::supporting_functions::splitt_coin_multi(txins);
 
@@ -233,18 +230,13 @@ pub fn input_selection(
     }
 
     if let Some(exclude_utxo) = exclude {
-        //debug!("Exclude: {:?}", exclude_utxo);
         let c_index = crate::cardano::supporting_functions::find_collateral_by_txhash_txix(
             &exclude_utxo,
             &purecoinassets,
         );
-        //debug!(
-        //    "Some excludes to check for deletion found, Index: {:?}",
-        //    c_index
-        //);
+
         if let Some(index) = c_index {
             purecoinassets.swap_remove(index);
-            //debug!("deleted exclude from inputs: {:?}\n", col);
             // Double check
             if crate::cardano::supporting_functions::find_collateral_by_txhash_txix(
                 &exclude_utxo,
@@ -289,10 +281,6 @@ pub fn input_selection(
                 // Delete script input from multi assets to not select it again
                 if let Some(i) = multiassets.find_utxo_index(&token_selection.get(i)) {
                     multiassets.swap_remove(i);
-                    //debug!(
-                    //    "Deleted token utxo from multiasset inputs: \n {:?}\n",
-                    //    tutxo
-                    //);
                 }
             }
         }
@@ -378,15 +366,6 @@ pub fn combine_wallet_outputs(txos: &clib::TransactionOutputs) -> clib::Transact
     for o in 0..txos.len() {
         _txos.push(txos.get(o))
     }
-    /*
-    let wallets: Vec<clib::TransactionOutput> = _txos
-        .iter()
-        .filter(
-            |n| true, /*clib::address::BaseAddress::from_address(&n.address()).is_some()*/
-        )
-        .map(|n| n.to_owned())
-        .collect();
-    */
 
     let addresses = _txos
         .iter()
@@ -416,14 +395,6 @@ pub fn combine_wallet_outputs(txos: &clib::TransactionOutputs) -> clib::Transact
             _ => {}
         }
     });
-    /*
-    let r: Vec<clib::TransactionOutput> = _txos
-        .iter()
-        .filter(|n| clib::address::BaseAddress::from_address(&n.address()).is_none())
-        .map(|n| n.to_owned())
-        .collect();
-    for e in r {
-        out.add(&e);
-    }*/
+
     out
 }

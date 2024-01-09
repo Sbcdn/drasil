@@ -15,9 +15,7 @@ use cardano_serialization_lib::{crypto as ccrypto, utils as cutils};
 use clib::address::Address;
 
 use super::models::{ColMinterTxData, PriceCMintHandle};
-//use std::env;
 
-// One Shot Minter Builder Type
 #[derive(Debug, Clone)]
 pub struct AtCMBuilder {
     pub scripts: Vec<clib::NativeScript>,
@@ -70,8 +68,7 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         }
 
         let native_script = &self.scripts[0];
-        let mintpolicy = native_script.hash(); //clib::ScriptHashNamespace::NativeScript
-                                               // let minttokens = mintasset_into_tokenasset(self.stxd.get_mint_tokens(), mintpolicy.clone());
+        let mintpolicy = native_script.hash();
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////
         //
@@ -114,18 +111,12 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
 
         // Inputs
         let mut input_txuos = gtxd.clone().get_inputs();
-
-        info!("\n Before USED UTXOS");
         // Check if some utxos in inputs are in use and remove them
         if let Some(used_utxos) = crate::utxomngr::usedutxos::check_any_utxo_used(&input_txuos)? {
-            info!("\n\n");
-            info!("USED UTXOS: {:?}", used_utxos);
-            info!("\n\n");
             input_txuos.remove_used_utxos(used_utxos);
         }
 
         let collateral_input_txuo = gtxd.clone().get_collateral();
-        debug!("\nCollateral Input: {:?}", collateral_input_txuo);
 
         // Balance TX
         let mut fee_paid = false;
@@ -143,18 +134,12 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         needed_value.set_coin(&needed_value.coin().checked_add(&security).unwrap());
         let mut needed_value = cutils::Value::new(&needed_value.coin());
 
-        debug!("Needed Value: {:?}", needed_value);
-        debug!(
-            "\n\n\n\n\nTxIns Before selection:\n {:?}\n\n\n\n\n",
-            input_txuos
-        );
-
         let (txins, mut input_txuos) = input_selection(
             None,
             &mut needed_value,
             &input_txuos,
             gtxd.clone().get_collateral(),
-            None, //Some(native_script_address).as_ref(),
+            None,
         )?;
 
         let saved_input_txuos = input_txuos.clone();
@@ -173,13 +158,13 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
             &mut input_txuos,
             &Tokens::new(),
             &mut txouts,
-            Some(mint_val_zero_coin).as_ref(), // but not the ADA!!!!
+            Some(mint_val_zero_coin).as_ref(),
             fee,
             &mut fee_paid,
             &mut first_run,
             &mut txos_paid,
             &mut tbb_values,
-            &receiver, //who is sender ?
+            &receiver,
             &change_address,
             &mut acc,
             None,
@@ -219,12 +204,6 @@ impl<'a> super::PerformTxb<AtCMParams<'a>> for AtCMBuilder {
         txbody.set_auxiliary_data_hash(&aux_data_hash);
 
         txbody.set_mint(&mint);
-
-        //let req_signer = native_script.get_required_signers();
-        //info!("Len Req SIgner: {:?}",req_signer.len());
-        //for i in 0..req_signer.len() {
-        //    info!("Required Signer: {:?}" ,req_signer.get(i).to_bech32("pkh_")) //req_signer.len()
-        //}
 
         let mut txwitness = clib::TransactionWitnessSet::new();
         let mut native_scripts = clib::NativeScripts::new();

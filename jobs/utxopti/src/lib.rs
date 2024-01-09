@@ -1,5 +1,4 @@
 mod error;
-mod models;
 
 use drasil_murin::cardano::supporting_functions;
 use drasil_murin::cardano::{self, Tokens, TransactionUnspentOutputs};
@@ -58,14 +57,7 @@ pub async fn optimize(addr: String, uid: i64, cid: i64) -> Result<()> {
     log::debug!("\nTransactions: \n");
     for tx in transactions {
         log::debug!("Tx: for {:?}\n{}", &contract.address, tx.0.to_hex());
-        let txh = submit_tx(
-            tx.0,
-            tx.1,
-            contract.user_id,
-            contract.contract_id,
-            //contract.version,
-        )
-        .await?;
+        let txh = submit_tx(tx.0, tx.1, contract.user_id, contract.contract_id).await?;
         txhs.push(txh);
     }
     log::debug!("\n TxHashes for: {:?}, {:?}", &contract.address, txhs);
@@ -78,7 +70,6 @@ async fn submit_tx(
     used_utxos: TransactionUnspentOutputs,
     uid: i64,
     cid: i64,
-    //version: f32,
 ) -> Result<String> {
     let bld_tx = supporting_functions::tx_output_data(
         transaction.body(),
@@ -135,7 +126,6 @@ fn reallocate_tokens(
         drasil_murin::clib::Transaction,
         drasil_murin::TransactionUnspentOutputs,
     )>::new();
-    //let ada = t_utxos.coin_sum();
     let (std_value, minutxo, utxo_count) = get_values_and_tamt_per_utxo(tokens, liquidity);
     log::trace!("\n\nTUTXO: BEFORE FILTER: \n{:?}\n\n", t_utxos);
     let set = t_utxos.filter_values(&std_value, Some(20))?;
@@ -161,7 +151,6 @@ fn get_values_and_tamt_per_utxo(
     drasil_murin::clib::utils::BigNum,
     u64,
 ) {
-    //let max_token =
     let max_token = tokens
         .iter()
         .find(|n| {
@@ -195,14 +184,6 @@ fn get_values_and_tamt_per_utxo(
     (std_value, minutxo, utxo_count)
 }
 
-/*
-struct TxBuilderOut {
-    utxos: drasil_murin::TransactionUnspentOutputs,
-    std_value: drasil_murin::clib::utils::Value,
-    utxo_amt: u64,
-    transactions: Vec<(drasil_murin::clib::Transaction, drasil_murin::TransactionUnspentOutputs)>,
-}
-*/
 fn txbuilder(
     utxos: &mut drasil_murin::TransactionUnspentOutputs,
     std_value: &drasil_murin::clib::utils::Value,
@@ -226,20 +207,9 @@ fn txbuilder(
             log::debug!("Continue building transactions");
             let (tx, used_utxos, _new_utxo_amt) =
                 make_new_tx(utxos, std_value, &utxo_amt, addr, script)?;
-            //.expect("Could not create transaction");
             utxos.delete_set(&used_utxos);
             transactions.push((tx, used_utxos.clone()));
-            Ok(
-                (), /*
-                        txbuilder(
-                        &mut used_utxos,
-                        std_value,
-                        new_utxo_amt,
-                        transactions,
-                        addr,
-                        script,
-                    )? */
-            )
+            Ok(())
         }
     }
 }
@@ -435,7 +405,6 @@ fn finalize_tx(
     tmp_txb.set_network_id(&network);
     let tmp_transaction = drasil_murin::clib::Transaction::new(&tmp_txb, &txw, None);
     let fee = calc_txfee(&tmp_transaction, &a, &b, ex_unit_price, &steps, &mem, true);
-    //fee.checked_add(&drasil_murin::clib::utils::to_bignum(64))?;
     let mut outputs = outputs.clone();
     outputs.add(&drasil_murin::clib::TransactionOutput::new(
         addr,

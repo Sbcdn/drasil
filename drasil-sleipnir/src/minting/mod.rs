@@ -11,7 +11,6 @@ pub async fn create_policy_script(
     user_id: i64,
     mint_signer: Option<clib::address::Address>,
     time_constraint: Option<DateTime<Utc>>,
-    //contract_type : String,
 ) -> Result<i64, SleipnirError> {
     // create rwd wallet  & contract
 

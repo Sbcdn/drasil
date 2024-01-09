@@ -11,7 +11,6 @@ use crate::error::MurinError;
 use crate::txbuilder::{input_selection, TxBO};
 use crate::{PerformTxb, TxData};
 
-// One Shot Minter Builder Type
 #[derive(Debug, Clone)]
 pub struct AtCPOBuilder<'a> {
     pub txo_values: Vec<(

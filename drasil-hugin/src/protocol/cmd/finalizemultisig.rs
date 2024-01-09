@@ -184,7 +184,6 @@ impl FinalizeMultiSig {
 
                 ret = self.finalize_rwd(raw_tx.clone()).await?;
 
-                //Todo: processed must happen before finalize rwd
                 for h in &handles {
                     MintReward::process_mintreward(h.1.id, h.1.project_id, &h.1.pay_addr)
                         .map_err(|e| MurinError::ProtocolCommandError(e.to_string()))?;

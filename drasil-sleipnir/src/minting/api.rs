@@ -88,7 +88,6 @@ pub async fn import_nfts_from_csv_metadata(
     let mut trdr = csv::Reader::from_reader(csv);
     let n = trdr.records().count();
     log::debug!("Count: {:?}", n);
-    //log::debug!("Reader has headers: {:?}", rdr.has_headers());
     let mut counter = 0;
     for result in rdr.records() {
         log::debug!("A Record was found: {:?}", result);
@@ -124,7 +123,6 @@ pub async fn import_from_asset_metadata(
     mpid: i64,
     meta: Vec<drasil_murin::minter::AssetMetadata>,
 ) -> Result<Vec<drasil_gungnir::minting::models::Nft>, SleipnirError> {
-    //let gconn = &mut drasil_gungnir::establish_connection()?;
     let mint_project = MintProject::get_mintproject_by_id(mpid)?;
     println!("Try to find contract...");
     let mint_contract =
@@ -133,10 +131,7 @@ pub async fn import_from_asset_metadata(
     let mut nfts = Vec::<Nft>::new();
     for m in meta {
         let nft_id = m.tokenname.clone();
-        //find_numbers(m.name.as_ref().unwrap())?;
-        //if nft_id.is_empty() {
-        //    nft_id = m.tokenname.clone();
-        //}
+
         let asset = m.clone();
         let nft = Nft::create_nft(
             &mint_project.nft_table_name,
@@ -179,47 +174,3 @@ mod tests {
         println!("Imported NFTs");
     }
 }
-/*
-\metadata
-"{
-    ""myassetname_utf8"" : {
-        ""name"":""myassetname_utf8"",
-        ""image"":""bafybeihcyruaeza7uyjd6ugicbcrqumejf6uf353e5etdkhotqffwtguva"",
-        ""mediaType"":""image/png"",
-        ""description"":""My Descritption for this NFT"",
-        ""files"":[
-            {
-                ""name"":""myfilename1"",
-                ""mediaType"":""file/zip"",
-                ""src"": [""mySourcePath/file.zip""]
-            },{
-                ""name"":""myfilename2"",
-                ""mediaType"":""video/mov"",
-                ""src"": [""mySourcePath/vid.mov""]
-            }
-        ],
-        ""other"":""properties"",
-        ""traits"":[""trait1"",""trait2"",""trait3"",""trait4""]
-    },
-
-    ""6d7961737365746e616d655f62696e617279"" : {
-        ""name"":""myassetname_binary"",
-        ""image"":""bafybeihcyruaeza7uyjd6ugicbcrqumejf6uf353e5etdkgotqffwtguva"",
-        ""mediaType"":""image/png"",
-        ""description"":""My Descritption for this NFT"",
-        ""files"":[
-            {
-                ""name"":""myfilename1"",
-                ""mediaType"":""file/zip"",
-                ""src"": [""mySourcePath/file.zip""]
-            },{
-                ""name"":""myfilename2"",
-                ""mediaType"":""video/mov"",
-                ""src"": [""mySourcePath/vid.mov""]
-            }
-        ],
-        ""other"":""properties"",
-        ""traits"":[""trait1"",""trait2"",""trait3"",""trait4"",""trait5"",""trait6"",""trait7"",""trait8""]
-    }
-}"
-*/

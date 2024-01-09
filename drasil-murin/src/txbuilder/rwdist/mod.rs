@@ -119,9 +119,6 @@ impl RWDTxData {
         rewards: &[RewardHandle],
         recipient_stake_addr: &caddr::Address,
         recipient_payment_addr: &caddr::Address,
-        //fee_wallet_addr         : &caddr::Address,
-        //fee                     : &u64,
-        //reward_utxos            : &Option<TransactionUnspentOutputs>,
     ) -> RWDTxData {
         RWDTxData {
             rewards: rewards.to_vec(),
@@ -191,10 +188,6 @@ impl ToString for RWDTxData {
         // prepare tokens vector
         let mut s_tokens = String::new();
         for ta in self.get_rewards() {
-            //let mut subs = String::new();
-            //subs.push_str(&(hex::encode(ta.0.to_bytes()) + "?"));
-            //subs.push_str(&(hex::encode(ta.1.to_bytes()) + "?"));
-            //subs.push_str(&(hex::encode(ta.2.to_bytes()) + "!"));
             s_tokens.push_str(&ta.to_string());
             s_tokens.push('!');
         }
@@ -254,14 +247,6 @@ impl std::str::FromStr for RWDTxData {
             let rwds: Vec<&str> = slice[0].split('!').collect();
             for rwd in rwds {
                 rewards.push(RewardHandle::from(rwd.to_string()));
-                /*
-                let rwd_slice: Vec<&str> = token.split('?').collect();
-                tokens.push((
-                    clib::PolicyID::from_bytes(hex::decode(token_slice[0])?)?,
-                    clib::AssetName::from_bytes(hex::decode(token_slice[1])?)?,
-                    cutils::BigNum::from_bytes(hex::decode(token_slice[2])?)?,
-                ))
-                */
             }
             debug!("Tokens: {:?}", rewards);
 
@@ -301,11 +286,9 @@ impl std::str::FromStr for RWDTxData {
                 reward_utxos: token_utxos,
             })
         } else {
-            Err(MurinError::new(
-                //std::io::Error::new(
-                //    std::io::ErrorKind::InvalidData,
-                &format!("Error the provided string '{src}' cannot be parsed into 'RWDTxData' "),
-            ))
+            Err(MurinError::new(&format!(
+                "Error the provided string '{src}' cannot be parsed into 'RWDTxData' "
+            )))
         }
     }
 }
