@@ -1,10 +1,7 @@
 REGION=europe-west2-docker.pkg.dev
 
-MAINNET_REGISTRY=prod-kube-repo
-MAINNET_PROJECT=kebvmwbusajq
-
-TESTNET_REGISTRY=preview-testnet-registry
-TESTNET_PROJECT=efvgtwmyqlpe
+TESTNET_REGISTRY=testnet-registry
+TESTNET_PROJECT=ffffffffff
 
 LOC_PROJECT=k3d-drasil-registry.localhost:12345
 VERSION=v1.3
