@@ -289,35 +289,35 @@ table! {
     }
 }
 
-table! {
-    pool_offline_data (id) {
-        id -> Int8,
-        pool_id -> Int8,
-        ticker_name -> Varchar,
-        hash -> Bytea,
-        json -> Jsonb,
-        bytes -> Bytea,
-        pmr_id -> Int8,
-    }
-}
+// table! {
+//     pool_offline_data (id) {
+//         id -> Int8,
+//         pool_id -> Int8,
+//         ticker_name -> Varchar,
+//         hash -> Bytea,
+//         json -> Jsonb,
+//         bytes -> Bytea,
+//         pmr_id -> Int8,
+//     }
+// }
 
-table! {
-    pool_offline_fetch_error (id) {
-        id -> Int8,
-        pool_id -> Int8,
-        fetch_time -> Timestamp,
-        pmr_id -> Int8,
-        fetch_error -> Varchar,
-        retry_count -> Int4,
-    }
-}
+// table! {
+//     pool_offline_fetch_error (id) {
+//         id -> Int8,
+//         pool_id -> Int8,
+//         fetch_time -> Timestamp,
+//         pmr_id -> Int8,
+//         fetch_error -> Varchar,
+//         retry_count -> Int4,
+//     }
+// }
 
 table! {
     pool_owner (id) {
         id -> Int8,
         addr_id -> Int8,
         pool_hash_id -> Int8,
-        registered_tx_id -> Int8,
+        // registered_tx_id -> Int8,
     }
 }
 
@@ -350,12 +350,14 @@ table! {
         cert_index -> Int4,
         vrf_key_hash -> Bytea,
         pledge -> Numeric,
-        reward_addr -> Bytea,
+        // reward_addr -> Bytea,
         active_epoch_no -> Int8,
         meta_id -> Nullable<Int8>,
         margin -> Float8,
         fixed_cost -> Numeric,
         registered_tx_id -> Int8,
+        reward_addr_id -> Int8,
+        deposit -> Numeric,
     }
 }
 
@@ -379,7 +381,8 @@ table! {
         purpose -> crate::schema::sql_types::Scriptpurposetype,
         index -> Int4,
         script_hash -> Nullable<Bytea>,
-        datum_id -> Int8,
+        // datum_id -> Int8,
+        redeemer_data_id -> Int8,
     }
 }
 
@@ -402,8 +405,8 @@ table! {
 }
 
 table! {
-    reward (id) {
-        id -> Int8,
+    reward (addr_id, type_, earned_epoch, pool_id) {
+        // id -> Int8,
         addr_id -> Int8,
         #[sql_name = "type"]
         type_ -> crate::schema::sql_types::Rewardtype,
@@ -451,7 +454,7 @@ table! {
         hash_raw -> Bytea,
         view -> Varchar,
         script_hash -> Nullable<Bytea>,
-        registered_tx_id -> Int8,
+        // registered_tx_id -> Int8,
     }
 }
 
@@ -473,6 +476,7 @@ table! {
         cert_index -> Int4,
         epoch_no -> Int4,
         tx_id -> Int8,
+        deposit -> Numeric,
     }
 }
 
@@ -500,6 +504,7 @@ table! {
         invalid_hereafter -> Nullable<Numeric>,
         valid_contract -> Bool,
         script_size -> Int4,
+        treasury_donation -> Numeric,
     }
 }
 
@@ -529,12 +534,13 @@ table! {
         tx_id -> Int8,
         index -> Int2,
         address -> Varchar,
-        address_raw -> Bytea,
         address_has_script -> Bool,
         payment_cred -> Nullable<Bytea>,
         stake_address_id -> Nullable<Int8>,
         value -> Numeric,
         data_hash -> Nullable<Bytea>,
+        inline_datum_id -> Int8,
+        reference_script_id -> Int8,
     }
 }
 
@@ -568,10 +574,10 @@ joinable!(param_proposal -> cost_model (cost_model_id));
 joinable!(param_proposal -> tx (registered_tx_id));
 joinable!(pool_metadata_ref -> pool_hash (pool_id));
 joinable!(pool_metadata_ref -> tx (registered_tx_id));
-joinable!(pool_offline_data -> pool_hash (pool_id));
-joinable!(pool_offline_data -> pool_metadata_ref (pmr_id));
-joinable!(pool_offline_fetch_error -> pool_hash (pool_id));
-joinable!(pool_offline_fetch_error -> pool_metadata_ref (pmr_id));
+// joinable!(pool_offline_data -> pool_hash (pool_id));
+// joinable!(pool_offline_data -> pool_metadata_ref (pmr_id));
+// joinable!(pool_offline_fetch_error -> pool_hash (pool_id));
+// joinable!(pool_offline_fetch_error -> pool_metadata_ref (pmr_id));
 joinable!(pool_owner -> pool_hash (pool_hash_id));
 joinable!(pool_owner -> stake_address (addr_id));
 joinable!(pool_owner -> tx (registered_tx_id));
@@ -629,8 +635,8 @@ allow_tables_to_appear_in_same_query!(
     param_proposal,
     pool_hash,
     pool_metadata_ref,
-    pool_offline_data,
-    pool_offline_fetch_error,
+    // pool_offline_data,
+    // pool_offline_fetch_error,
     pool_owner,
     pool_relay,
     pool_retire,
